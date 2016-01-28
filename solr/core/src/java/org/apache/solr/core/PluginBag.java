@@ -35,6 +35,8 @@ import org.apache.lucene.analysis.util.ResourceLoader;
 import org.apache.lucene.analysis.util.ResourceLoaderAware;
 import org.apache.solr.cloud.CloudUtil;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.util.Lookup;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.component.SearchComponent;
@@ -43,10 +45,15 @@ import org.apache.solr.util.CryptoKeys;
 import org.apache.solr.util.plugin.NamedListInitializedPlugin;
 import org.apache.solr.util.plugin.PluginInfoInitialized;
 import org.apache.solr.util.plugin.SolrCoreAware;
+import org.apache.solr.v2api.ApiBag;
+import org.apache.solr.v2api.V2Api;
+import org.apache.solr.v2api.V2ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.util.Collections.singletonMap;
 import static org.apache.solr.common.params.CommonParams.NAME;
+import static org.apache.solr.v2api.ApiBag.HANDLER_NAME;
 
 /**
  * This manages the lifecycle of a set of plugin of the same type .
@@ -60,11 +67,13 @@ public class PluginBag<T> implements AutoCloseable {
   private final Class klass;
   private SolrCore core;
   private final SolrConfig.SolrPluginInfo meta;
+  private final ApiBag apiBag;
 
   /**
    * Pass needThreadSafety=true if plugins can be added and removed concurrently with lookups.
    */
   public PluginBag(Class<T> klass, SolrCore core, boolean needThreadSafety) {
+    this.apiBag = klass == SolrRequestHandler.class ? new ApiBag() : null;
     this.core = core;
     this.klass = klass;
     // TODO: since reads will dominate writes, we could also think about creating a new instance of a map each time it changes.
@@ -242,7 +251,17 @@ public class PluginBag<T> implements AutoCloseable {
     return result.isLoaded();
   }
 
-  private static void registerMBean(Object inst, SolrCore core, String pluginKey) {
+  private void registerMBean(Object inst, SolrCore core, String pluginKey) {
+    if (apiBag != null && inst instanceof V2ApiSupport) {
+      Collection<V2Api> apis = ((V2ApiSupport) inst).getApis(apiBag.getSpecLookup());
+      if(apis != null){
+        Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, pluginKey.charAt(0)=='/'? pluginKey.substring(1):pluginKey);
+        for (V2Api api : apis) {
+          apiBag.register(api, nameSubstitutes);
+        }
+      }
+
+    }
     if (core == null) return;
     if (inst instanceof SolrInfoMBean) {
       SolrInfoMBean mBean = (SolrInfoMBean) inst;
@@ -314,7 +333,7 @@ public class PluginBag<T> implements AutoCloseable {
    * A class that loads plugins Lazily. When the get() method is invoked
    * the Plugin is initialized and returned.
    */
-  public static class LazyPluginHolder<T> extends PluginHolder<T> {
+  public class LazyPluginHolder<T> extends PluginHolder<T> {
     private volatile T lazyInst;
     private final SolrConfig.SolrPluginInfo pluginMeta;
     protected SolrException solrException;
@@ -484,4 +503,17 @@ public class PluginBag<T> implements AutoCloseable {
       }
     }
   }
+
+
+  public V2Api v2lookup(String path, String method, Map<String, String> parts) {
+    if (apiBag == null) {
+      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "this should not happen, looking up for v2 API at the wrong place");
+    }
+    return apiBag.lookup(path, method, parts);
+  }
+
+  public ApiBag getApiBag() {
+    return apiBag;
+  }
+
 }

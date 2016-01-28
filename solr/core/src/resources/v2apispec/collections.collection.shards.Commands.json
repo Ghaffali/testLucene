@@ -1,0 +1,21 @@
+{
+  "collections.collection.shards.Commands": {
+    "documentation": "https://cwiki.apache.org",
+    "methods": [
+      "GET",
+      "POST"
+    ],
+    "url": {
+      "paths": [
+        "/collections/{collection}/shards",
+        "/c/{collection}/shards"
+      ]
+    },
+    "commands": {
+      "create": {
+        "properties":{},
+        "additionalProperties":true
+      }
+    }
+  }
+}

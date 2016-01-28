@@ -18,7 +18,11 @@
 package org.apache.solr.core;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.lang.invoke.MethodHandles;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -44,6 +48,8 @@ import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
+import org.apache.solr.common.util.Lookup;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.admin.CollectionsHandler;
@@ -62,13 +68,17 @@ import org.apache.solr.security.AuthorizationPlugin;
 import org.apache.solr.security.HttpClientInterceptorPlugin;
 import org.apache.solr.security.PKIAuthenticationPlugin;
 import org.apache.solr.security.SecurityPluginHolder;
+import org.apache.solr.servlet.SolrDispatchFilter;
 import org.apache.solr.update.UpdateShardHandler;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.server.ByteBufferInputStream;
+import org.noggit.JSONParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.google.common.base.Preconditions.checkNotNull;
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.EMPTY_MAP;
 import static org.apache.solr.common.params.CommonParams.AUTHC_PATH;
 import static org.apache.solr.common.params.CommonParams.AUTHZ_PATH;
@@ -350,7 +360,7 @@ public class CoreContainer {
   public static CoreContainer createAndLoad(Path solrHome) {
     return createAndLoad(solrHome, solrHome.resolve(SolrXmlConfig.SOLR_XML_FILE));
   }
-  
+
   /**
    * Create a new CoreContainer and load its cores
    * @param solrHome the solr home directory
@@ -521,6 +531,7 @@ public class CoreContainer {
     ZkStateReader.ConfigData securityConfig = getZkController().getZkStateReader().getSecurityProps(false);
     initializeAuthorizationPlugin((Map<String, Object>) securityConfig.data.get("authorization"));
     initializeAuthenticationPlugin((Map<String, Object>) securityConfig.data.get("authentication"));
+    securityConfHandler.securityConfChanged();
   }
 
   private static void checkForDuplicateCoreNames(List<CoreDescriptor> cds) {
@@ -1215,6 +1226,52 @@ public class CoreContainer {
 
   public AuthenticationPlugin getAuthenticationPlugin() {
     return authenticationPlugin == null ? null : authenticationPlugin.plugin;
+  }
+
+  private Lookup<String, ByteBuffer> webappResourceLoader;
+
+  private Lookup<String, Map2> resourceLookup;
+
+  public synchronized Lookup<String, Map2> getResourceLookup() {
+    if (resourceLookup == null) {
+      resourceLookup = new Lookup<String, Map2>() {
+        @Override
+        public Map2 get(String key) {
+          return getResourceObject(key);
+        }
+      };
+    }
+    return resourceLookup;
+  }
+
+  private Map<String, Map2> resourceCache = new ConcurrentHashMap<>();
+
+  public Map2 getResourceObject(String name) {
+    if (name == null) throw new NullPointerException("name Cannot be null");
+    if (resourceCache.get(name) != null) return resourceCache.get(name);
+    Map2 map = getResource(name);
+    resourceCache.put(name, map);
+    return map;
+  }
+
+  public static Map2 getResource(String name) {
+    InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
+//    ByteBuffer buf = webappResourceLoader.get(name);
+    if (is == null)
+      throw new RuntimeException("invalid API spec :" + name );
+    Map2 map1 = null;
+    try {
+      map1 = Map2.fromJSON(is);
+    } catch (Exception e) {
+      log.error("Error in JSON : " + name, e);
+      if (e instanceof RuntimeException) {
+        throw (RuntimeException) e;
+      }
+      throw new SolrException(ErrorCode.SERVER_ERROR, e);
+    }
+    if (map1 == null) throw new SolrException(ErrorCode.SERVER_ERROR, "Empty value for " + name);
+
+    return Map2.getDeepCopy(map1, 5, false);
   }
 
 }

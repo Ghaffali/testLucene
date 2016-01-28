@@ -28,6 +28,7 @@ import static org.apache.solr.cloud.OverseerCollectionMessageHandler.ONLY_IF_DOW
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.REQUESTID;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARDS_PROP;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARD_UNIQUE;
+import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;
 import static org.apache.solr.common.cloud.DocCollection.DOC_ROUTER;
 import static org.apache.solr.common.cloud.DocCollection.RULE;
 import static org.apache.solr.common.cloud.DocCollection.SNITCH;
@@ -79,6 +80,7 @@ import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -122,6 +124,8 @@ import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.CoreAdminParams.CoreAdminAction;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.Lookup;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
@@ -131,6 +135,8 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.v2api.V2Api;
+import org.apache.solr.v2api.V2ApiSupport;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -139,15 +145,17 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
-public class CollectionsHandler extends RequestHandlerBase {
+public class CollectionsHandler extends RequestHandlerBase implements V2ApiSupport {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
+  private final V2CollectionHandler v2Handler ;
 
   public CollectionsHandler() {
     super();
     // Unlike most request handlers, CoreContainer initialization
     // should happen in the constructor...
     this.coreContainer = null;
+    v2Handler = new V2CollectionHandler(this);
   }
 
 
@@ -158,6 +166,7 @@ public class CollectionsHandler extends RequestHandlerBase {
    */
   public CollectionsHandler(final CoreContainer coreContainer) {
     this.coreContainer = coreContainer;
+    v2Handler = new V2CollectionHandler(this);
   }
 
 
@@ -201,25 +210,27 @@ public class CollectionsHandler extends RequestHandlerBase {
       }
       CollectionOperation operation = CollectionOperation.get(action);
       log.info("Invoked Collection Action :{} with params {} ", action.toLower(), req.getParamString());
-
-      Map<String, Object> props = operation.call(req, rsp, this);
-      String asyncId = req.getParams().get(ASYNC);
-      if (props != null) {
-        if (asyncId != null) {
-          props.put(ASYNC, asyncId);
-        }
-        props.put(QUEUE_OPERATION, operation.action.toLower());
-        ZkNodeProps zkProps = new ZkNodeProps(props);
-        if (operation.sendToOCPQueue) handleResponse(operation.action.toLower(), zkProps, rsp, operation.timeOut);
-        else Overseer.getInQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
-      }
+      invokeAction(req, rsp, operation);
     } else {
       throw new SolrException(ErrorCode.BAD_REQUEST, "action is a required param");
     }
     rsp.setHttpCaching(false);
   }
 
+  void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CollectionOperation operation) throws Exception {
+    if (!coreContainer.isZooKeeperAware()) {
+      throw new SolrException(BAD_REQUEST,
+          "Invalid request. collections can be accessed only in SolrCloud mode");
+    }
 
+    Map<String, Object> result = operation.call(req, rsp, this);
+    if (result != null) {
+      result.put(QUEUE_OPERATION, operation.action.toLower());
+      ZkNodeProps props = new ZkNodeProps(result);
+      if (operation.sendToOCPQueue) handleResponse(operation.action.toLower(), props, rsp, operation.timeOut);
+      else Overseer.getInQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
+    }
+  }
 
 
   static final Set<String> KNOWN_ROLES = ImmutableSet.of("overseer");
@@ -881,5 +892,11 @@ public class CollectionsHandler extends RequestHandlerBase {
       REPLICATION_FACTOR,
       MAX_SHARDS_PER_NODE,
       AUTO_ADD_REPLICAS);
+
+
+  @Override
+  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+    return v2Handler.getApis(specLookup);
+  }
 
 }

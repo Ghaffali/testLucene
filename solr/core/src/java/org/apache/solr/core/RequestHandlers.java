@@ -23,9 +23,12 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.request.SolrRequestHandler;
+import org.apache.solr.v2api.*;
+import org.apache.solr.v2api.ApiBag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

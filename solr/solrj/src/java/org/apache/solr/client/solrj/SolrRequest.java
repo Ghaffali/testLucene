@@ -22,9 +22,14 @@ import org.apache.solr.common.util.ContentStream;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import static java.util.Collections.unmodifiableSet;
 
 /**
  * 
@@ -36,8 +41,15 @@ public abstract class SolrRequest<T extends SolrResponse> implements Serializabl
   public enum METHOD {
     GET,
     POST,
-    PUT
+    PUT,
+    DELETE
   };
+
+  public static final Set<String> SUPPORTED_METHODS = unmodifiableSet(new HashSet<>(Arrays.<String>asList(
+      METHOD.GET.toString(),
+      METHOD.POST.toString(),
+      METHOD.PUT.toString(),
+      METHOD.DELETE.toString())));
 
   private METHOD method = METHOD.GET;
   private String path = null;

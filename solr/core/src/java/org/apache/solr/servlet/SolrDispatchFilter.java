@@ -25,8 +25,11 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayInputStream;
+import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.invoke.MethodHandles;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -36,12 +39,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.client.HttpClient;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.util.ExecutorUtil;
+import org.apache.solr.common.util.Lookup;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.NodeConfig;
 import org.apache.solr.core.SolrCore;
@@ -50,6 +55,7 @@ import org.apache.solr.core.SolrXmlConfig;
 import org.apache.solr.request.SolrRequestInfo;
 import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.PKIAuthenticationPlugin;
+import org.apache.solr.v2api.V2HttpCall;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,7 +81,7 @@ public class SolrDispatchFilter extends BaseSolrFilter {
    *  This is generally when an error is set and returned.
    * RETRY:Retry the request. In cases when a core isn't found to work with, this is set.
    */
-  enum Action {
+  public enum Action {
     PASSTHROUGH, FORWARD, RETURN, RETRY, ADMIN, REMOTEQUERY, PROCESS
   }
   
@@ -87,7 +93,7 @@ public class SolrDispatchFilter extends BaseSolrFilter {
   public static final String SOLRHOME_ATTRIBUTE = "solr.solr.home";
 
   @Override
-  public void init(FilterConfig config) throws ServletException
+  public void init(final FilterConfig config) throws ServletException
   {
     log.info("SolrDispatchFilter.init(): {}", this.getClass().getClassLoader());
 
@@ -234,7 +240,9 @@ public class SolrDispatchFilter extends BaseSolrFilter {
         case FORWARD:
           request.getRequestDispatcher(call.getPath()).forward(request, response);
           break;
-      }  
+      }
+    } catch (Exception e) {
+      log.error("error handling the request ", e);
     } finally {
       call.destroy();
       ExecutorUtil.setServerThreadFlag(null);
@@ -246,7 +254,17 @@ public class SolrDispatchFilter extends BaseSolrFilter {
    * want to add attributes to the request and send errors differently
    */
   protected HttpSolrCall getHttpSolrCall(HttpServletRequest request, HttpServletResponse response, boolean retry) {
-    return new HttpSolrCall(this, cores, request, response, retry);
+    String path = request.getServletPath();
+    if (request.getPathInfo() != null) {
+      // this lets you handle /update/commit when /update is a servlet
+      path += request.getPathInfo();
+    }
+
+    if (path.startsWith("/v2/") || path.equals("/v2")) {
+      return new V2HttpCall(this, cores, request, response, false);
+    } else {
+      return new HttpSolrCall(this, cores, request, response, retry);
+    }
   }
 
   private boolean authenticateRequest(ServletRequest request, ServletResponse response, final AtomicReference<ServletRequest> wrappedRequest) throws IOException {

@@ -35,8 +35,11 @@ import java.util.function.Predicate;
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.CollectionParams;
+import org.apache.solr.common.util.Lookup;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.SpecProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +50,7 @@ import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.util.Utils.getDeepCopy;
 
 
-public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, ConfigEditablePlugin {
+public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, ConfigEditablePlugin, SpecProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, Set<String>> usersVsRoles = new HashMap<>();
@@ -497,4 +500,11 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
 
   }
 
+  private Map2 spec;
+
+  @Override
+  public Map2 getSpec(Lookup<String, Map2> specLookup) {
+    if(spec == null) spec = specLookup.get("cluster.security.RuleBasedAuthorization");
+    return spec;
+  }
 }

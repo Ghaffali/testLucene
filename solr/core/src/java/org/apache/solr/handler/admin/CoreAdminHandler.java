@@ -19,6 +19,7 @@ package org.apache.solr.handler.admin;
 
 import java.io.File;
 import java.lang.invoke.MethodHandles;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -40,6 +41,8 @@ import org.apache.solr.common.params.CoreAdminParams.CoreAdminAction;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ExecutorUtil;
+import org.apache.solr.common.util.Lookup;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.CoreDescriptor;
@@ -47,6 +50,8 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.DefaultSolrThreadFactory;
+import org.apache.solr.v2api.V2Api;
+import org.apache.solr.v2api.V2ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -58,10 +63,11 @@ import static org.apache.solr.common.params.CoreAdminParams.CoreAdminAction.STAT
  *
  * @since solr 1.3
  */
-public class CoreAdminHandler extends RequestHandlerBase {
+public class CoreAdminHandler extends RequestHandlerBase implements V2ApiSupport {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
   protected final Map<String, Map<String, TaskObject>> requestStatusMap;
+  private final V2CoreAdminHandler v2CoreAdminHandler;
 
   protected final ExecutorService parallelExecutor = ExecutorUtil.newMDCAwareFixedThreadPool(50,
       new DefaultSolrThreadFactory("parallelCoreAdminExecutor"));
@@ -84,6 +90,7 @@ public class CoreAdminHandler extends RequestHandlerBase {
     map.put(COMPLETED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
     map.put(FAILED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
     requestStatusMap = Collections.unmodifiableMap(map);
+    v2CoreAdminHandler = new V2CoreAdminHandler(this);
   }
 
 
@@ -99,6 +106,7 @@ public class CoreAdminHandler extends RequestHandlerBase {
     map.put(COMPLETED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
     map.put(FAILED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
     requestStatusMap = Collections.unmodifiableMap(map);
+    v2CoreAdminHandler = new V2CoreAdminHandler(this);
   }
 
 
@@ -355,6 +363,11 @@ public class CoreAdminHandler extends RequestHandlerBase {
       op.call(this);
     }
 
+  }
+
+  @Override
+  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+    return v2CoreAdminHandler.getApis(specLookup);
   }
 
   static {

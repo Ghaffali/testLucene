@@ -19,26 +19,36 @@ package org.apache.solr.handler.admin;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader.ConfigData;
 import org.apache.solr.common.params.CommonParams;
+import org.apache.solr.common.util.Lookup;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.SolrConfigHandler;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.security.AuthenticationPlugin;
+import org.apache.solr.security.AuthorizationPlugin;
 import org.apache.solr.security.ConfigEditablePlugin;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.ApiBag;
+import org.apache.solr.v2api.SpecProvider;
+import org.apache.solr.v2api.V2Api;
+import org.apache.solr.v2api.V2ApiSupport;
 import org.apache.zookeeper.KeeperException;
 
-public class SecurityConfHandler extends RequestHandlerBase {
+public class SecurityConfHandler extends RequestHandlerBase implements V2ApiSupport {
   private CoreContainer cores;
 
   public SecurityConfHandler(CoreContainer coreContainer) {
@@ -57,6 +67,11 @@ public class SecurityConfHandler extends RequestHandlerBase {
       Object plugin = getPlugin(key);
       doEdit(req, rsp, path, key, plugin);
     }
+  }
+
+  public void securityConfChanged() {
+
+
   }
 
   private void doEdit(SolrQueryRequest req, SolrQueryResponse rsp, String path, final String key, final Object plugin)
@@ -158,5 +173,36 @@ public class SecurityConfHandler extends RequestHandlerBase {
   }
 
 
+  private ApiBag apiBag;
+
+  @Override
+  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+    return
+    ImmutableList.of(
+        getApi("authentication"),
+        getApi("authorization"));
   }
+
+  private V2Api getApi( String type) {
+    return ApiBag.wrapRequestHandler(this, null, new SpecProvider() {
+      @Override
+      public Map2 getSpec(Lookup<String, Map2> specLookup) {
+        if (type.equals("authentication")) {
+          AuthenticationPlugin plugin = cores.getAuthenticationPlugin();
+          if (plugin == null || !(plugin instanceof SpecProvider)) return specLookup.get("cluster.security.authentication");
+          return ((SpecProvider) plugin).getSpec(specLookup);
+        } else {
+          AuthorizationPlugin plugin = cores.getAuthorizationPlugin();
+          if (plugin == null || !(plugin instanceof SpecProvider)){
+            return specLookup.get("cluster.security.authorization");
+          }
+          return ((SpecProvider) plugin).getSpec(specLookup);
+
+        }
+      }
+    });
+  }
+
+
+}
 

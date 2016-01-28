@@ -25,6 +25,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.invoke.MethodHandles;
 import java.security.Principal;
@@ -148,13 +150,18 @@ public class HttpSolrCall {
   protected String coreUrl;
   protected SolrConfig config;
   protected Map<String, Integer> invalidStates;
+  protected RequestType requestType;
+  protected boolean usingAliases = false;
+
+  //The states of client that is invalid in this request
+  protected Aliases aliases = null;
+  protected String corename = "";
+  protected String origCorename = null;
+
 
   public RequestType getRequestType() {
     return requestType;
   }
-
-  protected RequestType requestType;
-
 
   public List<String> getCollectionsList() {
     return collectionsList;
@@ -171,6 +178,15 @@ public class HttpSolrCall {
     this.retry = retry;
     this.requestType = RequestType.UNKNOWN;
     queryParams = SolrRequestParsers.parseQueryString(req.getQueryString());
+    // set a request timer which can be reused by requests if needed
+    req.setAttribute(SolrRequestParsers.REQUEST_TIMER_SERVLET_ATTRIBUTE, new RTimerTree());
+    // put the core container in request attribute
+    req.setAttribute("org.apache.solr.CoreContainer", cores);
+    path = req.getServletPath();
+    if (req.getPathInfo() != null) {
+      // this lets you handle /update/commit when /update is a servlet
+      path += req.getPathInfo();
+    }
   }
 
   public String getPath() {
@@ -189,21 +205,8 @@ public class HttpSolrCall {
   public SolrParams getQueryParams() {
     return queryParams;
   }
-  
-  private void init() throws Exception {
-    //The states of client that is invalid in this request
-    Aliases aliases = null;
-    String corename = "";
-    String origCorename = null;
-    // set a request timer which can be reused by requests if needed
-    req.setAttribute(SolrRequestParsers.REQUEST_TIMER_SERVLET_ATTRIBUTE, new RTimerTree());
-    // put the core container in request attribute
-    req.setAttribute("org.apache.solr.CoreContainer", cores);
-    path = req.getServletPath();
-    if (req.getPathInfo() != null) {
-      // this lets you handle /update/commit when /update is a servlet
-      path += req.getPathInfo();
-    }
+
+  protected void init() throws Exception {
     // check for management path
     String alternate = cores.getManagementPath();
     if (alternate != null && path.startsWith(alternate)) {
@@ -215,8 +218,6 @@ public class HttpSolrCall {
       // save the portion after the ':' for a 'handler' path parameter
       path = path.substring(0, idx);
     }
-
-    boolean usingAliases = false;
 
     // Check for container handlers
     handler = cores.getRequestHandler(path);
@@ -258,7 +259,7 @@ public class HttpSolrCall {
           core = cores.getCore(corename);
           if (core != null) {
             path = path.substring(idx);
-          } 
+          }
         }
       }
       if (core == null) {
@@ -316,13 +317,27 @@ public class HttpSolrCall {
 
     action = PASSTHROUGH;
   }
-  
+
+  protected String lookupAliases(String collName) {
+    ZkStateReader reader = cores.getZkController().getZkStateReader();
+    aliases = reader.getAliases();
+    if (aliases != null && aliases.collectionAliasSize() > 0) {
+      usingAliases = true;
+      String alias = aliases.getCollectionAlias(collName);
+      if (alias != null) {
+        collectionsList = StrUtils.splitSmart(alias, ",", true);
+        return collectionsList.get(0);
+      }
+    }
+    return null;
+  }
+
   /**
    * Extract handler from the URL path if not set.
    * This returns true if the action is set.
    * 
    */
-  private void extractHandlerFromURLPath(SolrRequestParsers parser) throws Exception {
+  protected void extractHandlerFromURLPath(SolrRequestParsers parser) throws Exception {
     if (handler == null && path.length() > 1) { // don't match "" or "/" as valid path
       handler = core.getRequestHandler(path);
 
@@ -365,7 +380,7 @@ public class HttpSolrCall {
     }
   }
 
-  private void extractRemotePath(String corename, String origCorename, int idx) throws UnsupportedEncodingException, KeeperException, InterruptedException {
+  protected void extractRemotePath(String corename, String origCorename, int idx) throws UnsupportedEncodingException, KeeperException, InterruptedException {
     if (core == null && idx > 0) {
       coreUrl = getRemotCoreUrl(corename, origCorename);
       // don't proxy for internal update requests
@@ -463,14 +478,20 @@ public class HttpSolrCall {
               Map.Entry<String, String> entry = headers.next();
               resp.addHeader(entry.getKey(), entry.getValue());
             }
-            QueryResponseWriter responseWriter = core.getQueryResponseWriter(solrReq);
+            QueryResponseWriter responseWriter = getResponseWriter();
             if (invalidStates != null) solrReq.getContext().put(CloudSolrClient.STATE_VERSION, invalidStates);
             writeResponse(solrRsp, responseWriter, reqMethod);
           }
           return RETURN;
-        default: return action;
+        default: {
+          //TODO NOCOMMIT
+          log.error("NOACTION" + solrReq);
+          return action;
+        }
       }
     } catch (Throwable ex) {
+      log.error("ERROR" ,ex);
+
       sendError(ex);
       // walk the the entire cause chain to search for an Error
       Throwable t = ex;
@@ -674,17 +695,29 @@ public class HttpSolrCall {
   private void handleAdminRequest() throws IOException {
     SolrQueryResponse solrResp = new SolrQueryResponse();
     SolrCore.preDecorateResponse(solrReq, solrResp);
-    handler.handleRequest(solrReq, solrResp);
+    handleAdmin(solrResp);
     SolrCore.postDecorateResponse(handler, solrReq, solrResp);
     if (log.isInfoEnabled() && solrResp.getToLog().size() > 0) {
       log.info(solrResp.getToLogAsString("[admin]"));
     }
     QueryResponseWriter respWriter = SolrCore.DEFAULT_RESPONSE_WRITERS.get(solrReq.getParams().get(CommonParams.WT));
-    if (respWriter == null) respWriter = SolrCore.DEFAULT_RESPONSE_WRITERS.get("standard");
+    if (respWriter == null) respWriter = getResponseWriter();
     writeResponse(solrResp, respWriter, Method.getMethod(req.getMethod()));
   }
 
-  private void processAliases(Aliases aliases,
+  protected QueryResponseWriter getResponseWriter() {
+    if (core != null) return core.getQueryResponseWriter(solrReq);
+    QueryResponseWriter respWriter = SolrCore.DEFAULT_RESPONSE_WRITERS.get(solrReq.getParams().get(CommonParams.WT));
+    if (respWriter == null) respWriter = SolrCore.DEFAULT_RESPONSE_WRITERS.get("standard");
+    return respWriter;
+
+  }
+
+  protected void handleAdmin(SolrQueryResponse solrResp) {
+    handler.handleRequest(solrReq, solrResp);
+  }
+
+  protected void processAliases(Aliases aliases,
                               List<String> collectionsList) {
     String collection = solrReq.getParams().get(COLLECTION_PROP);
     if (collection != null) {
@@ -773,7 +806,7 @@ public class HttpSolrCall {
     return result;
   }
 
-  private SolrCore getCoreByCollection(String collection) {
+  protected SolrCore getCoreByCollection(String collection) {
     ZkStateReader zkStateReader = cores.getZkController().getZkStateReader();
 
     ClusterState clusterState = zkStateReader.getClusterState();

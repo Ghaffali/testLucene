@@ -1,0 +1,15 @@
+{
+  "cluster.security.authentication": {
+    "documentation": "https://cwiki.apache.org",
+    "methods": [
+      "POST",
+      "GET"
+    ],
+    "url": {
+      "paths": [
+        "/cluster/security/authentication"
+      ]
+    }
+
+  }
+}

@@ -1,0 +1,252 @@
+package org.apache.solr.handler.admin;
+
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import com.google.common.collect.ImmutableMap;
+import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.cloud.OverseerCollectionMessageHandler;
+import org.apache.solr.common.SolrException;
+import org.apache.solr.common.params.CollectionParams.CollectionAction;
+import org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation;
+import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.V2RequestContext;
+
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.DELETE;
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
+import static org.apache.solr.common.params.CollectionParams.CollectionAction.CREATE;
+import static org.apache.solr.common.params.CommonParams.NAME;
+import static org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation.*;
+
+
+public class V2CollectionHandler extends V2BaseHandler {
+  private final CollectionsHandler handler;
+
+  public V2CollectionHandler(CollectionsHandler handler) {
+    this.handler = handler;
+  }
+
+  @Override
+  protected List<V2Command> getCommands() {
+    return Arrays.asList(Cmd.values());
+  }
+
+  @Override
+  protected void invokeCommand(V2RequestContext ctx, V2Command command, CommandOperation c) throws Exception {
+    ((Cmd) command).command(ctx, c, this);
+  }
+
+  @Override
+  protected void invokeUrl(V2Command command, V2RequestContext ctx) throws Exception {
+    ((Cmd) command).GET(ctx, this);
+  }
+
+  @Override
+  protected List<V2EndPoint> getEndPoints() {
+    return Arrays.asList(EndPoint.values());
+  }
+
+
+
+  enum Cmd implements V2Command<V2CollectionHandler> {
+    GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
+    GET_A_COLLECTION(EndPoint.PER_COLLECTION, GET, LIST_OP),
+    CREATE_COLLECTION(EndPoint.COLLECTIONS,
+        POST,
+        CREATE_OP,
+        CREATE_OP.action.toLower(),
+        ImmutableMap.of(
+            OverseerCollectionMessageHandler.COLL_CONF, "config")){
+      @Override
+      public Collection<String> getParamNames(CommandOperation op) {
+        Collection<String> names = super.getParamNames(op);
+        Collection<String> result = new ArrayList<>(names.size());
+        for (String paramName : names) {
+          if(paramName.startsWith("properties.")){
+            result.add(paramName.replace("properties.", "property."));
+          } else {
+            result.add(paramName);
+          }
+        }
+        return result;
+      }
+
+      @Override
+      public String getParamSubstitute(String param) {
+        return param.startsWith("property.")? param.replace("property.", "properties.") : super.getParamSubstitute(param);
+      }
+    },
+
+    DELETE_COLL(EndPoint.PER_COLLECTION,
+        DELETE,
+        DELETE_OP,
+        DELETE_OP.action.toLower(),
+        ImmutableMap.of(NAME, "collection")),
+
+    RELOAD_COLL(EndPoint.PER_COLLECTION,
+        POST,
+        RELOAD_OP,
+        RELOAD_OP.action.toLower(),
+        ImmutableMap.of(NAME, "collection")),
+
+    MIGRATE_DOCS(EndPoint.PER_COLLECTION,
+        POST,
+        MIGRATE_OP,
+        "migrate-docs",
+        ImmutableMap.of("split.key", "splitKey",
+            "target.collection", "target",
+            "forward.timeout", "forwardTimeout"
+        )),
+    CREATE_ALIAS(EndPoint.COLLECTIONS,
+        POST,
+        CREATEALIAS_OP,
+        "create-alias",
+        null),
+
+    DELETE_ALIAS(EndPoint.COLLECTIONS,
+        POST,
+        CREATEALIAS_OP,
+        "delete-alias",
+        ImmutableMap.of(NAME, "")),
+    CREATE_SHARD(EndPoint.PER_COLLECTION_SHARDS,
+        POST,
+        CREATESHARD_OP,
+        "create",
+        null),
+
+    SPLIT_SHARD(EndPoint.PER_COLLECTION_PER_SHARD,
+        POST,
+        SPLITSHARD_OP,
+        "split",
+        ImmutableMap.of(
+            "split.key", "splitKey")),
+    DELETE_SHARD(EndPoint.PER_COLLECTION_PER_SHARD,
+        DELETE,
+        DELETESHARD_OP),
+
+
+    CREATE_REPLICA(EndPoint.PER_COLLECTION_PER_SHARD,
+        POST,
+        ADDREPLICA_OP,
+        "create-replica",
+        null),
+
+    DELETE_REPLICA(EndPoint.PER_COLLECTION_PER_SHARD_PER_REPLICA_DELETE,
+        DELETE,
+        DELETEREPLICA_OP),
+
+    SYNC_SHARD(EndPoint.PER_COLLECTION_PER_SHARD,
+        POST,
+        SYNCSHARD_OP,
+        "synch-shard",
+        null),;
+    public final String commandName;
+    public final EndPoint endPoint;
+    public final SolrRequest.METHOD method;
+    public final CollectionOperation target;
+    public final Map<String, String> paramstoAttr;
+
+    public SolrRequest.METHOD getMethod() {
+      return method;
+    }
+
+
+    Cmd(EndPoint endPoint, SolrRequest.METHOD method, CollectionOperation target) {
+      this(endPoint, method, target, null, null);
+    }
+
+    Cmd(EndPoint endPoint, SolrRequest.METHOD method, CollectionOperation target,
+        String commandName, Map<String, String> paramstoAttr) {
+      this.commandName = commandName;
+      this.endPoint = endPoint;
+      this.method = method;
+      this.target = target;
+      this.paramstoAttr = paramstoAttr == null ? Collections.EMPTY_MAP : paramstoAttr;
+    }
+
+
+    @Override
+    public String getName() {
+      return commandName;
+    }
+
+    @Override
+    public SolrRequest.METHOD getHttpMethod() {
+      return method;
+    }
+
+    @Override
+    public V2EndPoint getEndPoint() {
+      return endPoint;
+    }
+
+
+    @Override
+    public void command(V2RequestContext ctx, CommandOperation c, V2CollectionHandler handler) throws Exception {
+      handler.handler.invokeAction(ctx.getSolrRequest(),ctx.getResponse(),target);
+    }
+
+    @Override
+    public void GET(V2RequestContext ctx, V2CollectionHandler handler) throws Exception {
+      handler.handler.invokeAction(ctx.getSolrRequest(), ctx.getResponse(), target);
+    }
+
+    @Override
+    public Collection<String> getParamNames(CommandOperation op) {
+      return V2BaseHandler.getParamNames(op,this);
+    }
+
+    @Override
+    public String getParamSubstitute(String param) {
+      return paramstoAttr.containsKey(param) ? paramstoAttr.get(param) : param;
+    }
+
+
+  }
+
+  enum EndPoint implements V2EndPoint {
+    CLUSTER("collections.Commands"),
+    COLLECTIONS("collections.Commands"),
+    PER_COLLECTION("collections.collection.Commands"),
+    PER_COLLECTION_SHARDS("collections.collection.shards.Commands"),
+    PER_COLLECTION_PER_SHARD("collections.collection.shards.Commands"),
+    PER_COLLECTION_PER_SHARD_REPLICAS("collections.collection.shards.shard.Commands"),
+    PER_COLLECTION_PER_SHARD_PER_REPLICA("collections.collection.shards.shard.replica.Commands"),
+    PER_COLLECTION_PER_SHARD_PER_REPLICA_DELETE("collections.collection.shards.shard.replica.delete");
+    final String specName;
+
+
+    EndPoint(String specName) {
+      this.specName = specName;
+    }
+
+    @Override
+    public String getSpecName() {
+      return specName;
+    }
+  }
+
+}
