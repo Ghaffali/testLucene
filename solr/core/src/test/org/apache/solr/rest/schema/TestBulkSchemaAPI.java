@@ -28,6 +28,7 @@ import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.schema.SimilarityFactory;
 import org.apache.solr.search.similarities.SchemaSimilarityFactory;
+import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestBase;
 import org.apache.solr.util.RestTestHarness;
 
@@ -59,6 +60,14 @@ public class TestBulkSchemaAPI extends RestTestBase {
 
     createJettyAndHarness(tmpSolrHome.getAbsolutePath(), "solrconfig-managed-schema.xml", "schema-rest.xml",
         "/solr", true, null);
+    if (random().nextBoolean()) {
+      restTestHarness.setServerProvider(new RESTfulServerProvider() {
+        @Override
+        public String getBaseURL() {
+          return jetty.getBaseUrl().toString() + "/v2/cores/" + DEFAULT_TEST_CORENAME;
+        }
+      });
+    }
   }
 
   @After

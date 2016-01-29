@@ -114,19 +114,19 @@ public class TestV2Framework extends SolrTestCaseJ4 {
     assertEquals("shard1", parts.get("shard"));
     assertEquals("replica1", parts.get("replica"));
 
-    SolrQueryResponse rsp = invoke(containerHandlers, "/collections/_introspect", GET, mockCC, lookup);
+    SolrQueryResponse rsp = invoke(containerHandlers, "/collections/_introspect", GET, mockCC);
 
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
         "/spec[0]/methods[0]", "POST",
         "/spec[0]/methods[1]", "GET"));
 
-    rsp = invoke(coreHandlers, "/collections/hello/schema/_introspect", GET, mockCC, lookup);
+    rsp = invoke(coreHandlers, "/collections/hello/schema/_introspect", GET, mockCC);
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
         "/spec[0]/methods[0]", "POST",
         "/spec[0]/commands", NOT_NULL,
         "/spec[1]/methods[0]", "GET"));
 
-    rsp = invoke(coreHandlers, "/collections/hello", GET, mockCC, lookup);
+    rsp = invoke(coreHandlers, "/collections/hello", GET, mockCC);
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
         "/availableSubPaths", NOT_NULL,
         "availableSubPaths /collections/hello/config/jmx", NOT_NULL,
@@ -136,12 +136,14 @@ public class TestV2Framework extends SolrTestCaseJ4 {
         "availableSubPaths /collections/hello/shards/{shard}/{replica}", NOT_NULL
     ));
 
+    rsp = invoke(coreHandlers,"/collections/hello/schema",SolrRequest.METHOD.POST, mockCC);
+
 
 
   }
 
   private SolrQueryResponse invoke(PluginBag<SolrRequestHandler> reqHandlers, String path, SolrRequest.METHOD method,
-                                   CoreContainer mockCC, Lookup<String, Map2> lookup) {
+                                   CoreContainer mockCC) {
     HashMap<String, String> parts = new HashMap<>();
     boolean containerHandlerLookup = mockCC.getRequestHandlers() == reqHandlers;
     String fullPath = path;
@@ -155,7 +157,7 @@ public class TestV2Framework extends SolrTestCaseJ4 {
 
     V2Api api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", mockCC, prefix, fullPath, parts);
     LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>()));
-    V2RequestContext ctx = getV2RequestContext(lookup, path, method, null, mockCC, parts, api, req);
+    V2RequestContext ctx = getV2RequestContext(reqHandlers.getApiBag().getSpecLookup() , path, method, null, mockCC, parts, api, req);
     api.call(ctx);
     return ctx.getResponse();
 

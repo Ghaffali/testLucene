@@ -57,7 +57,6 @@ public class ApiBag {
 
   public static Map2 getResource(String name) {
     InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
-//    ByteBuffer buf = webappResourceLoader.get(name);
     if (is == null)
       throw new RuntimeException("invalid API spec :" + name );
     Map2 map1 = null;

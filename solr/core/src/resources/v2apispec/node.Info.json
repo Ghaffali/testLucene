@@ -5,10 +5,10 @@
     "url": {
       "path": "/node",
       "paths": [
-        "node/properties",
-        "node/threads",
-        "node/logging",
-        "node/system"]
+        "/node/properties",
+        "/node/threads",
+        "/node/logging",
+        "/node/system"]
     }
   }
 }
