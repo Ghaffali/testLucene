@@ -17,7 +17,6 @@
       "replace-field-type":"core.SchemaEdit.replaceFieldType",
       "add-copy-field":"core.SchemaEdit.addCopyField",
       "delete-copy-field":"core.SchemaEdit.deleteCopyField"
-    },
-    "body": null
+    }
   }
 }

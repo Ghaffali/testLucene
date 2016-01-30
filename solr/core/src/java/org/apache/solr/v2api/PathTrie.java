@@ -46,6 +46,7 @@ public class PathTrie<T> {
         if (replacement == null) {
           throw new RuntimeException(part + " is not provided");
         }
+        replacement = replacement.charAt(0) == '/' ? replacement.substring(1) : replacement;
         parts.set(i, replacement);
       }
     }

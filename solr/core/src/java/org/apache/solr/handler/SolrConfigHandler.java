@@ -814,7 +814,8 @@ public class SolrConfigHandler extends RequestHandlerBase implements V2ApiSuppor
   @Override
   public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
     return ImmutableList.of(
-        wrapRequestHandler(this, specLookup.get("core.ConfigRead"), null)
+        wrapRequestHandler(this, specLookup.get("core.ConfigRead"), null),
+        wrapRequestHandler(this, specLookup.get("core.ConfigEdit"), null)
 
     );
   }

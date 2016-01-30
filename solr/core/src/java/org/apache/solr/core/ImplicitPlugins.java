@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.PingRequestHandler;
 import org.apache.solr.handler.RealTimeGetHandler;
 import org.apache.solr.handler.ReplicationHandler;

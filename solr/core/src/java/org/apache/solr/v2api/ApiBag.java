@@ -28,14 +28,19 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.StrUtils;
+import org.apache.solr.core.PluginBag;
+import org.apache.solr.core.PluginInfo;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrRequestHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.client.solrj.SolrRequest.SUPPORTED_METHODS;
+import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.util.Map2.ENUM_OF;
 import static org.apache.solr.common.util.Map2.NOT_NULL;
 
@@ -214,7 +219,7 @@ public class ApiBag {
     return result;
   }
 
-  public static V2Api wrapRequestHandler(final RequestHandlerBase rh, final Map2 spec, SpecProvider specProvider) {
+  public static V2Api wrapRequestHandler(final SolrRequestHandler rh, final Map2 spec, SpecProvider specProvider) {
     return new V2Api(spec) {
       @Override
       public void call(V2RequestContext ctx) {
@@ -246,4 +251,42 @@ public class ApiBag {
   public PathTrie<V2Api> getRegistry(String method) {
     return apis.get(method);
   }
+
+  public <T> void registerLazy(PluginBag.PluginHolder<SolrRequestHandler> holder, PluginInfo info) {
+    String specName = info.attributes.get("spec");
+    if (specName == null) specName = "emptySpec";
+    Map2 spec = getSpecLookup().get(specName);
+    register(new LazyLoadedApi(spec, holder), Collections.singletonMap(HANDLER_NAME, info.attributes.get(NAME)));
+  }
+
+  public static Map2 constructSpec(PluginInfo info, Lookup<String, Map2> specLookup) {
+    Object specObj = info == null ? null : info.attributes.get("spec");
+    if (specObj == null) specObj = "emptySpec";
+    if (specObj instanceof Map) {
+      Map map = (Map) specObj;
+      return Map2.getDeepCopy(map, 4, false);
+    } else {
+      return specLookup.get((String) specObj);
+    }
+  }
+
+  public static class LazyLoadedApi extends V2Api {
+
+    private final PluginBag.PluginHolder<SolrRequestHandler> holder;
+    private V2Api delegate;
+
+    protected LazyLoadedApi(Map2 spec, PluginBag.PluginHolder<SolrRequestHandler> lazyPluginHolder) {
+      super(spec);
+      this.holder = lazyPluginHolder;
+    }
+
+    @Override
+    public void call(V2RequestContext ctx) {
+      if (!holder.isLoaded()) {
+        delegate = wrapRequestHandler(holder.get(), null, null);
+      }
+      delegate.call(ctx);
+    }
+  }
+
 }

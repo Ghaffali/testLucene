@@ -190,6 +190,21 @@ public class PluginBag<T> implements AutoCloseable {
     if (plugin.pluginInfo != null && plugin.pluginInfo.isDefault()) {
       setDefault(name);
     }
+
+    if (apiBag != null) {
+      if (plugin.isLoaded()) {
+        T inst = plugin.get();
+        Collection<V2Api> apis = ((V2ApiSupport) inst).getApis(apiBag.getSpecLookup());
+        if (apis != null) {
+          Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
+          for (V2Api api : apis) {
+            apiBag.register(api, nameSubstitutes);
+          }
+        }
+      } else {
+        apiBag.registerLazy((PluginHolder<SolrRequestHandler>) plugin, plugin.pluginInfo);
+      }
+    }
     if (plugin.isLoaded()) registerMBean(plugin.get(), core, name);
     return old;
   }
@@ -252,16 +267,6 @@ public class PluginBag<T> implements AutoCloseable {
   }
 
   private void registerMBean(Object inst, SolrCore core, String pluginKey) {
-    if (apiBag != null && inst instanceof V2ApiSupport) {
-      Collection<V2Api> apis = ((V2ApiSupport) inst).getApis(apiBag.getSpecLookup());
-      if(apis != null){
-        Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, pluginKey.charAt(0)=='/'? pluginKey.substring(1):pluginKey);
-        for (V2Api api : apis) {
-          apiBag.register(api, nameSubstitutes);
-        }
-      }
-
-    }
     if (core == null) return;
     if (inst instanceof SolrInfoMBean) {
       SolrInfoMBean mBean = (SolrInfoMBean) inst;

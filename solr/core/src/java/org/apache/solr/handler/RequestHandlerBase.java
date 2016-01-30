@@ -17,16 +17,22 @@
 
 package org.apache.solr.handler;
 
+import java.lang.invoke.MethodHandles;
+import java.net.URL;
+import java.util.Collection;
+import java.util.concurrent.atomic.AtomicLong;
+
+import com.google.common.collect.ImmutableList;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.Lookup;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.SuppressForbidden;
-import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.PluginBag;
-import org.apache.solr.core.SolrCore;
+import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrInfoMBean;
-import org.apache.solr.handler.component.SearchHandler;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
@@ -35,19 +41,19 @@ import org.apache.solr.util.SolrPluginUtils;
 import org.apache.solr.util.stats.Snapshot;
 import org.apache.solr.util.stats.Timer;
 import org.apache.solr.util.stats.TimerContext;
+import org.apache.solr.v2api.ApiBag;
+import org.apache.solr.v2api.V2Api;
+import org.apache.solr.v2api.V2ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.invoke.MethodHandles;
-import java.net.URL;
-import java.util.concurrent.atomic.AtomicLong;
-
 import static org.apache.solr.core.RequestParams.USEPARAM;
+import static org.apache.solr.v2api.ApiBag.wrapRequestHandler;
 
 /**
  *
  */
-public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfoMBean, NestedRequestHandler {
+public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfoMBean, NestedRequestHandler, V2ApiSupport {
 
   protected NamedList initArgs = null;
   protected SolrParams defaults;
@@ -278,7 +284,13 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
     lst.add("999thPcRequestTime", snapshot.get999thPercentile());
     return lst;
   }
-  
+
+  @Override
+  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+    return ImmutableList.of(
+        wrapRequestHandler(this, ApiBag.constructSpec(pluginInfo,specLookup), null)
+    );
+  }
 }
 
 
