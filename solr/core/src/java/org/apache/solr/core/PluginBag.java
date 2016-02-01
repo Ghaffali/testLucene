@@ -35,8 +35,6 @@ import org.apache.lucene.analysis.util.ResourceLoader;
 import org.apache.lucene.analysis.util.ResourceLoaderAware;
 import org.apache.solr.cloud.CloudUtil;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.component.SearchComponent;
@@ -186,6 +184,7 @@ public class PluginBag<T> implements AutoCloseable {
 
 
   PluginHolder<T> put(String name, PluginHolder<T> plugin) {
+
     PluginHolder<T> old = registry.put(name, plugin);
     if (plugin.pluginInfo != null && plugin.pluginInfo.isDefault()) {
       setDefault(name);
@@ -194,11 +193,13 @@ public class PluginBag<T> implements AutoCloseable {
     if (apiBag != null) {
       if (plugin.isLoaded()) {
         T inst = plugin.get();
-        Collection<V2Api> apis = ((V2ApiSupport) inst).getApis(apiBag.getSpecLookup());
-        if (apis != null) {
-          Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
-          for (V2Api api : apis) {
-            apiBag.register(api, nameSubstitutes);
+        if (inst instanceof V2ApiSupport && ((V2ApiSupport) inst).registerAutomatically()) {
+          Collection<V2Api> apis = ((V2ApiSupport) inst).getApis(apiBag.getSpecLookup());
+          if (apis != null) {
+            Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
+            for (V2Api api : apis) {
+              apiBag.register(api, nameSubstitutes);
+            }
           }
         }
       } else {
@@ -313,6 +314,10 @@ public class PluginBag<T> implements AutoCloseable {
 
     public boolean isLoaded() {
       return inst != null;
+    }
+
+    public boolean isV2Only() {
+      return pluginInfo != null || "false".equals(String.valueOf(pluginInfo.attributes.get("legacy")));
     }
 
     @Override

@@ -57,7 +57,11 @@ public class PathTrie<T> {
   public static List<String> getParts(String path) {
     if (path == null || path.isEmpty()) return emptyList();
     List<String> parts = StrUtils.splitSmart(path, '/');
-    if ("".equals(parts.get(0))) parts.remove(0);
+    while(true) {
+      if(parts.isEmpty()) break;
+      if ("".equals(parts.get(0))) parts.remove(0);
+      else break;
+    }
     return parts;
   }
 

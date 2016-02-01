@@ -964,7 +964,8 @@
     </lst>
   </initParams>
 
-  <initParams path="/update/json/docs">
+  <!--TODO need to clean this up -->
+  <initParams path="/update/json/docs,/update/v2,/update">
     <lst name="defaults">
       <!--this ensures that the entire json doc will be stored verbatim into one field-->
       <str name="srcField">_src_</str>

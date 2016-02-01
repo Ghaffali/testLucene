@@ -1603,6 +1603,11 @@ public class ReplicationHandler extends RequestHandlerBase implements SolrCoreAw
     }
   }
 
+  @Override
+  public boolean registerAutomatically() {
+    return false;
+  }
+
   private static final String LOCATION = "location";
 
   private static final String SUCCESS = "success";

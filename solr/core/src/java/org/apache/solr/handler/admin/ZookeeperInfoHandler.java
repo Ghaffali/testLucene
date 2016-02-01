@@ -846,4 +846,9 @@ public final class ZookeeperInfoHandler extends RequestHandlerBase {
       return null;
     }
   }
+
+  @Override
+  public boolean registerAutomatically() {
+    return false;
+  }
 }

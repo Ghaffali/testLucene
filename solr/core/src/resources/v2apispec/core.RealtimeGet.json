@@ -18,7 +18,6 @@
           "description" :"one or more ids. Separate by commas if there are more than one"
         }
       }
-    },
-    "body": null
+    }
   }
 }

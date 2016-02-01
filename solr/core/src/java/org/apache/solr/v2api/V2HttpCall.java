@@ -269,6 +269,7 @@ public class V2HttpCall extends HttpSolrCall {
     try {
       api.call(getV2RequestCtx(rsp));
     } catch (RuntimeException e) {
+      //todo remove for debugging only
       log.error("error execute()", e);
       throw e;
     }

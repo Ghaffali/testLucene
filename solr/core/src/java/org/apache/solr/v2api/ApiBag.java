@@ -119,7 +119,7 @@ public class ApiBag {
           if (!wildCardNames.contains(o.toString()))
             throw new RuntimeException("" + o + " is not a valid part name");
           Map2 pathMeta = parts.getMap(o.toString(), NOT_NULL);
-          pathMeta.get("type", ENUM_OF, ImmutableSet.of("enum", "string", "int", "number"));
+          pathMeta.get("type", ENUM_OF, ImmutableSet.of("enum", "string", "int", "number", "boolean"));
         }
       }
       verifyCommands(api.getSpec(getSpecLookup()));
