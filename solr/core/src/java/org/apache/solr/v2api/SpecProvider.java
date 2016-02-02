@@ -21,5 +21,5 @@ import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
 
 public interface SpecProvider {
-  Map2 getSpec(Lookup<String, Map2> specLookup);
+  Map2 getSpec();
 }

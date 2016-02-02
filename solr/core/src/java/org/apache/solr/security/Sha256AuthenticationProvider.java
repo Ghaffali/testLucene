@@ -34,6 +34,7 @@ import org.apache.commons.codec.binary.Base64;
 import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.ApiBag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -156,8 +157,8 @@ public class Sha256AuthenticationProvider implements ConfigEditablePlugin,  Basi
   }
 
   @Override
-  public Map2 getSpec(Lookup<String, Map2> specLookup) {
-    return specLookup.get("cluster.security.BasicAuth");
+  public Map2 getSpec() {
+    return ApiBag.getSpec("cluster.security.BasicAuth");
   }
 
   static final Set<String> supported_ops = ImmutableSet.of("set-user", "delete-user");

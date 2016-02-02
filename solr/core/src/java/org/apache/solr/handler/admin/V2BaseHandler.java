@@ -37,6 +37,7 @@ import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.ApiBag;
 import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2ApiSupport;
 import org.apache.solr.v2api.V2RequestContext;
@@ -60,15 +61,15 @@ public abstract class V2BaseHandler implements V2ApiSupport {
   }
 
   @Override
-  public synchronized Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+  public synchronized Collection<V2Api> getApis() {
     ImmutableList.Builder<V2Api> l = ImmutableList.builder();
-    for (V2EndPoint op : getEndPoints()) l.add(getApi(op, specLookup));
+    for (V2EndPoint op : getEndPoints()) l.add(getApi(op));
     return l.build();
   }
 
 
-  private V2Api getApi(final V2EndPoint op, Lookup<String, Map2> specLookup) {
-    final Map2 spec = specLookup.get(op.getSpecName());
+  private V2Api getApi(final V2EndPoint op) {
+    final Map2 spec = ApiBag.getSpec(op.getSpecName());
     return new V2Api(spec) {
       @Override
       public void call(V2RequestContext ctx) {

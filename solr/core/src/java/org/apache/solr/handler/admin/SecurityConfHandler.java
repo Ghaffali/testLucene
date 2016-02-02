@@ -173,10 +173,8 @@ public class SecurityConfHandler extends RequestHandlerBase implements V2ApiSupp
   }
 
 
-  private ApiBag apiBag;
-
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+  public Collection<V2Api> getApis() {
     return
     ImmutableList.of(
         getApi("authentication"),
@@ -186,17 +184,17 @@ public class SecurityConfHandler extends RequestHandlerBase implements V2ApiSupp
   private V2Api getApi( String type) {
     return ApiBag.wrapRequestHandler(this, null, new SpecProvider() {
       @Override
-      public Map2 getSpec(Lookup<String, Map2> specLookup) {
+      public Map2 getSpec() {
         if (type.equals("authentication")) {
           AuthenticationPlugin plugin = cores.getAuthenticationPlugin();
-          if (plugin == null || !(plugin instanceof SpecProvider)) return specLookup.get("cluster.security.authentication");
-          return ((SpecProvider) plugin).getSpec(specLookup);
+          if (plugin == null || !(plugin instanceof SpecProvider)) return ApiBag.getSpec("cluster.security.authentication");
+          return ((SpecProvider) plugin).getSpec();
         } else {
           AuthorizationPlugin plugin = cores.getAuthorizationPlugin();
           if (plugin == null || !(plugin instanceof SpecProvider)){
-            return specLookup.get("cluster.security.authorization");
+            return ApiBag.getSpec("cluster.security.authorization");
           }
-          return ((SpecProvider) plugin).getSpec(specLookup);
+          return ((SpecProvider) plugin).getSpec();
 
         }
       }

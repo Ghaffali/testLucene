@@ -64,14 +64,12 @@ public class TestV2Framework extends SolrTestCaseJ4 {
     coreHandlers.put("/config", new SolrConfigHandler());
     coreHandlers.put("/admin/ping", new PingRequestHandler());
 
-    Lookup<String, Map2> lookup = coreHandlers.getApiBag().getSpecLookup();
-
     Map<String, String> parts = new HashMap<>();
     String fullPath = "/collections/hello/shards";
     V2Api api = V2HttpCall.getApiInfo(containerHandlers, fullPath, "GET",
         mockCC, "collections", fullPath, parts);
     assertNotNull(api);
-    assertConditions(api.getSpec(null), Utils.makeMap(
+    assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "GET",
         "/methods[1]", "POST",
         "/commands/create", NOT_NULL));
@@ -80,7 +78,7 @@ public class TestV2Framework extends SolrTestCaseJ4 {
     parts = new HashMap<>();
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1", "GET",
         mockCC, "collections", null, parts);
-    assertConditions(api.getSpec(null), Utils.makeMap(
+    assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
         "/methods[1]", "GET",
         "/methods[2]", "DELETE",
@@ -95,7 +93,7 @@ public class TestV2Framework extends SolrTestCaseJ4 {
     parts = new HashMap<>();
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1/replica1", "GET",
         mockCC, "collections", null, parts);
-    assertConditions(api.getSpec(null), Utils.makeMap(
+    assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "GET",
         "/methods[1]", "POST",
         "/commands/set", NOT_NULL
@@ -106,7 +104,7 @@ public class TestV2Framework extends SolrTestCaseJ4 {
 
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1/replica1", "DELETE",
         mockCC, "collections", null, parts);
-    assertConditions(api.getSpec(null), Utils.makeMap(
+    assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "DELETE",
         "/url/params/onlyIfDown/type", "boolean"
     ));
@@ -157,7 +155,7 @@ public class TestV2Framework extends SolrTestCaseJ4 {
 
     V2Api api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", mockCC, prefix, fullPath, parts);
     LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>()));
-    V2RequestContext ctx = getV2RequestContext(reqHandlers.getApiBag().getSpecLookup() , path, method, null, mockCC, parts, api, req);
+    V2RequestContext ctx = getV2RequestContext( path, method, null, mockCC, parts, api, req);
     api.call(ctx);
     return ctx.getResponse();
 

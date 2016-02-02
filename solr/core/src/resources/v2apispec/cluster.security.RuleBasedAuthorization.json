@@ -1,5 +1,5 @@
 {
-  "cluster.security.RuleBasedAuthorization.": {
+  "cluster.security.RuleBasedAuthorization": {
     "documentation": "https://cwiki.apache.org",
     "methods": [
       "POST",

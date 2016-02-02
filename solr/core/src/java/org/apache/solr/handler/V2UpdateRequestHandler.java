@@ -26,6 +26,7 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
+import org.apache.solr.v2api.ApiBag;
 import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2RequestContext;
 
@@ -39,19 +40,19 @@ public class V2UpdateRequestHandler extends UpdateRequestHandler  {
   }
 
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
-    return Collections.singleton(getApiImpl(specLookup));
+  public Collection<V2Api> getApis() {
+    return Collections.singleton(getApiImpl());
   }
 
-  private V2Api getApiImpl(Lookup<String, Map2> specLookup) {
-    return new V2Api(specLookup.get("core.Update")) {
+  private V2Api getApiImpl() {
+    return new V2Api(ApiBag.getSpec("core.Update")) {
       @Override
       public void call(V2RequestContext ctx) {
         String path = ctx.getPath();
         String target =  mapping.get(path);
         if(target != null) ctx.getSolrRequest().getContext().put("path", target);
         try {
-          handleRequest(ctx.getSolrRequest(),ctx.getResponse());
+          handleRequest(ctx.getSolrRequest(), ctx.getResponse());
         } catch (RuntimeException e) {
           throw e;
         } catch (Exception e){

@@ -124,8 +124,6 @@ import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.CoreAdminParams.CoreAdminAction;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
@@ -223,11 +221,15 @@ public class CollectionsHandler extends RequestHandlerBase implements V2ApiSuppo
           "Invalid request. collections can be accessed only in SolrCloud mode");
     }
 
-    Map<String, Object> result = operation.call(req, rsp, this);
-    if (result != null) {
-      result.put(QUEUE_OPERATION, operation.action.toLower());
-      ZkNodeProps props = new ZkNodeProps(result);
-      if (operation.sendToOCPQueue) handleResponse(operation.action.toLower(), props, rsp, operation.timeOut);
+    Map<String, Object> props = operation.call(req, rsp, this);
+    String asyncId = req.getParams().get(ASYNC);
+    if (props != null) {
+      if (asyncId != null) {
+        props.put(ASYNC, asyncId);
+      }
+      props.put(QUEUE_OPERATION, operation.action.toLower());
+      ZkNodeProps zkProps = new ZkNodeProps(props);
+      if (operation.sendToOCPQueue) handleResponse(operation.action.toLower(), zkProps, rsp, operation.timeOut);
       else Overseer.getInQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
     }
   }
@@ -895,8 +897,8 @@ public class CollectionsHandler extends RequestHandlerBase implements V2ApiSuppo
 
 
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
-    return v2Handler.getApis(specLookup);
+  public Collection<V2Api> getApis() {
+    return v2Handler.getApis();
   }
 
 }

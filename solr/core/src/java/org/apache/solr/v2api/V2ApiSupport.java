@@ -24,7 +24,7 @@ import org.apache.solr.common.util.Map2;
 
 public interface V2ApiSupport {
 
-  Collection<V2Api> getApis(Lookup<String, Map2> specLookup);
+  Collection<V2Api> getApis();
 
 
   default boolean registerAutomatically() {

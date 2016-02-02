@@ -194,7 +194,7 @@ public class PluginBag<T> implements AutoCloseable {
       if (plugin.isLoaded()) {
         T inst = plugin.get();
         if (inst instanceof V2ApiSupport && ((V2ApiSupport) inst).registerAutomatically()) {
-          Collection<V2Api> apis = ((V2ApiSupport) inst).getApis(apiBag.getSpecLookup());
+          Collection<V2Api> apis = ((V2ApiSupport) inst).getApis();
           if (apis != null) {
             Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
             for (V2Api api : apis) {

@@ -39,6 +39,7 @@ import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.ApiBag;
 import org.apache.solr.v2api.SpecProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -503,8 +504,8 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
   private Map2 spec;
 
   @Override
-  public Map2 getSpec(Lookup<String, Map2> specLookup) {
-    if(spec == null) spec = specLookup.get("cluster.security.RuleBasedAuthorization");
+  public Map2 getSpec() {
+    if(spec == null) spec = ApiBag.getSpec("cluster.security.RuleBasedAuthorization");
     return spec;
   }
 }

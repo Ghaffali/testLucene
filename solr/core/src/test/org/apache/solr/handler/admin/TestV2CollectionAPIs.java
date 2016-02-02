@@ -54,7 +54,7 @@ public class TestV2CollectionAPIs extends SolrTestCaseJ4 {
   public void testCreate() throws Exception{
     MockCollectionsHandler collectionsHandler = new MockCollectionsHandler();
     ApiBag apiBag = new ApiBag();
-    Collection<V2Api> apis = collectionsHandler.getApis(apiBag.getSpecLookup());
+    Collection<V2Api> apis = collectionsHandler.getApis();
     for (V2Api api : apis) apiBag.register(api, Collections.EMPTY_MAP);
     //test a simple create collection call
     V2RequestContext ctx = makeCall(apiBag, "/collections", SolrRequest.METHOD.POST,
@@ -78,13 +78,12 @@ public class TestV2CollectionAPIs extends SolrTestCaseJ4 {
     V2Api api = apiBag.lookup(path, method.toString(), parts);
     if (api == null) throw new RuntimeException("No handler at path :" + path);
     LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<String, String>()));
-    V2RequestContext ctx = getV2RequestContext(apiBag.getSpecLookup(), path, method, payload, cc, parts, api, req);
+    V2RequestContext ctx = getV2RequestContext(path, method, payload, cc, parts, api, req);
     api.call(ctx);
     return ctx;
   }
 
-  public static V2RequestContext getV2RequestContext(final Lookup<String,Map2> lookup,
-                                                     final String path,
+  public static V2RequestContext getV2RequestContext(final String path,
                                                      final SolrRequest.METHOD method,
                                                      final String payload,
                                                      final CoreContainer cc,
@@ -121,7 +120,7 @@ public class TestV2CollectionAPIs extends SolrTestCaseJ4 {
 
       @Override
       public List<CommandOperation> getCommands(boolean validateInput) {
-        return V2HttpCall.getCommandOperations(new StringReader(payload), api.getSpec(lookup), rsp);
+        return V2HttpCall.getCommandOperations(new StringReader(payload), api.getSpec(), rsp);
       }
 
       @Override

@@ -198,7 +198,7 @@ public class V2HttpCall extends HttpSolrCall {
         return getSubPathImpl(subpaths, fullPath);
       }
     }
-    if (api.getSpec(requestHandlers.getApiBag().getSpecLookup()) == ApiBag.INTROSPECT_SPEC)
+    if (api.getSpec() == ApiBag.INTROSPECT_SPEC)
       api = mergeIntrospect(requestHandlers, path, method, parts);
     return api;
   }
@@ -324,7 +324,7 @@ public class V2HttpCall extends HttpSolrCall {
           if (contentStreams == null) throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "No content stream");
           for (ContentStream contentStream : contentStreams) {
             parsedCommands = getCommandOperations(new InputStreamReader((InputStream) contentStream, UTF_8),
-                api.getSpec(cores.getRequestHandlers().getApiBag().getSpecLookup()), solrResp);
+                api.getSpec(), solrResp);
 
           }
 

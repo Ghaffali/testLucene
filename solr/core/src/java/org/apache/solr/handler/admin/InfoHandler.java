@@ -32,6 +32,7 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.v2api.ApiBag;
 import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2ApiSupport;
 import org.apache.solr.v2api.V2RequestContext;
@@ -111,7 +112,7 @@ public class InfoHandler extends RequestHandlerBase implements V2ApiSupport {
   }
 
   protected ThreadDumpHandler getThreadDumpHandler() {
-    return new ThreadDumpHandler();
+    return (ThreadDumpHandler) handlers.get("threads");
   }
 
   protected LoggingHandler getLoggingHandler() {
@@ -146,8 +147,8 @@ public class InfoHandler extends RequestHandlerBase implements V2ApiSupport {
   private Map<String, RequestHandlerBase> handlers = new ConcurrentHashMap<>();
 
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
-    return Collections.singletonList(new V2Api(specLookup.get("node.Info")) {
+  public Collection<V2Api> getApis() {
+    return Collections.singletonList(new V2Api(ApiBag.getSpec("node.Info")) {
       @Override
       public void call(V2RequestContext ctx) {
         handle(ctx.getSolrRequest(), ctx.getResponse(), ctx.getPath());

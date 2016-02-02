@@ -32,7 +32,7 @@ public abstract class V2Api implements SpecProvider {
   public abstract void call(V2RequestContext ctx);
 
   @Override
-  public Map2 getSpec(Lookup<String, Map2> specLookup) {
+  public Map2 getSpec() {
     return spec;
   }
 

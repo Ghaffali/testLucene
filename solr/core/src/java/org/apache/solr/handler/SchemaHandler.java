@@ -42,6 +42,7 @@ import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.ManagedIndexSchema;
 import org.apache.solr.schema.SchemaManager;
 import org.apache.solr.schema.ZkIndexSchemaReader;
+import org.apache.solr.v2api.ApiBag;
 import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2ApiSupport;
 import org.slf4j.Logger;
@@ -191,10 +192,10 @@ public class SchemaHandler extends RequestHandlerBase implements V2ApiSupport {
   }
 
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+  public Collection<V2Api> getApis() {
     return ImmutableList.of(
-        wrapRequestHandler(this, specLookup.get("core.SchemaRead"), null) ,
-        wrapRequestHandler(this, specLookup.get("core.SchemaEdit"), null));
+        wrapRequestHandler(this, ApiBag.getSpec("core.SchemaRead"), null) ,
+        wrapRequestHandler(this, ApiBag.getSpec("core.SchemaEdit"), null));
   }
 
 

@@ -47,7 +47,7 @@ public class TestV2CoreAdminAPIs extends SolrTestCaseJ4 {
 
     CoreAdminHandler  coreAdminHandler = new CoreAdminHandler(mockCC);
     ApiBag apiBag = new ApiBag();
-    for (V2Api v2Api : coreAdminHandler.getApis(apiBag.getSpecLookup())) {
+    for (V2Api v2Api : coreAdminHandler.getApis()) {
       apiBag.register(v2Api, Collections.EMPTY_MAP);
     }
     TestV2CollectionAPIs.makeCall(apiBag,"/cores", SolrRequest.METHOD.POST ,

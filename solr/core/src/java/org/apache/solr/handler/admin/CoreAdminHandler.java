@@ -86,9 +86,9 @@ public class CoreAdminHandler extends RequestHandlerBase implements V2ApiSupport
     // should happen in the constructor...  
     this.coreContainer = null;
     HashMap<String, Map<String, TaskObject>> map = new HashMap<>(3, 1.0f);
-    map.put(RUNNING, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
-    map.put(COMPLETED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
-    map.put(FAILED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
+    map.put(RUNNING, Collections.synchronizedMap(new LinkedHashMap<>()));
+    map.put(COMPLETED, Collections.synchronizedMap(new LinkedHashMap<>()));
+    map.put(FAILED, Collections.synchronizedMap(new LinkedHashMap<>()));
     requestStatusMap = Collections.unmodifiableMap(map);
     v2CoreAdminHandler = new V2CoreAdminHandler(this);
   }
@@ -366,8 +366,8 @@ public class CoreAdminHandler extends RequestHandlerBase implements V2ApiSupport
   }
 
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
-    return v2CoreAdminHandler.getApis(specLookup);
+  public Collection<V2Api> getApis() {
+    return v2CoreAdminHandler.getApis();
   }
 
   static {

@@ -28,13 +28,10 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
-import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.PluginInfo;
-import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrRequestHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,17 +45,6 @@ public class ApiBag {
   private static final Logger log = LoggerFactory.getLogger(ApiBag.class);
 
   private final Map<String, PathTrie<V2Api>> apis = new ConcurrentHashMap<>();
-  private final Lookup<String, Map2> specProvider;
-
-
-  public ApiBag() {
-    this.specProvider = new Lookup<String, Map2>() {
-      @Override
-      public Map2 get(String key) {
-        return getMap(key);
-      }
-    };
-  }
 
   public static Map2 getResource(String name) {
     InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
@@ -85,7 +71,7 @@ public class ApiBag {
     try {
       validateAndRegister(api, nameSubstitutes);
     } catch (Exception e) {
-      log.error("Unable to register plugin:" + api.getClass().getName() + "with spec :" + api.getSpec(specProvider), e);
+      log.error("Unable to register plugin:" + api.getClass().getName() + "with spec :" + api.getSpec(), e);
       if (e instanceof RuntimeException) {
         throw (RuntimeException) e;
       } else {
@@ -96,8 +82,8 @@ public class ApiBag {
   }
 
   private void validateAndRegister(V2Api api, Map<String, String> nameSubstitutes) {
-    Map2 spec = api.getSpec(getSpecLookup());
-    V2Api introspect = getIntrospect(this, api);
+    Map2 spec = api.getSpec();
+    V2Api introspect = getIntrospect(api);
     List<String> methods = spec.getList("methods", ENUM_OF, SUPPORTED_METHODS);
     for (String method : methods) {
       PathTrie<V2Api> registry = apis.get(method);
@@ -122,7 +108,7 @@ public class ApiBag {
           pathMeta.get("type", ENUM_OF, ImmutableSet.of("enum", "string", "int", "number", "boolean"));
         }
       }
-      verifyCommands(api.getSpec(getSpecLookup()));
+      verifyCommands(api.getSpec());
       for (String path : paths) {
         registry.insert(path, nameSubstitutes, api);
         registry.insert(path + INTROSPECT, nameSubstitutes, introspect);
@@ -130,11 +116,11 @@ public class ApiBag {
     }
   }
 
-  private V2Api getIntrospect(final ApiBag apiBag, final V2Api baseApi) {
+  private V2Api getIntrospect(final V2Api baseApi) {
     return new V2Api(Map2.EMPTY) {
 
       @Override
-      public Map2 getSpec(Lookup<String, Map2> specLookup) {
+      public Map2 getSpec() {
         return INTROSPECT_SPEC;
       }
 
@@ -143,9 +129,9 @@ public class ApiBag {
         String cmd = ctx.getSolrRequest().getParams().get("command");
         Map2 result = null;
         if (cmd == null) {
-          result = baseApi.getSpec(apiBag.getSpecLookup());
+          result = baseApi.getSpec();
         } else {
-          Map2 specCopy = Map2.getDeepCopy(baseApi.getSpec(apiBag.getSpecLookup()), 5, true);
+          Map2 specCopy = Map2.getDeepCopy(baseApi.getSpec(), 5, true);
           Map2 commands = specCopy.getMap("commands", null);
           if (commands != null) {
             Map2 m = commands.getMap(cmd, null);
@@ -194,7 +180,7 @@ public class ApiBag {
     }
   }
 
-  private static Map2 getMap(String name) {
+  public static Map2 getSpec(String name) {
     Map2 map = getResource(APISPEC_LOCATION + name + ".json");
     Map2 result = map.getMap(name, NOT_NULL);
     Map2 cmds = result.getMap("commands", null);
@@ -227,21 +213,16 @@ public class ApiBag {
       }
 
       @Override
-      public Map2 getSpec(Lookup<String, Map2> specLookup) {
+      public Map2 getSpec() {
         return specProvider != null ?
-            specProvider.getSpec(specLookup) :
-            super.getSpec(specLookup);
+            specProvider.getSpec() :
+            super.getSpec();
       }
     };
   }
 
   public static final String APISPEC_LOCATION = "v2apispec/";
   public static final String INTROSPECT = "/_introspect";
-
-
-  public Lookup<String, Map2> getSpecLookup() {
-    return specProvider;
-  }
 
 
   public static final Map2 INTROSPECT_SPEC = new Map2(Collections.EMPTY_MAP);
@@ -255,18 +236,18 @@ public class ApiBag {
   public <T> void registerLazy(PluginBag.PluginHolder<SolrRequestHandler> holder, PluginInfo info) {
     String specName = info.attributes.get("spec");
     if (specName == null) specName = "emptySpec";
-    Map2 spec = getSpecLookup().get(specName);
+    Map2 spec = ApiBag.getSpec(specName);
     register(new LazyLoadedApi(spec, holder), Collections.singletonMap(HANDLER_NAME, info.attributes.get(NAME)));
   }
 
-  public static Map2 constructSpec(PluginInfo info, Lookup<String, Map2> specLookup) {
+  public static Map2 constructSpec(PluginInfo info) {
     Object specObj = info == null ? null : info.attributes.get("spec");
     if (specObj == null) specObj = "emptySpec";
     if (specObj instanceof Map) {
       Map map = (Map) specObj;
       return Map2.getDeepCopy(map, 4, false);
     } else {
-      return specLookup.get((String) specObj);
+      return ApiBag.getSpec((String) specObj);
     }
   }
 

@@ -76,6 +76,7 @@ import org.apache.solr.schema.SchemaManager;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.solr.util.RTimer;
+import org.apache.solr.v2api.ApiBag;
 import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2ApiSupport;
 import org.slf4j.Logger;
@@ -812,10 +813,10 @@ public class SolrConfigHandler extends RequestHandlerBase implements V2ApiSuppor
   }
 
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+  public Collection<V2Api> getApis() {
     return ImmutableList.of(
-        wrapRequestHandler(this, specLookup.get("core.ConfigRead"), null),
-        wrapRequestHandler(this, specLookup.get("core.ConfigEdit"), null)
+        wrapRequestHandler(this, ApiBag.getSpec("core.ConfigRead"), null),
+        wrapRequestHandler(this, ApiBag.getSpec("core.ConfigEdit"), null)
 
     );
   }

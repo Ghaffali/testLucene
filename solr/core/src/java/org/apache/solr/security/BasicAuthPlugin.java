@@ -171,8 +171,8 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
   }
 
   @Override
-  public Map2 getSpec(Lookup<String, Map2> specLookup) {
-    return zkAuthentication.getSpec(specLookup);
+  public Map2 getSpec() {
+    return zkAuthentication.getSpec();
   }
   public boolean getBlockUnknown(){
     return blockUnknown;

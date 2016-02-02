@@ -286,9 +286,9 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
   }
 
   @Override
-  public Collection<V2Api> getApis(Lookup<String, Map2> specLookup) {
+  public Collection<V2Api> getApis() {
     return ImmutableList.of(
-        wrapRequestHandler(this, ApiBag.constructSpec(pluginInfo,specLookup), null)
+        wrapRequestHandler(this, ApiBag.constructSpec(pluginInfo), null)
     );
   }
 }
