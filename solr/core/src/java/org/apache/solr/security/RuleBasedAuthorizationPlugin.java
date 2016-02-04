@@ -445,7 +445,7 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
   private static final Map<String, Map<String,Object>> well_known_permissions = (Map) Utils.fromJSONString(
           "    { " +
           "    security-edit :{" +
-          "      path:['/admin/authentication','/admin/authorization']," +
+          "      path:['/admin/authentication','/admin/authorization', '/v2/cluster/security/authentication', '/v2/cluster/security/authorization']," +
           "      collection:null," +
           "      method:POST }," +
           "    security-read :{" +
@@ -470,7 +470,9 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
           "    update :{" +
           "      path:'/update/*'}," +
           "    read :{" +
-          "      path:['/select', '/get','/browse','/tvrh','/terms','/clustering','/elevate', '/export','/spell','/clustering']}," +
+          "      path:['/select', '/get','/browse','/tvrh'," +
+              "'/terms','/clustering','/elevate', '/export'," +
+              "'/spell','/clustering', '/sql']}," +
           "    config-edit:{" +
           "      method:POST," +
               "      path:'/config/*'}," +

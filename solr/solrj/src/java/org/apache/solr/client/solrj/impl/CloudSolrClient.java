@@ -811,7 +811,10 @@ public class CloudSolrClient extends SolrClient {
       COLLECTIONS_HANDLER_PATH,
       CONFIGSETS_HANDLER_PATH,
       AUTHC_PATH,
-      AUTHZ_PATH));
+      AUTHZ_PATH,
+      "/v2/cluster/security/authentication",
+      "/v2/cluster/security/authorization"
+      ));
 
   /**
    * As this class doesn't watch external collections on the client side,

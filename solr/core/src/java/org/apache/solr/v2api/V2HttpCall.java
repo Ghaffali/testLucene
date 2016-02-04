@@ -71,7 +71,6 @@ public class V2HttpCall extends HttpSolrCall {
   private V2Api api;
   private List<String> pieces;
   private String prefix;
-  private String fullPath;
   HashMap<String, String> parts = new HashMap<>();
   static final Set<String> knownPrefixes = ImmutableSet.of("cluster", "node", "collections", "cores", "c");
   static final Set<String> commonPaths4ContainerLevelAndCoreLevel = ImmutableSet.of("collections", "cores", "c");
@@ -82,7 +81,8 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   protected void init() throws Exception {
-    fullPath = path = path.substring(3);//strip off '/v2'
+    String path = this.path;
+    String fullPath = path = path.substring(3);//strip off '/v2'
     try {
       pieces = PathTrie.getParts(path);
       if (pieces.size() == 0) {
@@ -124,7 +124,7 @@ public class V2HttpCall extends HttpSolrCall {
         throw new SolrException(SolrException.ErrorCode.NOT_FOUND, "no core retrieved for " + corename);
 
 
-      path = path.substring(prefix.length() + pieces.get(1).length() + 2);
+      this.path = path = path.substring(prefix.length() + pieces.get(1).length() + 2);
       api = getApiInfo(core.getRequestHandlers(), path, req.getMethod(), cores, prefix, fullPath, parts);
       MDCLoggingContext.setCore(core);
       parseRequest();
