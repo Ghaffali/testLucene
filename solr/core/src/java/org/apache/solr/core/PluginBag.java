@@ -43,9 +43,9 @@ import org.apache.solr.util.CryptoKeys;
 import org.apache.solr.util.plugin.NamedListInitializedPlugin;
 import org.apache.solr.util.plugin.PluginInfoInitialized;
 import org.apache.solr.util.plugin.SolrCoreAware;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
+import org.apache.solr.v2api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -193,11 +193,11 @@ public class PluginBag<T> implements AutoCloseable {
     if (apiBag != null) {
       if (plugin.isLoaded()) {
         T inst = plugin.get();
-        if (inst instanceof V2ApiSupport && ((V2ApiSupport) inst).registerAutomatically()) {
-          Collection<V2Api> apis = ((V2ApiSupport) inst).getApis();
+        if (inst instanceof ApiSupport && ((ApiSupport) inst).registerAutomatically()) {
+          Collection<Api> apis = ((ApiSupport) inst).getApis();
           if (apis != null) {
             Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
-            for (V2Api api : apis) {
+            for (Api api : apis) {
               apiBag.register(api, nameSubstitutes);
             }
           }
@@ -515,7 +515,7 @@ public class PluginBag<T> implements AutoCloseable {
   }
 
 
-  public V2Api v2lookup(String path, String method, Map<String, String> parts) {
+  public Api v2lookup(String path, String method, Map<String, String> parts) {
     if (apiBag == null) {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "this should not happen, looking up for v2 API at the wrong place");
     }

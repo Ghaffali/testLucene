@@ -30,7 +30,6 @@ import com.google.common.collect.ImmutableList;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader.ConfigData;
 import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
@@ -42,13 +41,13 @@ import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.AuthorizationPlugin;
 import org.apache.solr.security.ConfigEditablePlugin;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
+import org.apache.solr.v2api.ApiSupport;
 import org.apache.solr.v2api.SpecProvider;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
 import org.apache.zookeeper.KeeperException;
 
-public class SecurityConfHandler extends RequestHandlerBase implements V2ApiSupport {
+public class SecurityConfHandler extends RequestHandlerBase implements ApiSupport {
   private CoreContainer cores;
 
   public SecurityConfHandler(CoreContainer coreContainer) {
@@ -174,14 +173,14 @@ public class SecurityConfHandler extends RequestHandlerBase implements V2ApiSupp
 
 
   @Override
-  public Collection<V2Api> getApis() {
+  public Collection<Api> getApis() {
     return
     ImmutableList.of(
         getApi("authentication"),
         getApi("authorization"));
   }
 
-  private V2Api getApi( String type) {
+  private Api getApi( String type) {
     return ApiBag.wrapRequestHandler(this, null, new SpecProvider() {
       @Override
       public Map2 getSpec() {

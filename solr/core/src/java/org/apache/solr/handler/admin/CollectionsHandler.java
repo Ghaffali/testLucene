@@ -133,8 +133,8 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
+import org.apache.solr.v2api.Api;
+import org.apache.solr.v2api.ApiSupport;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -143,17 +143,17 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
-public class CollectionsHandler extends RequestHandlerBase implements V2ApiSupport {
+public class CollectionsHandler extends RequestHandlerBase implements ApiSupport {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
-  private final V2CollectionHandler v2Handler ;
+  private final CollectionHandlerApi v2Handler ;
 
   public CollectionsHandler() {
     super();
     // Unlike most request handlers, CoreContainer initialization
     // should happen in the constructor...
     this.coreContainer = null;
-    v2Handler = new V2CollectionHandler(this);
+    v2Handler = new CollectionHandlerApi(this);
   }
 
 
@@ -164,7 +164,7 @@ public class CollectionsHandler extends RequestHandlerBase implements V2ApiSuppo
    */
   public CollectionsHandler(final CoreContainer coreContainer) {
     this.coreContainer = coreContainer;
-    v2Handler = new V2CollectionHandler(this);
+    v2Handler = new CollectionHandlerApi(this);
   }
 
 
@@ -897,7 +897,7 @@ public class CollectionsHandler extends RequestHandlerBase implements V2ApiSuppo
 
 
   @Override
-  public Collection<V2Api> getApis() {
+  public Collection<Api> getApis() {
     return v2Handler.getApis();
   }
 

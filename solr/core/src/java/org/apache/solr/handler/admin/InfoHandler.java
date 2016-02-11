@@ -24,24 +24,22 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
+import org.apache.solr.v2api.ApiSupport;
 import org.apache.solr.v2api.V2RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.common.params.CommonParams.PATH;
 
-public class InfoHandler extends RequestHandlerBase implements V2ApiSupport {
+public class InfoHandler extends RequestHandlerBase implements ApiSupport {
   protected static Logger log = LoggerFactory.getLogger(InfoHandler.class);
   protected final CoreContainer coreContainer;
 
@@ -147,8 +145,8 @@ public class InfoHandler extends RequestHandlerBase implements V2ApiSupport {
   private Map<String, RequestHandlerBase> handlers = new ConcurrentHashMap<>();
 
   @Override
-  public Collection<V2Api> getApis() {
-    return Collections.singletonList(new V2Api(ApiBag.getSpec("node.Info")) {
+  public Collection<Api> getApis() {
+    return Collections.singletonList(new Api(ApiBag.getSpec("node.Info")) {
       @Override
       public void call(V2RequestContext ctx) {
         handle(ctx.getSolrRequest(), ctx.getResponse(), ctx.getPath());

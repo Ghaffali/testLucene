@@ -18,10 +18,7 @@ package org.apache.solr.handler.admin;
  */
 
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.StringReader;
-import java.nio.ByteBuffer;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -32,30 +29,26 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.params.MapSolrParams;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.servlet.SolrDispatchFilter;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2HttpCall;
 import org.apache.solr.v2api.V2RequestContext;
-import org.apache.zookeeper.server.ByteBufferInputStream;
 
 import static org.apache.solr.cloud.Overseer.QUEUE_OPERATION;
 
-public class TestV2CollectionAPIs extends SolrTestCaseJ4 {
+public class TestCollectionAPIs extends SolrTestCaseJ4 {
 
   public void testCreate() throws Exception{
     MockCollectionsHandler collectionsHandler = new MockCollectionsHandler();
     ApiBag apiBag = new ApiBag();
-    Collection<V2Api> apis = collectionsHandler.getApis();
-    for (V2Api api : apis) apiBag.register(api, Collections.EMPTY_MAP);
+    Collection<Api> apis = collectionsHandler.getApis();
+    for (Api api : apis) apiBag.register(api, Collections.EMPTY_MAP);
     //test a simple create collection call
     V2RequestContext ctx = makeCall(apiBag, "/collections", SolrRequest.METHOD.POST,
         "{create:{name:'newcoll', config:'schemaless', numShards:2, replicationFactor:2 }}", null);
@@ -75,9 +68,9 @@ public class TestV2CollectionAPIs extends SolrTestCaseJ4 {
   public static V2RequestContext makeCall(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
                                     final String payload, final CoreContainer cc) throws Exception {
     final HashMap<String, String> parts = new HashMap<>();
-    V2Api api = apiBag.lookup(path, method.toString(), parts);
+    Api api = apiBag.lookup(path, method.toString(), parts);
     if (api == null) throw new RuntimeException("No handler at path :" + path);
-    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<String, String>()));
+    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>()));
     V2RequestContext ctx = getV2RequestContext(path, method, payload, cc, parts, api, req);
     api.call(ctx);
     return ctx;
@@ -88,7 +81,7 @@ public class TestV2CollectionAPIs extends SolrTestCaseJ4 {
                                                      final String payload,
                                                      final CoreContainer cc,
                                                      final HashMap<String, String> parts,
-                                                     final V2Api api,
+                                                     final Api api,
                                                      final LocalSolrQueryRequest req) {
     return new V2RequestContext() {
       SolrQueryResponse rsp = new SolrQueryResponse();

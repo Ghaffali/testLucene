@@ -24,14 +24,12 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2RequestContext;
 
 
-public class V2UpdateRequestHandler extends UpdateRequestHandler  {
+public class UpdateRequestHandlerApi extends UpdateRequestHandler  {
 
 
   @Override
@@ -40,12 +38,12 @@ public class V2UpdateRequestHandler extends UpdateRequestHandler  {
   }
 
   @Override
-  public Collection<V2Api> getApis() {
+  public Collection<Api> getApis() {
     return Collections.singleton(getApiImpl());
   }
 
-  private V2Api getApiImpl() {
-    return new V2Api(ApiBag.getSpec("core.Update")) {
+  private Api getApiImpl() {
+    return new Api(ApiBag.getSpec("core.Update")) {
       @Override
       public void call(V2RequestContext ctx) {
         String path = ctx.getPath();

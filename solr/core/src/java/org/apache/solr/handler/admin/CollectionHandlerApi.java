@@ -23,13 +23,10 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler;
-import org.apache.solr.common.SolrException;
-import org.apache.solr.common.params.CollectionParams.CollectionAction;
 import org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.v2api.V2RequestContext;
@@ -37,15 +34,14 @@ import org.apache.solr.v2api.V2RequestContext;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.DELETE;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.CREATE;
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation.*;
 
 
-public class V2CollectionHandler extends V2BaseHandler {
+public class CollectionHandlerApi extends BaseHandlerApiSupport {
   private final CollectionsHandler handler;
 
-  public V2CollectionHandler(CollectionsHandler handler) {
+  public CollectionHandlerApi(CollectionsHandler handler) {
     this.handler = handler;
   }
 
@@ -71,7 +67,7 @@ public class V2CollectionHandler extends V2BaseHandler {
 
 
 
-  enum Cmd implements V2Command<V2CollectionHandler> {
+  enum Cmd implements V2Command<CollectionHandlerApi> {
     GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
     GET_A_COLLECTION(EndPoint.PER_COLLECTION, GET, LIST_OP),
     CREATE_COLLECTION(EndPoint.COLLECTIONS,
@@ -205,18 +201,18 @@ public class V2CollectionHandler extends V2BaseHandler {
 
 
     @Override
-    public void command(V2RequestContext ctx, CommandOperation c, V2CollectionHandler handler) throws Exception {
+    public void command(V2RequestContext ctx, CommandOperation c, CollectionHandlerApi handler) throws Exception {
       handler.handler.invokeAction(ctx.getSolrRequest(),ctx.getResponse(),target);
     }
 
     @Override
-    public void GET(V2RequestContext ctx, V2CollectionHandler handler) throws Exception {
+    public void GET(V2RequestContext ctx, CollectionHandlerApi handler) throws Exception {
       handler.handler.invokeAction(ctx.getSolrRequest(), ctx.getResponse(), target);
     }
 
     @Override
     public Collection<String> getParamNames(CommandOperation op) {
-      return V2BaseHandler.getParamNames(op,this);
+      return BaseHandlerApiSupport.getParamNames(op, this);
     }
 
     @Override

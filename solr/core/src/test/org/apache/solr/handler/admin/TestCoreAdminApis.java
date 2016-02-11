@@ -27,19 +27,17 @@ import java.util.Properties;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 
 import static org.easymock.EasyMock.getCurrentArguments;
 
-public class TestV2CoreAdminAPIs extends SolrTestCaseJ4 {
+public class TestCoreAdminApis extends SolrTestCaseJ4 {
 
   public void testCreate() throws Exception {
     Map<String, Object[]> calls = new HashMap<>();
@@ -47,10 +45,10 @@ public class TestV2CoreAdminAPIs extends SolrTestCaseJ4 {
 
     CoreAdminHandler  coreAdminHandler = new CoreAdminHandler(mockCC);
     ApiBag apiBag = new ApiBag();
-    for (V2Api v2Api : coreAdminHandler.getApis()) {
-      apiBag.register(v2Api, Collections.EMPTY_MAP);
+    for (Api api : coreAdminHandler.getApis()) {
+      apiBag.register(api, Collections.EMPTY_MAP);
     }
-    TestV2CollectionAPIs.makeCall(apiBag,"/cores", SolrRequest.METHOD.POST ,
+    TestCollectionAPIs.makeCall(apiBag, "/cores", SolrRequest.METHOD.POST,
         "{create:{name: hello, instanceDir : someDir, config : 'solrconfig.xml', schema: 'schema.xml'}}", mockCC);
     Object[] create = calls.get("create");
     assertEquals("hello" ,create[0]);

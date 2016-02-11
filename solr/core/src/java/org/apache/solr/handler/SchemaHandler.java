@@ -31,8 +31,6 @@ import com.google.common.collect.ImmutableList;
 import org.apache.solr.cloud.ZkSolrResourceLoader;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.ContentStream;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.request.SolrQueryRequest;
@@ -42,9 +40,9 @@ import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.ManagedIndexSchema;
 import org.apache.solr.schema.SchemaManager;
 import org.apache.solr.schema.ZkIndexSchemaReader;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
+import org.apache.solr.v2api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +50,7 @@ import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.core.ConfigSetProperties.IMMUTABLE_CONFIGSET_ARG;
 import static org.apache.solr.v2api.ApiBag.wrapRequestHandler;
 
-public class SchemaHandler extends RequestHandlerBase implements V2ApiSupport {
+public class SchemaHandler extends RequestHandlerBase implements ApiSupport {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private boolean isImmutableConfigSet = false;
 
@@ -192,7 +190,7 @@ public class SchemaHandler extends RequestHandlerBase implements V2ApiSupport {
   }
 
   @Override
-  public Collection<V2Api> getApis() {
+  public Collection<Api> getApis() {
     return ImmutableList.of(
         wrapRequestHandler(this, ApiBag.getSpec("core.SchemaRead"), null) ,
         wrapRequestHandler(this, ApiBag.getSpec("core.SchemaEdit"), null));

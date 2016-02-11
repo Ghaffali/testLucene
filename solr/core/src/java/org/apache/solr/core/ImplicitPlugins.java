@@ -34,7 +34,7 @@ import org.apache.solr.handler.SchemaHandler;
 import org.apache.solr.handler.SolrConfigHandler;
 import org.apache.solr.handler.StreamHandler;
 import org.apache.solr.handler.UpdateRequestHandler;
-import org.apache.solr.handler.V2UpdateRequestHandler;
+import org.apache.solr.handler.UpdateRequestHandlerApi;
 import org.apache.solr.handler.admin.LoggingHandler;
 import org.apache.solr.handler.admin.LukeRequestHandler;
 import org.apache.solr.handler.admin.PluginInfoHandler;
@@ -67,7 +67,7 @@ public class ImplicitPlugins {
     implicits.add(createPluginInfoWithDefaults(UpdateRequestHandler.CSV_PATH, UpdateRequestHandler.class, singletonMap("update.contentType", "application/csv")));
     implicits.add(createPluginInfoWithDefaults(UpdateRequestHandler.DOC_PATH, UpdateRequestHandler.class, makeMap("update.contentType", "application/json", "json.command", "false")));
 
-    Map attrs = Utils.makeMap("legacy", "false", NAME, "/update/v2", "class", V2UpdateRequestHandler.class.getName());
+    Map attrs = Utils.makeMap("legacy", "false", NAME, "/update/v2", "class", UpdateRequestHandlerApi.class.getName());
     implicits.add(new PluginInfo(SolrRequestHandler.TYPE, attrs, new NamedList(), null));
 
     //solrconfighandler

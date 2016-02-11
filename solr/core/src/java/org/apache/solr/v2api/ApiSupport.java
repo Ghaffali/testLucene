@@ -19,12 +19,9 @@ package org.apache.solr.v2api;
 
 import java.util.Collection;
 
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
+public interface ApiSupport {
 
-public interface V2ApiSupport {
-
-  Collection<V2Api> getApis();
+  Collection<Api> getApis();
 
 
   default boolean registerAutomatically() {

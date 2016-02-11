@@ -25,8 +25,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import com.google.common.collect.ImmutableList;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.SuppressForbidden;
@@ -41,9 +39,9 @@ import org.apache.solr.util.SolrPluginUtils;
 import org.apache.solr.util.stats.Snapshot;
 import org.apache.solr.util.stats.Timer;
 import org.apache.solr.util.stats.TimerContext;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
+import org.apache.solr.v2api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,7 +51,7 @@ import static org.apache.solr.v2api.ApiBag.wrapRequestHandler;
 /**
  *
  */
-public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfoMBean, NestedRequestHandler, V2ApiSupport {
+public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfoMBean, NestedRequestHandler, ApiSupport {
 
   protected NamedList initArgs = null;
   protected SolrParams defaults;
@@ -286,7 +284,7 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
   }
 
   @Override
-  public Collection<V2Api> getApis() {
+  public Collection<Api> getApis() {
     return ImmutableList.of(
         wrapRequestHandler(this, ApiBag.constructSpec(pluginInfo), null)
     );

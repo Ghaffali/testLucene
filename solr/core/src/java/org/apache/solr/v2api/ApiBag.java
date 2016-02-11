@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.PluginInfo;
@@ -44,7 +43,7 @@ import static org.apache.solr.common.util.Map2.NOT_NULL;
 public class ApiBag {
   private static final Logger log = LoggerFactory.getLogger(ApiBag.class);
 
-  private final Map<String, PathTrie<V2Api>> apis = new ConcurrentHashMap<>();
+  private final Map<String, PathTrie<Api>> apis = new ConcurrentHashMap<>();
 
   public static Map2 getResource(String name) {
     InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
@@ -67,7 +66,7 @@ public class ApiBag {
 
 
 
-  public synchronized void register(V2Api api, Map<String, String> nameSubstitutes) {
+  public synchronized void register(Api api, Map<String, String> nameSubstitutes) {
     try {
       validateAndRegister(api, nameSubstitutes);
     } catch (Exception e) {
@@ -81,12 +80,12 @@ public class ApiBag {
     }
   }
 
-  private void validateAndRegister(V2Api api, Map<String, String> nameSubstitutes) {
+  private void validateAndRegister(Api api, Map<String, String> nameSubstitutes) {
     Map2 spec = api.getSpec();
-    V2Api introspect = getIntrospect(api);
+    Api introspect = getIntrospect(api);
     List<String> methods = spec.getList("methods", ENUM_OF, SUPPORTED_METHODS);
     for (String method : methods) {
-      PathTrie<V2Api> registry = apis.get(method);
+      PathTrie<Api> registry = apis.get(method);
       if (registry == null) apis.put(method, registry = new PathTrie<>());
       Map2 url = spec.getMap("url", NOT_NULL);
       Map2 params = url.getMap("params", null);
@@ -116,8 +115,8 @@ public class ApiBag {
     }
   }
 
-  private V2Api getIntrospect(final V2Api baseApi) {
-    return new V2Api(Map2.EMPTY) {
+  private Api getIntrospect(final Api baseApi) {
+    return new Api(Map2.EMPTY) {
 
       @Override
       public Map2 getSpec() {
@@ -166,15 +165,15 @@ public class ApiBag {
   }
 
 
-  public V2Api lookup(String path, String httpMethod, Map<String, String> parts) {
+  public Api lookup(String path, String httpMethod, Map<String, String> parts) {
     if (httpMethod == null) {
-      for (PathTrie<V2Api> trie : apis.values()) {
-        V2Api api = trie.lookup(path, parts);
+      for (PathTrie<Api> trie : apis.values()) {
+        Api api = trie.lookup(path, parts);
         if (api != null) return api;
       }
       return null;
     } else {
-      PathTrie<V2Api> registry = apis.get(httpMethod);
+      PathTrie<Api> registry = apis.get(httpMethod);
       if (registry == null) return null;
       return registry.lookup(path, parts);
     }
@@ -205,8 +204,8 @@ public class ApiBag {
     return result;
   }
 
-  public static V2Api wrapRequestHandler(final SolrRequestHandler rh, final Map2 spec, SpecProvider specProvider) {
-    return new V2Api(spec) {
+  public static Api wrapRequestHandler(final SolrRequestHandler rh, final Map2 spec, SpecProvider specProvider) {
+    return new Api(spec) {
       @Override
       public void call(V2RequestContext ctx) {
         rh.handleRequest(ctx.getSolrRequest(), ctx.getResponse());
@@ -221,7 +220,7 @@ public class ApiBag {
     };
   }
 
-  public static final String APISPEC_LOCATION = "v2apispec/";
+  public static final String APISPEC_LOCATION = "apispec/";
   public static final String INTROSPECT = "/_introspect";
 
 
@@ -229,7 +228,7 @@ public class ApiBag {
   public static final String HANDLER_NAME = "handlerName";
   public static final Set<String> KNOWN_TYPES = ImmutableSet.of("string", "boolean", "list", "int", "double");
 
-  public PathTrie<V2Api> getRegistry(String method) {
+  public PathTrie<Api> getRegistry(String method) {
     return apis.get(method);
   }
 
@@ -251,10 +250,10 @@ public class ApiBag {
     }
   }
 
-  public static class LazyLoadedApi extends V2Api {
+  public static class LazyLoadedApi extends Api {
 
     private final PluginBag.PluginHolder<SolrRequestHandler> holder;
-    private V2Api delegate;
+    private Api delegate;
 
     protected LazyLoadedApi(Map2 spec, PluginBag.PluginHolder<SolrRequestHandler> lazyPluginHolder) {
       super(spec);

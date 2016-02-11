@@ -31,25 +31,22 @@ import com.google.common.collect.ImmutableList;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
-import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
-import org.apache.solr.core.CoreContainer;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
+import org.apache.solr.v2api.ApiSupport;
 import org.apache.solr.v2api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;
 import static org.apache.solr.common.util.StrUtils.splitSmart;
 
-public abstract class V2BaseHandler implements V2ApiSupport {
+public abstract class BaseHandlerApiSupport implements ApiSupport {
   protected final Map<SolrRequest.METHOD, Map<V2EndPoint, List<V2Command>>> commandsMapping;
 
-  protected V2BaseHandler() {
+  protected BaseHandlerApiSupport() {
     commandsMapping = new HashMap<>();
     for (V2Command cmd : getCommands()) {
       Map<V2EndPoint, List<V2Command>> m = commandsMapping.get(cmd.getHttpMethod());
@@ -61,16 +58,16 @@ public abstract class V2BaseHandler implements V2ApiSupport {
   }
 
   @Override
-  public synchronized Collection<V2Api> getApis() {
-    ImmutableList.Builder<V2Api> l = ImmutableList.builder();
+  public synchronized Collection<Api> getApis() {
+    ImmutableList.Builder<Api> l = ImmutableList.builder();
     for (V2EndPoint op : getEndPoints()) l.add(getApi(op));
     return l.build();
   }
 
 
-  private V2Api getApi(final V2EndPoint op) {
+  private Api getApi(final V2EndPoint op) {
     final Map2 spec = ApiBag.getSpec(op.getSpecName());
-    return new V2Api(spec) {
+    return new Api(spec) {
       @Override
       public void call(V2RequestContext ctx) {
         SolrParams params = ctx.getSolrRequest().getParams();

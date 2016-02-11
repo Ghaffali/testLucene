@@ -18,13 +18,12 @@ package org.apache.solr.v2api;
  */
 
 
-import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
 
-public abstract class V2Api implements SpecProvider {
+public abstract class Api implements SpecProvider {
   protected Map2 spec;
 
-  protected V2Api(Map2 spec) {
+  protected Api(Map2 spec) {
     this.spec = spec;
   }
 

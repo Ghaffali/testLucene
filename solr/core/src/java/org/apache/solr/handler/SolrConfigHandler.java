@@ -57,8 +57,6 @@ import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.ExecutorUtil;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
@@ -76,9 +74,9 @@ import org.apache.solr.schema.SchemaManager;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.solr.util.RTimer;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2Api;
-import org.apache.solr.v2api.V2ApiSupport;
+import org.apache.solr.v2api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,7 +93,7 @@ import static org.apache.solr.core.SolrConfig.PluginOpts.REQUIRE_NAME_IN_OVERLAY
 import static org.apache.solr.schema.FieldType.CLASS_NAME;
 import static org.apache.solr.v2api.ApiBag.wrapRequestHandler;
 
-public class SolrConfigHandler extends RequestHandlerBase implements V2ApiSupport {
+public class SolrConfigHandler extends RequestHandlerBase implements ApiSupport {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   public static final String CONFIGSET_EDITING_DISABLED_ARG = "disable.configEdit";
   public static final boolean configEditing_disabled = Boolean.getBoolean(CONFIGSET_EDITING_DISABLED_ARG);
@@ -813,7 +811,7 @@ public class SolrConfigHandler extends RequestHandlerBase implements V2ApiSuppor
   }
 
   @Override
-  public Collection<V2Api> getApis() {
+  public Collection<Api> getApis() {
     return ImmutableList.of(
         wrapRequestHandler(this, ApiBag.getSpec("core.ConfigRead"), null),
         wrapRequestHandler(this, ApiBag.getSpec("core.ConfigEdit"), null)

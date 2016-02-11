@@ -26,26 +26,23 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.common.SolrException;
 import org.apache.solr.util.CommandOperation;
-import org.apache.solr.v2api.V2Api;
 import org.apache.solr.v2api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.*;
-import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;
 import static org.apache.solr.handler.admin.CoreAdminOperation.*;
-import static org.apache.solr.handler.admin.V2CoreAdminHandler.EndPoint.CORES_COMMANDS;
-import static org.apache.solr.handler.admin.V2CoreAdminHandler.EndPoint.CORES_STATUS;
-import static org.apache.solr.handler.admin.V2CoreAdminHandler.EndPoint.PER_CORE_COMMANDS;
+import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.CORES_COMMANDS;
+import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.CORES_STATUS;
+import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.PER_CORE_COMMANDS;
 
-public class V2CoreAdminHandler extends V2BaseHandler {
+public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
   private final CoreAdminHandler handler;
 
-  public V2CoreAdminHandler(CoreAdminHandler handler) {
+  public CoreAdminHandlerApi(CoreAdminHandler handler) {
     this.handler = handler;
   }
 
-  enum Cmd implements V2Command<V2CoreAdminHandler> {
+  enum Cmd implements V2Command<CoreAdminHandlerApi> {
     CREATE(CORES_COMMANDS, POST, CREATE_OP, null, null),
     UNLOAD(PER_CORE_COMMANDS, POST, UNLOAD_OP, null, null),
     RELOAD(PER_CORE_COMMANDS, POST, RELOAD_OP, null, null),
@@ -108,20 +105,20 @@ public class V2CoreAdminHandler extends V2BaseHandler {
 
 
     @Override
-    public void command(V2RequestContext ctx, CommandOperation c, V2CoreAdminHandler v2CoreAdminHandler) throws Exception {
-      target.call(new CoreAdminHandler.CallInfo(v2CoreAdminHandler.handler,ctx.getSolrRequest(),ctx.getResponse(),target ));
+    public void command(V2RequestContext ctx, CommandOperation c, CoreAdminHandlerApi coreAdminHandlerApi) throws Exception {
+      target.call(new CoreAdminHandler.CallInfo(coreAdminHandlerApi.handler,ctx.getSolrRequest(),ctx.getResponse(),target ));
 
     }
 
     @Override
-    public void GET(V2RequestContext ctx, V2CoreAdminHandler handler) throws Exception {
+    public void GET(V2RequestContext ctx, CoreAdminHandlerApi handler) throws Exception {
       target.call(new CoreAdminHandler.CallInfo(handler.handler,ctx.getSolrRequest(),ctx.getResponse(),target ));
 
     }
 
     @Override
     public Collection<String> getParamNames(CommandOperation op) {
-      return V2BaseHandler.getParamNames(op,this);
+      return BaseHandlerApiSupport.getParamNames(op, this);
     }
 
     @Override

@@ -24,8 +24,6 @@ import java.util.Map;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.params.MapSolrParams;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Predicate;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
@@ -37,8 +35,7 @@ import org.apache.solr.handler.SolrConfigHandler;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.v2api.PathTrie;
-import org.apache.solr.v2api.V2Api;
+import org.apache.solr.v2api.Api;
 import org.apache.solr.v2api.V2HttpCall;
 import org.apache.solr.v2api.V2RequestContext;
 
@@ -46,16 +43,16 @@ import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CORES_HANDLER_PATH;
 import static org.apache.solr.common.util.Map2.NOT_NULL;
-import static org.apache.solr.handler.admin.TestV2CollectionAPIs.getV2RequestContext;
+import static org.apache.solr.handler.admin.TestCollectionAPIs.getV2RequestContext;
 
-public class TestV2Framework extends SolrTestCaseJ4 {
+public class TestApiFramework extends SolrTestCaseJ4 {
 
   public void testFramework() {
     Map<String, Object[]> calls = new HashMap<>();
     Map<String, Object> out = new HashMap<>();
-    CoreContainer mockCC = TestV2CoreAdminAPIs.getCoreContainerMock(calls, out);
+    CoreContainer mockCC = TestCoreAdminApis.getCoreContainerMock(calls, out);
     PluginBag<SolrRequestHandler> containerHandlers = new PluginBag<>(SolrRequestHandler.class, null, false);
-    containerHandlers.put(COLLECTIONS_HANDLER_PATH, new TestV2CollectionAPIs.MockCollectionsHandler());
+    containerHandlers.put(COLLECTIONS_HANDLER_PATH, new TestCollectionAPIs.MockCollectionsHandler());
     containerHandlers.put(CORES_HANDLER_PATH, new CoreAdminHandler(mockCC));
     out.put("getRequestHandlers", containerHandlers);
 
@@ -66,7 +63,7 @@ public class TestV2Framework extends SolrTestCaseJ4 {
 
     Map<String, String> parts = new HashMap<>();
     String fullPath = "/collections/hello/shards";
-    V2Api api = V2HttpCall.getApiInfo(containerHandlers, fullPath, "GET",
+    Api api = V2HttpCall.getApiInfo(containerHandlers, fullPath, "GET",
         mockCC, "collections", fullPath, parts);
     assertNotNull(api);
     assertConditions(api.getSpec(), Utils.makeMap(
@@ -153,7 +150,7 @@ public class TestV2Framework extends SolrTestCaseJ4 {
       path = idx == -1 ? "/" : path.substring(idx);
     }
 
-    V2Api api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", mockCC, prefix, fullPath, parts);
+    Api api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", mockCC, prefix, fullPath, parts);
     LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>()));
     V2RequestContext ctx = getV2RequestContext( path, method, null, mockCC, parts, api, req);
     api.call(ctx);
