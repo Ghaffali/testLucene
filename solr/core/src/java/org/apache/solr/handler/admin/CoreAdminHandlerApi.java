@@ -27,7 +27,7 @@ import java.util.Map;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.util.CommandOperation;
-import org.apache.solr.v2api.V2RequestContext;
+import org.apache.solr.api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.*;
 import static org.apache.solr.handler.admin.CoreAdminOperation.*;

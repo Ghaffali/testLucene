@@ -1,4 +1,4 @@
-package org.apache.solr.v2api;
+package org.apache.solr.api;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more

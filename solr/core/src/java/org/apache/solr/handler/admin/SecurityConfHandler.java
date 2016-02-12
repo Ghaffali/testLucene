@@ -41,10 +41,10 @@ import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.AuthorizationPlugin;
 import org.apache.solr.security.ConfigEditablePlugin;
 import org.apache.solr.util.CommandOperation;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.ApiSupport;
-import org.apache.solr.v2api.SpecProvider;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.ApiSupport;
+import org.apache.solr.api.SpecProvider;
 import org.apache.zookeeper.KeeperException;
 
 public class SecurityConfHandler extends RequestHandlerBase implements ApiSupport {

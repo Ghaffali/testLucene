@@ -19,11 +19,10 @@ package org.apache.solr.handler.admin;
 
 
 import java.util.Collection;
-import java.util.Map;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.util.CommandOperation;
-import org.apache.solr.v2api.V2RequestContext;
+import org.apache.solr.api.V2RequestContext;
 
 public interface V2Command<T> {
   String getName();

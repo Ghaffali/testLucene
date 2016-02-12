@@ -43,15 +43,15 @@ import org.apache.solr.util.CryptoKeys;
 import org.apache.solr.util.plugin.NamedListInitializedPlugin;
 import org.apache.solr.util.plugin.PluginInfoInitialized;
 import org.apache.solr.util.plugin.SolrCoreAware;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.ApiSupport;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.util.Collections.singletonMap;
 import static org.apache.solr.common.params.CommonParams.NAME;
-import static org.apache.solr.v2api.ApiBag.HANDLER_NAME;
+import static org.apache.solr.api.ApiBag.HANDLER_NAME;
 
 /**
  * This manages the lifecycle of a set of plugin of the same type .

@@ -34,10 +34,10 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.CommandOperation;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.ApiSupport;
-import org.apache.solr.v2api.V2RequestContext;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.ApiSupport;
+import org.apache.solr.api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;

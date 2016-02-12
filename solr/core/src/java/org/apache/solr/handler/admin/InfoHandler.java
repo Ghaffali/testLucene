@@ -30,10 +30,10 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.ApiSupport;
-import org.apache.solr.v2api.V2RequestContext;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.ApiSupport;
+import org.apache.solr.api.V2RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

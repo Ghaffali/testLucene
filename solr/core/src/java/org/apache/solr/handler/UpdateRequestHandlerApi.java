@@ -24,9 +24,9 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.V2RequestContext;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.V2RequestContext;
 
 
 public class UpdateRequestHandlerApi extends UpdateRequestHandler  {

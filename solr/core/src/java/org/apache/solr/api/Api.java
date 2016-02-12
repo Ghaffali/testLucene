@@ -1,4 +1,4 @@
-package org.apache.solr.v2api;
+package org.apache.solr.api;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -20,6 +20,19 @@ package org.apache.solr.v2api;
 
 import org.apache.solr.common.util.Map2;
 
-public interface SpecLoader {
-  Map2 get(String name);
+public abstract class Api implements SpecProvider {
+  protected Map2 spec;
+
+  protected Api(Map2 spec) {
+    this.spec = spec;
+  }
+
+
+  public abstract void call(V2RequestContext ctx);
+
+  @Override
+  public Map2 getSpec() {
+    return spec;
+  }
+
 }

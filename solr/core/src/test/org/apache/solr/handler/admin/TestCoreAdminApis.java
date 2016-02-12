@@ -30,8 +30,8 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.SolrCore;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.ApiBag;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.ApiBag;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 

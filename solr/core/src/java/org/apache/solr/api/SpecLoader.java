@@ -1,4 +1,4 @@
-package org.apache.solr.v2api;
+package org.apache.solr.api;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,14 +17,9 @@ package org.apache.solr.v2api;
  * limitations under the License.
  */
 
-import java.util.Collection;
 
-public interface ApiSupport {
+import org.apache.solr.common.util.Map2;
 
-  Collection<Api> getApis();
-
-
-  default boolean registerAutomatically() {
-    return true;
-  }
+public interface SpecLoader {
+  Map2 get(String name);
 }

@@ -1,4 +1,4 @@
-package org.apache.solr.v2api;
+package org.apache.solr.api;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -24,7 +24,7 @@ import org.apache.solr.SolrTestCaseJ4;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
-import static org.apache.solr.v2api.ApiBag.HANDLER_NAME;
+import static org.apache.solr.api.ApiBag.HANDLER_NAME;
 
 public class TestPathTrie extends SolrTestCaseJ4 {
 

@@ -39,14 +39,14 @@ import org.apache.solr.util.SolrPluginUtils;
 import org.apache.solr.util.stats.Snapshot;
 import org.apache.solr.util.stats.Timer;
 import org.apache.solr.util.stats.TimerContext;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.ApiBag;
-import org.apache.solr.v2api.ApiSupport;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.core.RequestParams.USEPARAM;
-import static org.apache.solr.v2api.ApiBag.wrapRequestHandler;
+import static org.apache.solr.api.ApiBag.wrapRequestHandler;
 
 /**
  *

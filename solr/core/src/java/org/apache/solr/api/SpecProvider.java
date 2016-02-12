@@ -1,4 +1,4 @@
-package org.apache.solr.v2api;
+package org.apache.solr.api;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,7 +17,6 @@ package org.apache.solr.v2api;
  * limitations under the License.
  */
 
-import org.apache.solr.common.util.Lookup;
 import org.apache.solr.common.util.Map2;
 
 public interface SpecProvider {

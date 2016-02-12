@@ -35,9 +35,9 @@ import org.apache.solr.handler.SolrConfigHandler;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.v2api.Api;
-import org.apache.solr.v2api.V2HttpCall;
-import org.apache.solr.v2api.V2RequestContext;
+import org.apache.solr.api.Api;
+import org.apache.solr.api.V2HttpCall;
+import org.apache.solr.api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
