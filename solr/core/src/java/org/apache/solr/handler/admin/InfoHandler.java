@@ -33,7 +33,6 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.ApiSupport;
-import org.apache.solr.api.V2RequestContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -148,8 +147,9 @@ public class InfoHandler extends RequestHandlerBase implements ApiSupport {
   public Collection<Api> getApis() {
     return Collections.singletonList(new Api(ApiBag.getSpec("node.Info")) {
       @Override
-      public void call(V2RequestContext ctx) {
-        handle(ctx.getSolrRequest(), ctx.getResponse(), ctx.getPath());
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+        handle(req, rsp, req.getPath());
+
       }
     });
   }

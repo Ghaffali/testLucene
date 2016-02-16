@@ -26,7 +26,8 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
-import org.apache.solr.api.V2RequestContext;
+import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.response.SolrQueryResponse;
 
 
 public class UpdateRequestHandlerApi extends UpdateRequestHandler  {
@@ -45,12 +46,12 @@ public class UpdateRequestHandlerApi extends UpdateRequestHandler  {
   private Api getApiImpl() {
     return new Api(ApiBag.getSpec("core.Update")) {
       @Override
-      public void call(V2RequestContext ctx) {
-        String path = ctx.getPath();
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+        String path = req.getPath();
         String target =  mapping.get(path);
-        if(target != null) ctx.getSolrRequest().getContext().put("path", target);
+        if(target != null) req.getContext().put("path", target);
         try {
-          handleRequest(ctx.getSolrRequest(), ctx.getResponse());
+          handleRequest(req, rsp);
         } catch (RuntimeException e) {
           throw e;
         } catch (Exception e){

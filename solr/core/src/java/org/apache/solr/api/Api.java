@@ -19,6 +19,8 @@ package org.apache.solr.api;
 
 
 import org.apache.solr.common.util.Map2;
+import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.response.SolrQueryResponse;
 
 public abstract class Api implements SpecProvider {
   protected Map2 spec;
@@ -28,7 +30,7 @@ public abstract class Api implements SpecProvider {
   }
 
 
-  public abstract void call(V2RequestContext ctx);
+  public abstract void call(SolrQueryRequest req , SolrQueryResponse rsp);
 
   @Override
   public Map2 getSpec() {

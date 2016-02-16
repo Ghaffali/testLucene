@@ -26,8 +26,9 @@ import java.util.Locale;
 import java.util.Map;
 
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
-import org.apache.solr.api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.*;
 import static org.apache.solr.handler.admin.CoreAdminOperation.*;
@@ -42,7 +43,7 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     this.handler = handler;
   }
 
-  enum Cmd implements V2Command<CoreAdminHandlerApi> {
+  enum Cmd implements ApiCommand<CoreAdminHandlerApi> {
     CREATE(CORES_COMMANDS, POST, CREATE_OP, null, null),
     UNLOAD(PER_CORE_COMMANDS, POST, UNLOAD_OP, null, null),
     RELOAD(PER_CORE_COMMANDS, POST, RELOAD_OP, null, null),
@@ -103,16 +104,15 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
       return endPoint;
     }
 
-
     @Override
-    public void command(V2RequestContext ctx, CommandOperation c, CoreAdminHandlerApi coreAdminHandlerApi) throws Exception {
-      target.call(new CoreAdminHandler.CallInfo(coreAdminHandlerApi.handler,ctx.getSolrRequest(),ctx.getResponse(),target ));
+    public void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, CoreAdminHandlerApi handler) throws Exception {
+      target.call(new CoreAdminHandler.CallInfo(handler.handler,req,rsp,target ));
 
     }
 
     @Override
-    public void GET(V2RequestContext ctx, CoreAdminHandlerApi handler) throws Exception {
-      target.call(new CoreAdminHandler.CallInfo(handler.handler,ctx.getSolrRequest(),ctx.getResponse(),target ));
+    public void GET(SolrQueryRequest req, SolrQueryResponse rsp, CoreAdminHandlerApi handler) throws Exception {
+      target.call(new CoreAdminHandler.CallInfo(handler.handler,req,rsp,target ));
 
     }
 
@@ -146,18 +146,20 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     }
   }
 
+
   @Override
-  protected void invokeCommand(V2RequestContext ctx, V2Command command, CommandOperation c) throws Exception {
-    ((Cmd) command).command(ctx, c, this);
+  protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command,
+                               CommandOperation c) throws Exception {
+    ((Cmd) command).command(req,rsp, c, this);
   }
 
   @Override
-  protected void invokeUrl(V2Command command, V2RequestContext ctx) throws Exception {
-    command.GET(ctx, this);
+  protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
+    command.GET(req,rsp, this);
   }
 
   @Override
-  protected List<V2Command> getCommands() {
+  protected List<ApiCommand> getCommands() {
     return Arrays.asList(Cmd.values());
   }
 

@@ -17,8 +17,14 @@
 
 package org.apache.solr.request;
 
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.V2HttpCall;
+import org.apache.solr.common.SolrException;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.SuppressForbidden;
 import org.apache.solr.search.SolrIndexSearcher;
+import org.apache.solr.servlet.HttpSolrCall;
+import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.RTimerTree;
 import org.apache.solr.util.RefCounted;
 import org.apache.solr.schema.IndexSchema;
@@ -27,9 +33,14 @@ import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.core.SolrCore;
 
 import java.io.Closeable;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.security.Principal;
+import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 /**
  * Base implementation of <code>SolrQueryRequest</code> that provides some
@@ -182,6 +193,26 @@ public abstract class SolrQueryRequestBase implements SolrQueryRequest, Closeabl
 
   @Override
   public Principal getUserPrincipal() {
+    return null;
+  }
+
+  List<CommandOperation> parsedCommands;
+
+  public List<CommandOperation> getCommands(boolean validateInput) {
+    if (parsedCommands == null) {
+      Iterable<ContentStream> contentStreams = getContentStreams();
+      if (contentStreams == null) throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "No content stream");
+      for (ContentStream contentStream : contentStreams) {
+        parsedCommands = ApiBag.getCommandOperations(new InputStreamReader((InputStream) contentStream, UTF_8),
+            getSpec(), validateInput);
+      }
+
+    }
+    return CommandOperation.clone(parsedCommands);
+
+  }
+
+  protected Map2 getSpec() {
     return null;
   }
 }

@@ -24,6 +24,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -59,6 +60,7 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.InputStreamEntity;
 import org.apache.http.util.EntityUtils;
+import org.apache.solr.api.ApiBag;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
@@ -72,6 +74,8 @@ import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.MapSolrParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.ContentStream;
+import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.StrUtils;
@@ -98,11 +102,13 @@ import org.apache.solr.servlet.SolrDispatchFilter.Action;
 import org.apache.solr.servlet.cache.HttpCacheHeaderUtil;
 import org.apache.solr.servlet.cache.Method;
 import org.apache.solr.update.processor.DistributingUpdateProcessorFactory;
+import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.RTimerTree;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.solr.common.cloud.ZkStateReader.BASE_URL_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.COLLECTION_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.CORE_NAME_PROP;
@@ -187,6 +193,7 @@ public class HttpSolrCall {
       // this lets you handle /update/commit when /update is a servlet
       path += req.getPathInfo();
     }
+    req.setAttribute(HttpSolrCall.class.getName(), this);
   }
 
   public String getPath() {
@@ -1071,4 +1078,24 @@ public class HttpSolrCall {
   static final String CONNECTION_HEADER = "Connection";
   static final String TRANSFER_ENCODING_HEADER = "Transfer-Encoding";
   static final String CONTENT_LENGTH_HEADER = "Content-Length";
+  List<CommandOperation> parsedCommands;
+
+  public List<CommandOperation> getCommands(boolean validateInput) {
+    if (parsedCommands == null) {
+      Iterable<ContentStream> contentStreams = solrReq.getContentStreams();
+      if (contentStreams == null) throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "No content stream");
+      for (ContentStream contentStream : contentStreams) {
+        try {
+          parsedCommands = ApiBag.getCommandOperations(contentStream.getReader(), getSpec(), validateInput);
+        } catch (IOException e) {
+          throw new SolrException(ErrorCode.BAD_REQUEST, "Error reading commands");
+        }
+        break;
+      }
+    }
+    return CommandOperation.clone(parsedCommands);
+  }
+  protected Map2 getSpec() {
+    return null;
+  }
 }

@@ -29,6 +29,7 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.params.MapSolrParams;
+import org.apache.solr.common.util.Pair;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.request.LocalSolrQueryRequest;
@@ -37,8 +38,6 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
-import org.apache.solr.api.V2HttpCall;
-import org.apache.solr.api.V2RequestContext;
 
 import static org.apache.solr.cloud.Overseer.QUEUE_OPERATION;
 
@@ -50,10 +49,10 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     Collection<Api> apis = collectionsHandler.getApis();
     for (Api api : apis) apiBag.register(api, Collections.EMPTY_MAP);
     //test a simple create collection call
-    V2RequestContext ctx = makeCall(apiBag, "/collections", SolrRequest.METHOD.POST,
+    Pair<SolrQueryRequest,SolrQueryResponse> ctx = makeCall(apiBag, "/collections", SolrRequest.METHOD.POST,
         "{create:{name:'newcoll', config:'schemaless', numShards:2, replicationFactor:2 }}", null);
     assertMapEqual((Map) Utils.fromJSONString("{name:newcoll, fromApi:'true', replicationFactor:'2', collection.configName:schemaless, numShards:'2', stateFormat:'2', operation:create}"),
-        (ZkNodeProps) ctx.getSolrRequest().getContext().get(ZkNodeProps.class.getName()));
+        (ZkNodeProps) ctx.getKey().getContext().get(ZkNodeProps.class.getName()));
 
     //test a create collection with custom properties
     ctx = makeCall(apiBag, "/collections", SolrRequest.METHOD.POST,
@@ -61,59 +60,20 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
 
     assertMapEqual(
         (Map) Utils.fromJSONString("{name:newcoll, fromApi:'true', replicationFactor:'2', collection.configName:schemaless, numShards:'2', stateFormat:'2', operation:create, property.prop1:prop1val, property.prop2:prop2val}"),
-        (ZkNodeProps) ctx.getSolrRequest().getContext().get(ZkNodeProps.class.getName()));
+        (ZkNodeProps) ctx.getKey().getContext().get(ZkNodeProps.class.getName()));
 
   }
 
-  public static V2RequestContext makeCall(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
+  public static Pair<SolrQueryRequest, SolrQueryResponse> makeCall(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
                                     final String payload, final CoreContainer cc) throws Exception {
     final HashMap<String, String> parts = new HashMap<>();
     Api api = apiBag.lookup(path, method.toString(), parts);
     if (api == null) throw new RuntimeException("No handler at path :" + path);
-    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>()));
-    V2RequestContext ctx = getV2RequestContext(path, method, payload, cc, parts, api, req);
-    api.call(ctx);
-    return ctx;
-  }
-
-  public static V2RequestContext getV2RequestContext(final String path,
-                                                     final SolrRequest.METHOD method,
-                                                     final String payload,
-                                                     final CoreContainer cc,
-                                                     final HashMap<String, String> parts,
-                                                     final Api api,
-                                                     final LocalSolrQueryRequest req) {
-    return new V2RequestContext() {
-      SolrQueryResponse rsp = new SolrQueryResponse();
-
-      @Override
-      public SolrQueryResponse getResponse() {
-        return rsp;
-      }
-
-      @Override
-      public CoreContainer getCoreContainer() {
-        return cc;
-      }
-
-      @Override
-      public SolrQueryRequest getSolrRequest() {
-        return req;
-      }
-
-      @Override
-      public String getPath() {
-        return path;
-      }
-
-      @Override
-      public Map<String, String> getPathValues() {
-        return parts;
-      }
-
+    SolrQueryResponse rsp = new SolrQueryResponse();
+    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>())){
       @Override
       public List<CommandOperation> getCommands(boolean validateInput) {
-        return V2HttpCall.getCommandOperations(new StringReader(payload), api.getSpec(), rsp);
+        return ApiBag.getCommandOperations(new StringReader(payload), api.getSpec(),true);
       }
 
       @Override
@@ -121,6 +81,8 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         return method.toString();
       }
     };
+    api.call(req, rsp);
+    return new Pair<>(req,rsp);
   }
 
   private void assertMapEqual(Map expected, ZkNodeProps actual) {
@@ -134,10 +96,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
   static class MockCollectionsHandler extends CollectionsHandler {
     LocalSolrQueryRequest req;
 
-    MockCollectionsHandler() {
-
-    }
-
+    MockCollectionsHandler() { }
 
     @Override
     protected void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CollectionOperation operation) throws Exception {

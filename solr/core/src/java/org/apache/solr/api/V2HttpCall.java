@@ -19,11 +19,8 @@ package org.apache.solr.api;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
 import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,16 +49,11 @@ import org.apache.solr.security.AuthorizationContext;
 import org.apache.solr.servlet.HttpSolrCall;
 import org.apache.solr.servlet.SolrDispatchFilter;
 import org.apache.solr.servlet.SolrRequestParsers;
-import org.apache.solr.util.CommandOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.CommonParams.WT;
-import static org.apache.solr.common.util.Map2.getDeepCopy;
-import static org.apache.solr.common.util.StrUtils.formatString;
-import static org.apache.solr.common.util.Map2.NOT_NULL;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.ADMIN;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.PROCESS;
 
@@ -167,9 +159,9 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   public static Api getApiInfo(PluginBag<SolrRequestHandler> requestHandlers,
-                                 String path, String method,
-                                 CoreContainer cores, String prefix, String fullPath,
-                                 Map<String, String> parts) {
+                               String path, String method,
+                               CoreContainer cores, String prefix, String fullPath,
+                               Map<String, String> parts) {
     if (fullPath == null) fullPath = path;
     Api api;
     boolean containerHandlerLookup = cores.getRequestHandlers() == requestHandlers;
@@ -211,7 +203,7 @@ public class V2HttpCall extends HttpSolrCall {
         registry.lookup(path, new HashMap<>(), subPaths);
         for (String subPath : subPaths) {
           Set<String> supportedMethods = pathsVsMethod.get(subPath);
-          if(supportedMethods == null) pathsVsMethod.put(subPath, supportedMethods = new HashSet<>());
+          if (supportedMethods == null) pathsVsMethod.put(subPath, supportedMethods = new HashSet<>());
           supportedMethods.add(m.toString());
         }
       }
@@ -219,7 +211,7 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   private static Api mergeIntrospect(PluginBag<SolrRequestHandler> requestHandlers,
-                                       String path, String method, Map<String, String> parts) {
+                                     String path, String method, Map<String, String> parts) {
     Api api;
     final Map<String, Api> apis = new LinkedHashMap<>();
     for (String m : SolrRequest.SUPPORTED_METHODS) {
@@ -228,13 +220,13 @@ public class V2HttpCall extends HttpSolrCall {
     }
     api = new Api(ApiBag.INTROSPECT_SPEC) {
       @Override
-      public void call(V2RequestContext ctx) {
-        String method = ctx.getSolrRequest().getParams().get("method");
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+        String method = req.getParams().get("method");
         Set<Api> added = new HashSet<>();
         for (Map.Entry<String, Api> e : apis.entrySet()) {
-          if (method == null || e.getKey().equals(ctx.getHttpMethod())) {
+          if (method == null || e.getKey().equals(req.getHttpMethod())) {
             if (!added.contains(e.getValue())) {
-              e.getValue().call(ctx);
+              e.getValue().call(req, rsp);
               added.add(e.getValue());
             }
           }
@@ -247,27 +239,27 @@ public class V2HttpCall extends HttpSolrCall {
   private static Api getSubPathImpl(final Map<String, Set<String>> subpaths, String path) {
     return new Api(Map2.EMPTY) {
       @Override
-      public void call(V2RequestContext ctx) {
-        ctx.getResponse().add("msg", "Invalid path, try the following");
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+        rsp.add("msg", "Invalid path, try the following");
         LinkedHashMap<String, Set<String>> result = new LinkedHashMap<>(subpaths.size());
         for (Map.Entry<String, Set<String>> e : subpaths.entrySet()) {
           if (e.getKey().endsWith(ApiBag.INTROSPECT)) continue;
           result.put(path + e.getKey(), e.getValue());
         }
-        ctx.getResponse().add("availableSubPaths", result);
+        rsp.add("availableSubPaths", result);
       }
     };
   }
 
   @Override
   protected void handleAdmin(SolrQueryResponse solrResp) {
-    api.call(getV2RequestCtx(solrResp));
+    api.call(this.solrReq, solrResp);
   }
 
   @Override
   protected void execute(SolrQueryResponse rsp) {
     try {
-      api.call(getV2RequestCtx(rsp));
+      api.call(solrReq, rsp);
     } catch (RuntimeException e) {
       //todo remove for debugging only
       log.error("error execute()", e);
@@ -282,88 +274,8 @@ public class V2HttpCall extends HttpSolrCall {
     return SolrCore.DEFAULT_RESPONSE_WRITERS.get(wt);
   }
 
-  public V2RequestContext getV2RequestCtx(SolrQueryResponse solrResp) {
-
-    return new V2RequestContext() {
-      List<CommandOperation> parsedCommands;
-
-      @Override
-      public SolrQueryResponse getResponse() {
-        return solrResp;
-      }
-
-      @Override
-      public CoreContainer getCoreContainer() {
-        return cores;
-      }
-
-      @Override
-      public SolrQueryRequest getSolrRequest() {
-        return solrReq;
-      }
-
-      @Override
-      public String getPath() {
-        return path;
-      }
-
-      @Override
-      public String getHttpMethod() {
-        return (String) solrReq.getContext().get("httpMethod");
-      }
-
-      @Override
-      public Map<String, String> getPathValues() {
-        return parts;
-      }
-
-      @Override
-      public List<CommandOperation> getCommands(boolean validateInput) {
-        if (parsedCommands == null) {
-          Iterable<ContentStream> contentStreams = solrReq.getContentStreams();
-          if (contentStreams == null) throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "No content stream");
-          for (ContentStream contentStream : contentStreams) {
-            parsedCommands = getCommandOperations(new InputStreamReader((InputStream) contentStream, UTF_8),
-                api.getSpec(), solrResp);
-
-          }
-
-        }
-        return CommandOperation.clone(parsedCommands);
-
-      }
-
-
-    };
+  @Override
+  protected Map2 getSpec() {
+    return api == null ? null : api.getSpec();
   }
-
-  public static List<CommandOperation> getCommandOperations(Reader reader, Map2 spec, SolrQueryResponse rsp) {
-    List<CommandOperation> parsedCommands = null;
-    try {
-      parsedCommands = CommandOperation.parse(reader);
-    } catch (IOException e) {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
-    }
-
-    Map2 cmds = spec.getMap("commands", NOT_NULL);
-    List<CommandOperation> commandsCopy = CommandOperation.clone(parsedCommands);
-
-    for (CommandOperation cmd : commandsCopy) {
-      if (!cmds.containsKey(cmd.name)) {
-        cmd.addError(formatString("Unknown operation ''{0}'' in path ''{1}''", cmd.name,
-            spec.getMap("url", NOT_NULL).get("paths")));
-      }
-      //TODO validation
-
-    }
-    List<Map> errs = CommandOperation.captureErrors(commandsCopy);
-    if (!errs.isEmpty()) {
-      rsp.add(CommandOperation.ERR_MSGS, errs);
-      SolrException exp = new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Errors in commands");
-      rsp.setException(exp);
-      throw exp;
-    }
-    return commandsCopy;
-  }
-
 }

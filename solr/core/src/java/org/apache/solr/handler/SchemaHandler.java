@@ -75,15 +75,12 @@ public class SchemaHandler extends RequestHandlerBase implements ApiSupport {
         return;
       }
 
-      for (ContentStream stream : req.getContentStreams()) {
-        try {
-          List errs = new SchemaManager(req).performOperations(stream.getReader());
-          if (!errs.isEmpty()) rsp.add("errors", errs);
-        } catch (IOException e) {
-          rsp.add("errors", Collections.singletonList("Error reading input String " + e.getMessage()));
-          rsp.setException(e);
-        }
-        break;
+      try {
+        List errs = new SchemaManager(req).performOperations();
+        if (!errs.isEmpty()) rsp.add("errors", errs);
+      } catch (IOException e) {
+        rsp.add("errors", Collections.singletonList("Error reading input String " + e.getMessage()));
+        rsp.setException(e);
       }
     } else {
       handleGET(req, rsp);

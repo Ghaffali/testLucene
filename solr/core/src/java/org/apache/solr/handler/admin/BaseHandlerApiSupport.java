@@ -33,25 +33,26 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
+import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.ApiSupport;
-import org.apache.solr.api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;
 import static org.apache.solr.common.util.StrUtils.splitSmart;
 
 public abstract class BaseHandlerApiSupport implements ApiSupport {
-  protected final Map<SolrRequest.METHOD, Map<V2EndPoint, List<V2Command>>> commandsMapping;
+  protected final Map<SolrRequest.METHOD, Map<V2EndPoint, List<ApiCommand>>> commandsMapping;
 
   protected BaseHandlerApiSupport() {
     commandsMapping = new HashMap<>();
-    for (V2Command cmd : getCommands()) {
-      Map<V2EndPoint, List<V2Command>> m = commandsMapping.get(cmd.getHttpMethod());
+    for (ApiCommand cmd : getCommands()) {
+      Map<V2EndPoint, List<ApiCommand>> m = commandsMapping.get(cmd.getHttpMethod());
       if (m == null) commandsMapping.put(cmd.getHttpMethod(), m = new HashMap<>());
-      List<V2Command> list = m.get(cmd.getEndPoint());
+      List<ApiCommand> list = m.get(cmd.getEndPoint());
       if (list == null) m.put(cmd.getEndPoint(), list = new ArrayList<>());
       list.add(cmd);
     }
@@ -69,21 +70,19 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
     final Map2 spec = ApiBag.getSpec(op.getSpecName());
     return new Api(spec) {
       @Override
-      public void call(V2RequestContext ctx) {
-        SolrParams params = ctx.getSolrRequest().getParams();
-        SolrRequest.METHOD method = SolrRequest.METHOD.valueOf(ctx.getHttpMethod());
-        List<V2Command> commands = commandsMapping.get(method).get(op);
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+        SolrParams params = req.getParams();
+        SolrRequest.METHOD method = SolrRequest.METHOD.valueOf(req.getHttpMethod());
+        List<ApiCommand> commands = commandsMapping.get(method).get(op);
         try {
           if (method == POST) {
-            List<CommandOperation> cmds = ctx.getCommands(true);
+            List<CommandOperation> cmds = req.getCommands(true);
             if (cmds.size() > 1)
               throw new SolrException(BAD_REQUEST, "Only one command is allowed");
-
-
             CommandOperation c = cmds.size() == 0 ? null : cmds.get(0);
-            V2Command command = null;
+            ApiCommand command = null;
             String commandName = c == null ? null : c.name;
-            for (V2Command cmd : commands) {
+            for (ApiCommand cmd : commands) {
               if (Objects.equals(cmd.getName(), commandName)) {
                 command = cmd;
                 break;
@@ -93,16 +92,16 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
             if (command == null) {
               throw new SolrException(BAD_REQUEST, " no such command " + c);
             }
-            wrapParams(ctx, c, command, false);
-            invokeCommand(ctx, command, c);
+            wrapParams(req, c, command, false);
+            invokeCommand(req, rsp,command, c);
 
           } else {
             if (commands == null || commands.isEmpty()) {
-              ctx.getResponse().add("error", "No support for : " + method + " at :" + ctx.getPath());
+              rsp.add("error", "No support for : " + method + " at :" + req.getPath());
               return;
             }
-            wrapParams(ctx, new CommandOperation("", Collections.EMPTY_MAP), commands.get(0), true);
-            invokeUrl(commands.get(0), ctx);
+            wrapParams(req, new CommandOperation("", Collections.EMPTY_MAP), commands.get(0), true);
+            invokeUrl(commands.get(0), req, rsp);
           }
 
         } catch (SolrException e) {
@@ -110,7 +109,7 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
         } catch (Exception e) {
           throw new SolrException(BAD_REQUEST, e);
         } finally {
-          ctx.getSolrRequest().setParams(params);
+          req.setParams(params);
         }
 
       }
@@ -118,13 +117,13 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
 
   }
 
-  private static void wrapParams(final V2RequestContext ctx, final CommandOperation co, final V2Command cmd, final boolean useRequestParams) {
-    final Map<String, String> pathValues = ctx.getPathValues();
+  private static void wrapParams(final SolrQueryRequest req, final CommandOperation co, final ApiCommand cmd, final boolean useRequestParams) {
+    final Map<String, String> pathValues = req.getPathValues();
     final Map<String, Object> map = co == null || !(co.getCommandData() instanceof Map) ?
         Collections.emptyMap() : co.getDataMap();
-    final SolrParams origParams = ctx.getSolrRequest().getParams();
+    final SolrParams origParams = req.getParams();
 
-    ctx.getSolrRequest().setParams(
+    req.setParams(
         new SolrParams() {
           @Override
           public String get(String param) {
@@ -170,7 +169,7 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
   }
 
 
-  public static Collection<String> getParamNames(CommandOperation op, V2Command command) {
+  public static Collection<String> getParamNames(CommandOperation op, ApiCommand command) {
     List<String> result = new ArrayList<>();
     Object o = op.getCommandData();
     if (o instanceof Map) {
@@ -192,11 +191,11 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
   }
 
 
-  protected abstract void invokeCommand(V2RequestContext ctx, V2Command command, CommandOperation c) throws Exception;
+  protected abstract void invokeCommand(SolrQueryRequest  req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c) throws Exception;
 
-  protected abstract void invokeUrl(V2Command command, V2RequestContext ctx) throws Exception;
+  protected abstract void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception;
 
-  protected abstract List<V2Command> getCommands();
+  protected abstract List<ApiCommand> getCommands();
 
   protected abstract List<V2EndPoint> getEndPoints();
 

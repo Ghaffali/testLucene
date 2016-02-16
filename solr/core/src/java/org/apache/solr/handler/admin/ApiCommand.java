@@ -1,4 +1,4 @@
-package org.apache.solr.api;
+package org.apache.solr.handler.admin;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -17,29 +17,27 @@ package org.apache.solr.api;
  * limitations under the License.
  */
 
-import java.util.List;
-import java.util.Map;
 
-import org.apache.solr.core.CoreContainer;
+import java.util.Collection;
+
+import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
 
-public interface V2RequestContext {
+public interface ApiCommand<T> {
+  String getName();
 
-  SolrQueryResponse getResponse();
+  SolrRequest.METHOD getHttpMethod();
 
-  CoreContainer getCoreContainer();
-
-  SolrQueryRequest getSolrRequest();
-
-  String getPath();
+  V2EndPoint getEndPoint();
 
 
-  Map<String, String> getPathValues();
+  void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, T handler) throws Exception;
 
-  List<CommandOperation> getCommands(boolean validateInput);
+  void GET(SolrQueryRequest req, SolrQueryResponse rsp, T handler) throws Exception;
 
-  String getHttpMethod();
+  Collection<String> getParamNames(CommandOperation op);
 
+  String getParamSubstitute(String name);
 }

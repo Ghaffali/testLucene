@@ -28,8 +28,9 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler;
 import org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation;
+import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
-import org.apache.solr.api.V2RequestContext;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.DELETE;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
@@ -46,18 +47,18 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
   }
 
   @Override
-  protected List<V2Command> getCommands() {
+  protected List<ApiCommand> getCommands() {
     return Arrays.asList(Cmd.values());
   }
 
   @Override
-  protected void invokeCommand(V2RequestContext ctx, V2Command command, CommandOperation c) throws Exception {
-    ((Cmd) command).command(ctx, c, this);
+  protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c) throws Exception {
+    ((Cmd) command).command(req, rsp,c, this);
   }
 
   @Override
-  protected void invokeUrl(V2Command command, V2RequestContext ctx) throws Exception {
-    ((Cmd) command).GET(ctx, this);
+  protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
+    ((Cmd) command).GET(req,rsp, this);
   }
 
   @Override
@@ -67,7 +68,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
 
 
-  enum Cmd implements V2Command<CollectionHandlerApi> {
+  enum Cmd implements ApiCommand<CollectionHandlerApi> {
     GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
     GET_A_COLLECTION(EndPoint.PER_COLLECTION, GET, LIST_OP),
     CREATE_COLLECTION(EndPoint.COLLECTIONS,
@@ -201,13 +202,13 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
 
     @Override
-    public void command(V2RequestContext ctx, CommandOperation c, CollectionHandlerApi handler) throws Exception {
-      handler.handler.invokeAction(ctx.getSolrRequest(),ctx.getResponse(),target);
+    public void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, CollectionHandlerApi handler) throws Exception {
+      handler.handler.invokeAction(req,rsp,target);
     }
 
     @Override
-    public void GET(V2RequestContext ctx, CollectionHandlerApi handler) throws Exception {
-      handler.handler.invokeAction(ctx.getSolrRequest(), ctx.getResponse(), target);
+    public void GET(SolrQueryRequest req, SolrQueryResponse rsp, CollectionHandlerApi handler) throws Exception {
+      handler.handler.invokeAction(req, rsp, target);
     }
 
     @Override

@@ -17,6 +17,8 @@ package org.apache.solr.handler.admin;
  * limitations under the License.
  */
 
+import java.io.StringReader;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,13 +39,12 @@ import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.V2HttpCall;
-import org.apache.solr.api.V2RequestContext;
+import org.apache.solr.util.CommandOperation;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CORES_HANDLER_PATH;
 import static org.apache.solr.common.util.Map2.NOT_NULL;
-import static org.apache.solr.handler.admin.TestCollectionAPIs.getV2RequestContext;
 
 public class TestApiFramework extends SolrTestCaseJ4 {
 
@@ -151,10 +152,16 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     }
 
     Api api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", mockCC, prefix, fullPath, parts);
-    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>()));
-    V2RequestContext ctx = getV2RequestContext( path, method, null, mockCC, parts, api, req);
-    api.call(ctx);
-    return ctx.getResponse();
+    SolrQueryResponse rsp = new SolrQueryResponse();
+    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>())){
+      @Override
+      public List<CommandOperation> getCommands(boolean validateInput) {
+        return Collections.emptyList();
+      }
+    };
+
+    api.call(req,rsp);
+    return rsp;
 
   }
 

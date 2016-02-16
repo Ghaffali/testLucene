@@ -22,9 +22,12 @@ import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.RTimerTree;
 
 import java.security.Principal;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -99,6 +102,22 @@ public interface SolrQueryRequest extends AutoCloseable {
   public void setJSON(Map<String,Object> json);
 
   public Principal getUserPrincipal();
+
+  default String getPath() {
+    return (String) getContext().get("path");
+  }
+
+  default Map<String, String> getPathValues() {
+    return Collections.emptyMap();
+  }
+
+  default List<CommandOperation> getCommands(boolean validateInput) {
+    return Collections.emptyList();
+  }
+
+  default String getHttpMethod() {
+    return (String) getContext().get("httpMethod");
+  }
 }
 
 

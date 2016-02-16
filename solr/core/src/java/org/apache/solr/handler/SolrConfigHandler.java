@@ -251,12 +251,10 @@ public class SolrConfigHandler extends RequestHandlerBase implements ApiSupport 
 
 
     private void handlePOST() throws IOException {
-      List<CommandOperation> ops = CommandOperation.readCommands(req.getContentStreams(), resp);
-      if (ops == null) return;
       try {
         for (; ; ) {
-          ArrayList<CommandOperation> opsCopy = new ArrayList<>(ops.size());
-          for (CommandOperation op : ops) opsCopy.add(op.getCopy());
+          List<CommandOperation> opsCopy = req.getCommands(false);
+          if(opsCopy == null) return;
           try {
             if (parts.size() > 1 && RequestParams.NAME.equals(parts.get(1))) {
               RequestParams params = RequestParams.getFreshRequestParams(req.getCore().getResourceLoader(), req.getCore().getSolrConfig().getRequestParams());
@@ -279,7 +277,7 @@ public class SolrConfigHandler extends RequestHandlerBase implements ApiSupport 
     }
 
 
-    private void handleParams(ArrayList<CommandOperation> ops, RequestParams params) {
+    private void handleParams(List<CommandOperation> ops, RequestParams params) {
       for (CommandOperation op : ops) {
         switch (op.name) {
           case SET:

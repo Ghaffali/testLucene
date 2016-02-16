@@ -17,7 +17,9 @@ package org.apache.solr.api;
  * limitations under the License.
  */
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -31,7 +33,10 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.PluginInfo;
+import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
+import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.util.CommandOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,6 +44,7 @@ import static org.apache.solr.client.solrj.SolrRequest.SUPPORTED_METHODS;
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.util.Map2.ENUM_OF;
 import static org.apache.solr.common.util.Map2.NOT_NULL;
+import static org.apache.solr.common.util.StrUtils.formatString;
 
 public class ApiBag {
   private static final Logger log = LoggerFactory.getLogger(ApiBag.class);
@@ -124,8 +130,9 @@ public class ApiBag {
       }
 
       @Override
-      public void call(V2RequestContext ctx) {
-        String cmd = ctx.getSolrRequest().getParams().get("command");
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+
+        String cmd = req.getParams().get("command");
         Map2 result = null;
         if (cmd == null) {
           result = baseApi.getSpec();
@@ -138,8 +145,8 @@ public class ApiBag {
           }
           result = specCopy;
         }
-        List l = (List) ctx.getResponse().getValues().get("spec");
-        if (l == null) ctx.getResponse().getValues().add("spec", l = new ArrayList());
+        List l = (List) rsp.getValues().get("spec");
+        if (l == null) rsp.getValues().add("spec", l = new ArrayList());
         l.add(result);
       }
     };
@@ -207,8 +214,8 @@ public class ApiBag {
   public static Api wrapRequestHandler(final SolrRequestHandler rh, final Map2 spec, SpecProvider specProvider) {
     return new Api(spec) {
       @Override
-      public void call(V2RequestContext ctx) {
-        rh.handleRequest(ctx.getSolrRequest(), ctx.getResponse());
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+        rh.handleRequest(req, rsp);
       }
 
       @Override
@@ -250,6 +257,44 @@ public class ApiBag {
     }
   }
 
+  public static List<CommandOperation> getCommandOperations(Reader reader, Map2 spec, boolean validate) {
+    List<CommandOperation> parsedCommands = null;
+    try {
+      parsedCommands = CommandOperation.parse(reader);
+    } catch (IOException e) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
+    }
+    if (spec == null || !validate) {    // no validation possible because we do not have a spec
+      return parsedCommands;
+    }
+
+    Map2 cmds = spec.getMap("commands", NOT_NULL);
+    List<CommandOperation> commandsCopy = CommandOperation.clone(parsedCommands);
+
+    for (CommandOperation cmd : commandsCopy) {
+      if (!cmds.containsKey(cmd.name)) {
+        cmd.addError(formatString("Unknown operation ''{0}'' in path ''{1}''", cmd.name,
+            spec.getMap("url", NOT_NULL).get("paths")));
+      }
+      //TODO validation
+
+    }
+    List<Map> errs = CommandOperation.captureErrors(commandsCopy);
+    if (!errs.isEmpty()) {
+      throw new ExceptionWithErrObject(SolrException.ErrorCode.BAD_REQUEST, "Error in command payload", errs);
+    }
+    return commandsCopy;
+  }
+
+  static class ExceptionWithErrObject extends SolrException {
+    private List<Map> errs;
+
+    public ExceptionWithErrObject(ErrorCode code, String msg, List<Map> errs) {
+      super(code, msg);
+      this.errs = errs;
+    }
+  }
+
   public static class LazyLoadedApi extends Api {
 
     private final PluginBag.PluginHolder<SolrRequestHandler> holder;
@@ -261,11 +306,11 @@ public class ApiBag {
     }
 
     @Override
-    public void call(V2RequestContext ctx) {
+    public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
       if (!holder.isLoaded()) {
         delegate = wrapRequestHandler(holder.get(), null, null);
       }
-      delegate.call(ctx);
+      delegate.call(req, rsp);
     }
   }
 
