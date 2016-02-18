@@ -67,7 +67,7 @@ public class ImplicitPlugins {
     implicits.add(createPluginInfoWithDefaults(UpdateRequestHandler.CSV_PATH, UpdateRequestHandler.class, singletonMap("update.contentType", "application/csv")));
     implicits.add(createPluginInfoWithDefaults(UpdateRequestHandler.DOC_PATH, UpdateRequestHandler.class, makeMap("update.contentType", "application/json", "json.command", "false")));
 
-    Map attrs = Utils.makeMap("legacy", "false", NAME, "/update/v2", "class", UpdateRequestHandlerApi.class.getName());
+    Map attrs = Utils.makeMap(NAME, "/v2/{core}/update", "class", UpdateRequestHandlerApi.class.getName());
     implicits.add(new PluginInfo(SolrRequestHandler.TYPE, attrs, new NamedList(), null));
 
     //solrconfighandler

@@ -367,6 +367,11 @@ public class CoreAdminHandler extends RequestHandlerBase implements ApiSupport {
     return coreAdminHandlerApi.getApis();
   }
 
+  @Override
+  public boolean registerApi() {
+    return true;
+  }
+
   static {
     for (CoreAdminOperation op : CoreAdminOperation.values())
       opMap.put(op.action.toString().toLowerCase(Locale.ROOT), op);

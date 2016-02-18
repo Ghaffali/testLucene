@@ -901,4 +901,8 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
     return v2Handler.getApis();
   }
 
+  @Override
+  public boolean registerApi() {
+    return true;
+  }
 }

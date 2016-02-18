@@ -316,4 +316,8 @@ public class BlobHandler extends RequestHandlerBase implements PluginInfoInitial
     req.getCore().getRequestHandler(handler).handleRequest(r, rsp);
   }
 
+  @Override
+  public boolean registerApi() {
+    return true;
+  }
 }

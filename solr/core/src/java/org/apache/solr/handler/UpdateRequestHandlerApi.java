@@ -34,7 +34,7 @@ public class UpdateRequestHandlerApi extends UpdateRequestHandler  {
 
 
   @Override
-  public boolean registerAutomatically() {
+  public boolean registerApi() {
     return true;
   }
 
@@ -59,6 +59,11 @@ public class UpdateRequestHandlerApi extends UpdateRequestHandler  {
         }
       }
     };
+  }
+
+  @Override
+  public boolean disableHandler() {
+    return true;
   }
 
   private static final Map<String, String> mapping = ImmutableMap.<String,String>builder()

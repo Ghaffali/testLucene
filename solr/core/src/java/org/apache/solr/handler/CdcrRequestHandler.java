@@ -612,10 +612,5 @@ public class CdcrRequestHandler extends RequestHandlerBase implements SolrCoreAw
     }
 
   }
-
-  @Override
-  public boolean registerAutomatically() {
-    return false;
-  }
 }
 

@@ -93,7 +93,7 @@ import static org.apache.solr.core.SolrConfig.PluginOpts.REQUIRE_NAME_IN_OVERLAY
 import static org.apache.solr.schema.FieldType.CLASS_NAME;
 import static org.apache.solr.api.ApiBag.wrapRequestHandler;
 
-public class SolrConfigHandler extends RequestHandlerBase implements ApiSupport {
+public class SolrConfigHandler extends RequestHandlerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   public static final String CONFIGSET_EDITING_DISABLED_ARG = "disable.configEdit";
   public static final boolean configEditing_disabled = Boolean.getBoolean(CONFIGSET_EDITING_DISABLED_ARG);
@@ -806,6 +806,11 @@ public class SolrConfigHandler extends RequestHandlerBase implements ApiSupport 
     protected SolrResponse createResponse(SolrClient client) {
       return null;
     }
+  }
+
+  @Override
+  public boolean registerApi() {
+    return true;
   }
 
   @Override

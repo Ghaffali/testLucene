@@ -184,17 +184,20 @@ public class PluginBag<T> implements AutoCloseable {
 
 
   PluginHolder<T> put(String name, PluginHolder<T> plugin) {
-
-    PluginHolder<T> old = registry.put(name, plugin);
-    if (plugin.pluginInfo != null && plugin.pluginInfo.isDefault()) {
-      setDefault(name);
+    boolean registerApi = false;
+    boolean disableHandler = false;
+    if (plugin.pluginInfo != null) {
+      registerApi = "true".equals(String.valueOf(plugin.pluginInfo.attributes.get("registerApi")));
+      if("true".equals(String.valueOf(plugin.pluginInfo.attributes.get("disableHandler")))) disableHandler = true;
     }
 
     if (apiBag != null) {
       if (plugin.isLoaded()) {
         T inst = plugin.get();
-        if (inst instanceof ApiSupport && ((ApiSupport) inst).registerAutomatically()) {
-          Collection<Api> apis = ((ApiSupport) inst).getApis();
+        if (inst instanceof ApiSupport && (registerApi || ((ApiSupport) inst).registerApi())) {
+          ApiSupport apiSupport = (ApiSupport) inst;
+          if(apiSupport.disableHandler()) disableHandler = true;
+          Collection<Api> apis = apiSupport.getApis();
           if (apis != null) {
             Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
             for (Api api : apis) {
@@ -203,9 +206,12 @@ public class PluginBag<T> implements AutoCloseable {
           }
         }
       } else {
-        apiBag.registerLazy((PluginHolder<SolrRequestHandler>) plugin, plugin.pluginInfo);
+        if (registerApi) apiBag.registerLazy((PluginHolder<SolrRequestHandler>) plugin, plugin.pluginInfo);
       }
     }
+    PluginHolder<T> old = null;
+    if(!disableHandler) old = registry.put(name, plugin);
+    if (plugin.pluginInfo != null && plugin.pluginInfo.isDefault()) setDefault(name);
     if (plugin.isLoaded()) registerMBean(plugin.get(), core, name);
     return old;
   }
@@ -314,10 +320,6 @@ public class PluginBag<T> implements AutoCloseable {
 
     public boolean isLoaded() {
       return inst != null;
-    }
-
-    public boolean isV2Only() {
-      return pluginInfo != null || "false".equals(String.valueOf(pluginInfo.attributes.get("legacy")));
     }
 
     @Override

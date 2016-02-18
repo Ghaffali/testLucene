@@ -158,11 +158,6 @@ public class UpdateRequestHandler extends ContentStreamHandlerBase {
     return instance;
   }
 
-  @Override
-  public boolean registerAutomatically() {
-    return false;
-  }
-
   //////////////////////// SolrInfoMBeans methods //////////////////////
 
   @Override

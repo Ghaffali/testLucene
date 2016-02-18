@@ -60,4 +60,9 @@ public class BlobStoreTestRequestHandler extends DumpRequestHandler implements R
     run();
 
   }
+
+  @Override
+  public boolean registerApi() {
+    return true;
+  }
 }
