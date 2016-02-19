@@ -221,6 +221,8 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
   
   public static final String COMMIT_END_POINT = "commit_end_point";
   public static final String LOG_REPLAY = "log_replay";
+
+  private boolean finished = false; // see finish()
   
   private final SolrQueryRequest req;
   private final SolrQueryResponse rsp;
@@ -787,38 +789,30 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     cmdDistrib.finish();    
     List<Error> errors = cmdDistrib.getErrors();
     // TODO - we may need to tell about more than one error...
-    
-    // if it's a forward, any fail is a problem - 
-    // otherwise we assume things are fine if we got it locally
-    // until we start allowing min replication param
-    if (errors.size() > 0) {
-      // if one node is a RetryNode, this was a forward request
-      if (errors.get(0).req.node instanceof RetryNode) {
-        rsp.setException(errors.get(0).e);
-      } else {
-        if (log.isWarnEnabled()) {
-          for (Error error : errors) {
-            log.warn("Error sending update to " + error.req.node.getBaseUrl(), error.e);
-          }
-        }
-      }
-      // else
-      // for now we don't error - we assume if it was added locally, we
-      // succeeded 
-    }
-   
-    
-    // if it is not a forward request, for each fail, try to tell them to
-    // recover - the doc was already added locally, so it should have been
-    // legit
 
+    List<Error> errorsForClient = new ArrayList<>(errors.size());
+    
     for (final SolrCmdDistributor.Error error : errors) {
       
       if (error.req.node instanceof RetryNode) {
-        // we don't try to force a leader to recover
-        // when we cannot forward to it
+        // if it's a forward, any fail is a problem - 
+        // otherwise we assume things are fine if we got it locally
+        // until we start allowing min replication param
+        errorsForClient.add(error);
         continue;
       }
+
+      // else...
+      
+      // for now we don't error - we assume if it was added locally, we
+      // succeeded 
+      if (log.isWarnEnabled()) {
+        log.warn("Error sending update to " + error.req.node.getBaseUrl(), error.e);
+      }
+      
+      // Since it is not a forward request, for each fail, try to tell them to
+      // recover - the doc was already added locally, so it should have been
+      // legit
        
       DistribPhase phase =
           DistribPhase.parseParam(error.req.uReq.getParams().get(DISTRIB_UPDATE_PARAM));       
@@ -838,8 +832,8 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
         // let's just fail this request and let the client retry? or just call processAdd again?
         log.error("On "+cloudDesc.getCoreNodeName()+", replica "+replicaUrl+
             " now thinks it is the leader! Failing the request to let the client retry! "+error.e);
-        rsp.setException(error.e);
-        break;
+        errorsForClient.add(error);
+        break; // nocommit: why not continue?
       }
 
       String collection = null;
@@ -924,7 +918,16 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
       rsp.getResponseHeader().add(UpdateRequest.REPFACT, replicationTracker.getAchievedRf());
       rsp.getResponseHeader().add(UpdateRequest.MIN_REPFACT, replicationTracker.minRf);
       replicationTracker = null;
-    }    
+    }
+
+    
+    if (0 < errorsForClient.size()) {
+      // nocommit: slight intentional change here: throwing instead of using setException directly
+      // nocommit: sanity check that doesn't break any other assumptions?
+      //
+      // nocommit: if 1==errorsForClient.size() should we throw it directly? ... would mean changes for catching logic in TolerantUP.finish()
+      throw new DistributedUpdatesAsyncException(errorsForClient);
+    }
   }
 
  
@@ -1373,7 +1376,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
       }
 
       if (someReplicas)  {
-        cmdDistrib.finish();
+        cmdDistrib.blockAndDoRetries();
       }
     }
 
@@ -1618,7 +1621,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
             zkController.getBaseUrl(), req.getCore().getName()));
         if (nodes != null) {
           cmdDistrib.distribCommit(cmd, nodes, params);
-          finish();
+          cmdDistrib.blockAndDoRetries();
         }
       }
     }
@@ -1645,6 +1648,9 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
   
   @Override
   public void finish() throws IOException {
+    assert ! finished : "lifecycle sanity check";
+    finished = true;
+    
     if (zkEnabled) doFinish();
     
     if (next != null && nodes == null) next.finish();
@@ -1691,5 +1697,49 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     // if we have been told we are coming from a leader, then we are 
     // definitely not the leader.  Otherwise assume we are.
     return DistribPhase.FROMLEADER != phase;
+  }
+
+  public static final class DistributedUpdatesAsyncException extends SolrException {
+    public final List<Error> errors;
+    public DistributedUpdatesAsyncException(List<Error> errors) {
+      super(buildCode(errors), buildMsg(errors), null);
+      this.errors = errors;
+
+      // nocommit: can/should we try to merge the ((SolrException)Error.e).getMetadata() into this.getMetadata() ?
+    }
+
+    /** Helper method for constructor */
+    private static final int buildCode(List<Error> errors) {
+      assert null != errors;
+      assert 0 < errors.size();
+      
+      // if they are all the same, then we use that...
+      int result = errors.get(0).statusCode;
+      for (Error error : errors) {
+        log.trace("REMOTE ERROR: {}", error);
+        if (result != error.statusCode ) {
+          // ...otherwise use sensible default
+          return ErrorCode.SERVER_ERROR.code;
+        }
+      }
+      return result;
+    }
+    
+    /** Helper method for constructor */
+    private static final String buildMsg(List<Error> errors) {
+      assert null != errors;
+      assert 0 < errors.size();
+      
+      if (1 == errors.size()) {
+        return "Async exception during distributed update: " + errors.get(0).e.getMessage();
+      } else {
+        StringBuilder buf = new StringBuilder(errors.size() + " Async exceptions during distributed update: ");
+        for (Error error : errors) {
+          buf.append("\n");
+          buf.append(error.e.getMessage());
+        }
+        return buf.toString();
+      }
+    }
   }
 }
