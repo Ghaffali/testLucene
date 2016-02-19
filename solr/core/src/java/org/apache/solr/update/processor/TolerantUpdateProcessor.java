@@ -33,9 +33,7 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.update.AddUpdateCommand;
-import org.apache.solr.update.DeleteUpdateCommand;
 import org.apache.solr.update.SolrCmdDistributor.Error;
-import org.apache.solr.update.UpdateCommand;
 import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
 
 import org.slf4j.Logger;
@@ -271,7 +269,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
 
   /**
    * Returns the output of {@link org.apache.solr.schema.FieldType#
-   * indexedToReadable(BytesRef, CharsRef)} of the field
+   * indexedToReadable(BytesRef, CharsRefBuilder)} of the field
    * type of the uniqueKey on the {@link BytesRef} passed as parameter.
    * <code>ref</code> should be the indexed representation of the id and
    * <code>field</code> should be the uniqueKey schema field. If any of
