@@ -134,6 +134,9 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
 
   @BeforeClass
   private static void createMiniSolrCloudCluster() throws Exception {
+    // nocommit: should we just be subclassing SolrTestCaseJ4 and get this for free?
+    SolrTestCaseJ4.chooseMPForMP();
+    
     Builder jettyConfig = JettyConfig.builder();
     jettyConfig.waitForLoadingCoresToFinish(null);
     SOLR_CLUSTER = new MiniSolrCloudCluster(NUM_SERVERS, createTempDir(), jettyConfig.build());
@@ -171,6 +174,8 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
     for (Slice slice : clusterState.getSlices(COLLECTION_NAME)) {
       String shardName = slice.getName();
       Replica leader = slice.getLeader();
+      assertNotNull("slice has null leader: " + slice.toString(), leader);
+      assertNotNull("slice leader has null node name: " + slice.toString(), leader.getNodeName());
       String leaderUrl = urlMap.remove(leader.getNodeName());
       assertNotNull("could not find URL for " + shardName + " leader: " + leader.getNodeName(),
                     leaderUrl);
@@ -234,6 +239,9 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
   @AfterClass
   private static void shutdownMiniSolrCloudCluster() throws Exception {
     SOLR_CLUSTER.shutdown();
+
+    // nocommit: should we just be subclassing SolrTestCaseJ4 and get this for free?
+    SolrTestCaseJ4.unchooseMPForMP();
   }
   
   @Before
