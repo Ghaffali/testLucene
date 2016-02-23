@@ -91,11 +91,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   private int numErrors = 0; // nocmmit: why isn't thisjust errors.size() ? ? ? ? 
   
   /**
-   * Number of documents successfully added. 
-   */
-  private int numAdds = 0;
-  
-  /**
    * Map of errors that occurred in this batch, keyed by unique key. The value is also a Map so that
    * for each error the output is a key value pair.
    */
@@ -130,7 +125,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       id = cmd.getIndexedId();
       
       super.processAdd(cmd);
-      numAdds++;
 
     } catch (Throwable t) { // nocommit: OOM trap
       firstErrTracker.caught(t);
@@ -229,9 +223,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
             } catch (NumberFormatException nfe) {
               log.error("Ignoring invalid numErrors reported from remote shard: " + val, nfe);
             }
-          } else if (key.equals(ERR_META_PREFIX + "numAdds")) {
-            // nocommit: nothing very useful we can do with (remote) numAdds?
-            // nocommit: perhaps do some kind of "numAddsConfirmed" ?
           } else {
             log.error("found remote error metadata using our prefix but not a key we expect: " + key, remoteErr);
             assert false;
@@ -251,10 +242,9 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       assert 0 == numErrors;
       header.add("numErrors", 0);
     }
-    header.add("numAdds", numAdds);
 
     // annotate any error that might be thrown (or was already thrown)
-    firstErrTracker.annotate(numAdds, numErrors, errors);
+    firstErrTracker.annotate(numErrors, errors);
 
     // decide if we have hit a situation where we know an error needs to be thrown.
     
@@ -351,8 +341,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
      * Annotates the first exception (which may already have been thrown, or be thrown in the future) with 
      * the metadata from this update processor.  For use in {@link TolerantUpdateProcessor#finish}
      */
-    public void annotate(int numAdds, int numErrors, SimpleOrderedMap<SimpleOrderedMap<String>> errors) {
-      // nocommit: eliminate numAdds?
+    public void annotate(int numErrors, SimpleOrderedMap<SimpleOrderedMap<String>> errors) {
       // nocommit: eliminate numErrors?
 
       if (null == first) {
@@ -373,8 +362,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       for (int i = 0; i < errors.size(); i++) {
         errMetadata.add(ERR_META_PREFIX + "id-" + errors.getName(i), errors.getVal(i).get("message"));
       }
-      // nocommit: useless? remove?
-      errMetadata.add(ERR_META_PREFIX + "numAdds", ""+numAdds);
     }
     
     

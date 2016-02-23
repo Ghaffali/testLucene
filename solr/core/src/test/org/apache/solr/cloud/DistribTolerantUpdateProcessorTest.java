@@ -116,8 +116,6 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
     assertNotNull("Null errors in response: " + response.toString(), errors);
     assertEquals("Wrong numErrors in response: " + response.toString(),
                  numErrors, response.getResponseHeader().get("numErrors"));
-    assertEquals("numAdds doesn't make sense given input vs numErrors: " + response.toString(),
-                 docs.length - numErrors, response.getResponseHeader().get("numAdds"));
     for (String id : ids) {
       assertNotNull("Id " + id + " not found in errors list: " + response.toString(), errors.get(id));
     }

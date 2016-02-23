@@ -294,7 +294,6 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     response = update("tolerant-chain-max-errors-10", builder.toString());
     assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
         "//int[@name='numErrors']=10",
-        "//int[@name='numAdds']=10",
         "not(//lst[@name='errors']/lst[@name='0'])",
         "//lst[@name='errors']/lst[@name='1']",
         "not(//lst[@name='errors']/lst[@name='2'])",
@@ -338,7 +337,6 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     SimpleOrderedMap<Object> errors = (SimpleOrderedMap<Object>) response.getResponseHeader().get("errors");
     assertNotNull(errors);
     assertEquals(numErrors, response.getResponseHeader().get("numErrors"));
-    assertEquals(docs.size() - numErrors, response.getResponseHeader().get("numAdds"));
     
     for(String id:ids) {
       assertNotNull("Id " + id + " not found in errors list", errors.get(id));

@@ -303,7 +303,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_ONE_PRE + "666"), f("foo_i", "1976"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("single shard, 1st doc should fail", rsp, 1, S_ONE_PRE + "42");
+    assertUpdateTolerantErrors("single shard, 1st doc should fail", rsp, S_ONE_PRE + "42");
     assertEquals(0, client.commit().getStatus());
     assertQueryDocIds(client, false, S_ONE_PRE + "42");
     assertQueryDocIds(client, true, S_ONE_PRE + "666");
@@ -316,7 +316,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_ONE_PRE + "77"), f("foo_i", "bogus_val"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("single shard, 2nd doc should fail", rsp, 1, S_ONE_PRE + "77");
+    assertUpdateTolerantErrors("single shard, 2nd doc should fail", rsp, S_ONE_PRE + "77");
     assertQueryDocIds(client, false, S_ONE_PRE + "77");
     assertQueryDocIds(client, true, S_ONE_PRE + "666", S_ONE_PRE + "55");
 
@@ -331,7 +331,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_TWO_PRE + "666"), f("foo_i", "1976"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("two shards, 1st doc should fail", rsp, 1, S_ONE_PRE + "42");
+    assertUpdateTolerantErrors("two shards, 1st doc should fail", rsp, S_ONE_PRE + "42");
     assertEquals(0, client.commit().getStatus());
     assertQueryDocIds(client, false, S_ONE_PRE + "42");
     assertQueryDocIds(client, true, S_TWO_PRE + "666");
@@ -344,7 +344,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_TWO_PRE + "77"), f("foo_i", "bogus_val"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("two shards, 2nd doc should fail", rsp, 1, S_TWO_PRE + "77");
+    assertUpdateTolerantErrors("two shards, 2nd doc should fail", rsp, S_TWO_PRE + "77");
     assertQueryDocIds(client, false, S_TWO_PRE + "77");
     assertQueryDocIds(client, true, S_TWO_PRE + "666", S_ONE_PRE + "55");
 
@@ -369,7 +369,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_TWO_PRE + "26"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("many docs, 1 from each shard should fail", rsp, 10,
+    assertUpdateTolerantErrors("many docs, 1 from each shard should fail", rsp,
                                S_ONE_PRE + "15",
                                S_TWO_PRE + "22");
     assertQueryDocIds(client, false, S_TWO_PRE + "22", S_ONE_PRE + "15");
@@ -422,7 +422,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                    400, e.code());
 
       // nocommit: is there a way to inspect the response body anyway?
-      // nocommit: look for the correct "numAdds" and "errors" ?  .... check e's metatata
+      // nocommit: look for the correct "errors" ?  .... check e's metatata
     }
     assertEquals(0, client.commit().getStatus()); // need to force since update didn't finish
     assertQueryDocIds(client, false
@@ -475,7 +475,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                    400, e.code());
 
       // nocommit: is there a way to inspect the response body anyway?
-      // nocommit: look for the correct "numAdds" and "errors" ?  .... check e's metatata
+      // nocommit: look for the correct "errors" ?  .... check e's metatata
     }
     assertEquals(0, client.commit().getStatus()); // need to force since update didn't finish
     assertQueryDocIds(client, true
@@ -499,20 +499,8 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
   // nocommit: refactor into multiple methods, some of which can check tolerant deletions as well?
   public static void assertUpdateTolerantErrors(String assertionMsgPrefix,
                                                 UpdateResponse response,
-                                                int numAddsExpected,
                                                 String... errorIdsExpected) {
 
-    // nocommit: numAdds seems virtually impossible to get right in distrib/async mode...
-    // nocommit: for now make no assertions about it
-    //
-    // nocommit: perhaps it should be numAddsAttempted and we should assert numAddsAttempted < maxNumAddsExpected
-    // nocommit: ...at least that way we can assert that requests failed fast when we expected them too?
-    // nocommit: (even that's hard to be sure when we have the same test logic being used on diff clients  -- fail fast to S1 leader will be slow async failure to S2 leader)
-    //
-    //
-    // assertEquals(assertionMsgPrefix + ": numAdds: " + response.toString(),
-    //              numAddsExpected, response.getResponseHeader().get("numAdds"));
-    
     @SuppressWarnings("unchecked")
     SimpleOrderedMap<Object> errors = (SimpleOrderedMap<Object>) response.getResponseHeader().get("errors");
     assertNotNull(assertionMsgPrefix + ": Null errors: " + response.toString(), errors);
