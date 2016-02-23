@@ -67,8 +67,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
    */
   private static final String UNKNOWN_ID = "(unknown)"; // nocommit: fail hard and fast if no uniqueKey
 
-
-  private final static String ERR_META_PREFIX = java.lang.invoke.MethodHandles.lookup().lookupClass().getName() + "--";
   /**
    * Response Header
    */
@@ -197,17 +195,18 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
         }
         
         for (int i = 0; i < remoteErrMetadata.size(); i++) {
-          String key = remoteErrMetadata.getName(i);
-          if (! key.startsWith(ERR_META_PREFIX) ) {
+          KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
+                                                          remoteErrMetadata.getVal(i));
+          if (null == err) {
+            // some metadata unrelated to this update processor
             continue;
           }
-          String val = remoteErrMetadata.getVal(i);
-          if (key.startsWith("id-", ERR_META_PREFIX.length())) {
-            CharSequence id = key.subSequence(ERR_META_PREFIX.length() + 3, key.length());
-            processError(id, val);
+          
+          if (err.type.equals(CmdType.ADD)) { // nocommit: generalize this to work with any CmdType
+            processError(err.id, err.errorValue);
           } else {
-            log.error("found remote error metadata using our prefix but not a key we expect: " + key, remoteErr);
-            assert false;
+            log.error("found remote error metadata we can't handle key: " + err);
+            assert false : "found remote error metadata we can't handle key: " + err;
           }
         }
       }
@@ -335,7 +334,8 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       }
 
       for (int i = 0; i < errors.size(); i++) {
-        errMetadata.add(ERR_META_PREFIX + "id-" + errors.getName(i), errors.getVal(i).get("message"));
+        KnownErr err = new KnownErr(CmdType.ADD, errors.getName(i), errors.getVal(i).get("message"));
+        errMetadata.add(err.getMetadataKey(), err.getMetadataValue());
       }
     }
     
@@ -346,5 +346,79 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     }
     
   }
+
+  /**
+   * Helper class for dealing with SolrException metadata (String) keys 
+   */
+  public static final class KnownErr {
+    // nocommit: switch metadata key parsing/writting to use this class
+    // nocommit: switch error counting to use instances of this class
+    
+    private final static String META_PRE =  TolerantUpdateProcessor.class.getName() + "--";
+    private final static int META_PRE_LEN = META_PRE.length();
+
+    
+    /** returns a KnownErr instance if this metadataKey is one we care about, else null */
+    public static KnownErr parseMetadataIfKnownErr(String metadataKey, String metadataVal) {
+      if (! metadataKey.startsWith(META_PRE)) {
+        return null; // not a key we care about
+      }
+      final int typeEnd = metadataKey.indexOf(':', META_PRE_LEN);
+      assert 0 < typeEnd; // nocommit: better error handling
+      return new KnownErr(CmdType.valueOf(metadataKey.substring(META_PRE_LEN, typeEnd)),
+                          metadataKey.substring(typeEnd+1), metadataVal);
+    }
+
+    public final CmdType type;
+    /** may be null depending on type */
+    public final String id;
+    public final String errorValue;
+    
+    public KnownErr(CmdType type, String id, String errorValue) {
+      this.type = type;
+      assert null != type;
+      
+      this.id = id;
+      assert null != id;
+      
+      this.errorValue = errorValue;
+      assert null != errorValue;
+    }
+    
+    public String getMetadataKey() {
+      return META_PRE + type + ":" + id;
+    }
+    public String getMetadataValue() {
+      return errorValue;
+    }
+    public String toString() {
+      return getMetadataKey() + "=>" + getMetadataValue();
+    }
+    public int hashCode() {
+      int h = this.getClass().hashCode();
+      h = h * 31 + type.hashCode();
+      h = h * 31 + id.hashCode();
+      h = h * 31 + errorValue.hashCode();
+      return h;
+    }
+    public boolean equals(Object o) {
+      if (o instanceof KnownErr) {
+        KnownErr that = (KnownErr)o;
+        return that.type.equals(this.type)
+          && that.id.equals(this.id)
+          && that.errorValue.equals(this.errorValue);
+      }
+      return false;
+    }
+  }
   
+  /**
+   * Helper class for dealing with SolrException metadata (String) keys 
+   */
+  public static enum CmdType {
+    ADD, DELID, DELQ; // nocommit: others supported types? (commit?) ..
+
+    // if we add support for things like commit, parsing/toString/hashCode logic
+    // needs to be smarter to account for 'id' being null ... "usesId" should be a prop of enum instances
+  }
 }
