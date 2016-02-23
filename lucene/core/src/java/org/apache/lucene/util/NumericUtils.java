@@ -155,16 +155,15 @@ public final class NumericUtils {
     return true;
   }
 
-  public static void intToBytes(int x, byte[] dest, int index) {
+  public static void intToBytes(int x, byte[] dest, int offset) {
     // Flip the sign bit, so negative ints sort before positive ints correctly:
     x ^= 0x80000000;
-    intToBytesDirect(x, dest, index);
+    intToBytesDirect(x, dest, offset);
   }
 
-  public static void intToBytesDirect(int x, byte[] dest, int index) {
-    // Flip the sign bit, so negative ints sort before positive ints correctly:
-    for(int i=0;i<4;i++) {
-      dest[4*index+i] = (byte) (x >> 24-i*8);
+  public static void intToBytesDirect(int x, byte[] dest, int offset) {
+    for (int i = 0; i < 4; i++) {
+      dest[offset+i] = (byte) (x >> 24-i*8);
     }
   }
 
@@ -174,22 +173,21 @@ public final class NumericUtils {
     return x ^ 0x80000000;
   }
 
-  public static int bytesToIntDirect(byte[] src, int index) {
+  public static int bytesToIntDirect(byte[] src, int offset) {
     int x = 0;
-    for(int i=0;i<4;i++) {
-      x |= (src[4*index+i] & 0xff) << (24-i*8);
+    for (int i = 0; i < 4; i++) {
+      x |= (src[offset+i] & 0xff) << (24-i*8);
     }
     return x;
   }
 
-  public static void longToBytes(long v, byte[] bytes, int dim) {
+  public static void longToBytes(long v, byte[] bytes, int offset) {
     // Flip the sign bit so negative longs sort before positive longs:
     v ^= 0x8000000000000000L;
-    longToBytesDirect(v, bytes, dim);
+    longToBytesDirect(v, bytes, offset);
   }
 
-  public static void longToBytesDirect(long v, byte[] bytes, int dim) {
-    int offset = 8 * dim;
+  public static void longToBytesDirect(long v, byte[] bytes, int offset) {
     bytes[offset] = (byte) (v >> 56);
     bytes[offset+1] = (byte) (v >> 48);
     bytes[offset+2] = (byte) (v >> 40);
@@ -200,15 +198,14 @@ public final class NumericUtils {
     bytes[offset+7] = (byte) v;
   }
 
-  public static long bytesToLong(byte[] bytes, int index) {
-    long v = bytesToLongDirect(bytes, index);
+  public static long bytesToLong(byte[] bytes, int offset) {
+    long v = bytesToLongDirect(bytes, offset);
     // Flip the sign bit back
     v ^= 0x8000000000000000L;
     return v;
   }
 
-  public static long bytesToLongDirect(byte[] bytes, int index) {
-    int offset = 8 * index;
+  public static long bytesToLongDirect(byte[] bytes, int offset) {
     long v = ((bytes[offset] & 0xffL) << 56) |
       ((bytes[offset+1] & 0xffL) << 48) |
       ((bytes[offset+2] & 0xffL) << 40) |
@@ -221,37 +218,36 @@ public final class NumericUtils {
   }
 
   public static void sortableBigIntBytes(byte[] bytes) {
+    // Flip the sign bit so negative bigints sort before positive bigints:
     bytes[0] ^= 0x80;
-    for(int i=1;i<bytes.length;i++)  {
-      bytes[i] ^= 0;
-    }
   }
 
-  public static void bigIntToBytes(BigInteger bigInt, byte[] result, int dim, int numBytesPerDim) {
+  public static void bigIntToBytes(BigInteger bigInt, int bigIntSize, byte[] result, int offset) {
     byte[] bigIntBytes = bigInt.toByteArray();
     byte[] fullBigIntBytes;
 
-    if (bigIntBytes.length < numBytesPerDim) {
-      fullBigIntBytes = new byte[numBytesPerDim];
-      System.arraycopy(bigIntBytes, 0, fullBigIntBytes, numBytesPerDim-bigIntBytes.length, bigIntBytes.length);
+    if (bigIntBytes.length < bigIntSize) {
+      fullBigIntBytes = new byte[bigIntSize];
+      System.arraycopy(bigIntBytes, 0, fullBigIntBytes, bigIntSize-bigIntBytes.length, bigIntBytes.length);
       if ((bigIntBytes[0] & 0x80) != 0) {
         // sign extend
-        Arrays.fill(fullBigIntBytes, 0, numBytesPerDim-bigIntBytes.length, (byte) 0xff);
+        Arrays.fill(fullBigIntBytes, 0, bigIntSize-bigIntBytes.length, (byte) 0xff);
       }
-    } else {
-      assert bigIntBytes.length == numBytesPerDim;
+    } else if (bigIntBytes.length == bigIntSize) {
       fullBigIntBytes = bigIntBytes;
+    } else {
+      throw new IllegalArgumentException("BigInteger: " + bigInt + " requires more than " + bigIntSize + " bytes storage");
     }
     sortableBigIntBytes(fullBigIntBytes);
 
-    System.arraycopy(fullBigIntBytes, 0, result, dim * numBytesPerDim, numBytesPerDim);
+    System.arraycopy(fullBigIntBytes, 0, result, offset, bigIntSize);
 
-    assert bytesToBigInt(result, dim, numBytesPerDim).equals(bigInt): "bigInt=" + bigInt + " converted=" + bytesToBigInt(result, dim, numBytesPerDim);
+    assert bytesToBigInt(result, offset, bigIntSize).equals(bigInt): "bigInt=" + bigInt + " converted=" + bytesToBigInt(result, offset, bigIntSize);
   }
 
-  public static BigInteger bytesToBigInt(byte[] bytes, int dim, int numBytesPerDim) {
-    byte[] bigIntBytes = new byte[numBytesPerDim];
-    System.arraycopy(bytes, dim*numBytesPerDim, bigIntBytes, 0, numBytesPerDim);
+  public static BigInteger bytesToBigInt(byte[] bytes, int offset, int length) {
+    byte[] bigIntBytes = new byte[length];
+    System.arraycopy(bytes, offset, bigIntBytes, 0, length);
     sortableBigIntBytes(bigIntBytes);
     return new BigInteger(bigIntBytes);
   }

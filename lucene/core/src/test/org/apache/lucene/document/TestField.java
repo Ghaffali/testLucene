@@ -35,7 +35,51 @@ import org.apache.lucene.util.LuceneTestCase;
 // sanity check some basics of fields
 public class TestField extends LuceneTestCase {
   
-  public void testDoubleField() throws Exception {
+  public void testDoublePoint() throws Exception {
+    Field field = new DoublePoint("foo", 5d);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    field.setDoubleValue(6d); // ok
+    trySetIntValue(field);
+    trySetFloatValue(field);
+    trySetLongValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(6d, field.numericValue().doubleValue(), 0.0d);
+    assertEquals("<foo:6.0>", field.toString());
+  }
+  
+  public void testDoublePoint2D() throws Exception {
+    DoublePoint field = new DoublePoint("foo", 5d, 4d);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    field.setDoubleValues(6d, 7d); // ok
+    trySetIntValue(field);
+    trySetFloatValue(field);
+    trySetLongValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
+      field.numericValue();
+    });
+    assertTrue(expected.getMessage().contains("cannot convert to a single numeric value"));
+    assertEquals("<foo:6.0,7.0>", field.toString());
+  }
+  
+  public void testLegacyDoubleField() throws Exception {
     Field fields[] = new Field[] {
         new LegacyDoubleField("foo", 5d, Field.Store.NO),
         new LegacyDoubleField("foo", 5d, Field.Store.YES)
@@ -97,7 +141,51 @@ public class TestField extends LuceneTestCase {
     assertEquals(6f, Float.intBitsToFloat(field.numericValue().intValue()), 0.0f);
   }
   
-  public void testFloatField() throws Exception {
+  public void testFloatPoint() throws Exception {
+    Field field = new FloatPoint("foo", 5f);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    trySetIntValue(field);
+    field.setFloatValue(6f); // ok
+    trySetLongValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(6f, field.numericValue().floatValue(), 0.0f);
+    assertEquals("<foo:6.0>", field.toString());
+  }
+  
+  public void testFloatPoint2D() throws Exception {
+    FloatPoint field = new FloatPoint("foo", 5f, 4f);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    trySetIntValue(field);
+    trySetFloatValue(field);
+    field.setFloatValues(6f, 7f); // ok
+    trySetLongValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
+      field.numericValue();
+    });
+    assertTrue(expected.getMessage().contains("cannot convert to a single numeric value"));
+    assertEquals("<foo:6.0,7.0>", field.toString());
+  }
+  
+  public void testLegacyFloatField() throws Exception {
     Field fields[] = new Field[] {
         new LegacyFloatField("foo", 5f, Field.Store.NO),
         new LegacyFloatField("foo", 5f, Field.Store.YES)
@@ -121,7 +209,51 @@ public class TestField extends LuceneTestCase {
     }
   }
   
-  public void testIntField() throws Exception {
+  public void testIntPoint() throws Exception {
+    Field field = new IntPoint("foo", 5);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    field.setIntValue(6); // ok
+    trySetFloatValue(field);
+    trySetLongValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(6, field.numericValue().intValue());
+    assertEquals("<foo:6>", field.toString());
+  }
+  
+  public void testIntPoint2D() throws Exception {
+    IntPoint field = new IntPoint("foo", 5, 4);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    trySetIntValue(field);
+    field.setIntValues(6, 7); // ok
+    trySetFloatValue(field);
+    trySetLongValue(field);
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
+      field.numericValue();
+    });
+    assertTrue(expected.getMessage().contains("cannot convert to a single numeric value"));
+    assertEquals("<foo:6,7>", field.toString());
+  }
+  
+  public void testLegacyIntField() throws Exception {
     Field fields[] = new Field[] {
         new LegacyIntField("foo", 5, Field.Store.NO),
         new LegacyIntField("foo", 5, Field.Store.YES)
@@ -164,7 +296,51 @@ public class TestField extends LuceneTestCase {
     assertEquals(6L, field.numericValue().longValue());
   }
   
-  public void testLongField() throws Exception {
+  public void testLongPoint() throws Exception {
+    Field field = new LongPoint("foo", 5);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    trySetIntValue(field);
+    trySetFloatValue(field);
+    field.setLongValue(6); // ok
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    assertEquals(6, field.numericValue().intValue());
+    assertEquals("<foo:6>", field.toString());
+  }
+  
+  public void testLongPoint2D() throws Exception {
+    LongPoint field = new LongPoint("foo", 5, 4);
+
+    trySetBoost(field);
+    trySetByteValue(field);
+    trySetBytesValue(field);
+    trySetBytesRefValue(field);
+    trySetDoubleValue(field);
+    trySetIntValue(field);
+    trySetFloatValue(field);
+    trySetLongValue(field);
+    field.setLongValues(6, 7); // ok
+    trySetReaderValue(field);
+    trySetShortValue(field);
+    trySetStringValue(field);
+    trySetTokenStreamValue(field);
+
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
+      field.numericValue();
+    });
+    assertTrue(expected.getMessage().contains("cannot convert to a single numeric value"));
+    assertEquals("<foo:6,7>", field.toString());
+  }
+  
+  public void testLegacyLongField() throws Exception {
     Field fields[] = new Field[] {
         new LegacyLongField("foo", 5L, Field.Store.NO),
         new LegacyLongField("foo", 5L, Field.Store.YES)
@@ -439,111 +615,75 @@ public class TestField extends LuceneTestCase {
   }
   
   private void trySetByteValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setByteValue((byte) 10);
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
 
   private void trySetBytesValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setBytesValue(new byte[] { 5, 5 });
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetBytesRefValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setBytesValue(new BytesRef("bogus"));
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetDoubleValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setDoubleValue(Double.MAX_VALUE);
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetIntValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setIntValue(Integer.MAX_VALUE);
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetLongValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setLongValue(Long.MAX_VALUE);
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetFloatValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setFloatValue(Float.MAX_VALUE);
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetReaderValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setReaderValue(new StringReader("BOO!"));
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetShortValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setShortValue(Short.MAX_VALUE);
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetStringValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setStringValue("BOO!");
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetTokenStreamValue(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setTokenStream(new CannedTokenStream(new Token("foo", 0, 3)));
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
   private void trySetBoost(Field f) {
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       f.setBoost(5.0f);
-      fail();
-    } catch (IllegalArgumentException expected) {
-      // expected
-    }
+    });
   }
   
 }

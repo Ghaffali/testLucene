@@ -222,7 +222,8 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
   public static final String COMMIT_END_POINT = "commit_end_point";
   public static final String LOG_REPLAY = "log_replay";
 
-  private boolean finished = false; // see finish()
+  // used to assert we don't call finish more than once, see finish()
+  private boolean finished = false;
   
   private final SolrQueryRequest req;
   private final SolrQueryResponse rsp;
