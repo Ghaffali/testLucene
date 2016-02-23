@@ -86,15 +86,11 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   private ZkController zkController;
 
   /**
-   * Number of errors that occurred
-   */
-  private int numErrors = 0; // nocmmit: why isn't thisjust errors.size() ? ? ? ? 
-  
-  /**
    * Map of errors that occurred in this batch, keyed by unique key. The value is also a Map so that
    * for each error the output is a key value pair.
    */
-  private SimpleOrderedMap<SimpleOrderedMap<String>> errors; // nocommit: why not just SimpleOrderedMap<String> ?
+  // nocommit: why not just SimpleOrderedMap<String> ?
+  private final SimpleOrderedMap<SimpleOrderedMap<String>> errors = new SimpleOrderedMap<>();; 
 
   private final FirstErrTracker firstErrTracker = new FirstErrTracker();
   private final DistribPhase distribPhase;
@@ -131,7 +127,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       
       if (isLeader || distribPhase.equals(DistribPhase.NONE)) {
         processError(getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()), t);
-        if (++numErrors > maxErrors) {
+        if (errors.size() > maxErrors) {
           firstErrTracker.throwFirst();
         }
       } else {
@@ -166,9 +162,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   /** Add an error to the list that's going to be returned to the user */
   protected void addError(String id, SimpleOrderedMap<String> map) {
     log.debug("Adding error for : {}", id);
-    if (errors == null) {
-      errors = new SimpleOrderedMap<>();
-    }
     errors.add(id, map);
   }
 
@@ -203,9 +196,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
           continue;
         }
         
-        int remoteRealNumErrors = 0;
-        int remoteReportedNumErrors = -1;
-
         for (int i = 0; i < remoteErrMetadata.size(); i++) {
           String key = remoteErrMetadata.getName(i);
           if (! key.startsWith(ERR_META_PREFIX) ) {
@@ -213,42 +203,31 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
           }
           String val = remoteErrMetadata.getVal(i);
           if (key.startsWith("id-", ERR_META_PREFIX.length())) {
-            remoteRealNumErrors++;
             CharSequence id = key.subSequence(ERR_META_PREFIX.length() + 3, key.length());
             processError(id, val);
-          } else if (key.equals(ERR_META_PREFIX + "numErrors")) {
-            // nocommit: do we really need this?
-            try {
-              remoteReportedNumErrors = Integer.valueOf(val);
-            } catch (NumberFormatException nfe) {
-              log.error("Ignoring invalid numErrors reported from remote shard: " + val, nfe);
-            }
           } else {
             log.error("found remote error metadata using our prefix but not a key we expect: " + key, remoteErr);
             assert false;
           }
         }
-        assert remoteReportedNumErrors == remoteRealNumErrors : "errors reported doesn't match errors returned";
-        numErrors += remoteRealNumErrors;
       }
     }
 
     // good or bad populate the response header
-    if (errors != null) { // nocommit: we should just always set errors, even if empty?
-      assert errors.size() == numErrors;
-      header.add("numErrors", errors.size());
+    if (0 < errors.size()) { // nocommit: we should just always set errors, even if empty?
+      
+      header.add("numErrors", errors.size()); // nocommit: eliminate from response, client can count
       header.add("errors", errors);
     } else {
-      assert 0 == numErrors;
-      header.add("numErrors", 0);
+      header.add("numErrors", 0); // nocommit: eliminate from response, client can count
     }
 
     // annotate any error that might be thrown (or was already thrown)
-    firstErrTracker.annotate(numErrors, errors);
+    firstErrTracker.annotate(errors);
 
     // decide if we have hit a situation where we know an error needs to be thrown.
     
-    if ((DistribPhase.TOLEADER.equals(distribPhase) ? 0 : maxErrors) < numErrors) {
+    if ((DistribPhase.TOLEADER.equals(distribPhase) ? 0 : maxErrors) < errors.size()) {
       // NOTE: even if maxErrors wasn't exceeeded, we need to throw an error when we have any errors if we're
       // a leader that was forwarded to by another node so that the forwarding node knows we encountered some
       // problems and can aggregate the results
@@ -341,24 +320,20 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
      * Annotates the first exception (which may already have been thrown, or be thrown in the future) with 
      * the metadata from this update processor.  For use in {@link TolerantUpdateProcessor#finish}
      */
-    public void annotate(int numErrors, SimpleOrderedMap<SimpleOrderedMap<String>> errors) {
-      // nocommit: eliminate numErrors?
+    public void annotate(SimpleOrderedMap<SimpleOrderedMap<String>> errors) {
 
       if (null == first) {
         return; // no exception to annotate
       }
       
       assert null != errors : "how do we have an exception to annotate w/o any errors?";
-      assert errors.size() == numErrors;
       
       NamedList<String> errMetadata = first.getMetadata();
       if (null == errMetadata) { // obnoxious
         errMetadata = new NamedList<String>();
         first.setMetadata(errMetadata);
       }
-      
-      // nocommit: do we really an explicit numErrors here? can't caller just count the errors returned?
-      errMetadata.add(ERR_META_PREFIX + "numErrors", ""+errors.size());
+
       for (int i = 0; i < errors.size(); i++) {
         errMetadata.add(ERR_META_PREFIX + "id-" + errors.getName(i), errors.getVal(i).get("message"));
       }
