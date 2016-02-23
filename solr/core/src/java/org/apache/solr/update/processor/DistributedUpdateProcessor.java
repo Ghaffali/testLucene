@@ -834,7 +834,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
         log.error("On "+cloudDesc.getCoreNodeName()+", replica "+replicaUrl+
             " now thinks it is the leader! Failing the request to let the client retry! "+error.e);
         errorsForClient.add(error);
-        break; // nocommit: why not continue?
+        continue;
       }
 
       String collection = null;
