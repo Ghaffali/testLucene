@@ -21,7 +21,9 @@ import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.xml.xpath.XPathExpressionException;
 
@@ -283,8 +285,8 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     response = update("tolerant-chain-max-errors-10", adoc("text", "the quick brown fox"));
     assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
         "//int[@name='numErrors']=1",
-        "//lst[@name='errors']/lst[@name='(unknown)']",
-        "//lst[@name='errors']/lst[@name='(unknown)']/str[@name='message']/text()='Document is missing mandatory uniqueKey field: id'"));
+        "//arr[@name='errors']/lst/str[@name='id']/text()='(unknown)'",
+        "//arr[@name='errors']/lst/str[@name='message']/text()='Document is missing mandatory uniqueKey field: id'"));
     
     response = update("tolerant-chain-max-errors-10", adoc("text", "the quick brown fox"));
     StringWriter builder = new StringWriter();
@@ -296,26 +298,26 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     response = update("tolerant-chain-max-errors-10", builder.toString());
     assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
         "//int[@name='numErrors']=10",
-        "not(//lst[@name='errors']/lst[@name='0'])",
-        "//lst[@name='errors']/lst[@name='1']",
-        "not(//lst[@name='errors']/lst[@name='2'])",
-        "//lst[@name='errors']/lst[@name='3']",
-        "not(//lst[@name='errors']/lst[@name='4'])",
-        "//lst[@name='errors']/lst[@name='5']",
-        "not(//lst[@name='errors']/lst[@name='6'])",
-        "//lst[@name='errors']/lst[@name='7']",
-        "not(//lst[@name='errors']/lst[@name='8'])",
-        "//lst[@name='errors']/lst[@name='9']",
-        "not(//lst[@name='errors']/lst[@name='10'])",
-        "//lst[@name='errors']/lst[@name='11']",
-        "not(//lst[@name='errors']/lst[@name='12'])",
-        "//lst[@name='errors']/lst[@name='13']",
-        "not(//lst[@name='errors']/lst[@name='14'])",
-        "//lst[@name='errors']/lst[@name='15']",
-        "not(//lst[@name='errors']/lst[@name='16'])",
-        "//lst[@name='errors']/lst[@name='17']",
-        "not(//lst[@name='errors']/lst[@name='18'])",
-        "//lst[@name='errors']/lst[@name='19']"));
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='0')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='1'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='2')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='3'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='4')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='5'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='6')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='7'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='8')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='9'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='10')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='11'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='12')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='13'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='14')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='15'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='16')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='17'",
+        "not(//arr[@name='errors']/lst/str[@name='id']/text()='18')",
+        "//arr[@name='errors']/lst/str[@name='id']/text()='19'"));
     
   }
 
@@ -368,15 +370,31 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     }
   }
   
+  // nocommit: redesign so that we can assert errors of diff types besides "add" (ie: deletes) 
   private void assertUSucceedsWithErrors(String chain, final Collection<SolrInputDocument> docs, SolrParams requestParams, int numErrors, String... ids) throws IOException {
     SolrQueryResponse response = add(chain, requestParams, docs);
+    
     @SuppressWarnings("unchecked")
-    SimpleOrderedMap<Object> errors = (SimpleOrderedMap<Object>) response.getResponseHeader().get("errors");
+    List<SimpleOrderedMap<String>> errors = (List<SimpleOrderedMap<String>>)
+      response.getResponseHeader().get("errors");
     assertNotNull(errors);
+
+    assertEquals("number of errors", ids.length, errors.size());
+    
+    // nocommit: retire numErrors, we've already checked errors.size()
     assertEquals(numErrors, response.getResponseHeader().get("numErrors"));
     
-    for(String id:ids) {
-      assertNotNull("Id " + id + " not found in errors list", errors.get(id));
+    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(ids));
+
+    for (SimpleOrderedMap<String> err : errors) {
+      // nocommit: support other types
+      assertEquals("nocommit: error type not handled yet",
+                   "ADD", err.get("type"));
+      
+      String id = err.get("id");
+      assertNotNull("null err id", id);
+      assertTrue("unexpected id", addErrorIdsExpected.contains(id));
+
     }
   }
   

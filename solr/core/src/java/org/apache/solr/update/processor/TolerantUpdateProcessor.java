@@ -17,6 +17,10 @@
 package org.apache.solr.update.processor;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
@@ -84,11 +88,10 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   private ZkController zkController;
 
   /**
-   * Map of errors that occurred in this batch, keyed by unique key. The value is also a Map so that
-   * for each error the output is a key value pair.
+   * Known errors that occurred in this batch, in order encountered (may not be the same as the 
+   * order the commands were originally executed in due to the async distributed updates).
    */
-  // nocommit: why not just SimpleOrderedMap<String> ?
-  private final SimpleOrderedMap<SimpleOrderedMap<String>> errors = new SimpleOrderedMap<>();; 
+  private final List<KnownErr> knownErrors = new ArrayList<KnownErr>();
 
   private final FirstErrTracker firstErrTracker = new FirstErrTracker();
   private final DistribPhase distribPhase;
@@ -106,7 +109,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     
     this.zkController = this.req.getCore().getCoreDescriptor().getCoreContainer().getZkController();
 
-    // nocommit: assert existence of uniqueKey & record for future processAdd+processError calls
+    // nocommit: assert existence of uniqueKey & record for future processAdd+processAddError calls
   }
   
   @Override
@@ -124,8 +127,8 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       firstErrTracker.caught(t);
       
       if (isLeader || distribPhase.equals(DistribPhase.NONE)) {
-        processError(getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()), t);
-        if (errors.size() > maxErrors) {
+        processAddError(getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()), t);
+        if (knownErrors.size() > maxErrors) {
           firstErrTracker.throwFirst();
         }
       } else {
@@ -134,33 +137,22 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     }
   }
   
-  // nocommit: need to subclass & handle & count errors during processDelete
   
-  // nocommit: what about processCommit and other methods? ...
+  // nocommit: what about processCommit and processDelete and other UP methods? ...
   // nocommit: ...at a minimum use firstErrTracker to catch & rethrow so finish can annotate
 
   // nocommit: refactor this method away
-  protected void processError(CharSequence id, Throwable error) {
-    processError(id, error.getMessage());
+  protected void processAddError(CharSequence id, Throwable error) {
+    processAddError(id, error.getMessage());
   }
   
   /** 
    * Logs an error for the given id, and buffers it up to be 
    * included in the response header 
    */
-  protected void processError(CharSequence id, CharSequence error) {
-    // nocommit: refactor so we can track delete errors diff from adds .. are we going to track deletes?
-
-    // nocommit: what's the point of the nested map?
-    SimpleOrderedMap<String> errorMap = new SimpleOrderedMap<>();
-    errorMap.add("message", error.toString());
-    addError(id.toString(), errorMap);
-  }
-  
-  /** Add an error to the list that's going to be returned to the user */
-  protected void addError(String id, SimpleOrderedMap<String> map) {
-    log.debug("Adding error for : {}", id);
-    errors.add(id, map);
+  protected void processAddError(CharSequence id, CharSequence error) {
+  // nocommit: need refactor the KnownErr wrapping up so this method can handle deletes & commits as well
+    knownErrors.add(new KnownErr(CmdType.ADD, id.toString(), error.toString()));
   }
 
   @Override
@@ -203,7 +195,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
           }
           
           if (err.type.equals(CmdType.ADD)) { // nocommit: generalize this to work with any CmdType
-            processError(err.id, err.errorValue);
+            processAddError(err.id, err.errorValue);
           } else {
             log.error("found remote error metadata we can't handle key: " + err);
             assert false : "found remote error metadata we can't handle key: " + err;
@@ -213,20 +205,20 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     }
 
     // good or bad populate the response header
-    if (0 < errors.size()) { // nocommit: we should just always set errors, even if empty?
+    if (0 < knownErrors.size()) { // nocommit: we should just always set errors, even if empty?
       
-      header.add("numErrors", errors.size()); // nocommit: eliminate from response, client can count
-      header.add("errors", errors);
+      header.add("numErrors", knownErrors.size()); // nocommit: eliminate from response, client can count
+      header.add("errors", KnownErr.formatForResponseHeader(knownErrors));
     } else {
       header.add("numErrors", 0); // nocommit: eliminate from response, client can count
     }
 
     // annotate any error that might be thrown (or was already thrown)
-    firstErrTracker.annotate(errors);
+    firstErrTracker.annotate(knownErrors);
 
     // decide if we have hit a situation where we know an error needs to be thrown.
     
-    if ((DistribPhase.TOLEADER.equals(distribPhase) ? 0 : maxErrors) < errors.size()) {
+    if ((DistribPhase.TOLEADER.equals(distribPhase) ? 0 : maxErrors) < knownErrors.size()) {
       // NOTE: even if maxErrors wasn't exceeeded, we need to throw an error when we have any errors if we're
       // a leader that was forwarded to by another node so that the forwarding node knows we encountered some
       // problems and can aggregate the results
@@ -319,7 +311,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
      * Annotates the first exception (which may already have been thrown, or be thrown in the future) with 
      * the metadata from this update processor.  For use in {@link TolerantUpdateProcessor#finish}
      */
-    public void annotate(SimpleOrderedMap<SimpleOrderedMap<String>> errors) {
+    public void annotate(List<KnownErr> errors) {
 
       if (null == first) {
         return; // no exception to annotate
@@ -327,15 +319,14 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       
       assert null != errors : "how do we have an exception to annotate w/o any errors?";
       
-      NamedList<String> errMetadata = first.getMetadata();
-      if (null == errMetadata) { // obnoxious
-        errMetadata = new NamedList<String>();
-        first.setMetadata(errMetadata);
+      NamedList<String> firstErrMetadata = first.getMetadata();
+      if (null == firstErrMetadata) { // obnoxious
+        firstErrMetadata = new NamedList<String>();
+        first.setMetadata(firstErrMetadata);
       }
 
-      for (int i = 0; i < errors.size(); i++) {
-        KnownErr err = new KnownErr(CmdType.ADD, errors.getName(i), errors.getVal(i).get("message"));
-        errMetadata.add(err.getMetadataKey(), err.getMetadataValue());
+      for (KnownErr ke : errors) {
+        firstErrMetadata.add(ke.getMetadataKey(), ke.getMetadataValue());
       }
     }
     
@@ -351,12 +342,22 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
    * Helper class for dealing with SolrException metadata (String) keys 
    */
   public static final class KnownErr {
-    // nocommit: switch metadata key parsing/writting to use this class
-    // nocommit: switch error counting to use instances of this class
     
     private final static String META_PRE =  TolerantUpdateProcessor.class.getName() + "--";
     private final static int META_PRE_LEN = META_PRE.length();
 
+    /** returns a map of simple objects suitable for putting in a SolrQueryResponse */
+    public static List<SimpleOrderedMap<String>> formatForResponseHeader(List<KnownErr> errs) {
+      List<SimpleOrderedMap<String>> result = new ArrayList<>(errs.size());
+      for (KnownErr e : errs) {
+        SimpleOrderedMap<String> entry = new SimpleOrderedMap<String>();
+        entry.add("type", e.type.toString());
+        entry.add("id", e.id);
+        entry.add("message", e.errorValue);
+        result.add(entry);
+      }
+      return result;
+    }
     
     /** returns a KnownErr instance if this metadataKey is one we care about, else null */
     public static KnownErr parseMetadataIfKnownErr(String metadataKey, String metadataVal) {
@@ -372,24 +373,24 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     public final CmdType type;
     /** may be null depending on type */
     public final String id;
-    public final String errorValue;
+    public final String errorValue; // nocommit: refactor: rename errMessage?
     
     public KnownErr(CmdType type, String id, String errorValue) {
       this.type = type;
       assert null != type;
       
-      this.id = id;
       assert null != id;
+      this.id = id;
       
-      this.errorValue = errorValue;
       assert null != errorValue;
+      this.errorValue = errorValue;
     }
     
     public String getMetadataKey() {
       return META_PRE + type + ":" + id;
     }
     public String getMetadataValue() {
-      return errorValue;
+      return errorValue.toString();
     }
     public String toString() {
       return getMetadataKey() + "=>" + getMetadataValue();

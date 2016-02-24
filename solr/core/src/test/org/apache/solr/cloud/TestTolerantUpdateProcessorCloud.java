@@ -22,7 +22,10 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.carrotsearch.randomizedtesting.rules.SystemPropertiesRestoreRule;
 import org.apache.lucene.util.LuceneTestCase;
@@ -496,21 +499,34 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
 
   }
 
-  // nocommit: refactor into multiple methods, some of which can check tolerant deletions as well?
+  // nocommit: redesign so that we can assert errors of diff types besides "add" (ie: deletes) 
   public static void assertUpdateTolerantErrors(String assertionMsgPrefix,
                                                 UpdateResponse response,
                                                 String... errorIdsExpected) {
 
     @SuppressWarnings("unchecked")
-    SimpleOrderedMap<Object> errors = (SimpleOrderedMap<Object>) response.getResponseHeader().get("errors");
+    List<SimpleOrderedMap<String>> errors = (List<SimpleOrderedMap<String>>)
+      response.getResponseHeader().get("errors");
     assertNotNull(assertionMsgPrefix + ": Null errors: " + response.toString(), errors);
     assertEquals(assertionMsgPrefix + ": Num error ids: " + errors.toString(),
                  errorIdsExpected.length, errors.size());
-    for (String id : errorIdsExpected) {
-      assertNotNull(assertionMsgPrefix + ": Id " + id + " not found in errors: " + errors.toString(),
-                    errors.get(id));
+
+    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(errorIdsExpected));
+
+    for (SimpleOrderedMap<String> err : errors) {
+      String assertErrPre = assertionMsgPrefix + ": " + err.toString();
+      
+      // nocommit: support other types
+      assertEquals(assertErrPre + " ... nocommit: this err type not handled yet",
+                   "ADD", err.get("type"));
+      
+      String id = err.get("id");
+      assertNotNull(assertErrPre + " ... null id", id);
+      assertTrue(assertErrPre + " ... unexpected id", addErrorIdsExpected.contains(id));
+
     }
-    
+
+    // nocommit: retire numErrors, we've already checked errors.size()
     assertEquals(assertionMsgPrefix + ": numErrors: " + response.toString(),
                  errorIdsExpected.length, response.getResponseHeader().get("numErrors"));
   }

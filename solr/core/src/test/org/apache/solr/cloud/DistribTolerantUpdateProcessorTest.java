@@ -17,6 +17,11 @@
 package org.apache.solr.cloud;
 
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
+
 
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
@@ -104,6 +109,7 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
 
   }
 
+  // nocommit: redesign so that we can assert errors of diff types besides "add" (ie: deletes) 
   private void assertUSucceedsWithErrors(String chain, SolrInputDocument[] docs,
                                          SolrParams requestParams,
                                          int numErrors,
@@ -112,12 +118,27 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
     newParams.set("update.chain", chain);
     UpdateResponse response = indexDoc(newParams, docs);
     @SuppressWarnings("unchecked")
-    SimpleOrderedMap<Object> errors = (SimpleOrderedMap<Object>) response.getResponseHeader().get("errors");
+    List<SimpleOrderedMap<String>> errors = (List<SimpleOrderedMap<String>>)
+      response.getResponseHeader().get("errors");
     assertNotNull("Null errors in response: " + response.toString(), errors);
+
+    assertEquals("number of errors in response: " + response.toString(), ids.length, errors.size());
+    
+    // nocommit: retire numErrors, we've already checked errors.size()
     assertEquals("Wrong numErrors in response: " + response.toString(),
                  numErrors, response.getResponseHeader().get("numErrors"));
-    for (String id : ids) {
-      assertNotNull("Id " + id + " not found in errors list: " + response.toString(), errors.get(id));
+    
+    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(ids));
+    
+    for (SimpleOrderedMap<String> err : errors) {
+      // nocommit: support other types
+      assertEquals("nocommit: error type not handled yet",
+                   "ADD", err.get("type"));
+      
+      String id = err.get("id");
+      assertNotNull("null err id", id);
+      assertTrue("unexpected id in errors list: " + response.toString(),
+                 addErrorIdsExpected.contains(id));
     }
     
   }
