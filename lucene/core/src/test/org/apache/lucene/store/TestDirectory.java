@@ -1,5 +1,3 @@
-package org.apache.lucene.store;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.store;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
+
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,8 +23,8 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 
-import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 
 public class TestDirectory extends LuceneTestCase {
 
@@ -89,12 +89,9 @@ public class TestDirectory extends LuceneTestCase {
       Lock lock = dir.obtainLock(lockname);
 
       for (Directory other : dirs) {
-        try {
+        expectThrows(LockObtainFailedException.class, () -> {
           other.obtainLock(lockname);
-          fail("didnt get exception");
-        } catch (LockObtainFailedException e) {
-          // OK
-        }
+        });
       }
 
       lock.close();
@@ -110,23 +107,17 @@ public class TestDirectory extends LuceneTestCase {
       dir.close();
       assertFalse(dir.isOpen);
     }
-    
-    IOUtils.rm(path);
   }
 
   // LUCENE-1468
   @SuppressWarnings("resource")
   public void testCopySubdir() throws Throwable {
     Path path = createTempDir("testsubdir");
-    try {
-      Files.createDirectory(path.resolve("subdir"));
-      FSDirectory fsDir = new SimpleFSDirectory(path);
-      RAMDirectory ramDir = new RAMDirectory(fsDir, newIOContext(random()));
-      List<String> files = Arrays.asList(ramDir.listAll());
-      assertFalse(files.contains("subdir"));
-    } finally {
-      IOUtils.rm(path);
-    }
+    Files.createDirectory(path.resolve("subdir"));
+    FSDirectory fsDir = new SimpleFSDirectory(path);
+    RAMDirectory ramDir = new RAMDirectory(fsDir, newIOContext(random()));
+    List<String> files = Arrays.asList(ramDir.listAll());
+    assertFalse(files.contains("subdir"));
   }
 
   // LUCENE-1468
@@ -137,15 +128,11 @@ public class TestDirectory extends LuceneTestCase {
       IndexOutput out = fsDir.createOutput("afile", newIOContext(random()));
       out.close();
       assertTrue(slowFileExists(fsDir, "afile"));
-      try {
+      expectThrows(IOException.class, () -> {
         new SimpleFSDirectory(path.resolve("afile"));
-        fail("did not hit expected exception");
-      } catch (IOException nsde) {
-        // Expected
-      }
+      });
     } finally {
       fsDir.close();
-      IOUtils.rm(path);
     }
   }
 }

@@ -1,5 +1,3 @@
-package org.apache.solr.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.cloud;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud;
 
 import java.io.File;
 import java.io.IOException;
@@ -31,6 +30,8 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.carrotsearch.randomizedtesting.rules.SystemPropertiesRestoreRule;
+
+import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.solr.SolrTestCaseJ4;
@@ -48,6 +49,7 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.core.CoreDescriptor;
+import org.apache.solr.index.TieredMergePolicyFactory;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -105,7 +107,15 @@ public class TestMiniSolrCloudCluster extends LuceneTestCase {
     collectionProperties.putIfAbsent("solr.tests.maxBufferedDocs", "100000");
     collectionProperties.putIfAbsent("solr.tests.ramBufferSizeMB", "100");
     // use non-test classes so RandomizedRunner isn't necessary
-    collectionProperties.putIfAbsent("solr.tests.mergePolicy", "org.apache.lucene.index.TieredMergePolicy");
+    if (random().nextBoolean()) {
+      collectionProperties.putIfAbsent(SolrTestCaseJ4.SYSTEM_PROPERTY_SOLR_TESTS_MERGEPOLICY, TieredMergePolicy.class.getName());
+      collectionProperties.putIfAbsent(SolrTestCaseJ4.SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICY, "true");
+      collectionProperties.putIfAbsent(SolrTestCaseJ4.SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICYFACTORY, "false");
+    } else {
+      collectionProperties.putIfAbsent(SolrTestCaseJ4.SYSTEM_PROPERTY_SOLR_TESTS_MERGEPOLICYFACTORY, TieredMergePolicyFactory.class.getName());
+      collectionProperties.putIfAbsent(SolrTestCaseJ4.SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICYFACTORY, "true");
+      collectionProperties.putIfAbsent(SolrTestCaseJ4.SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICY, "false");
+    }
     collectionProperties.putIfAbsent("solr.tests.mergeScheduler", "org.apache.lucene.index.ConcurrentMergeScheduler");
     collectionProperties.putIfAbsent("solr.directoryFactory", (persistIndex ? "solr.StandardDirectoryFactory" : "solr.RAMDirectoryFactory"));
     
@@ -441,6 +451,65 @@ public class TestMiniSolrCloudCluster extends LuceneTestCase {
           final QueryResponse rsp = cloudSolrClient.query(query);
           assertEquals(numDocs, rsp.getResults().getNumFound());
         }
+
+        // delete the collection we created earlier
+        miniCluster.deleteCollection(collectionName);
+        AbstractDistribZkTestBase.waitForCollectionToDisappear(collectionName, zkStateReader, true, true, 330);
+      }
+    }
+    finally {
+      miniCluster.shutdown();
+    }
+  }
+
+  @Test
+  public void testSegmentTerminateEarly() throws Exception {
+
+    final String collectionName = "testSegmentTerminateEarlyCollection";
+
+    final SegmentTerminateEarlyTestState tstes = new SegmentTerminateEarlyTestState();
+
+    File solrXml = new File(SolrTestCaseJ4.TEST_HOME(), "solr-no-core.xml");
+    Builder jettyConfig = JettyConfig.builder();
+    jettyConfig.waitForLoadingCoresToFinish(null);
+    final MiniSolrCloudCluster miniCluster = createMiniSolrCloudCluster();
+    final CloudSolrClient cloudSolrClient = miniCluster.getSolrClient();
+    cloudSolrClient.setDefaultCollection(collectionName);
+
+    try {
+      // create collection
+      {
+        final String asyncId = (random().nextBoolean() ? null : "asyncId("+collectionName+".create)="+random().nextInt());
+        final Map<String, String> collectionProperties = new HashMap<>();
+        collectionProperties.put(CoreDescriptor.CORE_CONFIG, "solrconfig-sortingmergepolicyfactory.xml");
+        createCollection(miniCluster, collectionName, null, asyncId, Boolean.TRUE, collectionProperties);
+        if (asyncId != null) {
+          final RequestStatusState state = AbstractFullDistribZkTestBase.getRequestStateAfterCompletion(asyncId, 330, cloudSolrClient);
+          assertSame("did not see async createCollection completion", RequestStatusState.COMPLETED, state);
+        }
+      }
+
+      try (SolrZkClient zkClient = new SolrZkClient
+          (miniCluster.getZkServer().getZkAddress(), AbstractZkTestCase.TIMEOUT, 45000, null);
+          ZkStateReader zkStateReader = new ZkStateReader(zkClient)) {
+        AbstractDistribZkTestBase.waitForRecoveriesToFinish(collectionName, zkStateReader, true, true, 330);
+
+        // add some documents, then optimize to get merged-sorted segments
+        tstes.addDocuments(cloudSolrClient, 10, 10, true);
+
+        // CommonParams.SEGMENT_TERMINATE_EARLY parameter intentionally absent
+        tstes.queryTimestampDescending(cloudSolrClient);
+
+        // add a few more documents, but don't optimize to have some not-merge-sorted segments
+        tstes.addDocuments(cloudSolrClient, 2, 10, false);
+
+        // CommonParams.SEGMENT_TERMINATE_EARLY parameter now present
+        tstes.queryTimestampDescendingSegmentTerminateEarlyYes(cloudSolrClient);
+        tstes.queryTimestampDescendingSegmentTerminateEarlyNo(cloudSolrClient);
+
+        // CommonParams.SEGMENT_TERMINATE_EARLY parameter present but it won't be used
+        tstes.queryTimestampDescendingSegmentTerminateEarlyYesGrouped(cloudSolrClient);
+        tstes.queryTimestampAscendingSegmentTerminateEarlyYes(cloudSolrClient); // uses a sort order that is _not_ compatible with the merge sort order
 
         // delete the collection we created earlier
         miniCluster.deleteCollection(collectionName);

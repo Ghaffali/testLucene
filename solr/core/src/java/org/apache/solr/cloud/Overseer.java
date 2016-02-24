@@ -1,26 +1,26 @@
-package org.apache.solr.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+package org.apache.solr.cloud;
 
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedList;
@@ -38,6 +38,7 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.cloud.overseer.ClusterStateMutator;
 import org.apache.solr.cloud.overseer.CollectionMutator;
+import org.apache.solr.cloud.overseer.NodeMutator;
 import org.apache.solr.cloud.overseer.OverseerAction;
 import org.apache.solr.cloud.overseer.ReplicaMutator;
 import org.apache.solr.cloud.overseer.SliceMutator;
@@ -271,10 +272,10 @@ public class Overseer implements Closeable {
 
     private ClusterState processQueueItem(ZkNodeProps message, ClusterState clusterState, ZkStateWriter zkStateWriter, boolean enableBatching, ZkStateWriter.ZkWriteCallback callback) throws Exception {
       final String operation = message.getStr(QUEUE_OPERATION);
-      ZkWriteCommand zkWriteCommand = null;
+      List<ZkWriteCommand> zkWriteCommands = null;
       final TimerContext timerContext = stats.time(operation);
       try {
-        zkWriteCommand = processMessage(clusterState, message, operation);
+        zkWriteCommands = processMessage(clusterState, message, operation);
         stats.success(operation);
       } catch (Exception e) {
         // generally there is nothing we can do - in most cases, we have
@@ -287,8 +288,10 @@ public class Overseer implements Closeable {
       } finally {
         timerContext.stop();
       }
-      if (zkWriteCommand != null) {
-        clusterState = zkStateWriter.enqueueUpdate(clusterState, zkWriteCommand, callback);
+      if (zkWriteCommands != null) {
+        for (ZkWriteCommand zkWriteCommand : zkWriteCommands) {
+          clusterState = zkStateWriter.enqueueUpdate(clusterState, zkWriteCommand, callback);
+        }
         if (!enableBatching)  {
           clusterState = zkStateWriter.writePendingUpdates();
         }
@@ -335,37 +338,37 @@ public class Overseer implements Closeable {
       }
     }
 
-    private ZkWriteCommand processMessage(ClusterState clusterState,
+    private List<ZkWriteCommand> processMessage(ClusterState clusterState,
         final ZkNodeProps message, final String operation) {
       CollectionParams.CollectionAction collectionAction = CollectionParams.CollectionAction.get(operation);
       if (collectionAction != null) {
         switch (collectionAction) {
           case CREATE:
-            return new ClusterStateMutator(getZkStateReader()).createCollection(clusterState, message);
+            return Collections.singletonList(new ClusterStateMutator(getZkStateReader()).createCollection(clusterState, message));
           case DELETE:
-            return new ClusterStateMutator(getZkStateReader()).deleteCollection(clusterState, message);
+            return Collections.singletonList(new ClusterStateMutator(getZkStateReader()).deleteCollection(clusterState, message));
           case CREATESHARD:
-            return new CollectionMutator(getZkStateReader()).createShard(clusterState, message);
+            return Collections.singletonList(new CollectionMutator(getZkStateReader()).createShard(clusterState, message));
           case DELETESHARD:
-            return new CollectionMutator(getZkStateReader()).deleteShard(clusterState, message);
+            return Collections.singletonList(new CollectionMutator(getZkStateReader()).deleteShard(clusterState, message));
           case ADDREPLICA:
-            return new SliceMutator(getZkStateReader()).addReplica(clusterState, message);
+            return Collections.singletonList(new SliceMutator(getZkStateReader()).addReplica(clusterState, message));
           case ADDREPLICAPROP:
-            return new ReplicaMutator(getZkStateReader()).addReplicaProperty(clusterState, message);
+            return Collections.singletonList(new ReplicaMutator(getZkStateReader()).addReplicaProperty(clusterState, message));
           case DELETEREPLICAPROP:
-            return new ReplicaMutator(getZkStateReader()).deleteReplicaProperty(clusterState, message);
+            return Collections.singletonList(new ReplicaMutator(getZkStateReader()).deleteReplicaProperty(clusterState, message));
           case BALANCESHARDUNIQUE:
             ExclusiveSliceProperty dProp = new ExclusiveSliceProperty(clusterState, message);
             if (dProp.balanceProperty()) {
               String collName = message.getStr(ZkStateReader.COLLECTION_PROP);
-              return new ZkWriteCommand(collName, dProp.getDocCollection());
+              return Collections.singletonList(new ZkWriteCommand(collName, dProp.getDocCollection()));
             }
             break;
           case MODIFYCOLLECTION:
             CollectionsHandler.verifyRuleParams(zkController.getCoreContainer() ,message.getProperties());
-            return new CollectionMutator(reader).modifyCollection(clusterState,message);
+            return Collections.singletonList(new CollectionMutator(reader).modifyCollection(clusterState,message));
           case MIGRATESTATEFORMAT:
-            return new ClusterStateMutator(reader).migrateStateFormat(clusterState, message);
+            return Collections.singletonList(new ClusterStateMutator(reader).migrateStateFormat(clusterState, message));
           default:
             throw new RuntimeException("unknown operation:" + operation
                 + " contents:" + message.getProperties());
@@ -377,17 +380,17 @@ public class Overseer implements Closeable {
         }
         switch (overseerAction) {
           case STATE:
-            return new ReplicaMutator(getZkStateReader()).setState(clusterState, message);
+            return Collections.singletonList(new ReplicaMutator(getZkStateReader()).setState(clusterState, message));
           case LEADER:
-            return new SliceMutator(getZkStateReader()).setShardLeader(clusterState, message);
+            return Collections.singletonList(new SliceMutator(getZkStateReader()).setShardLeader(clusterState, message));
           case DELETECORE:
-            return new SliceMutator(getZkStateReader()).removeReplica(clusterState, message);
+            return Collections.singletonList(new SliceMutator(getZkStateReader()).removeReplica(clusterState, message));
           case ADDROUTINGRULE:
-            return new SliceMutator(getZkStateReader()).addRoutingRule(clusterState, message);
+            return Collections.singletonList(new SliceMutator(getZkStateReader()).addRoutingRule(clusterState, message));
           case REMOVEROUTINGRULE:
-            return new SliceMutator(getZkStateReader()).removeRoutingRule(clusterState, message);
+            return Collections.singletonList(new SliceMutator(getZkStateReader()).removeRoutingRule(clusterState, message));
           case UPDATESHARDSTATE:
-            return new SliceMutator(getZkStateReader()).updateShardState(clusterState, message);
+            return Collections.singletonList(new SliceMutator(getZkStateReader()).updateShardState(clusterState, message));
           case QUIT:
             if (myId.equals(message.get("id"))) {
               log.info("Quit command received {}", LeaderElector.getNodeName(myId));
@@ -397,12 +400,14 @@ public class Overseer implements Closeable {
               log.warn("Overseer received wrong QUIT message {}", message);
             }
             break;
+          case DOWNNODE:
+            return new NodeMutator(getZkStateReader()).downNode(clusterState, message);
           default:
             throw new RuntimeException("unknown operation:" + operation + " contents:" + message.getProperties());
         }
       }
 
-      return ZkStateWriter.NO_OP;
+      return Collections.singletonList(ZkStateWriter.NO_OP);
     }
 
     private LeaderStatus amILeader() {
@@ -907,19 +912,19 @@ public class Overseer implements Closeable {
   /* Internal map for failed tasks, not to be used outside of the Overseer */
   static DistributedMap getRunningMap(final SolrZkClient zkClient) {
     createOverseerNode(zkClient);
-    return new DistributedMap(zkClient, "/overseer/collection-map-running", null);
+    return new DistributedMap(zkClient, "/overseer/collection-map-running");
   }
 
   /* Size-limited map for successfully completed tasks*/
   static DistributedMap getCompletedMap(final SolrZkClient zkClient) {
     createOverseerNode(zkClient);
-    return new SizeLimitedDistributedMap(zkClient, "/overseer/collection-map-completed", null, NUM_RESPONSES_TO_STORE);
+    return new SizeLimitedDistributedMap(zkClient, "/overseer/collection-map-completed", NUM_RESPONSES_TO_STORE);
   }
 
   /* Map for failed tasks, not to be used outside of the Overseer */
   static DistributedMap getFailureMap(final SolrZkClient zkClient) {
     createOverseerNode(zkClient);
-    return new SizeLimitedDistributedMap(zkClient, "/overseer/collection-map-failure", null, NUM_RESPONSES_TO_STORE);
+    return new SizeLimitedDistributedMap(zkClient, "/overseer/collection-map-failure", NUM_RESPONSES_TO_STORE);
   }
   
   /* Collection creation queue */

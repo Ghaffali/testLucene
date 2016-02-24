@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
 
 import java.util.Arrays;
 
@@ -65,12 +64,10 @@ public class SortingLeafReaderTest extends SorterTestBase {
   }
   
   public void testBadSort() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       SortingLeafReader.wrap(sortedReader, Sort.RELEVANCE);
-      fail("Didn't get expected exception");
-    } catch (IllegalArgumentException e) {
-      assertEquals("Cannot sort an index with a Sort that refers to the relevance score", e.getMessage());
-    }
+    });
+    assertEquals("Cannot sort an index with a Sort that refers to the relevance score", expected.getMessage());
   }
 
 }

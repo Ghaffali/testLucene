@@ -1,5 +1,3 @@
-package org.apache.lucene.util.bkd;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.util.bkd;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.bkd;
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -23,8 +22,6 @@ import java.io.IOException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
-import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /** Reads points from disk in a fixed-with format, previously written with {@link OfflinePointWriter}. */
 final class OfflinePointReader implements PointReader {
@@ -41,7 +38,7 @@ final class OfflinePointReader implements PointReader {
 
   private OfflinePointReader(IndexInput in, int packedBytesLength, long start, long length) throws IOException {
     this.in = in;
-    bytesPerDoc = packedBytesLength + RamUsageEstimator.NUM_BYTES_LONG + RamUsageEstimator.NUM_BYTES_INT;
+    bytesPerDoc = packedBytesLength + Long.BYTES + Integer.BYTES;
     long seekFP = start * bytesPerDoc;
     in.seek(seekFP);
     this.countLeft = length;

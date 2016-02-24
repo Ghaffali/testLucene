@@ -1,5 +1,3 @@
-package org.apache.solr.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.cloud;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud;
 
 import javax.xml.parsers.ParserConfigurationException;
 import java.io.File;
@@ -158,6 +157,11 @@ public class OverseerTest extends SolrTestCaseJ4 {
         for (int i = 0; i < 120; i++) {
           String shardId = getShardId(collection, coreNodeName);
           if (shardId != null) {
+            ElectionContext prevContext = electionContext.get(coreName);
+            if (prevContext != null) {
+              prevContext.cancelElection();
+            }
+
             try {
               zkClient.makePath("/collections/" + collection + "/leader_elect/"
                   + shardId + "/election", true);
@@ -173,6 +177,7 @@ public class OverseerTest extends SolrTestCaseJ4 {
                 elector, shardId, collection, nodeName + "_" + coreName, props,
                 zkStateReader);
             elector.setup(ctx);
+            electionContext.put(coreName, ctx);
             elector.joinElection(ctx, false);
             return shardId;
           }

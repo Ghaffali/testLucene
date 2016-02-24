@@ -1,5 +1,3 @@
-package org.apache.lucene.util.packed;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util.packed;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.packed;
+
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -1033,12 +1033,9 @@ public class TestPackedInts extends LuceneTestCase {
         }
         assertEquals(arr.length, buf.size());
         final PackedLongValues values = buf.build();
-        try {
+        expectThrows(IllegalStateException.class, () -> {
           buf.add(random().nextLong());
-          fail("expected an exception");
-        } catch (IllegalStateException e) {
-          // ok
-        }
+        });
         assertEquals(arr.length, values.size());
 
         for (int i = 0; i < arr.length; ++i) {
@@ -1160,12 +1157,9 @@ public class TestPackedInts extends LuceneTestCase {
         assertEquals(i, it.ord());
       }
       assertEquals(fp, in instanceof ByteArrayDataInput ? ((ByteArrayDataInput) in).getPosition() : ((IndexInput) in).getFilePointer());
-      try {
+      expectThrows(IOException.class, () -> {
         it.next();
-        assertTrue(false);
-      } catch (IOException e) {
-        // OK
-      }
+      });
 
       if (in instanceof ByteArrayDataInput) {
         ((ByteArrayDataInput) in).setPosition(0);
@@ -1187,12 +1181,9 @@ public class TestPackedInts extends LuceneTestCase {
         }
       }
       assertEquals(fp, in instanceof ByteArrayDataInput ? ((ByteArrayDataInput) in).getPosition() : ((IndexInput) in).getFilePointer());
-      try {
+      expectThrows(IOException.class, () -> {
         it2.skip(1);
-        assertTrue(false);
-      } catch (IOException e) {
-        // OK
-      }
+      });
 
       in1.seek(0L);
       final BlockPackedReader reader = new BlockPackedReader(in1, PackedInts.VERSION_CURRENT, blockSize, valueCount, random().nextBoolean());

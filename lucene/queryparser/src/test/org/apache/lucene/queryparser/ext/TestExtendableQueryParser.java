@@ -1,5 +1,3 @@
-package org.apache.lucene.queryparser.ext;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.queryparser.ext;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.queryparser.ext;
 
 import java.util.Locale;
 
@@ -58,11 +57,9 @@ public class TestExtendableQueryParser extends TestQueryParser {
     Extensions ext = newExtensions(':');
     ext.add("testExt", new ExtensionStub());
     ExtendableQueryParser parser = (ExtendableQueryParser) getParser(null, ext);
-    try {
+    expectThrows(ParseException.class, () -> {
       parser.parse("aField:testExt:\"foo \\& bar\"");
-      fail("extension field delimiter is not escaped");
-    } catch (ParseException e) {
-    }
+    });
   }
 
   public void testExtFieldUnqoted() throws Exception {

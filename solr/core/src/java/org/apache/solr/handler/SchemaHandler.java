@@ -1,5 +1,3 @@
-package org.apache.solr.handler;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.handler;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.handler;
 
 
 import java.io.IOException;
@@ -33,6 +32,7 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
+import org.apache.solr.core.SolrCore;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
@@ -43,6 +43,7 @@ import org.apache.solr.schema.ZkIndexSchemaReader;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.ApiSupport;
+import org.apache.solr.util.plugin.SolrCoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +58,6 @@ public class SchemaHandler extends RequestHandlerBase implements ApiSupport {
   @Override
   public void init(NamedList args) {
     super.init(args);
-    Object immutable = args.get(IMMUTABLE_CONFIGSET_ARG);
-    isImmutableConfigSet = immutable  != null ? Boolean.parseBoolean(immutable.toString()) : false;
   }
 
   @Override
@@ -189,6 +188,11 @@ public class SchemaHandler extends RequestHandlerBase implements ApiSupport {
   @Override
   public String getDescription() {
     return "CRUD operations over the Solr schema";
+  }
+
+  @Override
+  public void inform(SolrCore core) {
+    isImmutableConfigSet = SolrConfigHandler.getImmutable(core);
   }
 
   @Override

@@ -14,9 +14,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.client.solrj.io.stream;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.io.Serializable;
 import java.io.Writer;
@@ -26,7 +26,7 @@ import org.apache.solr.client.solrj.io.Tuple;
 import org.apache.solr.client.solrj.io.comp.StreamComparator;
 
 
-public abstract class TupleStream implements Serializable {
+public abstract class TupleStream implements Closeable, Serializable {
 
   private static final long serialVersionUID = 1;
 

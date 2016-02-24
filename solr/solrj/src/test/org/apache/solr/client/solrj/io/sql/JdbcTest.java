@@ -1,5 +1,3 @@
-package org.apache.solr.client.solrj.io.sql;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.client.solrj.io.sql;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.client.solrj.io.sql;
 
 import java.io.File;
 import java.sql.Connection;
@@ -24,7 +23,12 @@ import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.Statement;
+import java.sql.Types;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Properties;
+import java.util.Set;
 
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.Slow;
@@ -91,183 +95,261 @@ public class JdbcTest extends AbstractFullDistribZkTestBase {
 
     waitForRecoveriesToFinish(false);
 
-    indexr(id, "0", "a_s", "hello0", "a_i", "0", "a_f", "1");
-    indexr(id, "2", "a_s", "hello0", "a_i", "2", "a_f", "2");
-    indexr(id, "3", "a_s", "hello3", "a_i", "3", "a_f", "3");
-    indexr(id, "4", "a_s", "hello4", "a_i", "4", "a_f", "4");
-    indexr(id, "1", "a_s", "hello0", "a_i", "1", "a_f", "5");
-    indexr(id, "5", "a_s", "hello3", "a_i", "10", "a_f", "6");
-    indexr(id, "6", "a_s", "hello4", "a_i", "11", "a_f", "7");
-    indexr(id, "7", "a_s", "hello3", "a_i", "12", "a_f", "8");
-    indexr(id, "8", "a_s", "hello3", "a_i", "13", "a_f", "9");
-    indexr(id, "9", "a_s", "hello0", "a_i", "14", "a_f", "10");
+    indexr(id, "0", "a_s", "hello0", "a_i", "0", "a_f", "1", "testnull_i", null);
+    indexr(id, "2", "a_s", "hello0", "a_i", "2", "a_f", "2", "testnull_i", "2");
+    indexr(id, "3", "a_s", "hello3", "a_i", "3", "a_f", "3", "testnull_i", null);
+    indexr(id, "4", "a_s", "hello4", "a_i", "4", "a_f", "4", "testnull_i", "4");
+    indexr(id, "1", "a_s", "hello0", "a_i", "1", "a_f", "5", "testnull_i", null);
+    indexr(id, "5", "a_s", "hello3", "a_i", "10", "a_f", "6", "testnull_i", "6");
+    indexr(id, "6", "a_s", "hello4", "a_i", "11", "a_f", "7", "testnull_i", null);
+    indexr(id, "7", "a_s", "hello3", "a_i", "12", "a_f", "8", "testnull_i", "8");
+    indexr(id, "8", "a_s", "hello3", "a_i", "13", "a_f", "9", "testnull_i", null);
+    indexr(id, "9", "a_s", "hello0", "a_i", "14", "a_f", "10", "testnull_i", "10");
 
     commit();
 
     String zkHost = zkServer.getZkAddress();
 
     Properties props = new Properties();
-    Connection con = DriverManager.getConnection("jdbc:solr://" + zkHost + "?collection=collection1", props);
-    Statement stmt = con.createStatement();
-    ResultSet rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i desc limit 2");
-    assertTrue(rs.getMetaData() != null);
 
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 14);
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("a_f") == 10);
+    try (Connection con = DriverManager.getConnection("jdbc:solr://" + zkHost + "?collection=collection1", props)) {
+      try (Statement stmt = con.createStatement()) {
+        try (ResultSet rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i desc limit 2")) {
+          assertTrue(rs.next());
 
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 13);
-    assert(rs.getString("a_s").equals("hello3"));
-    assert(rs.getDouble("a_f") == 9);
-    assert(!rs.next());
-    stmt.close();
+          assertEquals(14, rs.getLong("a_i"));
+          assertEquals(14, rs.getLong(2));
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(3));
+          assertEquals(10, rs.getDouble("a_f"), 0);
+          assertEquals(10, rs.getDouble(4), 0);
 
-    //Test statement reuse
-    rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i asc limit 2");
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 0);
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("a_f") == 1);
+          assertTrue(rs.next());
 
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 1);
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("a_f") == 5);
-    assert(!rs.next());
-    stmt.close();
+          assertEquals(13, rs.getLong("a_i"));
+          assertEquals(13, rs.getLong(2));
+          assertEquals("hello3", rs.getString("a_s"));
+          assertEquals("hello3", rs.getString(3));
+          assertEquals(9, rs.getDouble("a_f"), 0);
+          assertEquals(9, rs.getDouble(4), 0);
 
-    //Test connection reuse
-    stmt = con.createStatement();
-    rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i desc limit 2");
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 14);
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 13);
-    stmt.close();
+          assertFalse(rs.next());
+        }
 
-    //Test statement reuse
-    rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i asc limit 2");
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 0);
-    assert(rs.next());
-    assert(rs.getLong("a_i") == 1);
-    assert(!rs.next());
-    stmt.close();
+        //Test statement reuse
+        try (ResultSet rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i asc limit 2")) {
+          assertTrue(rs.next());
 
-    //Test simple loop
-    rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i asc limit 100");
-    int count = 0;
-    while(rs.next()) {
-      ++count;
+          assertEquals(0, rs.getLong("a_i"));
+          assertEquals(0, rs.getLong(2));
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(3));
+          assertEquals(1, rs.getDouble("a_f"), 0);
+          assertEquals(1, rs.getDouble(4), 0);
+
+          assertTrue(rs.next());
+
+          assertEquals(1, rs.getLong("a_i"));
+          assertEquals(1, rs.getLong(2));
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(3));
+          assertEquals(5, rs.getDouble("a_f"), 0);
+          assertEquals(5, rs.getDouble(4), 0);
+
+          assertFalse(rs.next());
+        }
+      }
+
+      //Test connection reuse
+      try (Statement stmt = con.createStatement()) {
+        try (ResultSet rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i desc limit 2")) {
+          assertTrue(rs.next());
+
+          assertEquals(14, rs.getLong("a_i"));
+          assertEquals(14, rs.getLong(2));
+
+          assertTrue(rs.next());
+
+          assertEquals(13, rs.getLong("a_i"));
+          assertEquals(13, rs.getLong(2));
+
+          assertFalse(rs.next());
+        }
+
+        //Test statement reuse
+        stmt.setMaxRows(2);
+        try (ResultSet rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i asc")) {
+          assertTrue(rs.next());
+
+          assertEquals(0, rs.getLong("a_i"));
+          assertEquals(0, rs.getLong(2));
+
+          assertTrue(rs.next());
+
+          assertEquals(1, rs.getLong("a_i"));
+          assertEquals(1, rs.getLong(2));
+
+          assertFalse(rs.next());
+        }
+
+        //Test simple loop. Since limit is set it will override the statement maxRows.
+        try (ResultSet rs = stmt.executeQuery("select id, a_i, a_s, a_f from collection1 order by a_i asc    LIMIT   100")) {
+          int count = 0;
+          while (rs.next()) {
+            ++count;
+          }
+          assertEquals(10, count);
+        }
+      }
     }
-
-    assert(count == 10);
-
-    stmt.close();
-    con.close();
 
     //Test facet aggregation
     props = new Properties();
     props.put("aggregationMode", "facet");
-    con = DriverManager.getConnection("jdbc:solr://" + zkHost + "?collection=collection1", props);
-    stmt = con.createStatement();
-    rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s order by sum(a_f) desc");
+    try (Connection con = DriverManager.getConnection("jdbc:solr://" + zkHost + "?collection=collection1", props)) {
+      try (Statement stmt = con.createStatement()) {
+        try (ResultSet rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s " +
+            "order by sum(a_f) desc")) {
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello3"));
-    assert(rs.getDouble("sum(a_f)") == 26);
+          assertTrue(rs.next());
 
+          assertEquals("hello3", rs.getString("a_s"));
+          assertEquals("hello3", rs.getString(1));
+          assertEquals(26, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(26, rs.getDouble(2), 0);
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("sum(a_f)") == 18);
+          assertTrue(rs.next());
 
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(1));
+          assertEquals(18, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(18, rs.getDouble(2), 0);
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello4"));
-    assert(rs.getDouble("sum(a_f)") == 11);
+          assertTrue(rs.next());
 
-    stmt.close();
-    con.close();
+          assertEquals("hello4", rs.getString("a_s"));
+          assertEquals("hello4", rs.getString(1));
+          assertEquals(11, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(11, rs.getDouble(2), 0);
+
+          assertFalse(rs.next());
+        }
+      }
+    }
 
     //Test map / reduce aggregation
     props = new Properties();
     props.put("aggregationMode", "map_reduce");
     props.put("numWorkers", "2");
-    con = DriverManager.getConnection("jdbc:solr://" + zkHost + "?collection=collection1", props);
-    stmt = con.createStatement();
-    rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s order by sum(a_f) desc");
+    try (Connection con = DriverManager.getConnection("jdbc:solr://" + zkHost + "?collection=collection1", props)) {
+      try (Statement stmt = con.createStatement()) {
+        try (ResultSet rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s " +
+            "order by sum(a_f) desc")) {
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello3"));
-    assert(rs.getDouble("sum(a_f)") == 26);
+          assertTrue(rs.next());
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("sum(a_f)") == 18);
+          assertEquals("hello3", rs.getString("a_s"));
+          assertEquals("hello3", rs.getString(1));
+          assertEquals(26, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(26, rs.getDouble(2), 0);
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello4"));
-    assert(rs.getDouble("sum(a_f)") == 11);
+          assertTrue(rs.next());
 
-    stmt.close();
-    con.close();
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(1));
+          assertEquals(18, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(18, rs.getDouble(2), 0);
 
+          assertTrue(rs.next());
+
+          assertEquals("hello4", rs.getString("a_s"));
+          assertEquals("hello4", rs.getString(1));
+          assertEquals(11, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(11, rs.getDouble(2), 0);
+
+          assertFalse(rs.next());
+        }
+      }
+    }
+    
     //Test params on the url
-    con = DriverManager.getConnection("jdbc:solr://" + zkHost + "?collection=collection1&aggregationMode=map_reduce&numWorkers=2");
+    try (Connection con = DriverManager.getConnection("jdbc:solr://" + zkHost + 
+        "?collection=collection1&aggregationMode=map_reduce&numWorkers=2")) {
 
-    Properties p = ((ConnectionImpl) con).getProperties();
+      Properties p = ((ConnectionImpl) con).getProperties();
 
-    assert(p.getProperty("aggregationMode").equals("map_reduce"));
-    assert(p.getProperty("numWorkers").equals("2"));
+      assert(p.getProperty("aggregationMode").equals("map_reduce"));
+      assert(p.getProperty("numWorkers").equals("2"));
 
-    stmt = con.createStatement();
-    rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s order by sum(a_f) desc");
+      try (Statement stmt = con.createStatement()) {
+        try (ResultSet rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s " +
+            "order by sum(a_f) desc")) {
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello3"));
-    assert(rs.getDouble("sum(a_f)") == 26);
+          assertTrue(rs.next());
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("sum(a_f)") == 18);
+          assertEquals("hello3", rs.getString("a_s"));
+          assertEquals("hello3", rs.getString(1));
+          assertEquals(26, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(26, rs.getDouble(2), 0);
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello4"));
-    assert(rs.getDouble("sum(a_f)") == 11);
+          assertTrue(rs.next());
 
-    stmt.close();
-    con.close();
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(1));
+          assertEquals(18, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(18, rs.getDouble(2), 0);
+
+          assertTrue(rs.next());
+
+          assertEquals("hello4", rs.getString("a_s"));
+          assertEquals("hello4", rs.getString(1));
+          assertEquals(11, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(11, rs.getDouble(2), 0);
+
+          assertFalse(rs.next());
+        }
+      }
+    }
 
     // Test JDBC paramters in URL
-    con = DriverManager.getConnection(
-        "jdbc:solr://" + zkHost + "?collection=collection1&username=&password=&testKey1=testValue&testKey2");
+    try (Connection con = DriverManager.getConnection(
+        "jdbc:solr://" + zkHost + "?collection=collection1&username=&password=&testKey1=testValue&testKey2")) {
 
-    p = ((ConnectionImpl) con).getProperties();
-    assert(p.getProperty("username").equals(""));
-    assert(p.getProperty("password").equals(""));
-    assert(p.getProperty("testKey1").equals("testValue"));
-    assert(p.getProperty("testKey2").equals(""));
+      Properties p = ((ConnectionImpl) con).getProperties();
+      assertEquals("", p.getProperty("username"));
+      assertEquals("", p.getProperty("password"));
+      assertEquals("testValue", p.getProperty("testKey1"));
+      assertEquals("", p.getProperty("testKey2"));
 
-    stmt = con.createStatement();
-    rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s order by sum(a_f) desc");
+      try (Statement stmt = con.createStatement()) {
+        try (ResultSet rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s " +
+            "order by sum(a_f) desc")) {
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello3"));
-    assert(rs.getDouble("sum(a_f)") == 26);
+          assertTrue(rs.next());
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("sum(a_f)") == 18);
+          assertEquals("hello3", rs.getString("a_s"));
+          assertEquals("hello3", rs.getString(1));
+          assertEquals(26, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(26, rs.getDouble(2), 0);
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello4"));
-    assert(rs.getDouble("sum(a_f)") == 11);
+          assertTrue(rs.next());
 
-    stmt.close();
-    con.close();
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(1));
+          assertEquals(18, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(18, rs.getDouble(2), 0);
+
+          assertTrue(rs.next());
+
+          assertEquals("hello4", rs.getString("a_s"));
+          assertEquals("hello4", rs.getString(1));
+          assertEquals(11, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(11, rs.getDouble(2), 0);
+
+          assertFalse(rs.next());
+        }
+      }
+    }
 
     // Test JDBC paramters in properties
     Properties providedProperties = new Properties();
@@ -277,48 +359,118 @@ public class JdbcTest extends AbstractFullDistribZkTestBase {
     providedProperties.put("testKey1", "testValue");
     providedProperties.put("testKey2", "");
 
-    con = DriverManager.getConnection("jdbc:solr://" + zkHost, providedProperties);
+    try (Connection con = DriverManager.getConnection("jdbc:solr://" + zkHost, providedProperties)) {
+      Properties p = ((ConnectionImpl) con).getProperties();
+      assert(p.getProperty("username").equals(""));
+      assert(p.getProperty("password").equals(""));
+      assert(p.getProperty("testKey1").equals("testValue"));
+      assert(p.getProperty("testKey2").equals(""));
 
-    p = ((ConnectionImpl) con).getProperties();
-    assert(p.getProperty("username").equals(""));
-    assert(p.getProperty("password").equals(""));
-    assert(p.getProperty("testKey1").equals("testValue"));
-    assert(p.getProperty("testKey2").equals(""));
+      try (Statement stmt = con.createStatement()) {
+        try (ResultSet rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s " +
+            "order by sum(a_f) desc")) {
 
-    stmt = con.createStatement();
-    rs = stmt.executeQuery("select a_s, sum(a_f) from collection1 group by a_s order by sum(a_f) desc");
+          assertTrue(rs.next());
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello3"));
-    assert(rs.getDouble("sum(a_f)") == 26);
+          assertEquals("hello3", rs.getString("a_s"));
+          assertEquals("hello3", rs.getString(1));
+          assertEquals(26, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(26, rs.getDouble(2), 0);
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello0"));
-    assert(rs.getDouble("sum(a_f)") == 18);
+          assertTrue(rs.next());
 
-    assert(rs.next());
-    assert(rs.getString("a_s").equals("hello4"));
-    assert(rs.getDouble("sum(a_f)") == 11);
+          assertEquals("hello0", rs.getString("a_s"));
+          assertEquals("hello0", rs.getString(1));
+          assertEquals(18, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(18, rs.getDouble(2), 0);
 
-    stmt.close();
-    con.close();
+          assertTrue(rs.next());
+
+          assertEquals("hello4", rs.getString("a_s"));
+          assertEquals("hello4", rs.getString(1));
+          assertEquals(11, rs.getDouble("sum(a_f)"), 0);
+          assertEquals(11, rs.getDouble(2), 0);
+
+          assertFalse(rs.next());
+        }
+      }
+    }
 
     testDriverMetadata();
   }
 
   private void testDriverMetadata() throws Exception {
     String collection = DEFAULT_COLLECTION;
-    String connectionString = "jdbc:solr://" + zkServer.getZkAddress() + "?collection=" + collection +
-        "&username=&password=&testKey1=testValue&testKey2";
-    String sql = "select id, a_i, a_s, a_f from " + collection + " order by a_i desc limit 2";
 
-    try (Connection con = DriverManager.getConnection(connectionString)) {
-      assertEquals(collection, con.getCatalog());
+    String connectionString1 = "jdbc:solr://" + zkServer.getZkAddress() + "?collection=" + collection +
+        "&username=&password=&testKey1=testValue&testKey2";
+    Properties properties1 = new Properties();
+
+    String sql = "select id, a_i, a_s, a_f as my_float_col, testnull_i from " + collection +
+        " order by a_i desc";
+
+    String connectionString2 = "jdbc:solr://" + zkServer.getZkAddress() + "?collection=" + collection +
+        "&aggregationMode=map_reduce&numWorkers=2&username=&password=&testKey1=testValue&testKey2";
+    Properties properties2 = new Properties();
+
+    String sql2 = sql + " limit 2";
+
+    //testJDBCMethods(collection, connectionString1, properties1, sql);
+    //testJDBCMethods(collection, connectionString2, properties2, sql);
+    testJDBCMethods(collection, connectionString1, properties1, sql2);
+    testJDBCMethods(collection, connectionString2, properties2, sql2);
+  }
+
+  private void testJDBCMethods(String collection, String connectionString, Properties properties, String sql) throws Exception {
+    try (Connection con = DriverManager.getConnection(connectionString, properties)) {
+      assertTrue(con.isValid(DEFAULT_CONNECTION_TIMEOUT));
+
+      assertEquals(zkServer.getZkAddress(), con.getCatalog());
+      con.setCatalog(zkServer.getZkAddress());
+      assertEquals(zkServer.getZkAddress(), con.getCatalog());
+
+      assertEquals(collection, con.getSchema());
+      con.setSchema(collection);
+      assertEquals(collection, con.getSchema());
 
       DatabaseMetaData databaseMetaData = con.getMetaData();
       assertNotNull(databaseMetaData);
 
+      assertEquals(con, databaseMetaData.getConnection());
       assertEquals(connectionString, databaseMetaData.getURL());
+
+      assertEquals(4, databaseMetaData.getJDBCMajorVersion());
+      assertEquals(0, databaseMetaData.getJDBCMinorVersion());
+
+      assertEquals("Apache Solr", databaseMetaData.getDatabaseProductName());
+
+      // The following tests require package information that is not available when running via Maven
+//      assertEquals(this.getClass().getPackage().getSpecificationVersion(), databaseMetaData.getDatabaseProductVersion());
+//      assertEquals(0, databaseMetaData.getDatabaseMajorVersion());
+//      assertEquals(0, databaseMetaData.getDatabaseMinorVersion());
+
+//      assertEquals(this.getClass().getPackage().getSpecificationTitle(), databaseMetaData.getDriverName());
+//      assertEquals(this.getClass().getPackage().getSpecificationVersion(), databaseMetaData.getDriverVersion());
+//      assertEquals(0, databaseMetaData.getDriverMajorVersion());
+//      assertEquals(0, databaseMetaData.getDriverMinorVersion());
+
+      try(ResultSet rs = databaseMetaData.getCatalogs()) {
+        assertTrue(rs.next());
+        assertEquals(zkServer.getZkAddress(), rs.getString("TABLE_CAT"));
+        assertFalse(rs.next());
+      }
+
+      List<String> collections = new ArrayList<>();
+      collections.addAll(cloudClient.getZkStateReader().getClusterState().getCollections());
+      Collections.sort(collections);
+      try(ResultSet rs = databaseMetaData.getSchemas()) {
+        for(String acollection : collections) {
+          assertTrue(rs.next());
+          assertEquals(acollection, rs.getString("TABLE_SCHEM"));
+          assertEquals(zkServer.getZkAddress(), rs.getString("TABLE_CATALOG"));
+        }
+        assertFalse(rs.next());
+      }
 
       assertNull(con.getWarnings());
       con.clearWarnings();
@@ -347,6 +499,8 @@ public class JdbcTest extends AbstractFullDistribZkTestBase {
           checkResultSetMetadata(rs);
           checkResultSet(rs);
         }
+
+        assertFalse(statement.getMoreResults());
       }
     }
   }
@@ -355,6 +509,38 @@ public class JdbcTest extends AbstractFullDistribZkTestBase {
     ResultSetMetaData resultSetMetaData = rs.getMetaData();
 
     assertNotNull(resultSetMetaData);
+
+    assertEquals(5, resultSetMetaData.getColumnCount());
+
+    assertEquals("id", resultSetMetaData.getColumnName(1));
+    assertEquals("a_i", resultSetMetaData.getColumnName(2));
+    assertEquals("a_s", resultSetMetaData.getColumnName(3));
+    assertEquals("a_f", resultSetMetaData.getColumnName(4));
+    assertEquals("testnull_i", resultSetMetaData.getColumnName(5));
+
+    assertEquals("id", resultSetMetaData.getColumnLabel(1));
+    assertEquals("a_i", resultSetMetaData.getColumnLabel(2));
+    assertEquals("a_s", resultSetMetaData.getColumnLabel(3));
+    assertEquals("my_float_col", resultSetMetaData.getColumnLabel(4));
+    assertEquals("testnull_i", resultSetMetaData.getColumnLabel(5));
+
+    assertEquals("id".length(), resultSetMetaData.getColumnDisplaySize(1));
+    assertEquals("a_i".length(), resultSetMetaData.getColumnDisplaySize(2));
+    assertEquals("a_s".length(), resultSetMetaData.getColumnDisplaySize(3));
+    assertEquals("my_float_col".length(), resultSetMetaData.getColumnDisplaySize(4));
+    assertEquals("testnull_i".length(), resultSetMetaData.getColumnDisplaySize(5));
+
+    assertEquals("Long", resultSetMetaData.getColumnTypeName(1));
+    assertEquals("Long", resultSetMetaData.getColumnTypeName(2));
+    assertEquals("String", resultSetMetaData.getColumnTypeName(3));
+    assertEquals("Double", resultSetMetaData.getColumnTypeName(4));
+    assertEquals("Long", resultSetMetaData.getColumnTypeName(5));
+
+    assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(1));
+    assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(2));
+    assertEquals(Types.VARCHAR, resultSetMetaData.getColumnType(3));
+    assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(4));
+    assertEquals(Types.DOUBLE, resultSetMetaData.getColumnType(5));
   }
 
   private void checkResultSet(ResultSet rs) throws Exception {
@@ -363,14 +549,201 @@ public class JdbcTest extends AbstractFullDistribZkTestBase {
     assertNull(rs.getWarnings());
 
     assertTrue(rs.next());
-    assertEquals(14, rs.getLong("a_i"));
+
+    assertEquals(14L, rs.getObject("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(14L, rs.getObject(2));
+    assertFalse(rs.wasNull());
+    assertEquals(14L, rs.getLong("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(14L, rs.getLong(2));
+    assertFalse(rs.wasNull());
+    assertEquals(14D, rs.getDouble("a_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(14D, rs.getDouble(2), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(14f, rs.getFloat("a_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(14f, rs.getFloat(2), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(14, rs.getShort("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(14, rs.getShort(2));
+    assertFalse(rs.wasNull());
+    assertEquals(14, rs.getByte("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(14, rs.getByte(2));
+    assertFalse(rs.wasNull());
+
+    assertEquals("hello0", rs.getObject("a_s"));
+    assertFalse(rs.wasNull());
+    assertEquals("hello0", rs.getObject(3));
+    assertFalse(rs.wasNull());
     assertEquals("hello0", rs.getString("a_s"));
-    assertEquals(10, rs.getDouble("a_f"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals("hello0", rs.getString(3));
+    assertFalse(rs.wasNull());
+
+    assertEquals(10D, rs.getObject("my_float_col"));
+    assertFalse(rs.wasNull());
+    assertEquals(10D, rs.getObject(4));
+    assertFalse(rs.wasNull());
+    assertEquals(10D, rs.getDouble("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10D, rs.getDouble(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10F, rs.getFloat("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10F, rs.getFloat(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getInt("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getInt(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10L, rs.getLong("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10L, rs.getLong(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getShort("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getShort(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getByte("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getByte(4), 0);
+    assertFalse(rs.wasNull());
+
+    assertEquals(10L, rs.getObject("testnull_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(10L, rs.getObject(5));
+    assertFalse(rs.wasNull());
+    assertEquals("10", rs.getString("testnull_i"));
+    assertFalse(rs.wasNull());
+    assertEquals("10", rs.getString(5));
+    assertFalse(rs.wasNull());
+    assertEquals(10D, rs.getDouble("testnull_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10D, rs.getDouble(5), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10F, rs.getFloat("testnull_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10F, rs.getFloat(5), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getInt("testnull_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getInt(5), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10L, rs.getLong("testnull_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10L, rs.getLong(5), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getShort("testnull_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getShort(5), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getByte("testnull_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(10, rs.getByte(5), 0);
+    assertFalse(rs.wasNull());
+
 
     assertTrue(rs.next());
-    assertEquals(13, rs.getLong("a_i"));
+
+    assertEquals(13L, rs.getObject("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(13L, rs.getObject(2));
+    assertFalse(rs.wasNull());
+    assertEquals(13L, rs.getLong("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(13L, rs.getLong(2));
+    assertFalse(rs.wasNull());
+    assertEquals(13D, rs.getDouble("a_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(13D, rs.getDouble(2), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(13f, rs.getFloat("a_i"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(13f, rs.getFloat(2), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(13, rs.getShort("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(13, rs.getShort(2));
+    assertFalse(rs.wasNull());
+    assertEquals(13, rs.getByte("a_i"));
+    assertFalse(rs.wasNull());
+    assertEquals(13, rs.getByte(2));
+    assertFalse(rs.wasNull());
+
+    assertEquals("hello3", rs.getObject("a_s"));
+    assertFalse(rs.wasNull());
+    assertEquals("hello3", rs.getObject(3));
+    assertFalse(rs.wasNull());
     assertEquals("hello3", rs.getString("a_s"));
-    assertEquals(9, rs.getDouble("a_f"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals("hello3", rs.getString(3));
+    assertFalse(rs.wasNull());
+
+    assertEquals(9D, rs.getObject("my_float_col"));
+    assertFalse(rs.wasNull());
+    assertEquals(9D, rs.getObject(4));
+    assertFalse(rs.wasNull());
+    assertEquals(9D, rs.getDouble("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9D, rs.getDouble(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9F, rs.getFloat("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9F, rs.getFloat(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9, rs.getInt("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9, rs.getInt(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9L, rs.getLong("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9L, rs.getLong(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9, rs.getShort("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9, rs.getShort(4), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9, rs.getByte("my_float_col"), 0);
+    assertFalse(rs.wasNull());
+    assertEquals(9, rs.getByte(4), 0);
+    assertFalse(rs.wasNull());
+
+    assertEquals(null, rs.getObject("testnull_i"));
+    assertTrue(rs.wasNull());
+    assertEquals(null, rs.getObject(5));
+    assertTrue(rs.wasNull());
+    assertEquals(null, rs.getString("testnull_i"));
+    assertTrue(rs.wasNull());
+    assertEquals(null, rs.getString(5));
+    assertTrue(rs.wasNull());
+    assertEquals(0D, rs.getDouble("testnull_i"), 0);
+    assertTrue(rs.wasNull());
+    assertEquals(0D, rs.getDouble(5), 0);
+    assertTrue(rs.wasNull());
+    assertEquals(0F, rs.getFloat("testnull_i"), 0);
+    assertTrue(rs.wasNull());
+    assertEquals(0F, rs.getFloat(5), 0);
+    assertTrue(rs.wasNull());
+    assertEquals(0, rs.getInt("testnull_i"));
+    assertTrue(rs.wasNull());
+    assertEquals(0, rs.getInt(5));
+    assertTrue(rs.wasNull());
+    assertEquals(0L, rs.getLong("testnull_i"));
+    assertTrue(rs.wasNull());
+    assertEquals(0L, rs.getLong(5));
+    assertTrue(rs.wasNull());
+    assertEquals(0, rs.getShort("testnull_i"));
+    assertTrue(rs.wasNull());
+    assertEquals(0, rs.getShort(5));
+    assertTrue(rs.wasNull());
+    assertEquals(0, rs.getByte("testnull_i"));
+    assertTrue(rs.wasNull());
+    assertEquals(0, rs.getByte(5));
+    assertTrue(rs.wasNull());
 
     assertFalse(rs.next());
   }

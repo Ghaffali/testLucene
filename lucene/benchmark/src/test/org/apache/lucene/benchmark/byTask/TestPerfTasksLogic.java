@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.benchmark.byTask;
 
 import java.io.BufferedReader;
@@ -259,13 +258,9 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     CountingHighlighterTestTask.numHighlightedResults = 0;
     CountingHighlighterTestTask.numDocsRetrieved = 0;
     // 3. execute the algorithm  (required in every "logic" test)
-    try {
-      Benchmark benchmark = execBenchmark(algLines);
-      assertTrue("CountingHighlighterTest should have thrown an exception", false);
-      assertNotNull(benchmark); // (avoid compile warning on unused variable)
-    } catch (Exception e) {
-      assertTrue(true);
-    }
+    expectThrows(Exception.class, () -> {
+      execBenchmark(algLines);
+    });
   }
 
   /**
@@ -440,8 +435,6 @@ public class TestPerfTasksLogic extends BenchmarkTestCase {
     IndexReader ir = DirectoryReader.open(benchmark.getRunData().getDirectory());
     assertEquals(numLines + " lines were created but " + ir.numDocs() + " docs are in the index", numLines, ir.numDocs());
     ir.close();
-
-    Files.delete(lineFile);
   }
   
   /**

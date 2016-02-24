@@ -1,5 +1,3 @@
-package org.apache.lucene.codecs.lucene50;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.codecs.lucene50;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.lucene50;
+
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.lucene50.Lucene50StoredFieldsFormat.Mode;
@@ -70,18 +70,12 @@ public class TestLucene50StoredFieldsFormatHighCompression extends BaseStoredFie
   }
   
   public void testInvalidOptions() throws Exception {
-    try {
+    expectThrows(NullPointerException.class, () -> {
       new Lucene60Codec(null);
-      fail("didn't hit exception");
-    } catch (NullPointerException expected) {
-      // expected
-    }
+    });
     
-    try {
+    expectThrows(NullPointerException.class, () -> {
       new Lucene50StoredFieldsFormat(null);
-      fail("didn't hit exception");
-    } catch (NullPointerException expected) {
-      // expected
-    }
+    });
   }
 }

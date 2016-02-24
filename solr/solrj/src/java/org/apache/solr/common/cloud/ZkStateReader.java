@@ -1,5 +1,3 @@
-package org.apache.solr.common.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -10,12 +8,13 @@ package org.apache.solr.common.cloud;
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
- * Unless required byOCP applicable law or agreed to in writing, software
+ * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.common.cloud;
 
 import java.io.Closeable;
 import java.io.UnsupportedEncodingException;
@@ -30,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -307,8 +307,7 @@ public class ZkStateReader implements Closeable {
             
             @Override
             public void process(WatchedEvent event) {
-              // session events are not change events,
-              // and do not remove the watcher
+              // session events are not change events, and do not remove the watcher
               if (EventType.None.equals(event.getType())) {
                 return;
               }
@@ -360,8 +359,7 @@ public class ZkStateReader implements Closeable {
 
           @Override
           public void process(WatchedEvent event) {
-            // session events are not change events,
-            // and do not remove the watcher
+            // session events are not change events, and do not remove the watcher
             if (EventType.None.equals(event.getType())) {
               return;
             }
@@ -423,11 +421,21 @@ public class ZkStateReader implements Closeable {
     this.clusterState = new ClusterState(liveNodes, result, legacyClusterStateVersion);
     LOG.debug("clusterStateSet: version [{}] legacy [{}] interesting [{}] watched [{}] lazy [{}] total [{}]",
         clusterState.getZkClusterStateVersion(),
-        legacyCollectionStates.keySet(),
-        interestingCollections,
-        watchedCollectionStates.keySet(),
-        lazyCollectionStates.keySet(),
-        clusterState.getCollections());
+        legacyCollectionStates.keySet().size(),
+        interestingCollections.size(),
+        watchedCollectionStates.keySet().size(),
+        lazyCollectionStates.keySet().size(),
+        clusterState.getCollectionStates().size());
+
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("clusterStateSet: version [{}] legacy [{}] interesting [{}] watched [{}] lazy [{}] total [{}]",
+          clusterState.getZkClusterStateVersion(),
+          legacyCollectionStates.keySet(),
+          interestingCollections,
+          watchedCollectionStates.keySet(),
+          lazyCollectionStates.keySet(),
+          clusterState.getCollectionStates());
+    }
   }
 
   /**
@@ -536,16 +544,21 @@ public class ZkStateReader implements Closeable {
     Set<String> newLiveNodes;
     try {
       List<String> nodeList = zkClient.getChildren(LIVE_NODES_ZKNODE, watcher, true);
-      LOG.debug("Updating live nodes from ZooKeeper... [{}]", nodeList.size());
       newLiveNodes = new HashSet<>(nodeList);
     } catch (KeeperException.NoNodeException e) {
       newLiveNodes = emptySet();
     }
+    Set<String> oldLiveNodes;
     synchronized (getUpdateLock()) {
+      oldLiveNodes = this.liveNodes;
       this.liveNodes = newLiveNodes;
       if (clusterState != null) {
         clusterState.setLiveNodes(newLiveNodes);
       }
+    }
+    LOG.info("Updated live nodes from ZooKeeper... ({}) -> ({})", oldLiveNodes.size(), newLiveNodes.size());
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Updated live nodes from ZooKeeper... {} -> {}", new TreeSet<>(oldLiveNodes), new TreeSet<>(newLiveNodes));
     }
   }
 
@@ -798,15 +811,14 @@ public class ZkStateReader implements Closeable {
 
     @Override
     public void process(WatchedEvent event) {
-      if (!interestingCollections.contains(coll)) {
-        // This collection is no longer interesting, stop watching.
-        LOG.info("Uninteresting collection [{}]", coll);
+      // session events are not change events, and do not remove the watcher
+      if (EventType.None.equals(event.getType())) {
         return;
       }
 
-      // session events are not change events,
-      // and do not remove the watcher
-      if (EventType.None.equals(event.getType())) {
+      if (!interestingCollections.contains(coll)) {
+        // This collection is no longer interesting, stop watching.
+        LOG.info("Uninteresting collection {}", coll);
         return;
       }
 
@@ -853,8 +865,7 @@ public class ZkStateReader implements Closeable {
 
     @Override
     public void process(WatchedEvent event) {
-      // session events are not change events,
-      // and do not remove the watcher
+      // session events are not change events, and do not remove the watcher
       if (EventType.None.equals(event.getType())) {
         return;
       }
@@ -891,8 +902,7 @@ public class ZkStateReader implements Closeable {
 
     @Override
     public void process(WatchedEvent event) {
-      // session events are not change events,
-      // and do not remove the watcher
+      // session events are not change events, and do not remove the watcher
       if (EventType.None.equals(event.getType())) {
         return;
       }
@@ -925,8 +935,7 @@ public class ZkStateReader implements Closeable {
 
     @Override
     public void process(WatchedEvent event) {
-      // session events are not change events,
-      // and do not remove the watcher
+      // session events are not change events, and do not remove the watcher
       if (EventType.None.equals(event.getType())) {
         return;
       }

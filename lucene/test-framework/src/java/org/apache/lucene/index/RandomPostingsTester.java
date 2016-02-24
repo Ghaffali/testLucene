@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -1240,12 +1239,9 @@ public class RandomPostingsTester {
       }
     }
     assertFalse(iterator.hasNext());
-    try {
+    LuceneTestCase.expectThrows(NoSuchElementException.class, () -> {
       iterator.next();
-      throw new AssertionError("Fields.iterator() doesn't throw NoSuchElementException when past the end");
-    } catch (NoSuchElementException expected) {
-      // expected
-    }
+    });
   }
 
   /** Indexes all fields/terms at the specified
@@ -1271,6 +1267,5 @@ public class RandomPostingsTester {
 
     fieldsProducer.close();
     dir.close();
-    IOUtils.rm(path);
   }
 }

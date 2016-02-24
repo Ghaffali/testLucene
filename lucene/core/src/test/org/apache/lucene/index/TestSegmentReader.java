@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 
 import java.io.IOException;
 import java.util.Collection;
@@ -204,25 +204,21 @@ public class TestSegmentReader extends LuceneTestCase {
   
   public void testOutOfBoundsAccess() throws IOException {
     int numDocs = reader.maxDoc();
-    try {
+
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       reader.document(-1);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {}
+    });
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       reader.getTermVectors(-1);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {}
+    });
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       reader.document(numDocs);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {}
+    });
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       reader.getTermVectors(numDocs);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {}
-    
+    });    
   }
 }

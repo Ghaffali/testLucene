@@ -1,5 +1,3 @@
-package org.apache.lucene.uninverting;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.uninverting;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.uninverting;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -482,7 +481,7 @@ class FieldCacheImpl implements FieldCache {
 
     @Override
     public long ramBytesUsed() {
-      return values.ramBytesUsed() + RamUsageEstimator.NUM_BYTES_OBJECT_REF + RamUsageEstimator.NUM_BYTES_LONG;
+      return values.ramBytesUsed() + RamUsageEstimator.NUM_BYTES_OBJECT_REF + Long.BYTES;
     }
   }
 
@@ -600,7 +599,7 @@ class FieldCacheImpl implements FieldCache {
              termOrdToBytesOffset.ramBytesUsed() + 
              docToTermOrd.ramBytesUsed() + 
              3*RamUsageEstimator.NUM_BYTES_OBJECT_REF +
-             RamUsageEstimator.NUM_BYTES_INT;
+             Integer.BYTES;
     }
     
     @Override

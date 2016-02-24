@@ -1,5 +1,3 @@
-package org.apache.lucene.util.bkd;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.util.bkd;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.bkd;
 
 import java.io.Closeable;
 import java.io.EOFException;
@@ -40,9 +39,7 @@ import org.apache.lucene.util.IntroSorter;
 import org.apache.lucene.util.LongBitSet;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.OfflineSorter;
-import org.apache.lucene.util.OfflineSorter.ByteSequencesWriter;
 import org.apache.lucene.util.PriorityQueue;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 
 // TODO
@@ -152,7 +149,7 @@ public class BKDWriter implements Closeable {
     maxPackedValue = new byte[packedBytesLength];
 
     // dimensional values (numDims * bytesPerDim) + ord (long) + docID (int)
-    bytesPerDoc = packedBytesLength + RamUsageEstimator.NUM_BYTES_LONG + RamUsageEstimator.NUM_BYTES_INT;
+    bytesPerDoc = packedBytesLength + Long.BYTES + Integer.BYTES;
 
     // As we recurse, we compute temporary partitions of the data, halving the
     // number of points at each recursion.  Once there are few enough points,

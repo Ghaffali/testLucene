@@ -1,5 +1,3 @@
-package org.apache.lucene.codecs.idversion;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.codecs.idversion;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.idversion;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -364,15 +363,14 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     Document doc = new Document();
     doc.add(makeIDField("id", 17));
     w.addDocument(doc);
-    doc = new Document();
-    doc.add(makeIDField("id", 17));
-    try {
-      w.addDocument(doc);
+
+    Document duplicate = new Document();
+    duplicate.add(makeIDField("id", 17));
+    expectThrows(IllegalArgumentException.class, () -> {
+      w.addDocument(duplicate);
       w.commit();
-      fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
+
     w.close();
     dir.close();
   }
@@ -465,13 +463,10 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
     Document doc = new Document();
     doc.add(newTextField("id", "id", Field.Store.NO));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       w.addDocument(doc);
       w.commit();
-      fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
              
     w.close();
     dir.close();
@@ -484,13 +479,11 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
     Document doc = new Document();
     doc.add(newStringField("id", "id", Field.Store.NO));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       w.addDocument(doc);
       w.commit();
-      fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
+
              
     w.close();
     dir.close();
@@ -503,13 +496,10 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     RandomIndexWriter w = new RandomIndexWriter(random(), dir, iwc);
     Document doc = new Document();
     doc.add(new StringAndPayloadField("id", "id", new BytesRef("foo")));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       w.addDocument(doc);
       w.commit();
-      fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
              
     w.close();
     dir.close();
@@ -551,14 +541,12 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     ts.setValue("foo", payload);
     Field field = new Field("id", ts, ft);
     doc.add(new Field("id", ts, ft));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       w.addDocument(doc);
       w.commit();
       fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-      // iae.printStackTrace(System.out);
-    }
+    });
+
     w.close();
     dir.close();
   }
@@ -571,13 +559,11 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     Document doc = new Document();
     doc.add(makeIDField("id", 17));
     doc.add(makeIDField("id", 17));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       w.addDocument(doc);
       w.commit();
-      fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
+
     w.close();
     dir.close();
   }
@@ -590,19 +576,13 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     Document doc = new Document();
     // -1
     doc.add(new StringAndPayloadField("id", "id", new BytesRef(new byte[] {(byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff})));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       w.addDocument(doc);
       w.commit();
-      fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
-    try {
+    });
+    expectThrows(AlreadyClosedException.class, () -> {
       w.addDocument(doc);
-      fail("should have hit exc");
-    } catch (AlreadyClosedException ace) {
-      // expected
-    }
+    });
     dir.close();
   }
 
@@ -614,19 +594,14 @@ public class TestIDVersionPostingsFormat extends LuceneTestCase {
     Document doc = new Document();
     // Long.MAX_VALUE:
     doc.add(new StringAndPayloadField("id", "id", new BytesRef(new byte[] {(byte)0x7f, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff, (byte)0xff})));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       w.addDocument(doc);
       w.commit();
-      fail("didn't hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
-    try {
+    });
+    expectThrows(AlreadyClosedException.class, () -> {
       w.addDocument(doc);
-      fail("should have hit exc");
-    } catch (AlreadyClosedException ace) {
-      // expected
-    }
+    });
+
     dir.close();
   }
 

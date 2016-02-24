@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.ngram;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.ngram;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.ngram;
+
 
 
 import java.io.IOException;
@@ -42,33 +42,21 @@ public class EdgeNGramTokenizerTest extends BaseTokenStreamTestCase {
   }
 
   public void testInvalidInput() throws Exception {
-    boolean gotException = false;
-    try {        
+    expectThrows(IllegalArgumentException.class, () -> {     
       new EdgeNGramTokenizer(0, 0).setReader(input);
-    } catch (IllegalArgumentException e) {
-      gotException = true;
-    }
-    assertTrue(gotException);
+    });
   }
 
   public void testInvalidInput2() throws Exception {
-    boolean gotException = false;
-    try {        
+    expectThrows(IllegalArgumentException.class, () -> {   
       new EdgeNGramTokenizer(2, 1).setReader(input);
-    } catch (IllegalArgumentException e) {
-      gotException = true;
-    }
-    assertTrue(gotException);
+    });
   }
 
   public void testInvalidInput3() throws Exception {
-    boolean gotException = false;
-    try {        
+    expectThrows(IllegalArgumentException.class, () -> {      
       new EdgeNGramTokenizer(-1, 2).setReader(input);
-    } catch (IllegalArgumentException e) {
-      gotException = true;
-    }
-    assertTrue(gotException);
+    });
   }
 
   public void testFrontUnigram() throws Exception {

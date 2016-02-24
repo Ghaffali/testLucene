@@ -1,5 +1,3 @@
-package org.apache.lucene.document;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,21 +14,21 @@ package org.apache.lucene.document;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.document;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /** A field that is indexed dimensionally such that finding
  *  all documents within an N-dimensional at search time is
- *  efficient.  Muliple values for the same field in one documents
+ *  efficient.  Multiple values for the same field in one documents
  *  is allowed. */
 
 public final class FloatPoint extends Field {
 
   private static FieldType getType(int numDims) {
     FieldType type = new FieldType();
-    type.setDimensions(numDims, RamUsageEstimator.NUM_BYTES_INT);
+    type.setDimensions(numDims, Float.BYTES);
     type.freeze();
     return type;
   }
@@ -42,6 +40,9 @@ public final class FloatPoint extends Field {
 
   /** Change the values of this field */
   public void setFloatValues(float... point) {
+    if (type.pointDimensionCount() != point.length) {
+      throw new IllegalArgumentException("this field (name=" + name + ") uses " + type.pointDimensionCount() + " dimensions; cannot change to (incoming) " + point.length + " dimensions");
+    }
     fieldsData = pack(point);
   }
 
@@ -52,9 +53,12 @@ public final class FloatPoint extends Field {
 
   @Override
   public Number numericValue() {
+    if (type.pointDimensionCount() != 1) {
+      throw new IllegalStateException("this field (name=" + name + ") uses " + type.pointDimensionCount() + " dimensions; cannot convert to a single numeric value");
+    }
     BytesRef bytes = (BytesRef) fieldsData;
-    assert bytes.length == RamUsageEstimator.NUM_BYTES_INT;
-    return NumericUtils.sortableIntToFloat(NumericUtils.bytesToIntDirect(bytes.bytes, bytes.offset));
+    assert bytes.length == Float.BYTES;
+    return decodeDimension(bytes.bytes, bytes.offset);
   }
 
   private static BytesRef pack(float... point) {
@@ -64,10 +68,10 @@ public final class FloatPoint extends Field {
     if (point.length == 0) {
       throw new IllegalArgumentException("point cannot be 0 dimensions");
     }
-    byte[] packed = new byte[point.length * RamUsageEstimator.NUM_BYTES_INT];
+    byte[] packed = new byte[point.length * Float.BYTES];
     
-    for(int dim=0;dim<point.length;dim++) {
-      NumericUtils.intToBytesDirect(NumericUtils.floatToSortableInt(point[dim]), packed, dim);
+    for (int dim = 0; dim < point.length; dim++) {
+      encodeDimension(point[dim], packed, dim * Float.BYTES);
     }
 
     return new BytesRef(packed);
@@ -82,5 +86,29 @@ public final class FloatPoint extends Field {
    */
   public FloatPoint(String name, float... point) {
     super(name, pack(point), getType(point.length));
+  }
+  
+  // public helper methods (e.g. for queries)
+
+  /** Encode n-dimensional float values into binary encoding */
+  public static byte[][] encode(Float value[]) {
+    byte[][] encoded = new byte[value.length][];
+    for (int i = 0; i < value.length; i++) {
+      if (value[i] != null) {
+        encoded[i] = new byte[Float.BYTES];
+        encodeDimension(value[i], encoded[i], 0);
+      }
+    }
+    return encoded;
+  }
+  
+  /** Encode single float dimension */
+  public static void encodeDimension(Float value, byte dest[], int offset) {
+    NumericUtils.intToBytesDirect(NumericUtils.floatToSortableInt(value), dest, offset);
+  }
+  
+  /** Decode single float dimension */
+  public static Float decodeDimension(byte value[], int offset) {
+    return NumericUtils.sortableIntToFloat(NumericUtils.bytesToIntDirect(value, offset));
   }
 }

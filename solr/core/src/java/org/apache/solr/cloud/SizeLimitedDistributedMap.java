@@ -1,5 +1,3 @@
-package org.apache.solr.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.cloud;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud;
 
 import java.util.List;
 
@@ -34,41 +33,40 @@ public class SizeLimitedDistributedMap extends DistributedMap {
 
   private final int maxSize;
 
-  public SizeLimitedDistributedMap(SolrZkClient zookeeper, String dir, List<ACL> acl, int maxSize) {
-    super(zookeeper, dir, acl);
+  public SizeLimitedDistributedMap(SolrZkClient zookeeper, String dir, int maxSize) {
+    super(zookeeper, dir);
     this.maxSize = maxSize;
   }
-  
+
   @Override
-  public boolean put(String trackingId, byte[] data) throws KeeperException, InterruptedException {
-    if(this.size() >= maxSize) {
+  public void put(String trackingId, byte[] data) throws KeeperException, InterruptedException {
+    if (this.size() >= maxSize) {
       // Bring down the size
       List<String> children = zookeeper.getChildren(dir, null, true);
 
       int cleanupSize = maxSize / 10;
-      
+
       final PriorityQueue priorityQueue = new PriorityQueue<Long>(cleanupSize) {
         @Override
         protected boolean lessThan(Long a, Long b) {
           return (a > b);
         }
       };
-      
-      for(String child: children) {
+
+      for (String child : children) {
         Stat stat = zookeeper.exists(dir + "/" + child, null, true);
         priorityQueue.insertWithOverflow(stat.getMzxid());
       }
-      
+
       long topElementMzxId = (Long) priorityQueue.top();
-      
-      for(String child:children) {
+
+      for (String child : children) {
         Stat stat = zookeeper.exists(dir + "/" + child, null, true);
-        if(stat.getMzxid() <= topElementMzxId)
+        if (stat.getMzxid() <= topElementMzxId)
           zookeeper.delete(dir + "/" + child, -1, true);
       }
     }
-      
-    return createData(dir + "/" + prefix + trackingId, data,
-        CreateMode.PERSISTENT) != null;
+
+    super.put(trackingId, data);
   }
 }

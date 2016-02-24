@@ -1,7 +1,3 @@
-package org.apache.lucene.search.suggest.tst;
-
-import org.apache.lucene.util.RamUsageEstimator;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,9 @@ import org.apache.lucene.util.RamUsageEstimator;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.suggest.tst;
+
+import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * The class creates a TST node.
@@ -57,7 +56,7 @@ public class TernaryTreeNode {
       mem += hiKid.sizeInBytes();
     }
     if (token != null) {
-      mem += RamUsageEstimator.shallowSizeOf(token) + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER + RamUsageEstimator.NUM_BYTES_CHAR * token.length();
+      mem += RamUsageEstimator.shallowSizeOf(token) + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER + Character.BYTES * token.length();
     }
     mem += RamUsageEstimator.shallowSizeOf(val);
     return mem;

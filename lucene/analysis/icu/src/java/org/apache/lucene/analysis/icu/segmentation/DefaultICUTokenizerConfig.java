@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.icu.segmentation;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.icu.segmentation;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.icu.segmentation;
+
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -35,9 +35,7 @@ import com.ibm.icu.util.ULocale;
  * ({@link BreakIterator#getWordInstance(ULocale) BreakIterator.getWordInstance(ULocale.ROOT)}), 
  * but with the following tailorings:
  * <ul>
- *   <li>Thai, Lao, Myanmar, and CJK text is broken into words with a dictionary. 
- *   <li>Khmer text is broken into syllables
- *   based on custom BreakIterator rules.
+ *   <li>Thai, Lao, Myanmar, Khmer, and CJK text is broken into words with a dictionary. 
  * </ul>
  * @lucene.experimental
  */
@@ -65,8 +63,6 @@ public class DefaultICUTokenizerConfig extends ICUTokenizerConfig {
   // the same as ROOT, except no dictionary segmentation for cjk
   private static final BreakIterator defaultBreakIterator = 
     readBreakIterator("Default.brk");
-  private static final BreakIterator khmerBreakIterator = 
-    readBreakIterator("Khmer.brk");
   
   // TODO: deprecate this boolean? you only care if you are doing super-expert stuff...
   private final boolean cjkAsWords;
@@ -91,7 +87,6 @@ public class DefaultICUTokenizerConfig extends ICUTokenizerConfig {
   @Override
   public BreakIterator getBreakIterator(int script) {
     switch(script) {
-      case UScript.KHMER: return (BreakIterator)khmerBreakIterator.clone();
       case UScript.JAPANESE: return (BreakIterator)cjkBreakIterator.clone();
       default: return (BreakIterator)defaultBreakIterator.clone();
     }

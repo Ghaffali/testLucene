@@ -1,5 +1,3 @@
-package org.apache.lucene.util.bkd;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.util.bkd;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -27,7 +26,6 @@ import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.lucene.util.StringHelper;
 
 /** Handles intersection of an multi-dimensional shape in byte[] space with a block KD-tree previously written with {@link BKDWriter}.
@@ -415,7 +413,7 @@ public class BKDReader implements Accountable {
   @Override
   public long ramBytesUsed() {
     return splitPackedValues.length +
-      leafBlockFPs.length * RamUsageEstimator.NUM_BYTES_LONG;
+      leafBlockFPs.length * Long.BYTES;
   }
 
   public byte[] getMinPackedValue() {

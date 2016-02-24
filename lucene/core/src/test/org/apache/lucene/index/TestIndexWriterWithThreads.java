@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -365,22 +365,20 @@ public class TestIndexWriterWithThreads extends LuceneTestCase {
 
     dir.failOn(failure);
     failure.setDoFail();
-    try {
+    expectThrows(IOException.class, () -> {
       writer.addDocument(doc);
       writer.addDocument(doc);
       writer.commit();
-      fail("did not hit exception");
-    } catch (IOException ioe) {
-    }
+    });
+
     failure.clearDoFail();
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       writer.addDocument(doc);
       writer.commit();
       writer.close();
-    } catch (AlreadyClosedException ace) {
-      // OK: abort closes the writer
-      assertTrue(writer.deleter.isClosed());
-    }
+    });
+
+    assertTrue(writer.deleter.isClosed());
     dir.close();
   }
 

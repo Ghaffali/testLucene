@@ -1,5 +1,3 @@
-package org.apache.lucene.benchmark.byTask.feeds;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.benchmark.byTask.feeds;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.benchmark.byTask.feeds;
+
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -214,12 +214,9 @@ public class LineDocSourceTest extends BenchmarkTestCase {
       writer.write(testCases[i]);
       writer.newLine();
       writer.close();
-      try {
+      expectThrows(Exception.class, () -> {
         doIndexAndSearchTest(file, null, null);
-        fail("Some exception should have been thrown for: [" + testCases[i] + "]");
-      } catch (Exception e) {
-        // expected.
-      }
+      });
     }
   }
   

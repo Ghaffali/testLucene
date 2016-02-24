@@ -1,5 +1,3 @@
-package org.apache.solr.update;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.update;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.update;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -29,6 +28,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.MergePolicy;
+import org.apache.lucene.index.SortingMergePolicy;
+import org.apache.lucene.search.Sort;
 import org.apache.solr.cloud.ActionThrottle;
 import org.apache.solr.cloud.RecoveryStrategy;
 import org.apache.solr.common.SolrException;
@@ -238,6 +240,21 @@ public final class DefaultSolrCoreState extends SolrCoreState implements Recover
     return SolrIndexWriter.create(core, name, core.getNewIndexDir(),
         core.getDirectoryFactory(), false, core.getLatestSchema(),
         core.getSolrConfig().indexConfig, core.getDeletionPolicy(), core.getCodec());
+  }
+
+  public Sort getMergePolicySort() throws IOException {
+    lock(iwLock.readLock());
+    try {
+      if (indexWriter != null) {
+        final MergePolicy mergePolicy = indexWriter.getConfig().getMergePolicy();
+        if (mergePolicy instanceof SortingMergePolicy) {
+          return ((SortingMergePolicy)mergePolicy).getSort();
+        }
+      }
+    } finally {
+      iwLock.readLock().unlock();
+    }
+    return null;
   }
 
   @Override

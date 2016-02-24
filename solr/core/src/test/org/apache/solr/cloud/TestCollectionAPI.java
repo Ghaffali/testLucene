@@ -1,5 +1,3 @@
-package org.apache.solr.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,7 +14,7 @@ package org.apache.solr.cloud;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.apache.solr.cloud;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -30,6 +28,7 @@ import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.HttpSolrClient.RemoteSolrException;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.client.solrj.response.QueryResponse;
@@ -45,6 +44,7 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.zookeeper.KeeperException;
 import org.junit.Test;
 
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.ROUTER;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARD_UNIQUE;
 
 public class TestCollectionAPI extends ReplicaPropertiesBase {
@@ -80,6 +80,10 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
     replicaPropTest();
     clusterStatusZNodeVersion();
     testClusterStateMigration();
+    testCollectionCreationCollectionNameValidation();
+    testCollectionCreationShardNameValidation();
+    testAliasCreationNameValidation();
+    testShardCreationNameValidation();
   }
 
   private void clusterStatusWithCollectionAndShard() throws IOException, SolrServerException {
@@ -627,6 +631,103 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
 
       QueryResponse response = client.query("testClusterStateMigration", new SolrQuery("*:*"));
       assertEquals(10, response.getResults().getNumFound());
+    }
+  }
+  
+  private void testCollectionCreationCollectionNameValidation() throws Exception {
+    try (CloudSolrClient client = createCloudClient(null)) {
+      ModifiableSolrParams params = new ModifiableSolrParams();
+      params.set("action", CollectionParams.CollectionAction.CREATE.toString());
+      params.set("name", "invalid@name#with$weird%characters");
+      SolrRequest request = new QueryRequest(params);
+      request.setPath("/admin/collections");
+
+      try {
+        client.request(request);
+        fail();
+      } catch (RemoteSolrException e) {
+        final String errorMessage = e.getMessage();
+        assertTrue(errorMessage.contains("Invalid collection"));
+        assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
+        assertTrue(errorMessage.contains("Collection names must consist entirely of"));
+      }
+    }
+  }
+  
+  private void testCollectionCreationShardNameValidation() throws Exception {
+    try (CloudSolrClient client = createCloudClient(null)) {
+      ModifiableSolrParams params = new ModifiableSolrParams();
+      params.set("action", CollectionParams.CollectionAction.CREATE.toString());
+      params.set("name", "valid_collection_name");
+      params.set("router.name", "implicit");
+      params.set("numShards", "1");
+      params.set("shards", "invalid@name#with$weird%characters");
+      SolrRequest request = new QueryRequest(params);
+      request.setPath("/admin/collections");
+
+      try {
+        client.request(request);
+        fail();
+      } catch (RemoteSolrException e) {
+        final String errorMessage = e.getMessage();
+        assertTrue(errorMessage.contains("Invalid shard"));
+        assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
+        assertTrue(errorMessage.contains("Shard names must consist entirely of"));
+      }
+    }
+  }
+  
+  private void testAliasCreationNameValidation() throws Exception{
+    try (CloudSolrClient client = createCloudClient(null)) {
+      ModifiableSolrParams params = new ModifiableSolrParams();
+      params.set("action", CollectionParams.CollectionAction.CREATEALIAS.toString());
+      params.set("name", "invalid@name#with$weird%characters");
+      params.set("collections", COLLECTION_NAME);
+      SolrRequest request = new QueryRequest(params);
+      request.setPath("/admin/collections");
+
+      try {
+        client.request(request);
+        fail();
+      } catch (RemoteSolrException e) {
+        final String errorMessage = e.getMessage();
+        assertTrue(errorMessage.contains("Invalid alias"));
+        assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
+        assertTrue(errorMessage.contains("Aliases must consist entirely of"));
+      }
+    }
+  }
+
+  private void testShardCreationNameValidation() throws Exception {
+    try (CloudSolrClient client = createCloudClient(null)) {
+      client.connect();
+      // Create a collection w/ implicit router
+      ModifiableSolrParams params = new ModifiableSolrParams();
+      params.set("action", CollectionParams.CollectionAction.CREATE.toString());
+      params.set("name", "valid_collection_name");
+      params.set("shards", "a");
+      params.set("router.name", "implicit");
+      SolrRequest request = new QueryRequest(params);
+      request.setPath("/admin/collections");
+      client.request(request);
+
+      params = new ModifiableSolrParams();
+      params.set("action", CollectionParams.CollectionAction.CREATESHARD.toString());
+      params.set("collection", "valid_collection_name");
+      params.set("shard", "invalid@name#with$weird%characters");
+
+      request = new QueryRequest(params);
+      request.setPath("/admin/collections");
+
+      try {
+        client.request(request);
+        fail();
+      } catch (RemoteSolrException e) {
+        final String errorMessage = e.getMessage();
+        assertTrue(errorMessage.contains("Invalid shard"));
+        assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
+        assertTrue(errorMessage.contains("Shard names must consist entirely of"));
+      }
     }
   }
 

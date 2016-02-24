@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.handler.component;
 
 import org.apache.lucene.search.Query;
@@ -263,6 +262,10 @@ public class ResponseBuilder
   public void setResponseDocs(SolrDocumentList _responseDocs) {
     this._responseDocs = _responseDocs;
   }
+  
+  public SolrDocumentList getResponseDocs() {
+    return this._responseDocs;
+  }
 
   public boolean isDebugTrack() {
     return debugTrack;
@@ -449,6 +452,10 @@ public class ResponseBuilder
     setResults(result.getDocListAndSet());
     if (result.isPartialResults()) {
       rsp.getResponseHeader().add(SolrQueryResponse.RESPONSE_HEADER_PARTIAL_RESULTS_KEY, Boolean.TRUE);
+    }
+    final Boolean segmentTerminatedEarly = result.getSegmentTerminatedEarly();
+    if (segmentTerminatedEarly != null) {
+      rsp.getResponseHeader().add(SolrQueryResponse.RESPONSE_HEADER_SEGMENT_TERMINATED_EARLY_KEY, segmentTerminatedEarly);
     }
     if (null != cursorMark) {
       assert null != result.getNextCursorMark() : "using cursor but no next cursor set";

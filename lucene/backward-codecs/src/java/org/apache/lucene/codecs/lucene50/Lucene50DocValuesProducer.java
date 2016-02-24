@@ -1,5 +1,3 @@
-package org.apache.lucene.codecs.lucene50;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.codecs.lucene50;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.lucene50;
+
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -537,7 +537,7 @@ class Lucene50DocValuesProducer extends DocValuesProducer implements Closeable {
       addresses = MonotonicBlockPackedReader.of(data, bytes.packedIntsVersion, bytes.blockSize, bytes.count+1, false);
       if (!merging) {
         addressInstances.put(field.name, addresses);
-        ramBytesUsed.addAndGet(addresses.ramBytesUsed() + RamUsageEstimator.NUM_BYTES_INT);
+        ramBytesUsed.addAndGet(addresses.ramBytesUsed() + Integer.BYTES);
       }
     }
     return addresses;
@@ -577,7 +577,7 @@ class Lucene50DocValuesProducer extends DocValuesProducer implements Closeable {
       addresses = MonotonicBlockPackedReader.of(data, bytes.packedIntsVersion, bytes.blockSize, size, false);
       if (!merging) {
         addressInstances.put(field.name, addresses);
-        ramBytesUsed.addAndGet(addresses.ramBytesUsed() + RamUsageEstimator.NUM_BYTES_INT);
+        ramBytesUsed.addAndGet(addresses.ramBytesUsed() + Integer.BYTES);
       }
     }
     return addresses;
@@ -662,7 +662,7 @@ class Lucene50DocValuesProducer extends DocValuesProducer implements Closeable {
       instance = MonotonicBlockPackedReader.of(data, entry.packedIntsVersion, entry.blockSize, entry.count+1, false);
       if (!merging) {
         ordIndexInstances.put(field.name, instance);
-        ramBytesUsed.addAndGet(instance.ramBytesUsed() + RamUsageEstimator.NUM_BYTES_INT);
+        ramBytesUsed.addAndGet(instance.ramBytesUsed() + Integer.BYTES);
       }
     }
     return instance;

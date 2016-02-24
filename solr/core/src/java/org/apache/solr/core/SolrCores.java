@@ -1,5 +1,3 @@
-package org.apache.solr.core;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,10 +14,13 @@ package org.apache.solr.core;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.core;
 
 import com.google.common.collect.Lists;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.logging.MDCLoggingContext;
+import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +34,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 
@@ -118,19 +122,32 @@ class SolrCores {
         coreList.addAll(pendingCloses);
         pendingCloses.clear();
       }
-
+      
       for (SolrCore core : coreList) {
-        MDCLoggingContext.setCore(core);
+        ExecutorService coreCloseExecutor = ExecutorUtil.newMDCAwareFixedThreadPool(Integer.MAX_VALUE,
+            new DefaultSolrThreadFactory("coreCloseExecutor"));
         try {
-          core.close();
-        } catch (Throwable e) {
-          SolrException.log(log, "Error shutting down core", e);
-          if (e instanceof Error) {
-            throw (Error) e;
-          }
+          coreCloseExecutor.submit(new Callable<SolrCore>() {
+            @Override
+            public SolrCore call() throws Exception {
+              MDCLoggingContext.setCore(core);
+              try {
+                core.close();
+              } catch (Throwable e) {
+                SolrException.log(log, "Error shutting down core", e);
+                if (e instanceof Error) {
+                  throw (Error) e;
+                }
+              } finally {
+                MDCLoggingContext.clear();
+              }
+              return core;
+            }
+          });
         } finally {
-          MDCLoggingContext.clear();
+          ExecutorUtil.shutdownAndAwaitTermination(coreCloseExecutor);
         }
+
       }
     } while (coreList.size() > 0);
   }

@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.core;
 
 import javax.xml.xpath.XPathConstants;
@@ -128,7 +127,12 @@ public class TestConfig extends SolrTestCaseJ4 {
 
     ++numDefaultsTested; assertEquals("default infoStream", InfoStream.NO_OUTPUT, sic.infoStream);
 
-    ++numDefaultsTested; ++numNullDefaults; assertNull("default mergePolicyInfo", sic.mergePolicyInfo);
+    // mergePolicyInfo and mergePolicyFactoryInfo are mutually exclusive
+    // so ++ count them only once for both instead of individually
+    ++numDefaultsTested; ++numNullDefaults;
+    assertNull("default mergePolicyInfo", sic.mergePolicyInfo);
+    assertNull("default mergePolicyFactoryInfo", sic.mergePolicyFactoryInfo);
+
     ++numDefaultsTested; ++numNullDefaults; assertNull("default mergeSchedulerInfo", sic.mergeSchedulerInfo);
     ++numDefaultsTested; ++numNullDefaults; assertNull("default mergedSegmentWarmerInfo", sic.mergedSegmentWarmerInfo);
 

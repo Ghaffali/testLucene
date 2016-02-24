@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -231,7 +231,7 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
         }
       };
 
-    nrtNoDeletes = new SearcherManager(writer, false, sf);
+    nrtNoDeletes = new SearcherManager(writer, false, false, sf);
     nrtDeletes = new SearcherManager(writer, sf);
                          
     nrtDeletesThread = new ControlledRealTimeReopenThread<>(genWriter, nrtDeletes, maxReopenSec, minReopenSec);
@@ -313,7 +313,7 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
 
     LatchedIndexWriter _writer = new LatchedIndexWriter(d, conf, latch, signal);
     final TrackingIndexWriter writer = new TrackingIndexWriter(_writer);
-    final SearcherManager manager = new SearcherManager(_writer, false, null);
+    final SearcherManager manager = new SearcherManager(_writer, false, false, null);
     Document doc = new Document();
     doc.add(newTextField("test", "test", Field.Store.YES));
     writer.addDocument(doc);
@@ -422,12 +422,10 @@ public class TestControlledRealTimeReopenThread extends ThreadedIndexingAndSearc
       }
       };
 
-    try {
-      new SearcherManager(w.w, false, theEvilOne);
-      fail("didn't hit expected exception");
-    } catch (IllegalStateException ise) {
-      // expected
-    }
+    expectThrows(IllegalStateException.class, () -> {
+      new SearcherManager(w.w, false, false, theEvilOne);
+    });
+
     w.close();
     other.close();
     dir.close();

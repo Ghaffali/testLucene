@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -231,7 +231,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     };
     final SearcherManager searcherManager = random().nextBoolean() 
         ? new SearcherManager(dir, factory) 
-        : new SearcherManager(writer, random().nextBoolean(), factory);
+      : new SearcherManager(writer, random().nextBoolean(), false, factory);
     if (VERBOSE) {
       System.out.println("sm created");
     }
@@ -280,12 +280,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     searcherManager.close();
     awaitClose.countDown();
     thread.join();
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       searcherManager.acquire();
-      fail("already closed");
-    } catch (AlreadyClosedException ex) {
-      // expected
-    }
+    });
     assertFalse(success.get());
     assertTrue(triedReopen.get());
     assertNull("" + exc[0], exc[0]);
@@ -311,7 +308,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     Directory dir = newDirectory();
     IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(
         new MockAnalyzer(random())).setMergeScheduler(new ConcurrentMergeScheduler()));
-    SearcherManager sm = new SearcherManager(writer, false, new SearcherFactory());
+    SearcherManager sm = new SearcherManager(writer, false, false, new SearcherFactory());
     writer.addDocument(new Document());
     writer.commit();
     sm.maybeRefreshBlocking();
@@ -325,12 +322,9 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     acquire = sm.acquire();
     acquire.getIndexReader().decRef();
     sm.release(acquire);
-    try {
+    expectThrows(IllegalStateException.class, () -> {
       sm.acquire();
-      fail("acquire should have thrown an IllegalStateException since we modified the refCount outside of the manager");
-    } catch (IllegalStateException ex) {
-      //
-    }
+    });
 
     // sm.close(); -- already closed
     writer.close();
@@ -348,19 +342,16 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     // this should succeed;
     sm.release(s);
     
-    try {
-      // this should fail
+    // this should fail
+    expectThrows(AlreadyClosedException.class, () -> {
       sm.acquire();
-    } catch (AlreadyClosedException e) {
-      // ok
-    }
+    });
     
-    try {
-      // this should fail
+    // this should fail
+    expectThrows(AlreadyClosedException.class, () -> {
       sm.maybeRefresh();
-    } catch (AlreadyClosedException e) {
-      // ok
-    }
+    });
+
     dir.close();
   }
 
@@ -368,7 +359,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     Directory dir = newDirectory();
     IndexWriter iw = new IndexWriter(dir, new IndexWriterConfig(null));
     final AtomicBoolean afterRefreshCalled = new AtomicBoolean(false);
-    SearcherManager sm = new SearcherManager(iw, false, new SearcherFactory());
+    SearcherManager sm = new SearcherManager(iw, false, false, new SearcherFactory());
     sm.addListener(new ReferenceManager.RefreshListener() {
       @Override
       public void beforeRefresh() {
@@ -405,16 +396,12 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
       }
       };
 
-    try {
+    expectThrows(IllegalStateException.class, () -> {
       new SearcherManager(dir, theEvilOne);
-    } catch (IllegalStateException ise) {
-      // expected
-    }
-    try {
-      new SearcherManager(w.w, random.nextBoolean(), theEvilOne);
-    } catch (IllegalStateException ise) {
-      // expected
-    }
+    });
+    expectThrows(IllegalStateException.class, () -> {
+      new SearcherManager(w.w, random.nextBoolean(), false, theEvilOne);
+    });
     w.close();
     other.close();
     dir.close();
@@ -522,7 +509,7 @@ public class TestSearcherManager extends ThreadedIndexingAndSearchingTestCase {
     }
 
     MySearcherFactory factory = new MySearcherFactory();
-    final SearcherManager sm = new SearcherManager(w, random().nextBoolean(), factory);
+    final SearcherManager sm = new SearcherManager(w, random().nextBoolean(), false, factory);
     assertEquals(1, factory.called);
     assertNull(factory.lastPreviousReader);
     assertNotNull(factory.lastReader);

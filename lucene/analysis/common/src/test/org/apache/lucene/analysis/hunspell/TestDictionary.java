@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.hunspell;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.hunspell;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.hunspell;
+
 
 import java.io.ByteArrayInputStream;
 import java.io.FilterInputStream;
@@ -131,13 +131,11 @@ public class TestDictionary extends LuceneTestCase {
     InputStream dictStream = getClass().getResourceAsStream("simple.dic");
     Directory tempDir = getDirectory();
     
-    try {
+    ParseException expected = expectThrows(ParseException.class, () -> {
       new Dictionary(tempDir, "dictionary", affixStream, dictStream);
-      fail("didn't get expected exception");
-    } catch (ParseException expected) {
-      assertTrue(expected.getMessage().startsWith("The affix file contains a rule with less than four elements"));
-      assertEquals(24, expected.getErrorOffset());
-    }
+    });
+    assertTrue(expected.getMessage().startsWith("The affix file contains a rule with less than four elements"));
+    assertEquals(24, expected.getErrorOffset());
     
     affixStream.close();
     dictStream.close();
@@ -150,12 +148,10 @@ public class TestDictionary extends LuceneTestCase {
     InputStream dictStream = getClass().getResourceAsStream("simple.dic");
     Directory tempDir = getDirectory();
     
-    try {
+    Exception expected = expectThrows(Exception.class, () -> {
       new Dictionary(tempDir, "dictionary", affixStream, dictStream);
-      fail("didn't get expected exception");
-    } catch (Exception expected) {
-      assertTrue(expected.getMessage().startsWith("expected only one flag"));
-    }
+    });
+    assertTrue(expected.getMessage().startsWith("expected only one flag"));
     
     affixStream.close();
     dictStream.close();
@@ -260,10 +256,6 @@ public class TestDictionary extends LuceneTestCase {
   }
 
   private Directory getDirectory() {
-    Directory dir = newDirectory();
-    if (dir instanceof MockDirectoryWrapper) {
-      ((MockDirectoryWrapper) dir).setEnableVirusScanner(false);
-    }
-    return dir;
+    return newDirectory();
   }
 }

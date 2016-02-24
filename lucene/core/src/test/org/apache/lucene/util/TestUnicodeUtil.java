@@ -1,5 +1,3 @@
-package org.apache.lucene.util;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
+
 
 /*
  * Some of this code came from the excellent Unicode
@@ -127,13 +127,9 @@ public class TestUnicodeUtil extends LuceneTestCase {
   }
 
   private void assertcodePointCountThrowsAssertionOn(byte... bytes) {
-    boolean threwAssertion = false;
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       UnicodeUtil.codePointCount(new BytesRef(bytes));
-    } catch (IllegalArgumentException e) {
-      threwAssertion = true;
-    }
-    assertTrue(threwAssertion);
+    });
   }
 
   public void testUTF8toUTF32() {

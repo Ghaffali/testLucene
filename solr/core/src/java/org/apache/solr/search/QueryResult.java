@@ -1,5 +1,3 @@
-package org.apache.solr.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.search;
 
 /**
  * The result of a search.
@@ -23,6 +22,7 @@ package org.apache.solr.search;
 public class QueryResult {
   
   private boolean partialResults;
+  private Boolean segmentTerminatedEarly;
   private DocListAndSet docListAndSet;
   private CursorMark nextCursorMark;
   
@@ -58,6 +58,14 @@ public class QueryResult {
     this.partialResults = partialResults;
   }
   
+  public Boolean getSegmentTerminatedEarly() {
+    return segmentTerminatedEarly;
+  }
+
+  public void setSegmentTerminatedEarly(Boolean segmentTerminatedEarly) {
+    this.segmentTerminatedEarly = segmentTerminatedEarly;
+  }
+
   public void setDocListAndSet(DocListAndSet listSet) {
     docListAndSet = listSet;
   }

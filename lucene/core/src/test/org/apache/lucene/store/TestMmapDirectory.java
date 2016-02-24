@@ -1,5 +1,3 @@
-package org.apache.lucene.store;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.store;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
+
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -31,4 +31,12 @@ public class TestMmapDirectory extends BaseDirectoryTestCase {
     m.setPreload(random().nextBoolean());
     return m;
   }
+  
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    assumeTrue("test requires a jre that supports unmapping: " + MMapDirectory.UNMAP_NOT_SUPPORTED_REASON,
+        MMapDirectory.UNMAP_SUPPORTED);
+  }
+  
 }

@@ -1,5 +1,3 @@
-package org.apache.lucene.facet.sortedset;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.facet.sortedset;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.facet.sortedset;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -125,12 +124,9 @@ public class TestSortedSetDocValuesFacets extends FacetTestCase {
 
     searcher.search(new MatchAllDocsQuery(), c);
 
-    try {
+    expectThrows(IllegalStateException.class, () -> {
       new SortedSetDocValuesFacetCounts(state, c);
-      fail("did not hit expected exception");
-    } catch (IllegalStateException ise) {
-      // expected
-    }
+    });
 
     r.close();
     writer.close();

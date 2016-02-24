@@ -1,5 +1,3 @@
-package org.apache.lucene.codecs.autoprefix;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.codecs.autoprefix;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.autoprefix;
+
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -648,11 +648,10 @@ public class TestAutoPrefixTerms extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new Field("foo", "bar bar", ft));
     w.addDocument(doc);
-    try {
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
       w.commit();
-    } catch (IllegalStateException ise) {
-      assertEquals("ranges can only be indexed with IndexOptions.DOCS (field: foo)", ise.getMessage());
-    }
+    });
+    assertEquals("ranges can only be indexed with IndexOptions.DOCS (field: foo)", expected.getMessage());
     w.close();
     dir.close();
   }
@@ -668,11 +667,11 @@ public class TestAutoPrefixTerms extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new Field("foo", "bar bar", ft));
     w.addDocument(doc);
-    try {
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
       w.commit();
-    } catch (IllegalStateException ise) {
-      assertEquals("ranges can only be indexed with IndexOptions.DOCS (field: foo)", ise.getMessage());
-    }
+    });
+    assertEquals("ranges can only be indexed with IndexOptions.DOCS (field: foo)", expected.getMessage());
+
     w.close();
     dir.close();
   }
@@ -688,11 +687,11 @@ public class TestAutoPrefixTerms extends LuceneTestCase {
     Document doc = new Document();
     doc.add(new Field("foo", "bar bar", ft));
     w.addDocument(doc);
-    try {
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
       w.commit();
-    } catch (IllegalStateException ise) {
-      assertEquals("ranges can only be indexed with IndexOptions.DOCS (field: foo)", ise.getMessage());
-    }
+    });
+    assertEquals("ranges can only be indexed with IndexOptions.DOCS (field: foo)", expected.getMessage());
+
     w.close();
     dir.close();
   }

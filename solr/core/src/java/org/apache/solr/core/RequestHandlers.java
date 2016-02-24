@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.core;
 
 import java.lang.invoke.MethodHandles;
@@ -116,7 +115,7 @@ public final class RequestHandlers {
    */
 
   void initHandlersFromConfig(SolrConfig config) {
-    List<PluginInfo> implicits = ImplicitPlugins.getHandlers(core);
+    List<PluginInfo> implicits = core.getImplicitHandlers();
     // use link map so we iterate in the same order
     Map<String, PluginInfo> infoMap= new LinkedHashMap<>();
     //deduping implicit and explicit requesthandlers

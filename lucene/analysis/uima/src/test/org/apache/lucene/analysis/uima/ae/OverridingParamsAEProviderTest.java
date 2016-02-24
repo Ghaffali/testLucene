@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.uima.ae;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,7 +14,10 @@ package org.apache.lucene.analysis.uima.ae;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.uima.ae;
 
+
+import org.apache.lucene.util.LuceneTestCase;
 import org.apache.uima.analysis_engine.AnalysisEngine;
 import org.apache.uima.resource.ResourceInitializationException;
 import org.junit.Test;
@@ -24,24 +25,17 @@ import org.junit.Test;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
-
 /**
  * TestCase for {@link OverridingParamsAEProvider}
  */
-public class OverridingParamsAEProviderTest {
+public class OverridingParamsAEProviderTest extends LuceneTestCase {
 
   @Test
   public void testNullMapInitialization() throws Exception {
-    try {
+    expectThrows(ResourceInitializationException.class, () -> {
       AEProvider aeProvider = new OverridingParamsAEProvider("/uima/TestEntityAnnotatorAE.xml", null);
       aeProvider.getAE();
-      fail("should fail due to null Map passed");
-    } catch (ResourceInitializationException e) {
-      // everything ok
-    }
+    });
   }
 
   @Test

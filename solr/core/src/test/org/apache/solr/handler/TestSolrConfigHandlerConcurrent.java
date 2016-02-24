@@ -1,5 +1,3 @@
-package org.apache.solr.handler;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.handler;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.handler;
 
 import static java.util.Arrays.asList;
 import static org.apache.solr.common.util.Utils.getObjectByPath;
@@ -82,8 +81,7 @@ public class TestSolrConfigHandlerConcurrent extends AbstractFullDistribZkTestBa
 
   @Test
   public void test() throws Exception {
-    Map editable_prop_map = (Map) new ObjectBuilder(new JSONParser(new StringReader(
-        ConfigOverlay.MAPPING))).getObject();
+    Map editable_prop_map = (Map) Utils.fromJSONResource("EditableSolrConfigAttributes.json");
     Map caches = (Map) editable_prop_map.get("query");
 
     setupHarnesses();

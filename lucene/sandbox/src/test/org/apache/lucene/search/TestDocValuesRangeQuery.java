@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
 import java.io.IOException;
 
@@ -58,7 +57,7 @@ public class TestDocValuesRangeQuery extends LuceneTestCase {
         iw.addDocument(doc);
       }
       if (random().nextBoolean()) {
-        iw.deleteDocuments(PointRangeQuery.new1DLongRange("idx", 0L, true, 10L, true));
+        iw.deleteDocuments(PointRangeQuery.newLongRange("idx", 0L, true, 10L, true));
       }
       iw.commit();
       final IndexReader reader = iw.getReader();
@@ -70,7 +69,7 @@ public class TestDocValuesRangeQuery extends LuceneTestCase {
         final Long max = random().nextBoolean() ? null : TestUtil.nextLong(random(), -100, 1000);
         final boolean minInclusive = random().nextBoolean();
         final boolean maxInclusive = random().nextBoolean();
-        final Query q1 = PointRangeQuery.new1DLongRange("idx", min, minInclusive, max, maxInclusive);
+        final Query q1 = PointRangeQuery.newLongRange("idx", min, minInclusive, max, maxInclusive);
         final Query q2 = DocValuesRangeQuery.newLongRange("dv", min, max, minInclusive, maxInclusive);
         assertSameMatches(searcher, q1, q2, false);
       }
@@ -84,7 +83,7 @@ public class TestDocValuesRangeQuery extends LuceneTestCase {
     if (l == null) {
       return null;
     } else {
-      byte[] bytes = new byte[RamUsageEstimator.NUM_BYTES_LONG];
+      byte[] bytes = new byte[Long.BYTES];
       NumericUtils.longToBytes(l, bytes, 0);
       return new BytesRef(bytes);
     }
@@ -186,7 +185,7 @@ public class TestDocValuesRangeQuery extends LuceneTestCase {
       iw.addDocument(doc);
     }
     if (random().nextBoolean()) {
-      iw.deleteDocuments(PointRangeQuery.new1DLongRange("idx", 0L, true, 10L, true));
+      iw.deleteDocuments(PointRangeQuery.newLongRange("idx", 0L, true, 10L, true));
     }
     iw.commit();
     final IndexReader reader = iw.getReader();
@@ -200,7 +199,7 @@ public class TestDocValuesRangeQuery extends LuceneTestCase {
       final boolean maxInclusive = random().nextBoolean();
 
       BooleanQuery.Builder ref = new BooleanQuery.Builder();
-      ref.add(PointRangeQuery.new1DLongRange("idx", min, minInclusive, max, maxInclusive), Occur.FILTER);
+      ref.add(PointRangeQuery.newLongRange("idx", min, minInclusive, max, maxInclusive), Occur.FILTER);
       ref.add(new TermQuery(new Term("f", "a")), Occur.MUST);
 
       BooleanQuery.Builder bq1 = new BooleanQuery.Builder();

@@ -1,5 +1,3 @@
-package org.apache.solr.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.search;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -205,6 +204,18 @@ public class QueryCommand {
       return setFlags(SolrIndexSearcher.TERMINATE_EARLY);
     } else {
       return clearFlags(SolrIndexSearcher.TERMINATE_EARLY);
+    }
+  }
+
+  public boolean getSegmentTerminateEarly() {
+    return (flags & SolrIndexSearcher.SEGMENT_TERMINATE_EARLY) != 0;
+  }
+
+  public QueryCommand setSegmentTerminateEarly(boolean segmentSegmentTerminateEarly) {
+    if (segmentSegmentTerminateEarly) {
+      return setFlags(SolrIndexSearcher.SEGMENT_TERMINATE_EARLY);
+    } else {
+      return clearFlags(SolrIndexSearcher.SEGMENT_TERMINATE_EARLY);
     }
   }
 

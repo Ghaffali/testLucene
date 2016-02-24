@@ -1,5 +1,3 @@
-package org.apache.solr.core;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.core;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.core;
 
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -32,7 +31,7 @@ public class TestSolrIndexConfig extends SolrTestCaseJ4 {
 
   @BeforeClass
   public static void beforeClass() throws Exception {
-    initCore("solrconfig-indexconfig.xml","schema.xml");
+    initCore(random().nextBoolean() ? "solrconfig-indexconfig.xml" : "solrconfig-indexconfig-mergepolicyfactory.xml","schema.xml");
   }
 
   public void testLiveWriter() throws Exception {

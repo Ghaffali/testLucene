@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -183,11 +182,6 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
   // Just tests that we can open all files returned by listAll
   public void testListAll() throws Exception {
     Directory dir = newDirectory();
-    if (dir instanceof MockDirectoryWrapper) {
-      // test lists files manually and tries to verify every .cfs it finds,
-      // but a virus scanner could leave some trash.
-      ((MockDirectoryWrapper)dir).setEnableVirusScanner(false);
-    }
     // riw should sometimes create docvalues fields, etc
     RandomIndexWriter riw = new RandomIndexWriter(random(), dir);
     Document doc = new Document();
@@ -228,12 +222,10 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     si.setFiles(Collections.emptyList());
     si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
     Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si, IOContext.DEFAULT);
-    try {
+    expectThrows(UnsupportedOperationException.class, () -> {
       cfs.createOutput("bogus", IOContext.DEFAULT);
-      fail("didn't get expected exception");
-    } catch (UnsupportedOperationException expected) {
-      // expected UOE
-    }
+    });
+
     cfs.close();
     dir.close();
   }
@@ -251,12 +243,10 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     si.setFiles(Collections.emptyList());
     si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
     Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si, IOContext.DEFAULT);
-    try {
+    expectThrows(UnsupportedOperationException.class, () -> {
       cfs.deleteFile(testfile);
-      fail("didn't get expected exception");
-    } catch (UnsupportedOperationException expected) {
-      // expected UOE
-    }
+    });
+
     cfs.close();
     dir.close();
   }
@@ -274,12 +264,10 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     si.setFiles(Collections.emptyList());
     si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
     Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si, IOContext.DEFAULT);
-    try {
+    expectThrows(UnsupportedOperationException.class, () -> {
       cfs.renameFile(testfile, "bogus");
-      fail("didn't get expected exception");
-    } catch (UnsupportedOperationException expected) {
-      // expected UOE
-    }
+    });
+
     cfs.close();
     dir.close();
   }
@@ -297,12 +285,10 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     si.setFiles(Collections.emptyList());
     si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
     Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si, IOContext.DEFAULT);
-    try {
+    expectThrows(UnsupportedOperationException.class, () -> {
       cfs.sync(Collections.singleton(testfile));
-      fail("didn't get expected exception");
-    } catch (UnsupportedOperationException expected) {
-      // expected UOE
-    }
+    });
+
     cfs.close();
     dir.close();
   }
@@ -320,12 +306,10 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     si.setFiles(Collections.emptyList());
     si.getCodec().compoundFormat().write(dir, si, IOContext.DEFAULT);
     Directory cfs = si.getCodec().compoundFormat().getCompoundReader(dir, si, IOContext.DEFAULT);
-    try {
+    expectThrows(UnsupportedOperationException.class, () -> {
       cfs.obtainLock("foobar");
-      fail("didn't get expected exception");
-    } catch (UnsupportedOperationException expected) {
-      // expected UOE
-    }
+    });
+
     cfs.close();
     dir.close();
   }
@@ -608,12 +592,9 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     Directory cr = createLargeCFS(dir);
     
     // Open bogus file
-    try {
+    expectThrows(IOException.class, () -> {
       cr.openInput("bogus", newIOContext(random()));
-      fail("File not found");
-    } catch (IOException e) {
-      /* success */;
-    }
+    });
     
     cr.close();
     dir.close();
@@ -626,21 +607,18 @@ public abstract class BaseCompoundFormatTestCase extends BaseIndexFileFormatTest
     is.seek(is.length() - 10);
     byte b[] = new byte[100];
     is.readBytes(b, 0, 10);
-    
-    try {
+
+    // Single byte read past end of file
+    expectThrows(IOException.class, () -> {
       is.readByte();
-      fail("Single byte read past end of file");
-    } catch (IOException e) {
-      /* success */
-    }
-    
+    });
+
     is.seek(is.length() - 10);
-    try {
+
+    // Block read past end of file
+    expectThrows(IOException.class, () -> {
       is.readBytes(b, 0, 50);
-      fail("Block read past end of file");
-    } catch (IOException e) {
-      /* success */
-    }
+    });
     
     is.close();
     cr.close();

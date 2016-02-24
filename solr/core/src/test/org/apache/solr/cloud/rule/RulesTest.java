@@ -1,7 +1,3 @@
-package org.apache.solr.cloud.rule;
-
-import java.lang.invoke.MethodHandles;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,9 @@ import java.lang.invoke.MethodHandles;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud.rule;
+
+import java.lang.invoke.MethodHandles;
 
 import java.util.List;
 import java.util.Map;
@@ -35,14 +34,19 @@ import org.apache.solr.common.cloud.ImplicitDocRouter;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
+import static org.junit.matchers.JUnitMatchers.containsString;
 
 public class RulesTest extends AbstractFullDistribZkTestBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+  @org.junit.Rule
+  public ExpectedException expectedException = ExpectedException.none();
 
   @Test
   @ShardsFixed(num = 5)
@@ -127,6 +131,78 @@ public class RulesTest extends AbstractFullDistribZkTestBase {
     assertEquals(1, list.size());
     assertEquals ( "ImplicitSnitch", ((Map)list.get(0)).get("class"));
   }
+
+  @Test
+  public void testHostFragmentRule() throws Exception {
+    String rulesColl = "ipRuleColl";
+    String baseUrl = getBaseUrl((HttpSolrClient) clients.get(0));
+    String ip_1 = "-1";
+    String ip_2 = "-1";
+    Matcher hostAndPortMatcher = Pattern.compile("(?:https?://)?([^:]+):(\\d+)").matcher(baseUrl);
+    if (hostAndPortMatcher.find()) {
+      String[] ipFragments = hostAndPortMatcher.group(1).split("\\.");
+      ip_1 = ipFragments[ipFragments.length - 1];
+      ip_2 = ipFragments[ipFragments.length - 2];
+    }
+
+    try (SolrClient client = createNewSolrClient("", baseUrl)) {
+      CollectionAdminResponse rsp;
+      CollectionAdminRequest.Create create = new CollectionAdminRequest.Create();
+      create.setCollectionName(rulesColl);
+      create.setShards("shard1");
+      create.setRouterName(ImplicitDocRouter.NAME);
+      create.setReplicationFactor(2);
+      create.setRule("ip_2:" + ip_2, "ip_1:" + ip_1);
+      create.setSnitch("class:ImplicitSnitch");
+      rsp = create.process(client);
+      assertEquals(0, rsp.getStatus());
+      assertTrue(rsp.isSuccess());
+
+    }
+
+    DocCollection rulesCollection = cloudClient.getZkStateReader().getClusterState().getCollection(rulesColl);
+    List<Map> list = (List<Map>) rulesCollection.get("rule");
+    assertEquals(2, list.size());
+    assertEquals(ip_2, list.get(0).get("ip_2"));
+    assertEquals(ip_1, list.get(1).get("ip_1"));
+
+    list = (List) rulesCollection.get("snitch");
+    assertEquals(1, list.size());
+    assertEquals("ImplicitSnitch", list.get(0).get("class"));
+  }
+
+
+  @Test
+  public void testHostFragmentRuleThrowsExceptionWhenIpDoesNotMatch() throws Exception {
+    String rulesColl = "ipRuleColl";
+    String baseUrl = getBaseUrl((HttpSolrClient) clients.get(0));
+    String ip_1 = "-1";
+    String ip_2 = "-1";
+    Matcher hostAndPortMatcher = Pattern.compile("(?:https?://)?([^:]+):(\\d+)").matcher(baseUrl);
+    if (hostAndPortMatcher.find()) {
+      String[] ipFragments = hostAndPortMatcher.group(1).split("\\.");
+      ip_1 = ipFragments[ipFragments.length - 1];
+      ip_2 = ipFragments[ipFragments.length - 2];
+    }
+
+    try (SolrClient client = createNewSolrClient("", baseUrl)) {
+      CollectionAdminRequest.Create create = new CollectionAdminRequest.Create();
+      create.setCollectionName(rulesColl);
+      create.setShards("shard1");
+      create.setRouterName(ImplicitDocRouter.NAME);
+      create.setReplicationFactor(2);
+
+      create.setRule("ip_2:" + ip_2, "ip_1:" + ip_1 + "9999");
+      create.setSnitch("class:ImplicitSnitch");
+
+      expectedException.expect(HttpSolrClient.RemoteSolrException.class);
+      expectedException.expectMessage(containsString("ip_1"));
+
+      create.process(client);
+    }
+
+  }
+
 
   @Test
   public void testModifyColl() throws Exception {

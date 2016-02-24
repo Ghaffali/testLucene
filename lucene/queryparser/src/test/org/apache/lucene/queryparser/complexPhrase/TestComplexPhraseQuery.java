@@ -1,5 +1,3 @@
-package org.apache.lucene.queryparser.complexPhrase;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.queryparser.complexPhrase;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.queryparser.complexPhrase;
 
 import java.util.HashSet;
 
@@ -87,14 +86,9 @@ public class TestComplexPhraseQuery extends LuceneTestCase {
   private void checkBadQuery(String qString) {
     ComplexPhraseQueryParser qp = new ComplexPhraseQueryParser(defaultFieldName, analyzer);
     qp.setInOrder(inOrder);
-    Throwable expected = null;
-    try {
+    expectThrows(Throwable.class, () -> {
       qp.parse(qString);
-    } catch (Throwable e) {
-      expected = e;
-    }
-    assertNotNull("Expected parse error in " + qString, expected);
-
+    });
   }
 
   private void checkMatches(String qString, String expectedVals)

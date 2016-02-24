@@ -1,5 +1,3 @@
-package org.apache.lucene.store;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,19 @@ package org.apache.lucene.store;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.UnsupportedEncodingException;
+import java.nio.file.AccessDeniedException;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
@@ -32,17 +43,7 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.PrintStreamInfoStream;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
-import java.nio.file.AccessDeniedException;
-import java.nio.file.Path;
-import java.util.concurrent.CyclicBarrier;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
+import org.apache.lucene.util.TestUtil;
 
 /** Base class for per-LockFactory tests. */
 public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
@@ -54,13 +55,14 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
   
   /** Test obtaining and releasing locks, checking validity */
   public void testBasics() throws IOException {
-    Directory dir = getDirectory(createTempDir());
+    Path tempPath = createTempDir();
+    Directory dir = getDirectory(tempPath);
     
     Lock l = dir.obtainLock("commit");
-    try {
+    // shouldn't be able to get the lock twice
+    expectThrows(LockObtainFailedException.class, () -> {      
       dir.obtainLock("commit");
-      fail("succeeded in obtaining lock twice, didn't get exception");
-    } catch (LockObtainFailedException expected) {}
+    });
     l.close();
     
     // Make sure we can obtain first one again:
@@ -72,7 +74,8 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
   
   /** Test closing locks twice */
   public void testDoubleClose() throws IOException {
-    Directory dir = getDirectory(createTempDir());
+    Path tempPath = createTempDir();
+    Directory dir = getDirectory(tempPath);
     
     Lock l = dir.obtainLock("commit");
     l.close();
@@ -83,32 +86,32 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
   
   /** Test ensureValid returns true after acquire */
   public void testValidAfterAcquire() throws IOException {
-    Directory dir = getDirectory(createTempDir());
-
+    Path tempPath = createTempDir();
+    Directory dir = getDirectory(tempPath);
     Lock l = dir.obtainLock("commit");
     l.ensureValid(); // no exception
     l.close();
-    
     dir.close();
   }
   
   /** Test ensureValid throws exception after close */
   public void testInvalidAfterClose() throws IOException {
-    Directory dir = getDirectory(createTempDir());
+    Path tempPath = createTempDir();
+    Directory dir = getDirectory(tempPath);
     
     Lock l = dir.obtainLock("commit");
     l.close();
 
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {      
       l.ensureValid();
-      fail("didn't get exception");
-    } catch (AlreadyClosedException expected) {}
-    
+    });
+
     dir.close();
   }
   
   public void testObtainConcurrently() throws InterruptedException, IOException {
-    final Directory directory = getDirectory(createTempDir());
+    Path tempPath = createTempDir();
+    final Directory directory = getDirectory(tempPath);
     final AtomicBoolean running = new AtomicBoolean(true);
     final AtomicInteger atomicCounter = new AtomicInteger(0);
     final ReentrantLock assertingLock = new ReentrantLock();
@@ -156,7 +159,10 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
   // IndexWriters over & over in 2 threads and making sure
   // no unexpected exceptions are raised:
   public void testStressLocks() throws Exception {
-    Directory dir = getDirectory(createTempDir());
+    Path tempPath = createTempDir();
+    assumeFalse("cannot handle buggy Files.delete", TestUtil.hasWindowsFS(tempPath));
+
+    Directory dir = getDirectory(tempPath);
 
     // First create a 1 doc index:
     IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.CREATE));
@@ -205,6 +211,7 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
     @Override
     public void run() {
       IndexWriter writer = null;
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
       for(int i=0;i<this.numIteration;i++) {
         if (VERBOSE) {
           System.out.println("TEST: WriterThread iter=" + i);
@@ -213,29 +220,28 @@ public abstract class BaseLockFactoryTestCase extends LuceneTestCase {
         IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
 
         // We only print the IW infoStream output on exc, below:
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        PrintStream printStream;
         try {
-          iwc.setInfoStream(new PrintStreamInfoStream(new PrintStream(baos, true, "UTF8")));
+          printStream = new PrintStream(baos, true, "UTF8");
         } catch (UnsupportedEncodingException uee) {
           // shouldn't happen
           throw new RuntimeException(uee);
         }
+
+        iwc.setInfoStream(new PrintStreamInfoStream(printStream));
+
+        printStream.println("\nTEST: WriterThread iter=" + i);
         iwc.setOpenMode(OpenMode.APPEND);
         try {
           writer = new IndexWriter(dir, iwc);
-        } catch (LockObtainFailedException e) {
-          // lock obtain timed out
-          // NOTE: we should at some point
-          // consider this a failure?  The lock
-          // obtains, across IndexReader &
-          // IndexWriters should be "fair" (ie
-          // FIFO).
         } catch (Throwable t) {
           if (Constants.WINDOWS && t instanceof AccessDeniedException) {
             // LUCENE-6684: suppress this: on Windows, a file in the curious "pending delete" state can
             // cause this exc on IW init, where one thread/process deleted an old
             // segments_N, but the delete hasn't finished yet because other threads/processes
             // still have it open
+            printStream.println("TEST: AccessDeniedException on init witer");
+            t.printStackTrace(printStream);
           } else {
             hitException = true;
             System.out.println("Stress Test Index Writer: creation hit unexpected exception: " + t.toString());

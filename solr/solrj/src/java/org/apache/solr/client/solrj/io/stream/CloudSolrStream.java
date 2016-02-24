@@ -14,20 +14,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.client.solrj.io.stream;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.Random;
 import java.util.TreeSet;
 import java.util.concurrent.Callable;
@@ -38,8 +37,8 @@ import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.io.SolrClientCache;
 import org.apache.solr.client.solrj.io.Tuple;
 import org.apache.solr.client.solrj.io.comp.ComparatorOrder;
-import org.apache.solr.client.solrj.io.comp.MultipleFieldComparator;
 import org.apache.solr.client.solrj.io.comp.FieldComparator;
+import org.apache.solr.client.solrj.io.comp.MultipleFieldComparator;
 import org.apache.solr.client.solrj.io.comp.StreamComparator;
 import org.apache.solr.client.solrj.io.stream.expr.Expressible;
 import org.apache.solr.client.solrj.io.stream.expr.StreamExpression;
@@ -165,7 +164,14 @@ public class CloudSolrStream extends TupleStream implements Expressible {
     
     // parameters
     for(Entry<String,String> param : params.entrySet()){
-      expression.addParameter(new StreamExpressionNamedParameter(param.getKey(), param.getValue()));
+      String value = param.getValue();
+      
+      // SOLR-8409: This is a special case where the params contain a " character
+      // Do note that in any other BASE streams with parameters where a " might come into play
+      // that this same replacement needs to take place.
+      value = value.replace("\"", "\\\"");
+      
+      expression.addParameter(new StreamExpressionNamedParameter(param.getKey(), value));
     }
     
     // zkHost
@@ -289,17 +295,15 @@ public class CloudSolrStream extends TupleStream implements Expressible {
 
       ZkStateReader zkStateReader = cloudSolrClient.getZkStateReader();
       ClusterState clusterState = zkStateReader.getClusterState();
-
+      Set<String> liveNodes = clusterState.getLiveNodes();
       //System.out.println("Connected to zk an got cluster state.");
 
       Collection<Slice> slices = clusterState.getActiveSlices(this.collection);
 
       if(slices == null) {
-
-        String colLower = this.collection.toLowerCase(Locale.getDefault());
         //Try case insensitive match
         for(String col : clusterState.getCollections()) {
-          if(col.toLowerCase(Locale.getDefault()).equals(colLower)) {
+          if(col.equalsIgnoreCase(collection)) {
             slices = clusterState.getActiveSlices(col);
             break;
           }
@@ -316,6 +320,7 @@ public class CloudSolrStream extends TupleStream implements Expressible {
         Collection<Replica> replicas = slice.getReplicas();
         List<Replica> shuffler = new ArrayList();
         for(Replica replica : replicas) {
+          if(replica.getState() == Replica.State.ACTIVE && liveNodes.contains(replica.getNodeName()))
           shuffler.add(replica);
         }
 

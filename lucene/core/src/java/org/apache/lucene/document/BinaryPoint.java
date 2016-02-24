@@ -1,5 +1,3 @@
-package org.apache.lucene.document;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,12 +14,14 @@ package org.apache.lucene.document;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.document;
+
 
 import org.apache.lucene.util.BytesRef;
 
 /** A binary field that is indexed dimensionally such that finding
  *  all documents within an N-dimensional shape or range at search time is
- *  efficient.  Muliple values for the same field in one documents
+ *  efficient.  Multiple values for the same field in one documents
  *  is allowed. */
 
 public final class BinaryPoint extends Field {

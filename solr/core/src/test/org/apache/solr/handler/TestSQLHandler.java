@@ -1,5 +1,3 @@
-package org.apache.solr.handler;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.handler;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.handler;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -281,6 +280,59 @@ public class TestSQLHandler extends AbstractFullDistribZkTestBase {
       assert(tuple.getLong("id") == 1);
       assert(tuple.getLong("field_i") == 7);
       assert(tuple.get("str_s").equals("a"));
+
+
+      params = new HashMap();
+      params.put(CommonParams.QT, "/sql");
+
+      //Test unlimited unsorted result. Should sort on _version_ desc
+      params.put("stmt", "select 'id', field_i, str_s from collection1 where 'text'='XXXX'");
+
+      solrStream = new SolrStream(jetty.url, params);
+      tuples = getTuples(solrStream);
+
+      assert(tuples.size() == 8);
+
+      tuple = tuples.get(0);
+      assert(tuple.getLong("id") == 8);
+      assert(tuple.getLong("field_i") == 60);
+      assert(tuple.get("str_s").equals("c"));
+
+      tuple = tuples.get(1);
+      assert(tuple.getLong("id") == 7);
+      assert(tuple.getLong("field_i") == 50);
+      assert(tuple.get("str_s").equals("c"));
+
+      tuple = tuples.get(2);
+      assert(tuple.getLong("id") == 6);
+      assert(tuple.getLong("field_i") == 40);
+      assert(tuple.get("str_s").equals("c"));
+
+      tuple = tuples.get(3);
+      assert(tuple.getLong("id") == 5);
+      assert(tuple.getLong("field_i") == 30);
+      assert(tuple.get("str_s").equals("c"));
+
+      tuple = tuples.get(4);
+      assert(tuple.getLong("id") == 4);
+      assert(tuple.getLong("field_i") == 11);
+      assert(tuple.get("str_s").equals("b"));
+
+      tuple = tuples.get(5);
+      assert(tuple.getLong("id") == 3);
+      assert(tuple.getLong("field_i") == 20);
+      assert(tuple.get("str_s").equals("a"));
+
+      tuple = tuples.get(6);
+      assert(tuple.getLong("id") == 2);
+      assert(tuple.getLong("field_i") == 8);
+      assert(tuple.get("str_s").equals("b"));
+
+      tuple = tuples.get(7);
+      assert(tuple.getLong("id") == 1);
+      assert(tuple.getLong("field_i") == 7);
+      assert(tuple.get("str_s").equals("a"));
+
 
       params = new HashMap();
       params.put(CommonParams.QT, "/sql");
@@ -2274,6 +2326,7 @@ public class TestSQLHandler extends AbstractFullDistribZkTestBase {
 
       tuple = tuples.get(0);
       assert(tuple.getLong("year_i") == 2015);
+      assert(tuple.get("year_i") instanceof Long);  // SOLR-8601, This tests that the bucket is actually a Long and not parsed from a String.
       assert(tuple.getDouble("sum(item_i)") == 66);
 
       tuple = tuples.get(1);
@@ -2296,6 +2349,8 @@ public class TestSQLHandler extends AbstractFullDistribZkTestBase {
       tuple = tuples.get(0);
       assert(tuple.getLong("year_i") == 2015);
       assert(tuple.getLong("month_i") == 11);
+      assert(tuple.get("year_i") instanceof Long);
+      assert(tuple.get("month_i") instanceof Long);
       assert(tuple.getDouble("sum(item_i)") == 57);
 
       tuple = tuples.get(1);

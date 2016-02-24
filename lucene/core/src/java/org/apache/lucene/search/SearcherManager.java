@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import java.io.IOException;
 
@@ -73,7 +73,7 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
    * @throws IOException if there is a low-level I/O error
    */
   public SearcherManager(IndexWriter writer, SearcherFactory searcherFactory) throws IOException {
-    this(writer, true, searcherFactory);
+    this(writer, true, false, searcherFactory);
   }
 
   /**
@@ -91,6 +91,8 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
    *          tolerate deleted documents being returned you might gain some
    *          performance by passing <code>false</code>. See
    *          {@link DirectoryReader#openIfChanged(DirectoryReader, IndexWriter, boolean)}.
+   * @param writeAllDeletes
+   *          If <code>true</code>, new deletes will be forcefully written to index files.
    * @param searcherFactory
    *          An optional {@link SearcherFactory}. Pass <code>null</code> if you
    *          don't require the searcher to be warmed before going live or other
@@ -98,12 +100,12 @@ public final class SearcherManager extends ReferenceManager<IndexSearcher> {
    * 
    * @throws IOException if there is a low-level I/O error
    */
-  public SearcherManager(IndexWriter writer, boolean applyAllDeletes, SearcherFactory searcherFactory) throws IOException {
+  public SearcherManager(IndexWriter writer, boolean applyAllDeletes, boolean writeAllDeletes, SearcherFactory searcherFactory) throws IOException {
     if (searcherFactory == null) {
       searcherFactory = new SearcherFactory();
     }
     this.searcherFactory = searcherFactory;
-    current = getSearcher(searcherFactory, DirectoryReader.open(writer, applyAllDeletes), null);
+    current = getSearcher(searcherFactory, DirectoryReader.open(writer, applyAllDeletes, writeAllDeletes), null);
   }
   
   /**

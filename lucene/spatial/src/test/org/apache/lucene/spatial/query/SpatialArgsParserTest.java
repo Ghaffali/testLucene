@@ -1,5 +1,3 @@
-package org.apache.lucene.spatial.query;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.spatial.query;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.spatial.query;
 
 import com.spatial4j.core.context.SpatialContext;
 import com.spatial4j.core.shape.Rectangle;
@@ -48,19 +47,15 @@ public class SpatialArgsParserTest extends LuceneTestCase {
     out = parser.parse(arg, ctx);
     assertEquals(SpatialOperation.IsDisjointTo, out.getOperation());
 
-    try {
+    // spatial operations need args
+    expectThrows(Exception.class, () -> {
       parser.parse(SpatialOperation.IsDisjointTo + "[ ]", ctx);
-      fail("spatial operations need args");
-    }
-    catch (Exception ex) {//expected
-    }
+    });
 
-    try {
+    // unknown operation
+    expectThrows(Exception.class, () -> {
       parser.parse("XXXX(Envelope(-10, 10, 20, -20))", ctx);
-      fail("unknown operation!");
-    }
-    catch (Exception ex) {//expected
-    }
+    });
 
     assertAlias(SpatialOperation.IsWithin, "CoveredBy");
     assertAlias(SpatialOperation.IsWithin, "COVEREDBY");

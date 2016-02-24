@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
@@ -361,9 +361,9 @@ public class TestNumericRangeQuery32 extends LuceneTestCase {
       }
       final BytesRef lowerBytes, upperBytes;
       BytesRefBuilder b = new BytesRefBuilder();
-      LegacyNumericUtils.intToPrefixCodedBytes(lower, 0, b);
+      LegacyNumericUtils.intToPrefixCoded(lower, 0, b);
       lowerBytes = b.toBytesRef();
-      LegacyNumericUtils.intToPrefixCodedBytes(upper, 0, b);
+      LegacyNumericUtils.intToPrefixCoded(upper, 0, b);
       upperBytes = b.toBytesRef();
 
       // test inclusive range

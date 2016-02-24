@@ -1,5 +1,3 @@
-package org.apache.solr.handler;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.handler;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.handler;
 
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.params.SolrParams;
@@ -155,6 +154,7 @@ class CdcrBufferStateManager extends CdcrStateManager {
       String shard = core.getCoreDescriptor().getCloudDescriptor().getShardId();
 
       log.info("The CDCR buffer state has changed: {} @ {}:{}", event, collectionName, shard);
+      // session events are not change events, and do not remove the watcher
       if (Event.EventType.None.equals(event.getType())) {
         return;
       }

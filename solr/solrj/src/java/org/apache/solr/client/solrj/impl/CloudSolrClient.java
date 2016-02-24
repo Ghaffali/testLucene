@@ -1,5 +1,3 @@
-package org.apache.solr.client.solrj.impl;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.client.solrj.impl;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.client.solrj.impl;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -1081,12 +1080,6 @@ public class CloudSolrClient extends SolrClient {
         theUrlList = new ArrayList<>(urlList.size());
         theUrlList.addAll(urlList);
       }
-      if(theUrlList.isEmpty()) {
-        for (String s : collectionNames) {
-          if(s!=null) collectionStateCache.remove(s);
-        }
-        throw new SolrException(SolrException.ErrorCode.INVALID_STATE, "Could not find a healthy node to handle the request.");
-      }
 
       Collections.shuffle(theUrlList, rand);
       if (sendToLeaders) {
@@ -1097,6 +1090,13 @@ public class CloudSolrClient extends SolrClient {
         theUrlList.addAll(theReplicas);
       }
       
+      if (theUrlList.isEmpty()) {
+        for (String s : collectionNames) {
+          if (s != null) collectionStateCache.remove(s);
+        }
+        throw new SolrException(SolrException.ErrorCode.INVALID_STATE,
+            "Could not find a healthy node to handle the request.");
+      }
     }
 
     LBHttpSolrClient.Req req = new LBHttpSolrClient.Req(request, theUrlList);

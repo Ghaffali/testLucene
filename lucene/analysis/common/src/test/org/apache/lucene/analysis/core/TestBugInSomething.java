@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.lucene.analysis.core;
 
 import java.io.IOException;
@@ -27,22 +43,6 @@ import org.apache.lucene.analysis.util.CharArraySet;
 import org.apache.lucene.analysis.wikipedia.WikipediaTokenizer;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 
-/*
- * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements.  See the NOTICE file distributed with
- * this work for additional information regarding copyright ownership.
- * The ASF licenses this file to You under the Apache License, Version 2.0
- * (the "License"); you may not use this file except in compliance with
- * the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 
 @SuppressCodecs("Direct")
 public class TestBugInSomething extends BaseTokenStreamTestCase {
@@ -138,75 +138,55 @@ public class TestBugInSomething extends BaseTokenStreamTestCase {
   
   public void testWrapping() throws Exception {
     CharFilter cs = new TestRandomChains.CheckThatYouDidntReadAnythingReaderWrapper(wrappedStream);
-    try {
+    Exception expected = expectThrows(Exception.class, () -> {
       cs.mark(1);
-      fail();
-    } catch (Exception e) {
-      assertEquals("mark(int)", e.getMessage());
-    }
+    });
+    assertEquals("mark(int)", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.markSupported();
-      fail();
-    } catch (Exception e) {
-      assertEquals("markSupported()", e.getMessage());
-    }
+    });
+    assertEquals("markSupported()", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.read();
-      fail();
-    } catch (Exception e) {
-      assertEquals("read()", e.getMessage());
-    }
+    });
+    assertEquals("read()", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.read(new char[0]);
-      fail();
-    } catch (Exception e) {
-      assertEquals("read(char[])", e.getMessage());
-    }
+    });
+    assertEquals("read(char[])", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.read(CharBuffer.wrap(new char[0]));
-      fail();
-    } catch (Exception e) {
-      assertEquals("read(CharBuffer)", e.getMessage());
-    }
+    });
+    assertEquals("read(CharBuffer)", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.reset();
-      fail();
-    } catch (Exception e) {
-      assertEquals("reset()", e.getMessage());
-    }
+    });
+    assertEquals("reset()", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.skip(1);
-      fail();
-    } catch (Exception e) {
-      assertEquals("skip(long)", e.getMessage());
-    }
+    });
+    assertEquals("skip(long)", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.correctOffset(1);
-      fail();
-    } catch (Exception e) {
-      assertEquals("correct(int)", e.getMessage());
-    }
+    });
+    assertEquals("correct(int)", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.close();
-      fail();
-    } catch (Exception e) {
-      assertEquals("close()", e.getMessage());
-    }
+    });
+    assertEquals("close()", expected.getMessage());
     
-    try {
+    expected = expectThrows(Exception.class, () -> {
       cs.read(new char[0], 0, 0);
-      fail();
-    } catch (Exception e) {
-      assertEquals("read(char[], int, int)", e.getMessage());
-    }
+    });
+    assertEquals("read(char[], int, int)", expected.getMessage());
   }
   
   // todo: test framework?

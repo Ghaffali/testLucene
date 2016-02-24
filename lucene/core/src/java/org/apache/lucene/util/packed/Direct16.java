@@ -1,7 +1,5 @@
 // This file has been automatically generated, DO NOT EDIT
 
-package org.apache.lucene.util.packed;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +16,7 @@ package org.apache.lucene.util.packed;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.packed;
 
 import org.apache.lucene.store.DataInput;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -42,6 +41,11 @@ final class Direct16 extends PackedInts.MutableImpl {
     for (int i = 0; i < valueCount; ++i) {
       values[i] = in.readShort();
     }
+    // because packed ints have not always been byte-aligned
+    final int remaining = (int) (PackedInts.Format.PACKED.byteCount(packedIntsVersion, valueCount, 16) - 2L * valueCount);
+    for (int i = 0; i < remaining; ++i) {
+      in.readByte();
+    }
   }
 
   @Override
@@ -58,7 +62,7 @@ final class Direct16 extends PackedInts.MutableImpl {
   public long ramBytesUsed() {
     return RamUsageEstimator.alignObjectSize(
         RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-        + 2 * RamUsageEstimator.NUM_BYTES_INT     // valueCount,bitsPerValue
+        + 2 * Integer.BYTES     // valueCount,bitsPerValue
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF) // values ref
         + RamUsageEstimator.sizeOf(values);
   }

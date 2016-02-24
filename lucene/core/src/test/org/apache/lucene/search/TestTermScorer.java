@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -185,15 +185,12 @@ public class TestTermScorer extends LuceneTestCase {
     IndexSearcher indexSearcher = new IndexSearcher(forbiddenNorms);
     
     Weight weight = indexSearcher.createNormalizedWeight(termQuery, true);
-    try {
+    expectThrows(AssertionError.class, () -> {
       weight.scorer(forbiddenNorms.getContext()).iterator().nextDoc();
-      fail("Should load norms");
-    } catch (AssertionError e) {
-      // ok
-    }
+    });
     
-    weight = indexSearcher.createNormalizedWeight(termQuery, false);
+    Weight weight2 = indexSearcher.createNormalizedWeight(termQuery, false);
     // should not fail this time since norms are not necessary
-    weight.scorer(forbiddenNorms.getContext()).iterator().nextDoc();
+    weight2.scorer(forbiddenNorms.getContext()).iterator().nextDoc();
   }
 }

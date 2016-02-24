@@ -41,32 +41,7 @@ import static org.apache.solr.common.cloud.ZkStateReader.PROPERTY_VALUE_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.REPLICATION_FACTOR;
 import static org.apache.solr.common.cloud.ZkStateReader.REPLICA_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.SHARD_ID_PROP;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICA;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICAPROP;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDROLE;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.BALANCESHARDUNIQUE;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.CLUSTERPROP;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.CLUSTERSTATUS;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.CREATE;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.CREATEALIAS;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.CREATESHARD;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.DELETE;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.DELETEALIAS;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.DELETEREPLICA;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.DELETEREPLICAPROP;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.DELETESHARD;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.FORCELEADER;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.LIST;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.MIGRATE;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.MIGRATESTATEFORMAT;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.MODIFYCOLLECTION;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.OVERSEERSTATUS;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.REBALANCELEADERS;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.RELOAD;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.REMOVEROLE;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.REQUESTSTATUS;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.SPLITSHARD;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.SYNCSHARD;
+import static org.apache.solr.common.params.CollectionParams.CollectionAction.*;
 import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.params.CommonParams.VALUE_LONG;
@@ -95,6 +70,7 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.CoreAdminRequest;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.RequestSyncShard;
 import org.apache.solr.client.solrj.response.RequestStatusState;
+import org.apache.solr.client.solrj.util.SolrIdentifierValidator;
 import org.apache.solr.cloud.DistributedMap;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler;
@@ -118,6 +94,7 @@ import org.apache.solr.common.cloud.ZkCmdExecutor;
 import org.apache.solr.common.cloud.ZkCoreNodeProps;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CollectionParams.CollectionAction;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.CoreAdminParams;
@@ -127,6 +104,7 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
+import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.BlobHandler;
 import org.apache.solr.handler.RequestHandlerBase;
@@ -145,6 +123,7 @@ import com.google.common.collect.ImmutableSet;
 
 public class CollectionsHandler extends RequestHandlerBase implements ApiSupport {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
   protected final CoreContainer coreContainer;
   private final CollectionHandlerApi v2Handler ;
 
@@ -237,18 +216,18 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
 
   static final Set<String> KNOWN_ROLES = ImmutableSet.of("overseer");
 
-  public static long DEFAULT_ZK_TIMEOUT = 180*1000;
+  public static long DEFAULT_COLLECTION_OP_TIMEOUT = 180*1000;
 
   void handleResponse(String operation, ZkNodeProps m,
                               SolrQueryResponse rsp) throws KeeperException, InterruptedException {
-    handleResponse(operation, m, rsp, DEFAULT_ZK_TIMEOUT);
+    handleResponse(operation, m, rsp, DEFAULT_COLLECTION_OP_TIMEOUT);
   }
 
-  private void handleResponse(String operation, ZkNodeProps m,
+  private SolrResponse handleResponse(String operation, ZkNodeProps m,
       SolrQueryResponse rsp, long timeout) throws KeeperException, InterruptedException {
     long time = System.nanoTime();
 
-     if(m.containsKey(ASYNC) && m.get(ASYNC) != null) {
+    if (m.containsKey(ASYNC) && m.get(ASYNC) != null) {
 
        String asyncId = m.getStr(ASYNC);
 
@@ -273,7 +252,7 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
 
        rsp.getValues().addAll(response.getResponse());
 
-       return;
+       return response;
      }
 
     QueueEvent event = coreContainer.getZkController()
@@ -287,6 +266,7 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         Integer code = (Integer) exp.get("rspCode");
         rsp.setException(new SolrException(code != null && code != -1 ? ErrorCode.getErrorCode(code) : ErrorCode.SERVER_ERROR, (String)exp.get("msg")));
       }
+      return response;
     } else {
       if (System.nanoTime() - time >= TimeUnit.NANOSECONDS.convert(timeout, TimeUnit.MILLISECONDS)) {
         throw new SolrException(ErrorCode.SERVER_ERROR, operation
@@ -369,7 +349,18 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         addMapObject(props, RULE);
         addMapObject(props, SNITCH);
         verifyRuleParams(h.coreContainer, props);
-        if (SYSTEM_COLL.equals(props.get(NAME))) {
+        final String collectionName = (String) props.get(NAME);
+        if (!SolrIdentifierValidator.validateCollectionName(collectionName)) {
+          throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid collection: " + collectionName
+          + ". Collection names must consist entirely of periods, underscores, and alphanumerics");
+        }
+        final String shardsParam = (String) props.get(SHARDS_PROP);
+        if (StringUtils.isNotEmpty(shardsParam)) {
+          log.info("Validating shards param!!!!!!!!" + shardsParam);
+          verifyShardsParam(shardsParam);
+          log.info("Validating shards param!!!!!!! done" + shardsParam);
+        }
+        if (SYSTEM_COLL.equals(collectionName)) {
           //We must always create a .system collection with only a single shard
           props.put(NUM_SLICES, 1);
           props.remove(SHARDS_PROP);
@@ -439,6 +430,11 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
       @Override
       Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, CollectionsHandler handler)
           throws Exception {
+        final String aliasName = req.getParams().get(NAME);
+        if (!SolrIdentifierValidator.validateCollectionName(aliasName)) {
+          throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid alias: " + aliasName
+              + ". Aliases must consist entirely of periods, underscores, and alphanumerics");
+        }
         return req.getParams().required().getAll(null, NAME, "collections");
       }
     },
@@ -450,7 +446,7 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
       }
 
     },
-    SPLITSHARD_OP(SPLITSHARD, DEFAULT_ZK_TIMEOUT * 5, true) {
+    SPLITSHARD_OP(SPLITSHARD, DEFAULT_COLLECTION_OP_TIMEOUT * 5, true) {
       @Override
       Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, CollectionsHandler h)
           throws Exception {
@@ -502,6 +498,11 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
             COLLECTION_PROP,
             SHARD_ID_PROP);
         ClusterState clusterState = handler.coreContainer.getZkController().getClusterState();
+        final String newShardName = req.getParams().get(SHARD_ID_PROP);
+        if (!SolrIdentifierValidator.validateShardName(newShardName)) {
+          throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid shard: " + newShardName
+              + ". Shard names must consist entirely of periods, underscores, and alphanumerics");
+        }
         if (!ImplicitDocRouter.NAME.equals(((Map) clusterState.getCollection(req.getParams().get(COLLECTION_PROP)).get(DOC_ROUTER)).get(NAME)))
           throw new SolrException(ErrorCode.BAD_REQUEST, "shards can be added only to 'implicit' collections");
         req.getParams().getAll(map,
@@ -559,26 +560,19 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
       @Override
       Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, CollectionsHandler h) throws Exception {
         req.getParams().required().check(REQUESTID);
-        
+
         final CoreContainer coreContainer = h.coreContainer;
         final String requestId = req.getParams().get(REQUESTID);
         final ZkController zkController = coreContainer.getZkController();
-        
-        if (requestId.equals("-1")) {
-          // Special taskId (-1), clears up the request state maps.
-          zkController.getOverseerCompletedMap().clear();
-          zkController.getOverseerFailureMap().clear();
-          return null;
-        }
-        
+
         final NamedList<Object> results = new NamedList<>();
         if (zkController.getOverseerCompletedMap().contains(requestId)) {
-          final DistributedMap.MapEvent mapEvent = zkController.getOverseerCompletedMap().get(requestId);
-          rsp.getValues().addAll(SolrResponse.deserialize(mapEvent.getBytes()).getResponse());
+          final byte[] mapEntry = zkController.getOverseerCompletedMap().get(requestId);
+          rsp.getValues().addAll(SolrResponse.deserialize(mapEntry).getResponse());
           addStatusToResponse(results, COMPLETED, "found [" + requestId + "] in completed tasks");
         } else if (zkController.getOverseerFailureMap().contains(requestId)) {
-          final DistributedMap.MapEvent mapEvent = zkController.getOverseerFailureMap().get(requestId);
-          rsp.getValues().addAll(SolrResponse.deserialize(mapEvent.getBytes()).getResponse());
+          final byte[] mapEntry = zkController.getOverseerFailureMap().get(requestId);
+          rsp.getValues().addAll(SolrResponse.deserialize(mapEntry).getResponse());
           addStatusToResponse(results, FAILED, "found [" + requestId + "] in failed tasks");
         } else if (zkController.getOverseerRunningMap().contains(requestId)) {
           addStatusToResponse(results, RUNNING, "found [" + requestId + "] in running tasks");
@@ -587,7 +581,7 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         } else {
           addStatusToResponse(results, NOT_FOUND, "Did not find [" + requestId + "] in any tasks queue");
         }
-        
+
         final SolrResponse response = new OverseerSolrResponse(results);
         rsp.getValues().addAll(response.getResponse());
         return null;
@@ -598,6 +592,42 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         status.add("state", state.getKey());
         status.add("msg", msg);
         results.add("status", status);
+      }
+    },
+    DELETESTATUS_OP(DELETESTATUS) {
+      @SuppressWarnings("unchecked")
+      @Override
+      Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, CollectionsHandler h) throws Exception {
+        final CoreContainer coreContainer = h.coreContainer;
+        final String requestId = req.getParams().get(REQUESTID);
+        final ZkController zkController = coreContainer.getZkController();
+        Boolean flush = req.getParams().getBool(CollectionAdminParams.FLUSH, false);
+
+        if (requestId == null && !flush) {
+          throw new SolrException(ErrorCode.BAD_REQUEST, "Either requestid or flush parameter must be specified.");
+        }
+
+        if (requestId != null && flush) {
+          throw new SolrException(ErrorCode.BAD_REQUEST,
+              "Both requestid and flush parameters can not be specified together.");
+        }
+
+        if (flush) {
+          zkController.getOverseerCompletedMap().clear();
+          zkController.getOverseerFailureMap().clear();
+          rsp.getValues().add("status", "successfully cleared stored collection api responses");
+          return null;
+        } else {
+          // Request to cleanup
+          if (zkController.getOverseerCompletedMap().remove(requestId)) {
+            rsp.getValues().add("status", "successfully removed stored response for [" + requestId + "]");
+          } else if (zkController.getOverseerFailureMap().remove(requestId)) {
+            rsp.getValues().add("status", "successfully removed stored response for [" + requestId + "]");
+          } else {
+            rsp.getValues().add("status", "[" + requestId + "] not found in stored responses");
+          }
+        }
+        return null;
       }
     },
     ADDREPLICA_OP(ADDREPLICA) {
@@ -727,7 +757,7 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         return null;
       }
     },
-    MODIFYCOLLECTION_OP(MODIFYCOLLECTION, DEFAULT_ZK_TIMEOUT, false) {
+    MODIFYCOLLECTION_OP(MODIFYCOLLECTION, DEFAULT_COLLECTION_OP_TIMEOUT, false) {
       @Override
       Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, CollectionsHandler h) throws Exception {
 
@@ -754,7 +784,7 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
     boolean sendToOCPQueue;
 
     CollectionOperation(CollectionAction action) {
-      this(action, DEFAULT_ZK_TIMEOUT, true);
+      this(action, DEFAULT_COLLECTION_OP_TIMEOUT, true);
     }
 
     CollectionOperation(CollectionAction action, long timeOut, boolean sendToOCPQueue) {
@@ -853,6 +883,72 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
     }
   }
 
+  private static void waitForActiveCollection(String collectionName, ZkNodeProps message, CoreContainer cc, SolrResponse response)
+      throws KeeperException, InterruptedException {
+
+    if (response.getResponse().get("exception") != null) {
+      // the main called failed, don't wait
+      log.info("Not waiting for active collection due to exception: " + response.getResponse().get("exception"));
+      return;
+    }
+    
+    if (response.getResponse().get("failure") != null) {
+      // TODO: we should not wait for Replicas we know failed
+    }
+    
+    String replicaNotAlive = null;
+    String replicaState = null;
+    String nodeNotLive = null;
+
+    CloudConfig ccfg = cc.getConfig().getCloudConfig();
+    Integer numRetries = ccfg.getCreateCollectionWaitTimeTillActive();
+    Boolean checkLeaderOnly = ccfg.isCreateCollectionCheckLeaderActive();
+    log.info("Wait for new collection to be active for at most " + numRetries + " seconds. Check all shard "
+        + (checkLeaderOnly ? "leaders" : "replicas"));
+    ZkStateReader zkStateReader = cc.getZkController().getZkStateReader();
+    for (int i = 0; i < numRetries; i++) {
+
+      zkStateReader.updateClusterState();
+      ClusterState clusterState = zkStateReader.getClusterState();
+
+      Collection<Slice> shards = clusterState.getSlices(collectionName);
+      if (shards != null) {
+        replicaNotAlive = null;
+        for (Slice shard : shards) {
+          Collection<Replica> replicas;
+          if (!checkLeaderOnly) replicas = shard.getReplicas();
+          else {
+            replicas = new ArrayList<Replica>();
+            replicas.add(shard.getLeader());
+          }
+          for (Replica replica : replicas) {
+            String state = replica.getStr(ZkStateReader.STATE_PROP);
+            log.debug("Checking replica status, collection={} replica={} state={}", collectionName,
+                replica.getCoreUrl(), state);
+            if (!clusterState.liveNodesContain(replica.getNodeName())
+                || !state.equals(Replica.State.ACTIVE.toString())) {
+              replicaNotAlive = replica.getCoreUrl();
+              nodeNotLive = replica.getNodeName();
+              replicaState = state;
+              break;
+            }
+          }
+          if (replicaNotAlive != null) break;
+        }
+
+        if (replicaNotAlive == null) return;
+      }
+      Thread.sleep(1000);
+    }
+    if (nodeNotLive != null && replicaState != null) {
+      log.error("Timed out waiting for new collection's replicas to become ACTIVE "
+              + (replicaState.equals(Replica.State.ACTIVE.toString()) ? "node " + nodeNotLive + " is not live"
+                  : "replica " + replicaNotAlive + " is in state of " + replicaState.toString()) + " with timeout=" + numRetries);
+    } else {
+      log.error("Timed out waiting for new collection's replicas to become ACTIVE with timeout=" + numRetries);
+    }
+  }
+  
   public static void verifyRuleParams(CoreContainer cc, Map<String, Object> m) {
     List l = (List) m.get(RULE);
     if (l != null) {
@@ -886,6 +982,14 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
       props.put(key, l);
     }
     return props;
+  }
+  
+  private static void verifyShardsParam(String shardsParam) {
+    for (String shard : shardsParam.split(",")) {
+      if (!SolrIdentifierValidator.validateShardName(shard))
+        throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid shard: " + shard
+            + ". Shard names must consist entirely of periods, underscores, and alphanumerics");;
+    }
   }
 
   public static final List<String> MODIFIABLE_COLL_PROPS = ImmutableList.of(

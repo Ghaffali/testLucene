@@ -1,5 +1,3 @@
-package org.apache.lucene.search.suggest.analyzing;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search.suggest.analyzing;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.suggest.analyzing;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -106,12 +105,10 @@ public class TestFreeTextSuggester extends LuceneTestCase {
     );
     Analyzer analyzer = new MockAnalyzer(random());
     FreeTextSuggester sug = new FreeTextSuggester(analyzer);
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       sug.build(new InputArrayIterator(keys));
-      fail("did not hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
+
     analyzer.close();
   }
 
@@ -125,12 +122,10 @@ public class TestFreeTextSuggester extends LuceneTestCase {
     FreeTextSuggester sug = new FreeTextSuggester(analyzer);
     sug.build(new InputArrayIterator(keys));
 
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       sug.lookup("foo\u001eb", 10);
-      fail("did not hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
+
     analyzer.close();
   }
 
@@ -235,12 +230,10 @@ public class TestFreeTextSuggester extends LuceneTestCase {
     Analyzer a = new MockAnalyzer(random());
     FreeTextSuggester sug = new FreeTextSuggester(a, a, 2, (byte) 0x20);
     sug.build(new InputArrayIterator(keys));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       sug.lookup("", 10);
-      fail("did not hit exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
+
     a.close();
   }
 

@@ -1,5 +1,3 @@
-package org.apache.lucene.search.postingshighlight;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search.postingshighlight;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.postingshighlight;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
@@ -406,19 +405,15 @@ public class TestPostingsHighlighter extends LuceneTestCase {
     Query query = new TermQuery(new Term("body", "test"));
     TopDocs topDocs = searcher.search(query, 10, Sort.INDEXORDER);
     assertEquals(2, topDocs.totalHits);
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       highlighter.highlight("body", query, searcher, topDocs, 2);
-      fail("did not hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
     
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       highlighter.highlight("title", new TermQuery(new Term("title", "test")), searcher, topDocs, 2);
       fail("did not hit expected exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
+
     ir.close();
     dir.close();
   }

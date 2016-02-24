@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.lucene.analysis.util;
 
 import java.util.*;
@@ -88,12 +87,11 @@ public class TestCharArrayMap extends LuceneTestCase {
     cs.clear();
     assertEquals(0, cs.size());
     assertEquals(0, cm.size());
-    try {
+    // keySet() should not allow adding new keys
+    expectThrows(UnsupportedOperationException.class, () -> {
       cs.add("test");
-      fail("keySet() allows adding new keys");
-    } catch (UnsupportedOperationException ue) {
-      // pass
-    }
+    });
+
     cm.putAll(hm);
     assertEquals(hm.size(), cs.size());
     assertEquals(cm.size(), cs.size());
@@ -132,6 +130,7 @@ public class TestCharArrayMap extends LuceneTestCase {
     assertTrue(cm.isEmpty());
   }
 
+  // TODO: break this up into simpler test methods vs. "telling a story"
   public void testModifyOnUnmodifiable(){
     CharArrayMap<Integer> map = new CharArrayMap<>(2, false);
     map.put("foo",1);

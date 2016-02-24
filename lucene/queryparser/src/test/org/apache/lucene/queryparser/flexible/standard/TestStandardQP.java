@@ -1,5 +1,3 @@
-package org.apache.lucene.queryparser.flexible.standard;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.queryparser.flexible.standard;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.queryparser.flexible.standard;
 
 import java.io.Reader;
 
@@ -156,22 +155,18 @@ public class TestStandardQP extends QueryParserTestBase {
   
   @Override
   public void testCollatedRange() throws Exception {
-    try {
+    expectThrows(UnsupportedOperationException.class, () -> {
       setAnalyzeRangeTerms(getParser(null), true);
       super.testCollatedRange();
-    } catch (UnsupportedOperationException e) {
-      // expected
-    }
+    });
   }
   
   @Override
   public void testAutoGeneratePhraseQueriesOn() throws Exception {
-    try {
+    expectThrows(UnsupportedOperationException.class, () -> {
       setAutoGeneratePhraseQueries(getParser(null), true);
       super.testAutoGeneratePhraseQueriesOn();
-    } catch (UnsupportedOperationException e) {
-      // expected
-    }
+    });
   }
   
   @Override

@@ -1,5 +1,3 @@
-package org.apache.lucene.uninverting;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.uninverting;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.uninverting;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -1034,10 +1033,9 @@ public class TestFieldCacheSort extends LuceneTestCase {
     IndexReader reader = UninvertingReader.wrap(DirectoryReader.open(indexStore),
                          Collections.singletonMap("string", Type.SORTED));
     IndexSearcher searcher = new IndexSearcher(reader);
-    try {
+    expectThrows(IllegalStateException.class, () -> {
       searcher.search(new MatchAllDocsQuery(), 500, sort);
-      fail("didn't get expected exception");
-    } catch (IllegalStateException expected) {}
+    });
     reader.close();
     indexStore.close();
   }

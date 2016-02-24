@@ -1,5 +1,3 @@
-package org.apache.lucene.search.similarities;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search.similarities;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.similarities;
+
 
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -35,48 +35,41 @@ public class TestBM25Similarity extends LuceneTestCase {
   }
   
   public void testIllegalK1() {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new BM25Similarity(Float.POSITIVE_INFINITY, 0.75f);
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("illegal k1 value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("illegal k1 value"));
     
-    try {
+    expected = expectThrows(IllegalArgumentException.class, () -> {
       new BM25Similarity(-1, 0.75f);
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("illegal k1 value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("illegal k1 value"));
     
-    try {
+    expected = expectThrows(IllegalArgumentException.class, () -> {
       new BM25Similarity(Float.NaN, 0.75f);
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("illegal k1 value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("illegal k1 value"));
   }
   
   public void testIllegalB() {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new BM25Similarity(1.2f, 2f);
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("illegal b value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("illegal b value"));
     
-    try {
+    expected = expectThrows(IllegalArgumentException.class, () -> {
       new BM25Similarity(1.2f, -1f);
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("illegal b value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("illegal b value"));
     
-    try {
+    expected = expectThrows(IllegalArgumentException.class, () -> {
       new BM25Similarity(1.2f, Float.POSITIVE_INFINITY);
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("illegal b value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("illegal b value"));
     
-    try {
+    expected = expectThrows(IllegalArgumentException.class, () -> {
       new BM25Similarity(1.2f, Float.NaN);
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("illegal b value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("illegal b value"));
   }
 }

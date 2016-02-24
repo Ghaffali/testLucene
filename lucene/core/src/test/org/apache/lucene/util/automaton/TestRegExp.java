@@ -1,5 +1,3 @@
-package org.apache.lucene.util.automaton;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util.automaton;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.automaton;
+
 
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -48,34 +48,30 @@ public class TestRegExp extends LuceneTestCase {
   public void testDeterminizeTooManyStates() {
     // LUCENE-6046
     String source = "[ac]*a[ac]{50,200}";
-    try {
+    TooComplexToDeterminizeException expected = expectThrows(TooComplexToDeterminizeException.class, () -> {
       new RegExp(source).toAutomaton();
-      fail();
-    } catch (TooComplexToDeterminizeException e) {
-      assert(e.getMessage().contains(source));
-    }
+    });
+    assertTrue(expected.getMessage().contains(source));
   }
 
   // LUCENE-6713
   public void testSerializeTooManyStatesToDeterminizeExc() throws Exception {
     // LUCENE-6046
     String source = "[ac]*a[ac]{50,200}";
-    try {
+    TooComplexToDeterminizeException expected = expectThrows(TooComplexToDeterminizeException.class, () -> {
       new RegExp(source).toAutomaton();
-      fail();
-    } catch (TooComplexToDeterminizeException e) {
-      assert(e.getMessage().contains(source));
+    });
+    assertTrue(expected.getMessage().contains(source));
 
-      ByteArrayOutputStream bos = new ByteArrayOutputStream();
-      ObjectOutput out = new ObjectOutputStream(bos);   
-      out.writeObject(e);
-      byte[] bytes = bos.toByteArray();
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutput out = new ObjectOutputStream(bos);   
+    out.writeObject(expected);
+    byte[] bytes = bos.toByteArray();
 
-      ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
-      ObjectInput in = new ObjectInputStream(bis);
-      TooComplexToDeterminizeException e2 = (TooComplexToDeterminizeException) in.readObject();
-      assertNotNull(e2.getMessage());
-    }
+    ByteArrayInputStream bis = new ByteArrayInputStream(bytes);
+    ObjectInput in = new ObjectInputStream(bis);
+    TooComplexToDeterminizeException e2 = (TooComplexToDeterminizeException) in.readObject();
+    assertNotNull(e2.getMessage());
   }
 
   // LUCENE-6046

@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import java.io.IOException;
 
@@ -99,12 +99,9 @@ public class TestCachingCollector extends LuceneTestCase {
     
     assertFalse("CachingCollector should not be cached due to low memory limit", cc.isCached());
     
-    try {
+    expectThrows(IllegalStateException.class, () -> {
       cc.replay(new NoOpCollector());
-      fail("replay should fail if CachingCollector is not cached");
-    } catch (IllegalStateException e) {
-      // expected
-    }
+    });
   }
   
   public void testCachedArraysAllocation() throws Exception {

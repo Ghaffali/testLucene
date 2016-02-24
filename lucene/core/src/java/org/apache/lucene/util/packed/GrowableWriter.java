@@ -1,5 +1,3 @@
-package org.apache.lucene.util.packed;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util.packed;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.packed;
+
 
 import java.io.IOException;
 
@@ -131,8 +131,8 @@ public class GrowableWriter extends PackedInts.Mutable {
     return RamUsageEstimator.alignObjectSize(
         RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF
-        + RamUsageEstimator.NUM_BYTES_LONG
-        + RamUsageEstimator.NUM_BYTES_FLOAT)
+        + Long.BYTES
+        + Float.BYTES)
         + current.ramBytesUsed();
   }
 

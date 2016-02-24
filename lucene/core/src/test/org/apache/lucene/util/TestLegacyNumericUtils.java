@@ -1,5 +1,3 @@
-package org.apache.lucene.util;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
+
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,7 +29,7 @@ public class TestLegacyNumericUtils extends LuceneTestCase {
     BytesRefBuilder last = new BytesRefBuilder();
     BytesRefBuilder act = new BytesRefBuilder();
     for (long l=-100000L; l<100000L; l++) {
-      LegacyNumericUtils.longToPrefixCodedBytes(l, 0, act);
+      LegacyNumericUtils.longToPrefixCoded(l, 0, act);
       if (last!=null) {
         // test if smaller
         assertTrue("actual bigger than last (BytesRef)", last.get().compareTo(act.get()) < 0 );
@@ -47,7 +47,7 @@ public class TestLegacyNumericUtils extends LuceneTestCase {
     BytesRefBuilder act = new BytesRefBuilder();
     BytesRefBuilder last = new BytesRefBuilder();
     for (int i=-100000; i<100000; i++) {
-      LegacyNumericUtils.intToPrefixCodedBytes(i, 0, act);
+      LegacyNumericUtils.intToPrefixCoded(i, 0, act);
       if (last!=null) {
         // test if smaller
         assertTrue("actual bigger than last (BytesRef)", last.get().compareTo(act.get()) < 0 );
@@ -69,18 +69,16 @@ public class TestLegacyNumericUtils extends LuceneTestCase {
     
     for (int i=0; i<vals.length; i++) {
       prefixVals[i] = new BytesRefBuilder();
-      LegacyNumericUtils.longToPrefixCodedBytes(vals[i], 0, prefixVals[i]);
+      LegacyNumericUtils.longToPrefixCoded(vals[i], 0, prefixVals[i]);
       
       // check forward and back conversion
       assertEquals( "forward and back conversion should generate same long", vals[i], LegacyNumericUtils.prefixCodedToLong(prefixVals[i].get()) );
 
       // test if decoding values as int fails correctly
-      try {
-        LegacyNumericUtils.prefixCodedToInt(prefixVals[i].get());
-        fail("decoding a prefix coded long value as int should fail");
-      } catch (NumberFormatException e) {
-        // worked
-      }
+      final int index = i;
+      expectThrows(NumberFormatException.class, () -> {
+        LegacyNumericUtils.prefixCodedToInt(prefixVals[index].get());
+      });
     }
     
     // check sort order (prefixVals should be ascending)
@@ -92,7 +90,7 @@ public class TestLegacyNumericUtils extends LuceneTestCase {
     final BytesRefBuilder ref = new BytesRefBuilder();
     for (int i=0; i<vals.length; i++) {
       for (int j=0; j<64; j++) {
-        LegacyNumericUtils.longToPrefixCodedBytes(vals[i], j, ref);
+        LegacyNumericUtils.longToPrefixCoded(vals[i], j, ref);
         long prefixVal= LegacyNumericUtils.prefixCodedToLong(ref.get());
         long mask=(1L << j) - 1L;
         assertEquals( "difference between prefix val and original value for "+vals[i]+" with shift="+j, vals[i] & mask, vals[i]-prefixVal );
@@ -109,18 +107,16 @@ public class TestLegacyNumericUtils extends LuceneTestCase {
     
     for (int i=0; i<vals.length; i++) {
       prefixVals[i] = new BytesRefBuilder();
-      LegacyNumericUtils.intToPrefixCodedBytes(vals[i], 0, prefixVals[i]);
+      LegacyNumericUtils.intToPrefixCoded(vals[i], 0, prefixVals[i]);
       
       // check forward and back conversion
       assertEquals( "forward and back conversion should generate same int", vals[i], LegacyNumericUtils.prefixCodedToInt(prefixVals[i].get()) );
       
       // test if decoding values as long fails correctly
-      try {
-        LegacyNumericUtils.prefixCodedToLong(prefixVals[i].get());
-        fail("decoding a prefix coded int value as long should fail");
-      } catch (NumberFormatException e) {
-        // worked
-      }
+      final int index = i;
+      expectThrows(NumberFormatException.class, () -> {
+        LegacyNumericUtils.prefixCodedToLong(prefixVals[index].get());
+      });
     }
     
     // check sort order (prefixVals should be ascending)
@@ -132,7 +128,7 @@ public class TestLegacyNumericUtils extends LuceneTestCase {
     final BytesRefBuilder ref = new BytesRefBuilder();
     for (int i=0; i<vals.length; i++) {
       for (int j=0; j<32; j++) {
-        LegacyNumericUtils.intToPrefixCodedBytes(vals[i], j, ref);
+        LegacyNumericUtils.intToPrefixCoded(vals[i], j, ref);
         int prefixVal= LegacyNumericUtils.prefixCodedToInt(ref.get());
         int mask=(1 << j) - 1;
         assertEquals( "difference between prefix val and original value for "+vals[i]+" with shift="+j, vals[i] & mask, vals[i]-prefixVal );

@@ -1,5 +1,3 @@
-package org.apache.lucene.store;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.store;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
+
 
 import java.io.EOFException;
 import java.io.IOException;
@@ -83,7 +83,6 @@ public class TestRAMDirectory extends BaseDirectoryTestCase {
       assertFalse(files.contains("subdir"));
     } finally {
       IOUtils.close(fsDir);
-      IOUtils.rm(path);
     }
   }
 
@@ -176,17 +175,14 @@ public class TestRAMDirectory extends BaseDirectoryTestCase {
       }
 
       try (IndexInput is = dir.openInput("foo", newIOContext(random))) {
-        try {
+        expectThrows(EOFException.class, () -> {
           is.seek(0);
           // Here, I go past EOF.
           is.seek(len + random().nextInt(2048));
           // since EOF is not enforced by the previous call in RAMInputStream
           // this call to readBytes should throw the exception.
           is.readBytes(bytes, 0, 16);
-          fail("Did not get EOFException");
-        } catch (EOFException eof) {
-          // expected!
-        }
+        });
       }
     }
   }

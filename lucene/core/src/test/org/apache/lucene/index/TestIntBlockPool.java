@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,13 +14,14 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lucene.util.Counter;
 import org.apache.lucene.util.IntBlockPool;
 import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * tests basic {@link IntBlockPool} functionality
@@ -53,8 +52,7 @@ public class TestIntBlockPool extends LuceneTestCase {
         assertEquals(0, bytesUsed.get());
       } else {
         pool.reset(true, true);
-        assertEquals(IntBlockPool.INT_BLOCK_SIZE
-            * RamUsageEstimator.NUM_BYTES_INT, bytesUsed.get());
+        assertEquals(IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES, bytesUsed.get());
       }
     }
   }
@@ -98,8 +96,7 @@ public class TestIntBlockPool extends LuceneTestCase {
         assertEquals(0, bytesUsed.get());
       } else {
         pool.reset(true, true);
-        assertEquals(IntBlockPool.INT_BLOCK_SIZE
-            * RamUsageEstimator.NUM_BYTES_INT, bytesUsed.get());
+        assertEquals(IntBlockPool.INT_BLOCK_SIZE * Integer.BYTES, bytesUsed.get());
       }
     }
   }
@@ -118,14 +115,14 @@ public class TestIntBlockPool extends LuceneTestCase {
     
     @Override
     public int[] getIntBlock() {
-      bytesUsed.addAndGet(blockSize * RamUsageEstimator.NUM_BYTES_INT);
+      bytesUsed.addAndGet(blockSize * Integer.BYTES);
       return new int[blockSize];
     }
     
     @Override
     public void recycleIntBlocks(int[][] blocks, int start, int end) {
       bytesUsed
-          .addAndGet(-((end - start) * blockSize * RamUsageEstimator.NUM_BYTES_INT));
+          .addAndGet(-((end - start) * blockSize * Integer.BYTES));
     }
     
   }

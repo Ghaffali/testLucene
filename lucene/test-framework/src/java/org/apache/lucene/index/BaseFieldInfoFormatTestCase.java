@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -88,12 +87,11 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     assertEquals(1, infos2.size());
     assertNotNull(infos2.fieldInfo("field"));
     Map<String,String> attributes = infos2.fieldInfo("field").attributes();
-    try {
+    // shouldn't be able to modify attributes
+    expectThrows(UnsupportedOperationException.class, () -> {
       attributes.put("bogus", "bogus");
-      fail("shouldn't be able to modify attributes");
-    } catch (UnsupportedOperationException expected) {
-      // ok
-    }
+    });
+
     dir.close();
   }
   
@@ -124,14 +122,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfos infos = builder.finish();
     
     fail.setDoFail();
-    try {
+    expectThrows(FakeIOException.class, () -> {
       codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    });
+    fail.clearDoFail();
     
     dir.close();
   }
@@ -163,14 +157,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     FieldInfos infos = builder.finish();
     
     fail.setDoFail();
-    try {
+    expectThrows(FakeIOException.class, () -> {
       codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    });
+    fail.clearDoFail();
     
     dir.close();
   }
@@ -203,14 +193,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
     
     fail.setDoFail();
-    try {
-      codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);      
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    expectThrows(FakeIOException.class, () -> {
+      codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+    });
+    fail.clearDoFail();
     
     dir.close();
   }
@@ -243,14 +229,10 @@ public abstract class BaseFieldInfoFormatTestCase extends BaseIndexFileFormatTes
     codec.fieldInfosFormat().write(dir, segmentInfo, "", infos, IOContext.DEFAULT);
     
     fail.setDoFail();
-    try {
-      codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);      
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    expectThrows(FakeIOException.class, () -> {
+      codec.fieldInfosFormat().read(dir, segmentInfo, "", IOContext.DEFAULT);
+    });
+    fail.clearDoFail();
     
     dir.close();
   }

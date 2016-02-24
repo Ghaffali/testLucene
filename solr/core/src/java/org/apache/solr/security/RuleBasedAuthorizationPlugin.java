@@ -1,5 +1,3 @@
-package org.apache.solr.security;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.security;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.security;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -44,6 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.util.Collections.singleton;
+import static org.apache.solr.common.util.Utils.fromJSONResource;
 import static org.apache.solr.handler.admin.SecurityConfHandler.getListValue;
 import static org.apache.solr.handler.admin.SecurityConfHandler.getMapValue;
 import static org.apache.solr.common.params.CommonParams.NAME;
@@ -441,42 +441,8 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
 
   public static final Set<String> HTTP_METHODS = ImmutableSet.of("GET", "POST", "DELETE", "PUT", "HEAD");
 
-  private static final Map<String, Map<String,Object>> well_known_permissions = (Map) Utils.fromJSONString(
-          "    { " +
-          "    security-edit :{" +
-          "      path:['/admin/authentication','/admin/authorization', '/v2/cluster/security/authentication', '/v2/cluster/security/authorization']," +
-          "      collection:null," +
-          "      method:POST }," +
-          "    security-read :{" +
-          "      path:['/admin/authentication','/admin/authorization']," +
-          "      collection:null," +
-          "      method:GET}," +
-          "    schema-edit :{" +
-          "      method:POST," +
-          "      path:'/schema/*'}," +
-          "    collection-admin-edit :{" +
-              "  collection:null," +
-          "      path:'/admin/collections'}," +
-          "    collection-admin-read :{" +
-          "      collection:null," +
-          "      path:'/admin/collections'}," +
-          "    schema-read :{" +
-          "      method:GET," +
-          "      path:'/schema/*'}," +
-          "    config-read :{" +
-          "      method:GET," +
-          "      path:'/config/*'}," +
-          "    update :{" +
-          "      path:'/update/*'}," +
-          "    read :{" +
-          "      path:['/select', '/get','/browse','/tvrh'," +
-              "'/terms','/clustering','/elevate', '/export'," +
-              "'/spell','/clustering', '/sql']}," +
-          "    config-edit:{" +
-          "      method:POST," +
-              "      path:'/config/*'}," +
-              "    all:{collection:['*', null]}" +
-              "}");
+  private static final Map<String, Map<String,Object>>  well_known_permissions =
+      (Map<String, Map<String, Object>>) fromJSONResource("WellKnownPermissions.json");
 
   static {
     ((Map) well_known_permissions.get("collection-admin-edit")).put(Predicate.class.getName(), getCollectionActionPredicate(true));

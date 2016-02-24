@@ -1,5 +1,3 @@
-package org.apache.lucene.util.bkd;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,12 +14,12 @@ package org.apache.lucene.util.bkd;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.bkd;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.RamUsageEstimator;
 
 final class HeapPointWriter implements PointWriter {
   int[] docIDs;
@@ -94,7 +92,7 @@ final class HeapPointWriter implements PointWriter {
     assert closed == false;
     assert packedValue.length == packedBytesLength;
     if (ords.length == nextWrite) {
-      int nextSize = Math.min(maxSize, ArrayUtil.oversize(nextWrite+1, RamUsageEstimator.NUM_BYTES_INT));
+      int nextSize = Math.min(maxSize, ArrayUtil.oversize(nextWrite+1, Integer.BYTES));
       assert nextSize > nextWrite: "nextSize=" + nextSize + " vs nextWrite=" + nextWrite;
       ords = growExact(ords, nextSize);
       docIDs = growExact(docIDs, nextSize);

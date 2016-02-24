@@ -1,5 +1,3 @@
-package org.apache.lucene.geo3d;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.geo3d;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.geo3d;
 
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
@@ -33,7 +32,7 @@ public final class Geo3DPoint extends Field {
   /** Indexing {@link FieldType}. */
   public static final FieldType TYPE = new FieldType();
   static {
-    TYPE.setDimensions(3, RamUsageEstimator.NUM_BYTES_INT);
+    TYPE.setDimensions(3, Integer.BYTES);
     TYPE.freeze();
   }
 
@@ -62,8 +61,8 @@ public final class Geo3DPoint extends Field {
   private void fillFieldsData(double planetMax, double x, double y, double z) {
     byte[] bytes = new byte[12];
     NumericUtils.intToBytes(Geo3DUtil.encodeValue(planetMax, x), bytes, 0);
-    NumericUtils.intToBytes(Geo3DUtil.encodeValue(planetMax, y), bytes, 1);
-    NumericUtils.intToBytes(Geo3DUtil.encodeValue(planetMax, z), bytes, 2);
+    NumericUtils.intToBytes(Geo3DUtil.encodeValue(planetMax, y), bytes, Integer.BYTES);
+    NumericUtils.intToBytes(Geo3DUtil.encodeValue(planetMax, z), bytes, 2 * Integer.BYTES);
     fieldsData = new BytesRef(bytes);
   }
 }

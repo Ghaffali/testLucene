@@ -1,5 +1,3 @@
-package org.apache.lucene.queryparser.classic;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.queryparser.classic;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.queryparser.classic;
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -178,12 +177,10 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     assertEquals("(b:one +b:more) (+t:two)", q.toString());
 
     String[] queries5 = {"blah"};
-    try {
-      q = MultiFieldQueryParser.parse(queries5, fields, new MockAnalyzer(random()));
-      fail();
-    } catch(IllegalArgumentException e) {
-      // expected exception, array length differs
-    }
+    // expected exception, array length differs
+    expectThrows(IllegalArgumentException.class, () -> {
+      MultiFieldQueryParser.parse(queries5, fields, new MockAnalyzer(random()));
+    });
     
     // check also with stop words for this static form (qtxts[], fields[]).
     TestQueryParser.QPTestAnalyzer stopA = new TestQueryParser.QPTestAnalyzer();
@@ -207,13 +204,11 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     q = MultiFieldQueryParser.parse("one two", fields, flags, new MockAnalyzer(random()));
     assertEquals("+(b:one b:two) -(t:one t:two)", q.toString());
 
-    try {
+    // expected exception, array length differs
+    expectThrows(IllegalArgumentException.class, () -> {
       BooleanClause.Occur[] flags2 = {BooleanClause.Occur.MUST};
-      q = MultiFieldQueryParser.parse("blah", fields, flags2, new MockAnalyzer(random()));
-      fail();
-    } catch(IllegalArgumentException e) {
-      // expected exception, array length differs
-    }
+      MultiFieldQueryParser.parse("blah", fields, flags2, new MockAnalyzer(random()));
+    });
   }
 
   public void testStaticMethod2Old() throws ParseException {
@@ -227,13 +222,11 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     q = MultiFieldQueryParser.parse("one two", fields, flags, new MockAnalyzer(random()));
     assertEquals("+(b:one b:two) -(t:one t:two)", q.toString());
 
-    try {
+    // expected exception, array length differs
+    expectThrows(IllegalArgumentException.class, () -> {
       BooleanClause.Occur[] flags2 = {BooleanClause.Occur.MUST};
-      q = MultiFieldQueryParser.parse("blah", fields, flags2, new MockAnalyzer(random()));
-      fail();
-    } catch(IllegalArgumentException e) {
-      // expected exception, array length differs
-    }
+      MultiFieldQueryParser.parse("blah", fields, flags2, new MockAnalyzer(random()));
+    });
   }
 
   public void testStaticMethod3() throws ParseException {
@@ -244,13 +237,11 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     Query q = MultiFieldQueryParser.parse(queries, fields, flags, new MockAnalyzer(random()));
     assertEquals("+f1:one -f2:two f3:three", q.toString());
 
-    try {
+    // expected exception, array length differs
+    expectThrows(IllegalArgumentException.class, () -> {
       BooleanClause.Occur[] flags2 = {BooleanClause.Occur.MUST};
-      q = MultiFieldQueryParser.parse(queries, fields, flags2, new MockAnalyzer(random()));
-      fail();
-    } catch(IllegalArgumentException e) {
-      // expected exception, array length differs
-    }
+      MultiFieldQueryParser.parse(queries, fields, flags2, new MockAnalyzer(random()));
+    });
   }
 
   public void testStaticMethod3Old() throws ParseException {
@@ -260,13 +251,11 @@ public class TestMultiFieldQueryParser extends LuceneTestCase {
     Query q = MultiFieldQueryParser.parse(queries, fields, flags, new MockAnalyzer(random()));
     assertEquals("+b:one -t:two", q.toString());
 
-    try {
+    // expected exception, array length differs
+    expectThrows(IllegalArgumentException.class, () -> {
       BooleanClause.Occur[] flags2 = {BooleanClause.Occur.MUST};
-      q = MultiFieldQueryParser.parse(queries, fields, flags2, new MockAnalyzer(random()));
-      fail();
-    } catch(IllegalArgumentException e) {
-      // expected exception, array length differs
-    }
+      MultiFieldQueryParser.parse(queries, fields, flags2, new MockAnalyzer(random()));
+    });
   }
 
   public void testAnalyzerReturningNull() throws ParseException {

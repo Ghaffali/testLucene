@@ -1,21 +1,20 @@
-package org.apache.lucene.util;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
- * contributor license agreements. See the NOTICE file distributed with this
- * work for additional information regarding copyright ownership. The ASF
- * licenses this file to You under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
  * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
- * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
- * License for the specific language governing permissions and limitations under
- * the License.
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
+package org.apache.lucene.util;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -52,8 +51,7 @@ public final class BytesRefArray {
     this.pool = new ByteBlockPool(new ByteBlockPool.DirectTrackingAllocator(
         bytesUsed));
     pool.nextBuffer();
-    bytesUsed.addAndGet(RamUsageEstimator.NUM_BYTES_ARRAY_HEADER
-        + RamUsageEstimator.NUM_BYTES_INT);
+    bytesUsed.addAndGet(RamUsageEstimator.NUM_BYTES_ARRAY_HEADER * Integer.BYTES);
     this.bytesUsed = bytesUsed;
   }
  
@@ -76,8 +74,7 @@ public final class BytesRefArray {
     if (lastElement >= offsets.length) {
       int oldLen = offsets.length;
       offsets = ArrayUtil.grow(offsets, offsets.length + 1);
-      bytesUsed.addAndGet((offsets.length - oldLen)
-          * RamUsageEstimator.NUM_BYTES_INT);
+      bytesUsed.addAndGet((offsets.length - oldLen) * Integer.BYTES);
     }
     pool.append(bytes);
     offsets[lastElement++] = currentOffset;

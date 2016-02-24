@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import java.io.IOException;
 import java.util.LinkedList;
@@ -125,13 +125,10 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
                                     // foobar pizza
     
     MultiPhraseQuery query4 = new MultiPhraseQuery();
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       query4.add(new Term("field1", "foo"));
       query4.add(new Term("field2", "foobar"));
-      fail();
-    } catch (IllegalArgumentException e) {
-      // okay, all terms must belong to the same field
-    }
+    });
     
     writer.close();
     reader.close();
@@ -571,12 +568,9 @@ public class TestMultiPhraseQuery extends LuceneTestCase {
     MultiPhraseQuery query = new MultiPhraseQuery();
     query.add(new Term("field", "two"));
     query.add(new Term("field", "one"));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       query.setSlop(-2);
-      fail("didn't get expected exception");
-    } catch (IllegalArgumentException expected) {
-      // expected exception
-    }
+    });
   }
   
 }

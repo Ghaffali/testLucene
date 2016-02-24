@@ -1,5 +1,3 @@
-package org.apache.solr.update;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.update;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.update;
 
 import org.apache.http.HttpResponse;
 import org.apache.solr.client.solrj.SolrClient;
@@ -56,7 +55,8 @@ public class SolrCmdDistributor {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   
   private StreamingSolrClients clients;
-  
+  private boolean finished = false; // see finish()
+
   private int retryPause = 500;
   private int maxRetriesOnForward = MAX_RETRIES_ON_FORWARD;
   
@@ -87,6 +87,9 @@ public class SolrCmdDistributor {
   
   public void finish() {    
     try {
+      assert ! finished : "lifecycle sanity check";
+      finished = true;
+      
       blockAndDoRetries();
     } finally {
       clients.shutdown();
@@ -228,7 +231,7 @@ public class SolrCmdDistributor {
     
   }
 
-  private void blockAndDoRetries() {
+  public void blockAndDoRetries() {
     clients.blockUntilFinished();
     
     // wait for any async commits to complete

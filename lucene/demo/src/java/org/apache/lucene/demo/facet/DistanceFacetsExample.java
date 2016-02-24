@@ -1,5 +1,3 @@
-package org.apache.lucene.demo.facet;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.demo.facet;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.demo.facet;
+
 
 import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.DoublePoint;
@@ -181,7 +181,7 @@ public class DistanceFacetsExample implements Closeable {
     BooleanQuery.Builder f = new BooleanQuery.Builder();
 
     // Add latitude range filter:
-    f.add(PointRangeQuery.new1DDoubleRange("latitude", Math.toDegrees(minLat), true, Math.toDegrees(maxLat), true),
+    f.add(PointRangeQuery.newDoubleRange("latitude", Math.toDegrees(minLat), true, Math.toDegrees(maxLat), true),
           BooleanClause.Occur.FILTER);
 
     // Add longitude range filter:
@@ -189,13 +189,13 @@ public class DistanceFacetsExample implements Closeable {
       // The bounding box crosses the international date
       // line:
       BooleanQuery.Builder lonF = new BooleanQuery.Builder();
-      lonF.add(PointRangeQuery.new1DDoubleRange("longitude", Math.toDegrees(minLng), true, null, true),
+      lonF.add(PointRangeQuery.newDoubleRange("longitude", Math.toDegrees(minLng), true, null, true),
                BooleanClause.Occur.SHOULD);
-      lonF.add(PointRangeQuery.new1DDoubleRange("longitude", null, true, Math.toDegrees(maxLng), true),
+      lonF.add(PointRangeQuery.newDoubleRange("longitude", null, true, Math.toDegrees(maxLng), true),
                BooleanClause.Occur.SHOULD);
       f.add(lonF.build(), BooleanClause.Occur.MUST);
     } else {
-      f.add(PointRangeQuery.new1DDoubleRange("longitude", Math.toDegrees(minLng), true, Math.toDegrees(maxLng), true),
+      f.add(PointRangeQuery.newDoubleRange("longitude", Math.toDegrees(minLng), true, Math.toDegrees(maxLng), true),
             BooleanClause.Occur.FILTER);
     }
 

@@ -1,5 +1,3 @@
-package org.apache.lucene.codecs.memory;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.codecs.memory;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.memory;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -154,7 +153,7 @@ public final class DirectPostingsFormat extends PostingsFormat {
     public long ramBytesUsed() {
       long sizeInBytes = 0;
       for(Map.Entry<String,DirectField> entry: fields.entrySet()) {
-        sizeInBytes += entry.getKey().length() * RamUsageEstimator.NUM_BYTES_CHAR;
+        sizeInBytes += entry.getKey().length() * Character.BYTES;
         sizeInBytes += entry.getValue().ramBytesUsed();
       }
       return sizeInBytes;

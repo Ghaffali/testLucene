@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
 
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
@@ -35,35 +34,51 @@ public abstract class BaseMergePolicyTestCase extends LuceneTestCase {
   protected abstract MergePolicy mergePolicy();
 
   public void testForceMergeNotNeeded() throws IOException {
-    Directory dir = newDirectory();
-    final AtomicBoolean mayMerge = new AtomicBoolean(true);
-    final MergeScheduler mergeScheduler = new SerialMergeScheduler() {
-      @Override
-      synchronized public void merge(IndexWriter writer, MergeTrigger trigger, boolean newMergesFound) throws IOException {
-        if (!mayMerge.get() && writer.getNextMerge() != null) {
-          throw new AssertionError();
+    try (Directory dir = newDirectory()) {
+      final AtomicBoolean mayMerge = new AtomicBoolean(true);
+      final MergeScheduler mergeScheduler = new SerialMergeScheduler() {
+          @Override
+          synchronized public void merge(IndexWriter writer, MergeTrigger trigger, boolean newMergesFound) throws IOException {
+            if (mayMerge.get() == false) {
+              MergePolicy.OneMerge merge = writer.getNextMerge();
+              if (merge != null) {
+                System.out.println("TEST: we should not need any merging, yet merge policy returned merge " + merge);
+                throw new AssertionError();
+              }
+            }
+
+            super.merge(writer, trigger, newMergesFound);
+          }
+        };
+
+      MergePolicy mp = mergePolicy();
+      assumeFalse("this test cannot tolerate random forceMerges", mp.toString().contains("MockRandomMergePolicy"));
+      mp.setNoCFSRatio(random().nextBoolean() ? 0 : 1);
+
+      IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
+      iwc.setMergeScheduler(mergeScheduler);
+      iwc.setMergePolicy(mp);
+
+      IndexWriter writer = new IndexWriter(dir, iwc);
+      final int numSegments = TestUtil.nextInt(random(), 2, 20);
+      for (int i = 0; i < numSegments; ++i) {
+        final int numDocs = TestUtil.nextInt(random(), 1, 5);
+        for (int j = 0; j < numDocs; ++j) {
+          writer.addDocument(new Document());
         }
-        super.merge(writer, trigger, newMergesFound);
+        writer.getReader().close();
       }
-    };
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random())).setMergeScheduler(mergeScheduler).setMergePolicy(mergePolicy()));
-    writer.getConfig().getMergePolicy().setNoCFSRatio(random().nextBoolean() ? 0 : 1);
-    final int numSegments = TestUtil.nextInt(random(), 2, 20);
-    for (int i = 0; i < numSegments; ++i) {
-      final int numDocs = TestUtil.nextInt(random(), 1, 5);
-      for (int j = 0; j < numDocs; ++j) {
-        writer.addDocument(new Document());
+      for (int i = 5; i >= 0; --i) {
+        final int segmentCount = writer.getSegmentCount();
+        final int maxNumSegments = i == 0 ? 1 : TestUtil.nextInt(random(), 1, 10);
+        mayMerge.set(segmentCount > maxNumSegments);
+        if (VERBOSE) {
+          System.out.println("TEST: now forceMerge(maxNumSegments=" + maxNumSegments + ") vs segmentCount=" + segmentCount);
+        }
+        writer.forceMerge(maxNumSegments);
       }
-      writer.getReader().close();
+      writer.close();
     }
-    for (int i = 5; i >= 0; --i) {
-      final int segmentCount = writer.getSegmentCount();
-      final int maxNumSegments = i == 0 ? 1 : TestUtil.nextInt(random(), 1, 10);
-      mayMerge.set(segmentCount > maxNumSegments);
-      writer.forceMerge(maxNumSegments);
-    }
-    writer.close();
-    dir.close();
   }
   
 }

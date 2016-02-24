@@ -1,7 +1,5 @@
 // This file has been automatically generated, DO NOT EDIT
 
-package org.apache.lucene.util.packed;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements. See the NOTICE file distributed with this
@@ -18,6 +16,7 @@ package org.apache.lucene.util.packed;
  * License for the specific language governing permissions and limitations under
  * the License.
  */
+package org.apache.lucene.util.packed;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -62,7 +61,7 @@ abstract class Packed64SingleBlock extends PackedInts.MutableImpl {
   public long ramBytesUsed() {
     return RamUsageEstimator.alignObjectSize(
         RamUsageEstimator.NUM_BYTES_OBJECT_HEADER
-        + 2 * RamUsageEstimator.NUM_BYTES_INT     // valueCount,bitsPerValue
+        + 2 * Integer.BYTES     // valueCount,bitsPerValue
         + RamUsageEstimator.NUM_BYTES_OBJECT_REF) // blocks ref
         + RamUsageEstimator.sizeOf(blocks);
   }

@@ -1,5 +1,3 @@
-package org.apache.lucene.search.join;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search.join;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.join;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -617,7 +616,7 @@ public class TestBlockJoin extends LuceneTestCase {
       if (VERBOSE) {
         System.out.println("DELETE parentID=" + deleteID);
       }
-      LegacyNumericUtils.intToPrefixCodedBytes(deleteID, 0, term);
+      LegacyNumericUtils.intToPrefixCoded(deleteID, 0, term);
       w.deleteDocuments(new Term("blockID", term.toBytesRef()));
       joinW.deleteDocuments(new Term("blockID", term.toBytesRef()));
     }
@@ -1459,12 +1458,10 @@ public class TestBlockJoin extends LuceneTestCase {
     ToParentBlockJoinCollector c = new ToParentBlockJoinCollector(new Sort(new SortField("parentID", SortField.Type.STRING)),
                                                                   10, true, true);
 
-    try {
+    expectThrows(IllegalStateException.class, () -> {
       newSearcher(r).search(parentQuery.build(), c);
-      fail("should have hit exception");
-    } catch (IllegalStateException ise) {
-      // expected
-    }
+    });
+
 
     r.close();
     d.close();

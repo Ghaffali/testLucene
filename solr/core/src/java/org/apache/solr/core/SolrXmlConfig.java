@@ -1,5 +1,3 @@
-package org.apache.solr.core;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.core;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.core;
 
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
@@ -368,6 +367,12 @@ public class SolrXmlConfig {
           break;
         case "zkCredentialsProvider":
           builder.setZkCredentialsProviderClass(value);
+          break;
+        case "createCollectionWaitTimeTillActive":
+          builder.setCreateCollectionWaitTimeTillActive(parseInt(name, value));
+          break;
+        case "createCollectionCheckLeaderActive":
+          builder.setCreateCollectionCheckLeaderActive(Boolean.parseBoolean(value));
           break;
         default:
           throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Unknown configuration parameter in <solrcloud> section of solr.xml: " + name);

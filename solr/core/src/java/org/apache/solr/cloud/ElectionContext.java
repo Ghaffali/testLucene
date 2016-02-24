@@ -1,5 +1,3 @@
-package org.apache.solr.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.cloud;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -138,6 +137,7 @@ class ShardLeaderElectionContextBase extends ElectionContext {
   
   @Override
   public void cancelElection() throws InterruptedException, KeeperException {
+    super.cancelElection();
     if (leaderZkNodeParentVersion != null) {
       try {
         // We need to be careful and make sure we *only* delete our own leader registration node.
@@ -164,7 +164,6 @@ class ShardLeaderElectionContextBase extends ElectionContext {
     } else {
       log.info("No version found for ephemeral leader parent node, won't remove previous leader registration.");
     }
-    super.cancelElection();
   }
   
   @Override
@@ -180,7 +179,7 @@ class ShardLeaderElectionContextBase extends ElectionContext {
         
         @Override
         public void execute() throws InterruptedException, KeeperException {
-          log.info("Creating leader registration node", leaderPath);
+          log.info("Creating leader registration node {} after winning as {}", leaderPath, leaderSeqPath);
           List<Op> ops = new ArrayList<>(2);
           
           // We use a multi operation to get the parent nodes version, which will
@@ -486,13 +485,15 @@ final class ShardLeaderElectionContext extends ShardLeaderElectionContextBase {
       
     } else {
       try (SolrCore core = cc.getCore(coreName)) {
-        final Replica.State lirState = zkController.getLeaderInitiatedRecoveryState(collection, shardId,
-            core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName());
-        if (lirState == Replica.State.DOWN || lirState == Replica.State.RECOVERING) {
-          log.warn("The previous leader marked me " + core.getName()
-              + " as " + lirState.toString() + " and I haven't recovered yet, so I shouldn't be the leader.");
-          
-          throw new SolrException(ErrorCode.SERVER_ERROR, "Leader Initiated Recovery prevented leadership");
+        if (core != null) {
+          final Replica.State lirState = zkController.getLeaderInitiatedRecoveryState(collection, shardId,
+              core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName());
+          if (lirState == Replica.State.DOWN || lirState == Replica.State.RECOVERING) {
+            log.warn("The previous leader marked me " + core.getName()
+                + " as " + lirState.toString() + " and I haven't recovered yet, so I shouldn't be the leader.");
+
+            throw new SolrException(ErrorCode.SERVER_ERROR, "Leader Initiated Recovery prevented leadership");
+          }
         }
       }
     }

@@ -1,5 +1,3 @@
-package org.apache.lucene.util.bkd;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,14 +14,13 @@ package org.apache.lucene.util.bkd;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.bkd;
 
 import java.io.IOException;
-
 
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /** Writes points to disk in a fixed-with format. */
 final class OfflinePointWriter implements PointWriter {
@@ -39,7 +36,7 @@ final class OfflinePointWriter implements PointWriter {
     this.out = tempDir.createTempOutput(tempFileNamePrefix, "bkd", IOContext.DEFAULT);
     this.tempDir = tempDir;
     this.packedBytesLength = packedBytesLength;
-    bytesPerDoc = packedBytesLength + RamUsageEstimator.NUM_BYTES_LONG + RamUsageEstimator.NUM_BYTES_INT;
+    bytesPerDoc = packedBytesLength + Long.BYTES + Integer.BYTES;
   }
 
   /** Initializes on an already written/closed file, just so consumers can use {@link #getReader} to read the file. */
@@ -47,7 +44,7 @@ final class OfflinePointWriter implements PointWriter {
     this.out = out;
     this.tempDir = tempDir;
     this.packedBytesLength = packedBytesLength;
-    bytesPerDoc = packedBytesLength + RamUsageEstimator.NUM_BYTES_LONG + RamUsageEstimator.NUM_BYTES_INT;
+    bytesPerDoc = packedBytesLength + Long.BYTES + Integer.BYTES;
     this.count = count;
     closed = true;
   }

@@ -1,4 +1,3 @@
-package org.apache.solr.rest;
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -15,7 +14,7 @@ package org.apache.solr.rest;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.apache.solr.rest;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -432,7 +431,12 @@ public class RestManager {
         throw new ResourceException(Status.CLIENT_ERROR_BAD_REQUEST, errMsg, ioExc);
       }
       return parsedJson;
-    }        
+    }
+
+    @Override
+    protected void addDeprecatedWarning() {
+      //this is not deprecated
+    }
   } // end ManagedEndpoint class
   
   /**
@@ -789,5 +793,5 @@ public class RestManager {
     if (ManagedResource.ChildResourceSupport.class.isAssignableFrom(res.getClass())) {
       router.attach(path+"/{child}", res.getServerResourceClass());
     }    
-  }  
+  }
 }

@@ -1,5 +1,3 @@
-package org.apache.lucene.document;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,16 +14,17 @@ package org.apache.lucene.document;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.document;
 
 import org.apache.lucene.util.BytesRef;
-import org.apache.lucene.util.GeoUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.spatial.util.GeoUtils;
 
 /** Add this to a document to index lat/lon point dimensionally */
 public class LatLonPoint extends Field {
   public static final FieldType TYPE = new FieldType();
   static {
-    TYPE.setDimensions(2, 4);
+    TYPE.setDimensions(2, Integer.BYTES);
     TYPE.freeze();
   }
 
@@ -46,7 +45,7 @@ public class LatLonPoint extends Field {
     }
     byte[] bytes = new byte[8];
     NumericUtils.intToBytes(encodeLat(lat), bytes, 0);
-    NumericUtils.intToBytes(encodeLon(lon), bytes, 1);
+    NumericUtils.intToBytes(encodeLon(lon), bytes, Integer.BYTES);
     fieldsData = new BytesRef(bytes);
   }
 

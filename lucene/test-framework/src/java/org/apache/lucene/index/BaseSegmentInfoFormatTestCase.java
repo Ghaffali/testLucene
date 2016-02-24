@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -78,12 +77,12 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
     assertEquals(info.files(), info2.files());
-    try {
+
+    // files set should be immutable
+    expectThrows(UnsupportedOperationException.class, () -> {
       info2.files().add("bogus");
-      fail("files set should be immutable");
-    } catch (UnsupportedOperationException expected) {
-      // ok
-    }
+    });
+
     dir.close();
   }
   
@@ -101,12 +100,12 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
     assertEquals(diagnostics, info2.getDiagnostics());
-    try {
+
+    // diagnostics map should be immutable
+    expectThrows(UnsupportedOperationException.class, () -> {
       info2.getDiagnostics().put("bogus", "bogus");
-      fail("diagnostics map should be immutable");
-    } catch (UnsupportedOperationException expected) {
-      // ok
-    }
+    });
+
     dir.close();
   }
   
@@ -124,12 +123,12 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     SegmentInfo info2 = codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
     assertEquals(attributes, info2.getAttributes());
-    try {
+    
+    // attributes map should be immutable
+    expectThrows(UnsupportedOperationException.class, () -> {
       info2.getAttributes().put("bogus", "bogus");
-      fail("attributes map should be immutable");
-    } catch (UnsupportedOperationException expected) {
-      // ok
-    }
+    });
+
     dir.close();
   }
   
@@ -188,14 +187,10 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     info.setFiles(Collections.<String>emptySet());
     
     fail.setDoFail();
-    try {
+    expectThrows(FakeIOException.class, () -> {
       codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    });
+    fail.clearDoFail();
     
     dir.close();
   }
@@ -225,14 +220,10 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     info.setFiles(Collections.<String>emptySet());
     
     fail.setDoFail();
-    try {
+    expectThrows(FakeIOException.class, () -> {
       codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    });
+    fail.clearDoFail();
     
     dir.close();
   }
@@ -263,14 +254,10 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     
     fail.setDoFail();
-    try {
+    expectThrows(FakeIOException.class, () -> {
       codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    });
+    fail.clearDoFail();
     
     dir.close();
   }
@@ -301,14 +288,11 @@ public abstract class BaseSegmentInfoFormatTestCase extends BaseIndexFileFormatT
     codec.segmentInfoFormat().write(dir, info, IOContext.DEFAULT);
     
     fail.setDoFail();
-    try {
+    expectThrows(FakeIOException.class, () -> {
       codec.segmentInfoFormat().read(dir, "_123", id, IOContext.DEFAULT);
-      fail("didn't get expected exception");
-    } catch (FakeIOException expected) {
-      // ok
-    } finally {
-      fail.clearDoFail();
-    }
+    });
+    fail.clearDoFail();
+
     dir.close();
   }
   

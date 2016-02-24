@@ -1,20 +1,3 @@
-package org.apache.lucene.facet.taxonomy;
-
-import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicBoolean;
-
-import org.apache.lucene.facet.FacetTestCase;
-import org.apache.lucene.facet.SlowRAMDirectory;
-import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
-import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
-import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
-import org.junit.Test;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -31,6 +14,22 @@ import org.junit.Test;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.facet.taxonomy;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.lucene.facet.FacetTestCase;
+import org.apache.lucene.facet.SlowRAMDirectory;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyReader;
+import org.apache.lucene.facet.taxonomy.directory.DirectoryTaxonomyWriter;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
+import org.junit.Test;
 
 @SuppressCodecs("SimpleText")
 public class TestTaxonomyCombined extends FacetTestCase {
@@ -491,25 +490,15 @@ public class TestTaxonomyCombined extends FacetTestCase {
     }
 
     // check parent of of invalid ordinals:
-    try {
+    expectThrows(ArrayIndexOutOfBoundsException.class, () -> {
       tw.getParent(-1);
-      fail("getParent for -1 should throw exception");
-    } catch (ArrayIndexOutOfBoundsException e) {
-      // ok
-    }
-    try {
+    });
+    expectThrows(ArrayIndexOutOfBoundsException.class, () -> {
       tw.getParent(TaxonomyReader.INVALID_ORDINAL);
-      fail("getParent for INVALID_ORDINAL should throw exception");
-    } catch (ArrayIndexOutOfBoundsException e) {
-      // ok
-    }
-    try {
-      int parent = tw.getParent(tr.getSize());
-      fail("getParent for getSize() should throw exception, but returned "
-          + parent);
-    } catch (ArrayIndexOutOfBoundsException e) {
-      // ok
-    }
+    });
+    expectThrows(ArrayIndexOutOfBoundsException.class, () -> {
+      tw.getParent(tr.getSize());
+    });
   }
 
   /**

@@ -1,5 +1,3 @@
-package org.apache.lucene.replicator;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.replicator;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.replicator;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -87,89 +86,56 @@ public class LocalReplicatorTest extends ReplicatorTestCase {
     assertEquals(1, res.sourceFiles.size());
     Entry<String,List<RevisionFile>> entry = res.sourceFiles.entrySet().iterator().next();
     replicator.close();
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       replicator.obtainFile(res.id, entry.getKey(), entry.getValue().get(0).fileName);
-      fail("should have failed on AlreadyClosedException");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
+    });
   }
   
   @Test
   public void testPublishAlreadyClosed() throws IOException {
     replicator.close();
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       replicator.publish(createRevision(2));
-      fail("should have failed on AlreadyClosedException");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
+    });
   }
   
   @Test
   public void testUpdateAlreadyClosed() throws IOException {
     replicator.close();
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       replicator.checkForUpdate(null);
-      fail("should have failed on AlreadyClosedException");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
+    });
   }
   
   @Test
   public void testPublishSameRevision() throws IOException {
-    // we look to see that certain files are deleted:
-    if (sourceDir instanceof MockDirectoryWrapper) {
-      ((MockDirectoryWrapper)sourceDir).setEnableVirusScanner(false);
-    }
-    try {
-      Revision rev = createRevision(1);
-      replicator.publish(rev);
-      SessionToken res = replicator.checkForUpdate(null);
-      assertNotNull(res);
-      assertEquals(rev.getVersion(), res.version);
-      replicator.release(res.id);
-      replicator.publish(new IndexRevision(sourceWriter));
-      res = replicator.checkForUpdate(res.version);
-      assertNull(res);
+    Revision rev = createRevision(1);
+    replicator.publish(rev);
+    SessionToken res = replicator.checkForUpdate(null);
+    assertNotNull(res);
+    assertEquals(rev.getVersion(), res.version);
+    replicator.release(res.id);
+    replicator.publish(new IndexRevision(sourceWriter));
+    res = replicator.checkForUpdate(res.version);
+    assertNull(res);
       
-      // now make sure that publishing same revision doesn't leave revisions
-      // "locked", i.e. that replicator releases revisions even when they are not
-      // kept
-      replicator.publish(createRevision(2));
-      assertEquals(1, DirectoryReader.listCommits(sourceDir).size());
-    } finally {
-      if (sourceDir instanceof MockDirectoryWrapper) {
-        // set back to on for other tests
-        ((MockDirectoryWrapper)sourceDir).setEnableVirusScanner(true);
-      }
-    }
+    // now make sure that publishing same revision doesn't leave revisions
+    // "locked", i.e. that replicator releases revisions even when they are not
+    // kept
+    replicator.publish(createRevision(2));
+    assertEquals(1, DirectoryReader.listCommits(sourceDir).size());
   }
   
   @Test
   public void testPublishOlderRev() throws IOException {
-    // we look to see that certain files are deleted:
-    if (sourceDir instanceof MockDirectoryWrapper) {
-      ((MockDirectoryWrapper)sourceDir).setEnableVirusScanner(false);
-    }
-    try {
-      replicator.publish(createRevision(1));
-      Revision old = new IndexRevision(sourceWriter);
-      replicator.publish(createRevision(2));
-      try {
-        replicator.publish(old);
-        fail("should have failed to publish an older revision");
-      } catch (IllegalArgumentException e) {
-        // expected
-      }
-      assertEquals(1, DirectoryReader.listCommits(sourceDir).size());
-    } finally {
-      if (sourceDir instanceof MockDirectoryWrapper) {
-        // set back to on for other tests
-        ((MockDirectoryWrapper)sourceDir).setEnableVirusScanner(true);
-      }
-    }
+    replicator.publish(createRevision(1));
+    Revision old = new IndexRevision(sourceWriter);
+    replicator.publish(createRevision(2));
+    // should fail to publish an older revision
+    expectThrows(IllegalArgumentException.class, () -> {
+      replicator.publish(old);
+    });
+    assertEquals(1, DirectoryReader.listCommits(sourceDir).size());
   }
   
   @Test
@@ -190,12 +156,10 @@ public class LocalReplicatorTest extends ReplicatorTestCase {
     SessionToken session = replicator.checkForUpdate(null);
     replicator.setExpirationThreshold(5); // expire quickly
     Thread.sleep(50); // sufficient for expiration
-    try {
+    // should fail to obtain a file for an expired session
+    expectThrows(SessionExpiredException.class, () -> {
       replicator.obtainFile(session.id, session.sourceFiles.keySet().iterator().next(), session.sourceFiles.values().iterator().next().get(0).fileName);
-      fail("should have failed to obtain a file for an expired session");
-    } catch (SessionExpiredException e) {
-      // expected
-    }
+    });
   }
   
   @Test
@@ -210,24 +174,12 @@ public class LocalReplicatorTest extends ReplicatorTestCase {
   
   @Test
   public void testRevisionRelease() throws Exception {
-    // we look to see that certain files are deleted:
-    if (sourceDir instanceof MockDirectoryWrapper) {
-      ((MockDirectoryWrapper)sourceDir).setEnableVirusScanner(false);
-    }
-    
-    try {
-      replicator.publish(createRevision(1));
-      assertTrue(slowFileExists(sourceDir, IndexFileNames.SEGMENTS + "_1"));
-      replicator.publish(createRevision(2));
-      // now the files of revision 1 can be deleted
-      assertTrue(slowFileExists(sourceDir, IndexFileNames.SEGMENTS + "_2"));
-      assertFalse("segments_1 should not be found in index directory after revision is released", slowFileExists(sourceDir, IndexFileNames.SEGMENTS + "_1"));
-    } finally {
-      if (sourceDir instanceof MockDirectoryWrapper) {
-        // set back to on for other tests
-        ((MockDirectoryWrapper)sourceDir).setEnableVirusScanner(true);
-      }
-    }
+    replicator.publish(createRevision(1));
+    assertTrue(slowFileExists(sourceDir, IndexFileNames.SEGMENTS + "_1"));
+    replicator.publish(createRevision(2));
+    // now the files of revision 1 can be deleted
+    assertTrue(slowFileExists(sourceDir, IndexFileNames.SEGMENTS + "_2"));
+    assertFalse("segments_1 should not be found in index directory after revision is released", slowFileExists(sourceDir, IndexFileNames.SEGMENTS + "_1"));
   }
   
 }

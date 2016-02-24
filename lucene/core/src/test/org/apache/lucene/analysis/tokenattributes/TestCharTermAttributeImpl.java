@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.tokenattributes;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.tokenattributes;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.tokenattributes;
+
 
 import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.LuceneTestCase;
@@ -191,17 +191,13 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     t.append((CharSequence) t2, 1, 2);
     assertEquals("4teste", t.toString());
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       t.append((CharSequence) t2, 1, 5);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch(IndexOutOfBoundsException iobe) {
-    }
-    
-    try {
+    });
+
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       t.append((CharSequence) t2, 1, 0);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch(IndexOutOfBoundsException iobe) {
-    }
+    });
     
     t.append((CharSequence) null);
     assertEquals("4testenull", t.toString());
@@ -259,29 +255,21 @@ public class TestCharTermAttributeImpl extends LuceneTestCase {
     t.append("test");
     assertEquals("test", t.toString());
 
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       t.charAt(-1);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch(IndexOutOfBoundsException iobe) {
-    }
+    });
 
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       t.charAt(4);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch(IndexOutOfBoundsException iobe) {
-    }
+    });
 
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       t.subSequence(0, 5);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch(IndexOutOfBoundsException iobe) {
-    }
+    });
 
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       t.subSequence(5, 0);
-      fail("Should throw IndexOutOfBoundsException");
-    } catch(IndexOutOfBoundsException iobe) {
-    }
+    });
   }
 
   public static <T extends AttributeImpl> T assertCloneIsEqual(T att) {

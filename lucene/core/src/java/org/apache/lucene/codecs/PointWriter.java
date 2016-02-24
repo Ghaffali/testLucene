@@ -1,5 +1,3 @@
-package org.apache.lucene.codecs;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.codecs;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs;
+
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -37,7 +37,7 @@ public abstract class PointWriter implements Closeable {
   /** Write all values contained in the provided reader */
   public abstract void writeField(FieldInfo fieldInfo, PointReader values) throws IOException;
 
-  /** Default naive merge implemenation for one field: it just re-indexes all the values
+  /** Default naive merge implementation for one field: it just re-indexes all the values
    *  from the incoming segment.  The default codec overrides this for 1D fields and uses
    *  a faster but more complex implementation. */
   protected void mergeOneField(MergeState mergeState, FieldInfo fieldInfo) throws IOException {
@@ -126,5 +126,9 @@ public abstract class PointWriter implements Closeable {
         mergeOneField(mergeState, fieldInfo);
       }
     }
+    finish();
   }
+
+  /** Called once at the end before close */
+  public abstract void finish() throws IOException;
 }

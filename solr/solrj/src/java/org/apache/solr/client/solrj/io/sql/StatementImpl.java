@@ -1,5 +1,3 @@
-package org.apache.solr.client.solrj.io.sql;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.client.solrj.io.sql;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.client.solrj.io.sql;
 
 import java.io.IOException;
 import java.sql.Connection;
@@ -27,12 +26,12 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Random;
 
 import org.apache.solr.client.solrj.io.stream.SolrStream;
-import org.apache.solr.client.solrj.io.stream.StreamContext;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
@@ -43,37 +42,30 @@ import org.apache.solr.common.params.CommonParams;
 class StatementImpl implements Statement {
 
   private final ConnectionImpl connection;
-  private SolrStream solrStream;
   private boolean closed;
   private String currentSQL;
   private ResultSetImpl currentResultSet;
   private SQLWarning currentWarning;
+  private int maxRows;
 
   StatementImpl(ConnectionImpl connection) {
     this.connection = connection;
   }
 
-  public SolrStream getSolrStream() {
-    return this.solrStream;
-  }
-
   @Override
   public ResultSet executeQuery(String sql) throws SQLException {
-
     try {
       if(this.currentResultSet != null) {
         this.currentResultSet.close();
         this.currentResultSet = null;
-        this.solrStream.close();
+      }
+
+      if(maxRows > 0 && !containsLimit(sql)) {
+        sql = sql + " limit "+Integer.toString(maxRows);
       }
 
       closed = false;  // If closed reopen so Statement can be reused.
-      this.solrStream = constructStream(sql);
-      StreamContext context = new StreamContext();
-      context.setSolrClientCache(this.connection.getSolrClientCache());
-      this.solrStream.setStreamContext(context);
-      this.solrStream.open();
-      this.currentResultSet = new ResultSetImpl(this);
+      this.currentResultSet = new ResultSetImpl(this, constructStream(sql));
       return this.currentResultSet;
     } catch(Exception e) {
       throw new SQLException(e);
@@ -84,10 +76,10 @@ class StatementImpl implements Statement {
     try {
       ZkStateReader zkStateReader = this.connection.getClient().getZkStateReader();
       ClusterState clusterState = zkStateReader.getClusterState();
-      Collection<Slice> slices = clusterState.getActiveSlices(this.connection.getCatalog());
+      Collection<Slice> slices = clusterState.getActiveSlices(this.connection.getSchema());
 
       if(slices == null) {
-        throw new Exception("Collection not found:"+this.connection.getCatalog());
+        throw new Exception("Collection not found:"+this.connection.getSchema());
       }
 
       List<Replica> shuffler = new ArrayList<>();
@@ -127,13 +119,10 @@ class StatementImpl implements Statement {
       return;
     }
 
-    try {
-      if(this.solrStream != null) {
-        this.solrStream.close();
-      }
-      this.closed = true;
-    } catch (Exception e) {
-      throw new SQLException(e);
+    this.closed = true;
+
+    if(this.currentResultSet != null) {
+      this.currentResultSet.close();
     }
   }
 
@@ -149,12 +138,12 @@ class StatementImpl implements Statement {
 
   @Override
   public int getMaxRows() throws SQLException {
-    throw new UnsupportedOperationException();
+    return this.maxRows;
   }
 
   @Override
   public void setMaxRows(int max) throws SQLException {
-    throw new UnsupportedOperationException();
+    this.maxRows = max;
   }
 
   @Override
@@ -230,7 +219,13 @@ class StatementImpl implements Statement {
 
   @Override
   public boolean getMoreResults() throws SQLException {
-    throw new UnsupportedOperationException();
+    if(isClosed()) {
+      throw new SQLException("Statement is closed");
+    }
+
+    // Currently multiple result sets are not possible yet
+    this.currentResultSet.close();
+    return false;
   }
 
   @Override
@@ -361,5 +356,11 @@ class StatementImpl implements Statement {
   @Override
   public boolean isWrapperFor(Class<?> iface) throws SQLException {
     throw new UnsupportedOperationException();
+  }
+
+  private boolean containsLimit(String sql) {
+    String[] tokens = sql.split("\\s+");
+    String secondToLastToken = tokens[tokens.length-2];
+    return ("limit").equalsIgnoreCase(secondToLastToken);
   }
 }

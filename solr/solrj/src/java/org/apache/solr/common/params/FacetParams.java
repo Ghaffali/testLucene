@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.common.params;
 
 import java.util.EnumSet;
@@ -55,6 +54,11 @@ public interface FacetParams {
   /** Value for FACET_METHOD param, like FACET_METHOD_fc but counts per-segment.
    */
   public static final String FACET_METHOD_fcs = "fcs";
+
+  /**
+   * Value for FACET_METHOD param to indicate that Solr should use an UnInvertedField
+   */
+  public static final String FACET_METHOD_uif = "uif";
 
   /**
    * Any lucene formated queries the user would like to use for

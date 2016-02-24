@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.ja;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.analysis.ja;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.ja;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -1053,7 +1052,7 @@ public final class JapaneseTokenizer extends Tokenizer {
       assert baseOffset <= lastOffset;
       int size = lastOffset - baseOffset + 1;
       if (rootCapacity < size) {
-        int oversize = ArrayUtil.oversize(size, RamUsageEstimator.NUM_BYTES_INT);
+        int oversize = ArrayUtil.oversize(size, Integer.BYTES);
         lRoot = new int[oversize];
         rRoot = new int[oversize];
         rootCapacity = oversize;
@@ -1067,7 +1066,7 @@ public final class JapaneseTokenizer extends Tokenizer {
     // Reserve at least N nodes.
     private void reserve(int n) {
       if (capacity < n) {
-        int oversize = ArrayUtil.oversize(n, RamUsageEstimator.NUM_BYTES_INT);
+        int oversize = ArrayUtil.oversize(n, Integer.BYTES);
         nodeDicType = new Type[oversize];
         nodeWordID = new int[oversize];
         nodeMark = new int[oversize];

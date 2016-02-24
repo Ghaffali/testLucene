@@ -1,5 +1,3 @@
-package org.apache.lucene.util.bkd;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util.bkd;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.bkd;
+
 
 import java.io.IOException;
 import java.math.BigInteger;
@@ -140,7 +140,7 @@ public class TestBKD extends LuceneTestCase {
           if (values[dim] > maxValue[dim]) {
             maxValue[dim] = values[dim];
           }
-          NumericUtils.intToBytes(values[dim], scratch, dim);
+          NumericUtils.intToBytes(values[dim], scratch, dim * Integer.BYTES);
           if (VERBOSE) {
             System.out.println("    " + dim + " -> " + values[dim]);
           }
@@ -161,8 +161,8 @@ public class TestBKD extends LuceneTestCase {
         byte[] minPackedValue = r.getMinPackedValue();
         byte[] maxPackedValue = r.getMaxPackedValue();
         for(int dim=0;dim<numDims;dim++) {
-          assertEquals(minValue[dim], NumericUtils.bytesToInt(minPackedValue, dim));
-          assertEquals(maxValue[dim], NumericUtils.bytesToInt(maxPackedValue, dim));
+          assertEquals(minValue[dim], NumericUtils.bytesToInt(minPackedValue, dim * Integer.BYTES));
+          assertEquals(maxValue[dim], NumericUtils.bytesToInt(maxPackedValue, dim * Integer.BYTES));
         }
 
         int iters = atLeast(100);
@@ -196,7 +196,7 @@ public class TestBKD extends LuceneTestCase {
             public void visit(int docID, byte[] packedValue) {
               //System.out.println("visit check docID=" + docID);
               for(int dim=0;dim<numDims;dim++) {
-                int x = NumericUtils.bytesToInt(packedValue, dim);
+                int x = NumericUtils.bytesToInt(packedValue, dim * Integer.BYTES);
                 if (x < queryMin[dim] || x > queryMax[dim]) {
                   //System.out.println("  no");
                   return;
@@ -211,8 +211,8 @@ public class TestBKD extends LuceneTestCase {
             public Relation compare(byte[] minPacked, byte[] maxPacked) {
               boolean crosses = false;
               for(int dim=0;dim<numDims;dim++) {
-                int min = NumericUtils.bytesToInt(minPacked, dim);
-                int max = NumericUtils.bytesToInt(maxPacked, dim);
+                int min = NumericUtils.bytesToInt(minPacked, dim * Integer.BYTES);
+                int max = NumericUtils.bytesToInt(maxPacked, dim * Integer.BYTES);
                 assert max >= min;
 
                 if (max < queryMin[dim] || min > queryMax[dim]) {
@@ -394,9 +394,6 @@ public class TestBKD extends LuceneTestCase {
         try {
           dir.setRandomIOExceptionRate(0.05);
           dir.setRandomIOExceptionRateOnOpen(0.05);
-          if (dir instanceof MockDirectoryWrapper) {
-            dir.setEnableVirusScanner(false);
-          }
           verify(dir, docValues, null, numDims, numBytesPerDim, 50, maxMBHeap);
         } catch (IllegalArgumentException iae) {
           // This just means we got a too-small maxMB for the maxPointsInLeafNode; just retry w/ more heap
@@ -432,11 +429,10 @@ public class TestBKD extends LuceneTestCase {
 
   public void testTooLittleHeap() throws Exception { 
     try (Directory dir = getDirectory(0)) {
-      new BKDWriter(dir, "bkd", 1, 16, 1000000, 0.001);
-      fail("did not hit exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-      assertTrue(iae.getMessage().contains("either increase maxMBSortInHeap or decrease maxPointsInLeafNode"));
+      IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
+        new BKDWriter(dir, "bkd", 1, 16, 1000000, 0.001);
+      });
+      assertTrue(expected.getMessage().contains("either increase maxMBSortInHeap or decrease maxPointsInLeafNode"));
     }
   }
 
@@ -566,11 +562,10 @@ public class TestBKD extends LuceneTestCase {
     Arrays.fill(bytes, (byte) 0xff);
     byte[] one = new byte[4];
     one[3] = 1;
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       NumericUtils.add(4, 0, bytes, one, new byte[4]);
-    } catch (IllegalArgumentException iae) {
-      assertEquals("a + b overflows bytesPerDim=4", iae.getMessage());
-    }
+    });
+    assertEquals("a + b overflows bytesPerDim=4", expected.getMessage());
   }
   
   public void testNumericUtilsSubtract() throws Exception {
@@ -610,11 +605,10 @@ public class TestBKD extends LuceneTestCase {
     v1[3] = (byte) 0xf0;
     byte[] v2 = new byte[4];
     v2[3] = (byte) 0xf1;
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       NumericUtils.subtract(4, 0, v1, v2, new byte[4]);
-    } catch (IllegalArgumentException iae) {
-      assertEquals("a < b", iae.getMessage());
-    }
+    });
+    assertEquals("a < b", expected.getMessage());
   }
 
   /** docIDs can be null, for the single valued case, else it maps value to docID */
@@ -847,9 +841,6 @@ public class TestBKD extends LuceneTestCase {
       dir = newFSDirectory(createTempDir("TestBKDTree"));
     } else {
       dir = newDirectory();
-    }
-    if (dir instanceof MockDirectoryWrapper) {
-      ((MockDirectoryWrapper) dir).setEnableVirusScanner(false);
     }
     return dir;
   }

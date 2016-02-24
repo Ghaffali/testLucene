@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -50,7 +49,7 @@ import org.apache.lucene.util.TestUtil;
 
 import com.carrotsearch.randomizedtesting.generators.RandomPicks;
 
-public class TestSortingMergePolicy extends LuceneTestCase {
+public class TestSortingMergePolicy extends BaseMergePolicyTestCase {
 
   private List<String> terms;
   private Directory dir1, dir2;
@@ -78,6 +77,10 @@ public class TestSortingMergePolicy extends LuceneTestCase {
     return doc;
   }
 
+  public MergePolicy mergePolicy() {
+    return newSortingMergePolicy(sort);
+  }
+
   public static SortingMergePolicy newSortingMergePolicy(Sort sort) {
     // usually create a MP with a low merge factor so that many merges happen
     MergePolicy mp;
@@ -97,6 +100,9 @@ public class TestSortingMergePolicy extends LuceneTestCase {
       mp = newMergePolicy();
     }
     // wrap it with a sorting mp
+    if (VERBOSE) {
+      System.out.println("TEST: return SortingMergePolicy(mp=" + mp + " sort=" + sort + ")");
+    }
     return new SortingMergePolicy(mp, sort);
   }
 
@@ -113,7 +119,7 @@ public class TestSortingMergePolicy extends LuceneTestCase {
     final long seed = random().nextLong();
     final IndexWriterConfig iwc1 = newIndexWriterConfig(new MockAnalyzer(new Random(seed)));
     final IndexWriterConfig iwc2 = newIndexWriterConfig(new MockAnalyzer(new Random(seed)));
-    iwc2.setMergePolicy(newSortingMergePolicy(sort));
+    iwc2.setMergePolicy(mergePolicy());
     final RandomIndexWriter iw1 = new RandomIndexWriter(new Random(seed), dir1, iwc1);
     final RandomIndexWriter iw2 = new RandomIndexWriter(new Random(seed), dir2, iwc2);
     for (int i = 0; i < numDocs; ++i) {
@@ -186,23 +192,10 @@ public class TestSortingMergePolicy extends LuceneTestCase {
   }
   
   public void testBadSort() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new SortingMergePolicy(newMergePolicy(), Sort.RELEVANCE);
-      fail("Didn't get expected exception");
-    } catch (IllegalArgumentException e) {
-      assertEquals("Cannot sort an index with a Sort that refers to the relevance score", e.getMessage());
-    }
-  }
-
-  public void testMethodsOverridden() throws Exception {
-    for (Method m : MergePolicy.class.getDeclaredMethods()) {
-      if (Modifier.isFinal(m.getModifiers())) continue;
-      try {
-        SortingMergePolicy.class.getDeclaredMethod(m.getName(),  m.getParameterTypes());
-      } catch (NoSuchMethodException e) {
-        fail("SortingMergePolicy needs to override '"+m+"'");
-      }
-    }
+    });
+    assertEquals("Cannot sort an index with a Sort that refers to the relevance score", expected.getMessage());
   }
 
 }

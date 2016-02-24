@@ -23,10 +23,11 @@ Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this r
 Versions of Major Components
 ---------------------
 Apache Tika 1.7
-Carrot2 3.10.4
+Carrot2 3.12.0
 Velocity 1.7 and Velocity Tools 2.0
 Apache UIMA 2.3.1
 Apache ZooKeeper 3.4.6
+Jetty 9.3.6.v20151106
 
 System Requirements
 ----------------------
@@ -76,6 +77,8 @@ Upgrading from Solr 5.x
 
 * SolrIndexSearcher.QueryCommand and QueryResult were moved to their own classes. If you reference them
   in your code, you should import them under o.a.s.search (or use your IDE's "Organize Imports").
+
+* SOLR-8698: 'useParams' attribute specified in request handler cannot be overridden from request params
 
 Detailed Change List
 ----------------------
@@ -142,6 +145,21 @@ New Features
 
 * SOLR-8550: Add asynchronous DaemonStreams to the Streaming API (Joel Bernstein)
 
+* SOLR-8285: Ensure the /export handler works with NULL field values (Joel Bernstein)
+
+* SOLR-8502: Improve Solr JDBC Driver to support SQL Clients like DBVisualizer (Kevin Risden, Joel Bernstein)
+
+* SOLR-8588: Add TopicStream to the streaming API to support publish/subscribe messaging (Joel Bernstein, Kevin Risden)
+
+* SOLR-8666: Adds header 'zkConnected' to response of SearchHandler and PingRequestHandler to notify the client when
+  a connection to zookeeper has been lost and there is a possibility of stale data on the node the request is coming
+  from. (Keith Laban, Dennis Gove)
+
+* SOLR-8522: Make it possible to use ip fragments in replica placement rules , such as ip_1, ip_2 etc (Arcadius Ahouansou, noble)
+
+* SOLR-8698: params.json can now specify 'appends' and 'invariants' (noble)
+
+
 Bug Fixes
 ----------------------
 * SOLR-8386: Add field option in the new admin UI schema page loads up even when no schemaFactory has been
@@ -155,6 +173,44 @@ Bug Fixes
 * SOLR-8525: Fix a few places that were failing to pass dimensional
   values settings when copying a FieldInfo (Ishan Chattopadhyaya via
   Mike McCandless)
+
+* SOLR-8409: Ensures that quotes in solr params (eg. q param) are properly handled (Dennis Gove)
+
+* SOLR-8640: CloudSolrClient does not send credentials for update request (noble, hoss)
+
+* SOLR-8461: CloudSolrStream and ParallelStream can choose replicas that are not active
+  (Cao Manh Dat, Varun Thacker, Joel Bernstein)
+
+* SOLR-8527: Improve JdbcTest to cleanup properly on failures (Kevin Risden, Joel Bernstein)
+
+* SOLR-8578: Successful or not, requests are not always fully consumed by Solrj clients and we
+  count on HttpClient or the JVM. (Mark Miller)
+
+* SOLR-8683: Always consume the full request on the server, not just in the case of an error.
+  (Mark Miller)
+
+* SOLR-8416: The collections create API should return after all replicas are active.
+  (Michael Sun, Mark Miller, Alexey Serba)
+
+* SOLR-8701: CloudSolrClient decides that there are no healthy nodes to handle a request too early.
+  (Mark Miller)
+
+* SOLR-8694: DistributedMap/Queue can create too many Watchers and some code simplification. 
+  (Scott Blum via Mark Miller)
+  
+* SOLR-8695: Ensure ZK watchers are not triggering our watch logic on connection events and
+  make this handling more consistent. (Scott Blum via Mark Miller)
+
+* SOLR-8633: DistributedUpdateProcess processCommit/deleteByQuery call finish on DUP and 
+  SolrCmdDistributor, which violates the lifecycle and can cause bugs. (hossman via Mark Miller)
+  
+* SOLR-8656: PeerSync should use same nUpdates everywhere. (Ramsey Haddad via Mark Miller)
+
+* SOLR-8697: Scope ZK election nodes by session to prevent elections from interfering with each other
+  and other small LeaderElector improvements. (Scott Blum via Mark Miller)
+
+* SOLR-8599: After a failed connection during construction of SolrZkClient attempt to retry until a connection
+  can be made. (Keith Laban, Dennis Gove)
 
 Optimizations
 ----------------------
@@ -171,6 +227,12 @@ Optimizations
   matching documents is small (or 0) this enhancement prevents considering terms which have a 0
   count. Also includes change to move to the next non-zero term value when selecting a segment
   position. (Keith Laban, Steve Bower, Dennis Gove)
+
+* SOLR-8532: Optimize GraphQuery when maxDepth is set by not collecting edges at the maxDepth level.
+  (Kevin Watters via yonik)
+
+* SOLR-8669: Non binary responses use chunked encoding because we flush the outputstream early.
+  (Mark Miller)
 
 Other Changes
 ----------------------
@@ -228,6 +290,29 @@ Other Changes
 * SOLR-5209: Unloading or deleting the last replica of a shard now no longer
   cascades to remove the shard from the clusterstate. (Christine Poerschke)
 
+* SOLR-8190: Implement Closeable on TupleStream (Kevin Risden, Joel Bernstein)
+
+* SOLR-8529: Improve JdbcTest to not use plain assert statements (Kevin Risden, Joel Bernstein)
+
+* SOLR-7339: Upgrade Jetty to v9.3.6.v20151106. (Gregg Donovan, shalin, Mark Miller)
+
+* SOLR-5730: Make Lucene's SortingMergePolicy and EarlyTerminatingSortingCollector configurable in Solr.
+  (Christine Poerschke, hossmann, Tomás Fernández Löbbe, Shai Erera)
+
+* SOLR-8677: Prevent shards containing invalid characters from being created.  Checks added server-side
+  and in SolrJ.  (Shai Erera, Jason Gerlowski, Anshum Gupta)
+
+* SOLR-8693: Improve ZkStateReader logging. (Scott Blum via Mark Miller)
+
+* SOLR-8710: Upgrade morfologik-stemming to version 2.1.0. (Dawid Weiss)
+
+* SOLR-8711: Upgrade Carrot2 clustering dependency to 3.12.0. (Dawid Weiss)
+
+* SOLR-8690: Make peersync fingerprinting optional with solr.disableFingerprint system
+  property. (yonik)
+
+* SOLR-8691: Cache index fingerprints per searcher. (yonik)
+
 ======================= 5.5.0 =======================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release
@@ -268,6 +353,47 @@ Upgrading from Solr 5.4
 
 * bin/post now defaults application/json files to the /update/json/docs end-point.  Use `-format solr` to force
   files to the /update end-point.   See SOLR-7042 for more details.
+
+* In solrconfig.xml the <mergePolicy> element is deprecated in favor of a similar <mergePolicyFactory> element,
+  the <mergeFactor> and <maxMergeDocs> elements are also deprecated, please see SOLR-8621 for full details.
+
+  To migrate your existing solrconfig.xml, you can replace elements as follows:
+
+  <!-- TieredMergePolicy example -->
+  <!-- deprecated -->
+  <mergeFactor>??</mergeFactor>
+  <mergePolicy class="org.apache.lucene.index.TieredMergePolicy">
+    <bool name="useCompoundFile">???</bool> <!-- deprecated since Lucene/Solr 4.4.0 -->
+    ...
+  </mergePolicy>
+  <!-- replacement -->
+  <useCompoundFile>???</useCompoundFile> <!-- since Lucene/Solr 4.4.0 -->
+  <mergePolicyFactory class="org.apache.solr.index.TieredMergePolicyFactory">
+    <int name="maxMergeAtOnce">??</int> <!-- formerly the <mergeFactor> element implicitly set this -->
+    <int name="segmentsPerTier">??</int> <!-- formerly the <mergeFactor> element implicitly set this -->
+    ...
+  </mergePolicyFactory>
+
+  <!-- Log(ByteSize|Doc)MergePolicy example -->
+  <!-- deprecated -->
+  <maxMergeDocs>????</maxMergeDocs>
+  <mergeFactor>??</mergeFactor>
+  <mergePolicy class="org.apache.lucene.index.Log?MergePolicy">
+    <bool name="useCompoundFile">???</bool> <!-- deprecated since Lucene/Solr 4.4.0 -->
+    ...
+  </mergePolicy>
+  <!-- replacement -->
+  <useCompoundFile>???</useCompoundFile> <!-- since Lucene/Solr 4.4.0 -->
+  <mergePolicyFactory class="org.apache.solr.index.Log?MergePolicyFactory">
+    <int name="maxMergeDocs">????</int> <!-- formerly the <maxMergeDocs> element set this -->
+    <int name="mergeFactor">??</int> <!-- formerly the <mergeFactor> element set this -->
+    ...
+  </mergePolicyFactory>
+
+* Clearing up stored async collection api responses via REQUESTSTATUS call is now deprecated and would be
+  removed in 6.0. See SOLR-8648 for more details.
+
+* SOLR-6594: Deprecated the old schema API which will be removed in a later major release
 
 Detailed Change List
 ----------------------
@@ -335,6 +461,27 @@ New Features
 * SOLR-8560: Added RequestStatusState enum which can be used when comparing states of 
   asynchronous requests. (Shai Erera)
 
+* SOLR-8586: added index fingerprint, a hash over all versions currently in the index.
+  PeerSync now uses this to check if replicas are in sync. (yonik)
+
+* SOLR-8500: Allow the number of threads ConcurrentUpdateSolrClient StreamingSolrClients configurable by a 
+  system property. NOTE: this is an expert option and can result in more often needing to do full index replication
+  for recovery, the sweet spot for using this is very high volume, leader-only indexing. (Tim Potter, Erick Erickson)
+
+* SOLR-8642: SOLR allows creation of collections with invalid names
+  (Jason Gerlowski via Erick Erickson)
+
+* SOLR-8621: Deprecate <mergePolicy> in favor of <mergePolicyFactory>. It allows to configure
+  both the "simple" merge policies, but also more advanced ones, e.g. UpgradeIndexMergePolicy.
+  (Christine Poerschke, Shai Erera)
+
+* SOLR-8648: DELETESTATUS API for selective deletion and flushing of stored async collection API responses.
+  (Anshum Gupta)
+
+* SOLR-8466: adding facet.method=uif to bring back UnInvertedField faceting which is used to work on
+  facet.method=fc. It's more performant for rarely changing indexes. Note: it ignores prefix and contains yet.
+  (Jamie Johnson via Mikhail Khludnev)
+
 Bug Fixes
 ----------------------
 
@@ -364,7 +511,7 @@ Bug Fixes
 * SOLR-6992: Fix "Files" UI to show the managed-schema file as well.
   (Shawn Heisey, Varun Thacker)
 
-* SOLR-2469: MM ignored in edismax queries with operators.
+* SOLR-2649: MM ignored in edismax queries with operators.
   (Greg Pendlebury, Jan Høydahl et. al. via Erick Erickson)
 
 * SOLR-8372: Canceled recovery can rarely lead to inconsistent shards:
@@ -425,11 +572,34 @@ Bug Fixes
 
 * SOLR-8582 : memory leak in JsonRecordReader affecting /update/json/docs. Large payloads
   cause OOM (noble, shalin)
+
+* SOLR-8605: Regular expression queries starting with escaped forward slash caused
+  an exception. (Scott Blum, yonik)
+
+* SOLR-8607: The Schema API refuses to add new fields that match existing dynamic fields.
+  (Jan Høydahl, Steve Rowe)
+
+* SOLR-8575: Fix HDFSLogReader replay status numbers, a performance bug where we can reopen
+  FSDataInputStream much too often, and an hdfs tlog data integrity bug.
+  (Mark Miller, Patrick Dvorack, yonik)
+  
+* SOLR-8651: The commitWithin parameter is not passed on for deleteById in UpdateRequest in
+  distributed queries (Jessica Cheng Mallet via Erick Erickson)
+
+* SOLR-8551: Make collection deletion more robust. (Mark Miller)
   
 Optimizations
 ----------------------
 
 * SOLR-8501: Specify the entity request size when known in HttpSolrClient. (Mark Miller)
+
+* SOLR-8615: Just like creating cores, we should use multiple threads when closing cores.
+  (Mark Miller)
+
+* SOLR-7281: Add an overseer action to publish an entire node as 'down'. (Mark Miller, shalin)
+
+* SOLR-8669: Non binary responses use chunked encoding because we flush the outputstream early.
+  (Mark Miller)
 
 Other Changes
 ----------------------
@@ -569,6 +739,20 @@ Other Changes
   (Christine Poerschke)
 
 * SOLR-8565: add & use CommonParams.(ROWS|START)_DEFAULT constants (Christine Poerschke)
+
+* SOLR-8595: Use BinaryRequestWriter by default in HttpSolrClient and ConcurrentUpdateSolrClient. (shalin)
+
+* SOLR-8597: add default, no-op QParserPlugin.init(NamedList) method (Christine Poerschke)
+
+* SOLR-7968: Make QueryComponent more extensible. (Markus Jelsma via David Smiley)
+
+* SOLR-8600: add & use ReRankQParserPlugin parameter [default] constants,
+  changed ReRankQuery.toString to use StringBuilder. (Christine Poerschke)
+
+* SOLR-8308: Core gets inaccessible after RENAME operation with special characters
+  (Erik Hatcher, Erick Erickson)
+
+* SOLR-3141: Warn in logs when expensive optimize calls are made (yonik, janhoy)
 
 ==================  5.4.1 ==================
 
@@ -880,7 +1064,6 @@ Bug Fixes
   (zengjie via Christine Poerschke)
 
 * SOLR-8355: update permissions were failing node recovery (noble , Anshum Gupta)
-
 
 Optimizations
 ----------------------

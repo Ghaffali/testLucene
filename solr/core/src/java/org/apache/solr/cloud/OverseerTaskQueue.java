@@ -1,7 +1,3 @@
-package org.apache.solr.cloud;
-
-import java.lang.invoke.MethodHandles;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,9 @@ import java.lang.invoke.MethodHandles;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud;
+
+import java.lang.invoke.MethodHandles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -130,11 +129,13 @@ public class OverseerTaskQueue extends DistributedQueue {
 
     @Override
     public void process(WatchedEvent event) {
-      Event.EventType eventType = event.getType();
-      // None events are ignored
+      // session events are not change events, and do not remove the watcher
+      if (Event.EventType.None.equals(event.getType())) {
+        return;
+      }
       // If latchEventType is not null, only fire if the type matches
-      LOG.info("{} fired on path {} state {} latchEventType {}", eventType, event.getPath(), event.getState(), latchEventType);
-      if (eventType != Event.EventType.None && (latchEventType == null || eventType == latchEventType)) {
+      LOG.info("{} fired on path {} state {} latchEventType {}", event.getType(), event.getPath(), event.getState(), latchEventType);
+      if (latchEventType == null || event.getType() == latchEventType) {
         synchronized (lock) {
           this.event = event;
           lock.notifyAll();

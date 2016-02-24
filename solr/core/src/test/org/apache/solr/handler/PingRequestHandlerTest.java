@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.handler;
 
 import java.io.File;
@@ -199,10 +198,13 @@ public class PingRequestHandlerTest extends SolrTestCaseJ4 {
       reqDistrib.setDistrib(true);
       SolrPingResponse rsp = reqDistrib.process(cloudSolrClient, collectionName);
       assertEquals(0, rsp.getStatus()); 
+      assertTrue(rsp.getResponseHeader().getBooleanArg(("zkConnected")));
+
       
       SolrPing reqNonDistrib = new SolrPing();
       rsp = reqNonDistrib.process(cloudSolrClient, collectionName);
       assertEquals(0, rsp.getStatus());   
+      assertTrue(rsp.getResponseHeader().getBooleanArg(("zkConnected")));
 
       // delete the collection we created earlier
       miniCluster.deleteCollection(collectionName);

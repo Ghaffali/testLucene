@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.miscellaneous;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.miscellaneous;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.miscellaneous;
+
 
 import java.io.Reader;
 import java.io.StringReader;
@@ -264,12 +264,10 @@ public class TestCapitalizationFilterFactory extends BaseTokenStreamFactoryTestC
   
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       tokenFilterFactory("Capitalization", "bogusArg", "bogusValue");
-      fail();
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("Unknown parameters"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 
   /**
@@ -277,7 +275,7 @@ public class TestCapitalizationFilterFactory extends BaseTokenStreamFactoryTestC
    */
   public void testInvalidArguments() throws Exception {
     for (final String arg : new String[]{"minWordLength", "maxTokenLength", "maxWordCount"}) {
-      try {
+      IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
         Reader reader = new StringReader("foo foobar super-duper-trooper");
         TokenStream stream = whitespaceMockTokenizer(reader);
 
@@ -287,11 +285,9 @@ public class TestCapitalizationFilterFactory extends BaseTokenStreamFactoryTestC
             arg, "-3",
             "okPrefix", "McK",
             "forceFirstLetter", "true").create(stream);
-        fail();
-      } catch (IllegalArgumentException expected) {
-        assertTrue(expected.getMessage().contains(arg + " must be greater than or equal to zero")
-            || expected.getMessage().contains(arg + " must be greater than zero"));
-      }
+      });
+      assertTrue(expected.getMessage().contains(arg + " must be greater than or equal to zero") ||
+                 expected.getMessage().contains(arg + " must be greater than zero"));
     }
   }
 }

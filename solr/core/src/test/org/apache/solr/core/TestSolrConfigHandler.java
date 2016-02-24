@@ -1,5 +1,3 @@
-package org.apache.solr.core;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,7 +14,7 @@ package org.apache.solr.core;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.apache.solr.core;
 
 import java.io.File;
 import java.io.IOException;
@@ -597,7 +595,7 @@ public class TestSolrConfigHandler extends RestTestBase {
         "/dump1?wt=json&useParams=y",
         null,
         Arrays.asList("params", "a"),
-        null,
+        "A val",
         5);
 
     TestSolrConfigHandler.testForResponseElement(

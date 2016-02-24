@@ -56,6 +56,7 @@ import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SolrjNamedThreadFactory;
+import org.apache.solr.common.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
@@ -140,7 +141,7 @@ public class HttpSolrClient extends SolrClient {
    * 
    * @see org.apache.solr.client.solrj.request.RequestWriter
    */
-  protected volatile RequestWriter requestWriter = new RequestWriter();
+  protected volatile RequestWriter requestWriter = new BinaryRequestWriter();
   
   private final HttpClient httpClient;
   
@@ -590,11 +591,7 @@ public class HttpSolrClient extends SolrClient {
           "IOException occured when talking to server at: " + getBaseURL(), e);
     } finally {
       if (shouldClose) {
-        try {
-          EntityUtils.consume(entity);
-        } catch (IOException e) {
-          log.error("Error consuming and closing http response stream.", e);
-        }
+        Utils.consumeFully(entity);
       }
     }
   }

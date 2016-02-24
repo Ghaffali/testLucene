@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.util;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.util;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.util;
+
 
 import java.text.BreakIterator;
 import java.text.CharacterIterator;
@@ -140,12 +140,9 @@ public class TestCharArrayIterator extends LuceneTestCase {
     
     // setIndex()
     ci.setText("test".toCharArray(), 0, "test".length());
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       ci.setIndex(5);
-      fail();
-    } catch (Exception e) {
-      assertTrue(e instanceof IllegalArgumentException);
-    }
+    });
     
     // clone()
     char text[] = "testing".toCharArray();

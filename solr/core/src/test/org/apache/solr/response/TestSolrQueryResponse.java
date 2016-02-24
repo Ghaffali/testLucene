@@ -1,5 +1,3 @@
-package org.apache.solr.response;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.response;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.response;
 
 import java.io.IOException;
 import java.lang.ArithmeticException;
@@ -43,6 +42,12 @@ public class TestSolrQueryResponse extends LuceneTestCase {
   public void testResponseHeaderPartialResults() throws Exception {
     assertEquals("SolrQueryResponse.RESPONSE_HEADER_PARTIAL_RESULTS_KEY value changed",
         "partialResults", SolrQueryResponse.RESPONSE_HEADER_PARTIAL_RESULTS_KEY);
+  }
+
+  @Test
+  public void testResponseHeaderSegmentTerminatedEarly() throws Exception {
+    assertEquals("SolrQueryResponse.RESPONSE_HEADER_SEGMENT_TERMINATED_EARLY_KEY value changed",
+        "segmentTerminatedEarly", SolrQueryResponse.RESPONSE_HEADER_SEGMENT_TERMINATED_EARLY_KEY);
   }
 
   @Test

@@ -1,5 +1,3 @@
-package org.apache.solr.client.solrj.embedded;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.client.solrj.embedded;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.client.solrj.embedded;
 
 import org.eclipse.jetty.util.ssl.SslContextFactory;
 
@@ -87,7 +86,7 @@ public class SSLConfig {
     if (sslConfig.getKeyStorePassword() != null)
       factory.setKeyStorePassword(sslConfig.getKeyStorePassword());
     if (sslConfig.getTrustStore() != null)
-      factory.setTrustStorePath(System.getProperty(sslConfig.getTrustStore()));
+      factory.setTrustStorePath(sslConfig.getTrustStore());
     if (sslConfig.getTrustStorePassword() != null)
       factory.setTrustStorePassword(sslConfig.getTrustStorePassword());
 

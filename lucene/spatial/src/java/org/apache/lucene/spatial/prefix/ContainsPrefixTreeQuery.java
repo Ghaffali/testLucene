@@ -1,5 +1,3 @@
-package org.apache.lucene.spatial.prefix;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.spatial.prefix;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.spatial.prefix;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -354,7 +353,7 @@ public class ContainsPrefixTreeQuery extends AbstractPrefixTreeQuery {
     public long ramBytesUsed() {
       return RamUsageEstimator.alignObjectSize(
             RamUsageEstimator.NUM_BYTES_OBJECT_REF
-          + RamUsageEstimator.NUM_BYTES_INT)
+          + Integer.BYTES)
           + intSet.ramBytesUsed();
     }
 

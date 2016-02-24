@@ -1,7 +1,3 @@
-package org.apache.solr.handler;
-
-import java.lang.invoke.MethodHandles;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,9 @@ import java.lang.invoke.MethodHandles;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.handler;
+
+import java.lang.invoke.MethodHandles;
 
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.core.SolrCore;
@@ -155,6 +154,7 @@ class CdcrProcessStateManager extends CdcrStateManager {
       String shard = core.getCoreDescriptor().getCloudDescriptor().getShardId();
 
       log.info("The CDCR process state has changed: {} @ {}:{}", event, collectionName, shard);
+      // session events are not change events, and do not remove the watcher
       if (Event.EventType.None.equals(event.getType())) {
         return;
       }

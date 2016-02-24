@@ -1,5 +1,3 @@
-package org.apache.lucene.search.spell;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search.spell;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.spell;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -311,12 +310,8 @@ public class TestSpellChecker extends LuceneTestCase {
     assertEquals(2, similar.length);
     assertEquals(similar[0], "ninety");
     assertEquals(similar[1], "one");
-    try {
-      similar = spellChecker.suggestSimilar("tousand", 10, r, null,
-          SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
-    } catch (NullPointerException e) {
-      assertTrue("threw an NPE, and it shouldn't have", false);
-    }
+    // should not throw exception
+    spellChecker.suggestSimilar("tousand", 10, r, null, SuggestMode.SUGGEST_WHEN_NOT_IN_INDEX);
   }
 
   private void checkJaroWinklerSuggestions() throws IOException {
@@ -362,39 +357,27 @@ public class TestSpellChecker extends LuceneTestCase {
     assertLastSearcherOpen(4);
     spellChecker.close();
     assertSearchersClosed();
-    try {
+
+    expectThrows(AlreadyClosedException.class, () -> {
       spellChecker.close();
-      fail("spellchecker was already closed");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
-    try {
+    });
+
+    expectThrows(AlreadyClosedException.class, () -> {
       checkCommonSuggestions(r);
-      fail("spellchecker was already closed");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
+    });
     
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       spellChecker.clearIndex();
-      fail("spellchecker was already closed");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
+    });
     
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       spellChecker.indexDictionary(new LuceneDictionary(r, field), newIndexWriterConfig(null), false);
-      fail("spellchecker was already closed");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
+    });
     
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       spellChecker.setSpellIndex(spellindex);
-      fail("spellchecker was already closed");
-    } catch (AlreadyClosedException e) {
-      // expected
-    }
+    });
+
     assertEquals(4, searchers.size());
     assertSearchersClosed();
     r.close();

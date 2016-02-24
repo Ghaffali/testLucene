@@ -1,5 +1,3 @@
-package org.apache.lucene.search.suggest.document;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search.suggest.document;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.suggest.document;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -80,22 +79,18 @@ public class TestSuggestField extends LuceneTestCase {
 
   @Test
   public void testEmptySuggestion() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new SuggestField("suggest_field", "", 3);
-      fail("no exception thrown when indexing zero length suggestion");
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("value"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("value"));
   }
 
   @Test
   public void testNegativeWeight() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new SuggestField("suggest_field", "sugg", -1);
-      fail("no exception thrown when indexing suggestion with negative weight");
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("weight"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("weight"));
   }
 
   @Test
@@ -103,28 +98,22 @@ public class TestSuggestField extends LuceneTestCase {
     CharsRefBuilder charsRefBuilder = new CharsRefBuilder();
     charsRefBuilder.append("sugg");
     charsRefBuilder.setCharAt(2, (char) CompletionAnalyzer.SEP_LABEL);
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new SuggestField("name", charsRefBuilder.toString(), 1);
-      fail("no exception thrown for suggestion value containing SEP_LABEL:" + CompletionAnalyzer.SEP_LABEL);
-    } catch (IllegalArgumentException e) {
-      assertTrue(e.getMessage().contains("[0x1f]"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("[0x1f]"));
 
     charsRefBuilder.setCharAt(2, (char) CompletionAnalyzer.HOLE_CHARACTER);
-    try {
+    expected = expectThrows(IllegalArgumentException.class, () -> {
       new SuggestField("name", charsRefBuilder.toString(), 1);
-      fail("no exception thrown for suggestion value containing HOLE_CHARACTER:" + CompletionAnalyzer.HOLE_CHARACTER);
-    } catch (IllegalArgumentException e) {
-      assertTrue(e.getMessage().contains("[0x1e]"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("[0x1e]"));
 
     charsRefBuilder.setCharAt(2, (char) NRTSuggesterBuilder.END_BYTE);
-    try {
+    expected = expectThrows(IllegalArgumentException.class, () -> {
       new SuggestField("name", charsRefBuilder.toString(), 1);
-      fail("no exception thrown for suggestion value containing END_BYTE:" + NRTSuggesterBuilder.END_BYTE);
-    } catch (IllegalArgumentException e) {
-      assertTrue(e.getMessage().contains("[0x0]"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("[0x0]"));
   }
 
   @Test
@@ -313,7 +302,7 @@ public class TestSuggestField extends LuceneTestCase {
       }
     }
 
-    iw.deleteDocuments(PointRangeQuery.new1DIntRange("weight_fld", 2, true, null, false));
+    iw.deleteDocuments(PointRangeQuery.newIntRange("weight_fld", 2, true, null, false));
 
     DirectoryReader reader = DirectoryReader.open(iw);
     SuggestIndexSearcher indexSearcher = new SuggestIndexSearcher(reader);

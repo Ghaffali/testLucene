@@ -1,5 +1,3 @@
-package org.apache.lucene.util.automaton;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util.automaton;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.automaton;
+
 
 //import java.io.IOException;
 //import java.io.PrintWriter;
@@ -893,7 +893,7 @@ public class Automaton implements Accountable {
     return RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + RamUsageEstimator.sizeOf(states) + RamUsageEstimator.sizeOf(transitions) +
       RamUsageEstimator.NUM_BYTES_OBJECT_HEADER + (isAccept.size() / 8) + RamUsageEstimator.NUM_BYTES_OBJECT_REF +
       2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF +
-      3 * RamUsageEstimator.NUM_BYTES_INT +
-      RamUsageEstimator.NUM_BYTES_BOOLEAN;
+      3 * Integer.BYTES +
+      1;
   }
 }

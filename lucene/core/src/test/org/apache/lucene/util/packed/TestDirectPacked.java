@@ -1,5 +1,3 @@
-package org.apache.lucene.util.packed;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.util.packed;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util.packed;
+
 
 import java.util.Random;
 
@@ -66,12 +66,11 @@ public class TestDirectPacked extends LuceneTestCase {
     writer.add(0);
     writer.add(2);
     writer.add(1);
-    try {
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
       writer.finish();
-      fail("didn't get expected exception");
-    } catch (IllegalStateException expected) {
-      assertTrue(expected.getMessage().startsWith("Wrong number of values added"));
-    }
+    });
+    assertTrue(expected.getMessage().startsWith("Wrong number of values added"));
+
     output.close();
     dir.close();
   }

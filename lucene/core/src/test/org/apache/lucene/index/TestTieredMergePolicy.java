@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
@@ -170,12 +170,9 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     tmp.setMaxMergedSegmentMB(Long.MAX_VALUE/1024/1024.);
     assertEquals(Long.MAX_VALUE/1024/1024., tmp.getMaxMergedSegmentMB(), EPSILON*Long.MAX_VALUE);
     
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       tmp.setMaxMergedSegmentMB(-2.0);
-      fail("Didn't throw IllegalArgumentException");
-    } catch (IllegalArgumentException iae) {
-      // pass
-    }
+    });
     
     tmp.setFloorSegmentMB(2.0);
     assertEquals(2.0, tmp.getFloorSegmentMB(), EPSILON);
@@ -186,12 +183,9 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     tmp.setFloorSegmentMB(Long.MAX_VALUE/1024/1024.);
     assertEquals(Long.MAX_VALUE/1024/1024., tmp.getFloorSegmentMB(), EPSILON*Long.MAX_VALUE);
     
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       tmp.setFloorSegmentMB(-2.0);
-      fail("Didn't throw IllegalArgumentException");
-    } catch (IllegalArgumentException iae) {
-      // pass
-    }
+    });
     
     tmp.setMaxCFSSegmentSizeMB(2.0);
     assertEquals(2.0, tmp.getMaxCFSSegmentSizeMB(), EPSILON);
@@ -202,12 +196,9 @@ public class TestTieredMergePolicy extends BaseMergePolicyTestCase {
     tmp.setMaxCFSSegmentSizeMB(Long.MAX_VALUE/1024/1024.);
     assertEquals(Long.MAX_VALUE/1024/1024., tmp.getMaxCFSSegmentSizeMB(), EPSILON*Long.MAX_VALUE);
     
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       tmp.setMaxCFSSegmentSizeMB(-2.0);
-      fail("Didn't throw IllegalArgumentException");
-    } catch (IllegalArgumentException iae) {
-      // pass
-    }
+    });
     
     // TODO: Add more checks for other non-double setters!
   }

@@ -57,30 +57,14 @@ def runAndSendGPGPassword(command, password):
     print(msg)
     raise RuntimeError(msg)
 
-def scrubCheckout():
-  # removes any files not checked into svn
+def getGitRev():
+  status = os.popen('git status').read().strip()
+  if 'nothing to commit, working directory clean' not in status:
+    raise RuntimeError('git clone is dirty:\n\n%s' % status)
 
-  unversionedRex = re.compile('^ ?[\?ID] *[1-9 ]*[a-zA-Z]* +(.*)')
-
-  for l in os.popen('svn status --no-ignore -v').readlines():
-    match = unversionedRex.match(l)
-    if match:
-      s = match.group(1)
-      if os.path.exists(s):
-        print('    delete %s' % s)
-        if os.path.isdir(s) and not os.path.islink(s):
-          shutil.rmtree(s)
-        else:
-          os.remove(s)
-
-def getSVNRev():
-  rev = os.popen('svnversion').read().strip()
-  try:
-    int(rev)
-  except (TypeError, ValueError):
-    raise RuntimeError('svn version is not clean: %s' % rev)
-  return rev
-  
+  # TODO: we should also detect unpushed changes here?  Something like "git cherry -v origin/branch_5_5"?
+  print('  git clone is clean')
+  return os.popen('git rev-parse HEAD').read().strip()
 
 def prepare(root, version, gpgKeyID, gpgPassword):
   print()
@@ -92,15 +76,13 @@ def prepare(root, version, gpgKeyID, gpgPassword):
   print('  svn up...')
   run('svn up')
 
-  rev = getSVNRev()
-  print('  svn rev: %s' % rev)
-  log('\nSVN rev: %s\n' % rev)
+  rev = getGitRev()
+  print('  git rev: %s' % rev)
+  log('\nGIT rev: %s\n' % rev)
 
   print('  ant clean test')
   run('ant clean test')
 
-  print('  clean checkout')
-  scrubCheckout()
   open('rev.txt', mode='wb').write(rev.encode('UTF-8'))
   
   print('  lucene prepare-release')
@@ -224,7 +206,7 @@ def read_version(path):
 def parse_config():
   epilogue = textwrap.dedent('''
     Example usage for a Release Manager:
-    python3.2 -u buildAndPushRelease.py --push-remote mikemccand --sign 6E68DA61 --rc-num 1 --version 4.7.0 /path/to/lucene_solr_4_7
+    python3.2 -u buildAndPushRelease.py --push-remote mikemccand --sign 6E68DA61 --rc-num 1 /path/to/lucene_solr_4_7
   ''')
   description = 'Utility to build, push, and test a release.'
   parser = argparse.ArgumentParser(description=description, epilog=epilogue,

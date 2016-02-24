@@ -1,7 +1,3 @@
-package org.apache.solr.update.processor;
-
-import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,9 @@ import static org.apache.solr.update.processor.DistributingUpdateProcessorFactor
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.update.processor;
+
+import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -222,6 +221,9 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
   
   public static final String COMMIT_END_POINT = "commit_end_point";
   public static final String LOG_REPLAY = "log_replay";
+
+  // used to assert we don't call finish more than once, see finish()
+  private boolean finished = false;
   
   private final SolrQueryRequest req;
   private final SolrQueryResponse rsp;
@@ -319,6 +321,8 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     // if we are in zk mode...
     if (zkEnabled) {
 
+      assert TestInjection.injectUpdateRandomPause();
+      
       if ((updateCommand.getFlags() & (UpdateCommand.REPLAY | UpdateCommand.PEER_SYNC)) != 0) {
         isLeader = false;     // we actually might be the leader, but we don't want leader-logic for these types of updates anyway.
         forwardToLeader = false;
@@ -1372,7 +1376,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
       }
 
       if (someReplicas)  {
-        cmdDistrib.finish();
+        cmdDistrib.blockAndDoRetries();
       }
     }
 
@@ -1617,7 +1621,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
             zkController.getBaseUrl(), req.getCore().getName()));
         if (nodes != null) {
           cmdDistrib.distribCommit(cmd, nodes, params);
-          finish();
+          cmdDistrib.blockAndDoRetries();
         }
       }
     }
@@ -1644,6 +1648,9 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
   
   @Override
   public void finish() throws IOException {
+    assert ! finished : "lifecycle sanity check";
+    finished = true;
+    
     if (zkEnabled) doFinish();
     
     if (next != null && nodes == null) next.finish();

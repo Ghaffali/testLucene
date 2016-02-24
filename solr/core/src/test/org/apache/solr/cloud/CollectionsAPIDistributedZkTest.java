@@ -1,5 +1,3 @@
-package org.apache.solr.cloud;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.solr.cloud;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud;
 
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
@@ -69,7 +68,9 @@ import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean.Category;
+import org.apache.solr.util.TestInjection;
 import org.apache.solr.util.TimeOut;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,6 +93,11 @@ public class CollectionsAPIDistributedZkTest extends AbstractFullDistribZkTestBa
 
   // we randomly use a second config set rather than just one
   private boolean secondConfigSet = random().nextBoolean();
+  
+  @BeforeClass
+  public static void beforeCollectionsAPIDistributedZkTest() {
+    TestInjection.randomDelayInCoreCreation = "true:20";
+  }
   
   @Override
   public void distribSetUp() throws Exception {
@@ -155,6 +161,7 @@ public class CollectionsAPIDistributedZkTest extends AbstractFullDistribZkTestBa
   @Test
   @ShardsFixed(num = 4)
   public void test() throws Exception {
+    waitForRecoveriesToFinish(false); // we need to fix no core tests still
     testNodesUsedByCreate();
     testNoConfigSetExist();
     testCollectionsAPI();
@@ -188,12 +195,9 @@ public class CollectionsAPIDistributedZkTest extends AbstractFullDistribZkTestBa
     params.set("name", collectionName);
     QueryRequest request = new QueryRequest(params);
     request.setPath("/admin/collections");
-    try {
-      makeRequest(baseUrl, request);
-      fail("Expected to fail, because collection is not in clusterstate");
-    } catch (RemoteSolrException e) {
-      
-    }
+    
+    // there are remnants of the collection in zk, should work
+    makeRequest(baseUrl, request);
     
     assertCollectionNotExists(collectionName, 45);
     
@@ -236,6 +240,88 @@ public class CollectionsAPIDistributedZkTest extends AbstractFullDistribZkTestBa
     if (secondConfigSet) {
       params.set("collection.configName", "conf1");
     }
+    makeRequest(baseUrl, request);
+  }
+  
+  private void deleteCollectionOnlyInZk() throws Exception {
+    final String baseUrl = getBaseUrl((HttpSolrClient) clients.get(0));
+    String collectionName = "onlyinzk";
+
+    cloudClient.getZkStateReader().getZkClient().makePath(ZkStateReader.COLLECTIONS_ZKNODE + "/" + collectionName, true);
+
+    ModifiableSolrParams params = new ModifiableSolrParams();
+    params.set("action", CollectionAction.DELETE.toString());
+    params.set("name", collectionName);
+    QueryRequest request = new QueryRequest(params);
+    request.setPath("/admin/collections");
+
+    makeRequest(baseUrl, request);
+
+    assertCollectionNotExists(collectionName, 45);
+    
+    // now creating that collection should work
+    params = new ModifiableSolrParams();
+    params.set("action", CollectionAction.CREATE.toString());
+    params.set("name", collectionName);
+    params.set("numShards", 2);
+    request = new QueryRequest(params);
+    request.setPath("/admin/collections");
+    if (secondConfigSet) {
+      params.set("collection.configName", "conf1");
+    }
+    makeRequest(baseUrl, request);
+    
+    waitForRecoveriesToFinish(collectionName, false);
+    
+    params = new ModifiableSolrParams();
+    params.set("action", CollectionAction.DELETE.toString());
+    params.set("name", collectionName);
+    request = new QueryRequest(params);
+    request.setPath("/admin/collections");
+
+    makeRequest(baseUrl, request);
+  }
+  
+  private void deleteCollectionWithUnloadedCore() throws Exception {
+    final String baseUrl = getBaseUrl((HttpSolrClient) clients.get(0));
+    
+    String collectionName = "corealreadyunloaded";
+    try (SolrClient client = createNewSolrClient("", baseUrl)) {
+      createCollection(null, collectionName,  2, 1, 2, client, null, "conf1");
+    }
+    waitForRecoveriesToFinish(collectionName, false);
+
+    ModifiableSolrParams params = new ModifiableSolrParams();
+    params.set("action", CollectionAction.DELETE.toString());
+    params.set("name", collectionName);
+    QueryRequest request = new QueryRequest(params);
+    request.setPath("/admin/collections");
+
+    NamedList<Object> result = makeRequest(baseUrl, request);
+    System.out.println("result:" + result);
+    Object failure = result.get("failure");
+    assertNull("We expect no failures", failure);
+
+    assertCollectionNotExists(collectionName, 45);
+    
+    // now creating that collection should work
+    params = new ModifiableSolrParams();
+    params.set("action", CollectionAction.CREATE.toString());
+    params.set("name", collectionName);
+    params.set("numShards", 2);
+    request = new QueryRequest(params);
+    request.setPath("/admin/collections");
+    if (secondConfigSet) {
+      params.set("collection.configName", "conf1");
+    }
+    makeRequest(baseUrl, request);
+    
+    params = new ModifiableSolrParams();
+    params.set("action", CollectionAction.DELETE.toString());
+    params.set("name", collectionName);
+    request = new QueryRequest(params);
+    request.setPath("/admin/collections");
+
     makeRequest(baseUrl, request);
   }
   
@@ -292,13 +378,13 @@ public class CollectionsAPIDistributedZkTest extends AbstractFullDistribZkTestBa
   private NamedList<Object> makeRequest(String baseUrl, SolrRequest request)
       throws SolrServerException, IOException {
     try (SolrClient client = createNewSolrClient("", baseUrl)) {
+      ((HttpSolrClient) client).setSoTimeout(30000);
       return client.request(request);
     }
   }
 
   private void testErrorHandling() throws Exception {
     final String baseUrl = getBaseUrl((HttpSolrClient) clients.get(0));
-    
     
     // try a bad action
     ModifiableSolrParams params = new ModifiableSolrParams();
@@ -1194,8 +1280,9 @@ public class CollectionsAPIDistributedZkTest extends AbstractFullDistribZkTestBa
         MAX_SHARDS_PER_NODE, maxShardsPerNode,
         NUM_SLICES, numShards);
     Map<String,List<Integer>> collectionInfos = new HashMap<>();
-    createCollection(collectionInfos, COLL_NAME, props, client,"conf1");
-    waitForRecoveriesToFinish(COLL_NAME, false);
+    createCollection(collectionInfos, COLL_NAME, props, client, "conf1");
+    assertAllActive(COLL_NAME, getCommonCloudSolrClient().getZkStateReader());
+    
   }
   
   private void clusterPropTest() throws Exception {

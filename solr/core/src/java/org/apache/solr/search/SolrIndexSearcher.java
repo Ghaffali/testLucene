@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.search;
 
 import java.io.Closeable;
@@ -71,6 +70,7 @@ import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.ConstantScoreQuery;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.EarlyTerminatingSortingCollector;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.FieldDoc;
 import org.apache.lucene.search.IndexSearcher;
@@ -123,6 +123,7 @@ import org.apache.solr.schema.TrieFloatField;
 import org.apache.solr.schema.TrieIntField;
 import org.apache.solr.search.facet.UnInvertedField;
 import org.apache.solr.search.stats.StatsSource;
+import org.apache.solr.update.IndexFingerprint;
 import org.apache.solr.update.SolrIndexConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -192,6 +193,9 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   private final String path;
   private boolean releaseDirectory;
 
+  private volatile IndexFingerprint fingerprint;
+  private final Object fingerprintLock = new Object();
+
   private static DirectoryReader getReader(SolrCore core, SolrIndexConfig config, DirectoryFactory directoryFactory,
       String path) throws IOException {
     final Directory dir = directoryFactory.get(path, DirContext.DEFAULT, config.lockType);
@@ -220,6 +224,20 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   private void buildAndRunCollectorChain(QueryResult qr, Query query, Collector collector, QueryCommand cmd,
       DelegatingCollector postFilter) throws IOException {
 
+    EarlyTerminatingSortingCollector earlyTerminatingSortingCollector = null;
+    if (cmd.getSegmentTerminateEarly()) {
+      final Sort cmdSort = cmd.getSort();
+      final int cmdLen = cmd.getLen();
+      final Sort mergeSort = core.getSolrCoreState().getMergePolicySort();
+
+      if (cmdSort == null || cmdLen <= 0 || mergeSort == null ||
+          !EarlyTerminatingSortingCollector.canEarlyTerminate(cmdSort, mergeSort)) {
+        log.warn("unsupported combination: segmentTerminateEarly=true cmdSort={} cmdLen={} mergeSort={}", cmdSort, cmdLen, mergeSort);
+      } else {
+        collector = earlyTerminatingSortingCollector = new EarlyTerminatingSortingCollector(collector, cmdSort, cmd.getLen(), mergeSort);
+      }
+    }
+
     final boolean terminateEarly = cmd.getTerminateEarly();
     if (terminateEarly) {
       collector = new EarlyTerminatingCollector(collector, cmd.getLen());
@@ -245,6 +263,10 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
         ((DelegatingCollector) collector).finish();
       }
       throw etce;
+    } finally {
+      if (earlyTerminatingSortingCollector != null) {
+        qr.setSegmentTerminatedEarly(earlyTerminatingSortingCollector.terminatedEarly());
+      }
     }
     if (collector instanceof DelegatingCollector) {
       ((DelegatingCollector) collector).finish();
@@ -1466,6 +1488,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   public static final int GET_DOCSET = 0x40000000;
   static final int NO_CHECK_FILTERCACHE = 0x20000000;
   static final int NO_SET_QCACHE = 0x10000000;
+  static final int SEGMENT_TERMINATE_EARLY = 0x08;
   public static final int TERMINATE_EARLY = 0x04;
   public static final int GET_DOCLIST = 0x02; // get the documents actually returned in a response
   public static final int GET_SCORES = 0x01;
@@ -2377,6 +2400,20 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   @Override
   public Explanation explain(Query query, int doc) throws IOException {
     return super.explain(QueryUtils.makeQueryable(query), doc);
+  }
+
+  /** @lucene.internal
+   * gets a cached version of the IndexFingerprint for this searcher
+   **/
+  public IndexFingerprint getIndexFingerprint(long maxVersion) throws IOException {
+    // possibly expensive, so prevent more than one thread from calculating it for this searcher
+    synchronized (fingerprintLock) {
+      if (fingerprint == null) {
+        fingerprint = IndexFingerprint.getFingerprint(this, maxVersion);
+      }
+    }
+
+    return fingerprint;
   }
 
   /////////////////////////////////////////////////////////////////////

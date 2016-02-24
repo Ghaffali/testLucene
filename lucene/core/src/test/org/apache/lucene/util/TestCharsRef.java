@@ -1,7 +1,3 @@
-package org.apache.lucene.util;
-
-import java.util.Arrays;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,10 @@ import java.util.Arrays;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.util;
+
+import java.util.Arrays;
+
 
 public class TestCharsRef extends LuceneTestCase {
   public void testUTF16InUTF8Order() {
@@ -74,19 +74,13 @@ public class TestCharsRef extends LuceneTestCase {
     
     assertEquals('b', c.charAt(1));
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       c.charAt(-1);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {
-      // expected exception
-    }
+    });
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       c.charAt(3);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {
-      // expected exception
-    }
+    });
   }
   
   // LUCENE-3590: fix off-by-one in subsequence, and fully obey interface
@@ -115,32 +109,20 @@ public class TestCharsRef extends LuceneTestCase {
     // empty subsequence
     assertEquals("", c.subSequence(0, 0).toString());
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       c.subSequence(-1, 1);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {
-      // expected exception
-    }
+    });
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       c.subSequence(0, -1);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {
-      // expected exception
-    }
+    });
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       c.subSequence(0, 4);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {
-      // expected exception
-    }
+    });
     
-    try {
+    expectThrows(IndexOutOfBoundsException.class, () -> {
       c.subSequence(2, 1);
-      fail();
-    } catch (IndexOutOfBoundsException expected) {
-      // expected exception
-    }
+    });
   }
 }

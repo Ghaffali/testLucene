@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.client.solrj.io.stream;
 
 import java.io.ByteArrayOutputStream;
@@ -25,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
@@ -240,11 +240,13 @@ public class ParallelStream extends CloudSolrStream implements Expressible {
 
       ZkStateReader zkStateReader = cloudSolrClient.getZkStateReader();
       ClusterState clusterState = zkStateReader.getClusterState();
+      Set<String> liveNodes = clusterState.getLiveNodes();
       Collection<Slice> slices = clusterState.getActiveSlices(this.collection);
       List<Replica> shuffler = new ArrayList();
       for(Slice slice : slices) {
         Collection<Replica> replicas = slice.getReplicas();
         for (Replica replica : replicas) {
+          if(replica.getState() == Replica.State.ACTIVE && liveNodes.contains(replica.getNodeName()))
           shuffler.add(replica);
         }
       }

@@ -1,5 +1,3 @@
-package org.apache.lucene.search.spans;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search.spans;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.spans;
+
 
 import java.io.IOException;
 
@@ -48,12 +48,10 @@ public class TestSpanNotQuery extends LuceneTestCase {
   public void testDifferentField() throws Exception {
     SpanTermQuery q1 = new SpanTermQuery(new Term("field1", "foo"));
     SpanTermQuery q2 = new SpanTermQuery(new Term("field2", "bar"));
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new SpanNotQuery(q1, q2);
-      fail("didn't get expected exception");
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("must have same field"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("must have same field"));
   }
   
   public void testNoPositions() throws IOException {
@@ -70,12 +68,11 @@ public class TestSpanNotQuery extends LuceneTestCase {
     SpanTermQuery query = new SpanTermQuery(new Term("foo", "bar"));
     SpanTermQuery query2 = new SpanTermQuery(new Term("foo", "baz"));
 
-    try {
+    IllegalStateException expected = expectThrows(IllegalStateException.class, () -> {
       is.search(new SpanNotQuery(query, query2), 5);
-      fail("didn't get expected exception");
-    } catch (IllegalStateException expected) {
-      assertTrue(expected.getMessage().contains("was indexed without position data"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("was indexed without position data"));
+
     ir.close();
     dir.close();
   }

@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.common;
 
 import java.io.CharArrayWriter;
@@ -32,6 +31,8 @@ import org.slf4j.MDC;
  */
 public class SolrException extends RuntimeException {
 
+  public static final String ROOT_ERROR_CLASS = "root-error-class";
+  public static final String ERROR_CLASS = "error-class";
   final private Map mdcContext;
 
   /**
@@ -126,6 +127,14 @@ public class SolrException extends RuntimeException {
     if (metadata == null)
       metadata = new NamedList<String>();
     metadata.add(key, value);
+  }
+  
+  public String getThrowable() {
+    return getMetadata(ERROR_CLASS);
+  }
+
+  public String getRootThrowable() {
+    return getMetadata(ROOT_ERROR_CLASS);
   }
 
   public void log(Logger log) { log(log,this); }

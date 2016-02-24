@@ -1,5 +1,3 @@
-package org.apache.lucene.sandbox.queries;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.sandbox.queries;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.sandbox.queries;
 
 import java.util.List;
 import java.util.Arrays;
@@ -292,18 +291,13 @@ public class TestSlowFuzzyQuery extends LuceneTestCase {
     hits = searcher.search(query, 1000).scoreDocs;
     assertEquals(0, hits.length);
 
-    try {
-      query = new SlowFuzzyQuery(new Term("field", "student"), 1.1f);
-      fail("Expected IllegalArgumentException");
-    } catch (IllegalArgumentException e) {
-      // expecting exception
-    }
-    try {
-      query = new SlowFuzzyQuery(new Term("field", "student"), -0.1f);
-      fail("Expected IllegalArgumentException");
-    } catch (IllegalArgumentException e) {
-      // expecting exception
-    }
+    expectThrows(IllegalArgumentException.class, () -> {
+      new SlowFuzzyQuery(new Term("field", "student"), 1.1f);
+    });
+
+    expectThrows(IllegalArgumentException.class, () -> {
+      new SlowFuzzyQuery(new Term("field", "student"), -0.1f);
+    });
 
     reader.close();
     directory.close();

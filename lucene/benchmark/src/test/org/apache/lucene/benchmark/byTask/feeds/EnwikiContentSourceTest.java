@@ -1,5 +1,3 @@
-package org.apache.lucene.benchmark.byTask.feeds;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.benchmark.byTask.feeds;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.benchmark.byTask.feeds;
+
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -56,12 +56,9 @@ public class EnwikiContentSourceTest extends LuceneTestCase {
   }
   
   private void assertNoMoreDataException(EnwikiContentSource stdm) throws Exception {
-    try {
+    expectThrows(NoMoreDataException.class, () -> {
       stdm.getNextDocData(null);
-      fail("Expecting NoMoreDataException");
-    } catch (NoMoreDataException e) {
-      // expected
-    }
+    });
   }
   
   private final String PAGE1 = 

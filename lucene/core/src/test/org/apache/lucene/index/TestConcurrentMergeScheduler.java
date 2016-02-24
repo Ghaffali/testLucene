@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 
 import java.io.IOException;
 import java.util.concurrent.CountDownLatch;
@@ -184,10 +184,6 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
   public void testNoExtraFiles() throws IOException {
     Directory directory = newDirectory();
-    if (directory instanceof MockDirectoryWrapper) {
-      // test uses IW unref'ed helper which is unaware of retries
-      ((MockDirectoryWrapper)directory).setEnableVirusScanner(false);
-    }
     IndexWriter writer = new IndexWriter(directory, newIndexWriterConfig(new MockAnalyzer(random()))
                                                       .setMaxBufferedDocs(2));
 
@@ -399,18 +395,12 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
 
   public void testInvalidMaxMergeCountAndThreads() throws Exception {
     ConcurrentMergeScheduler cms = new ConcurrentMergeScheduler();
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 3);
-      fail("did not hit exception");
-    } catch (IllegalArgumentException iae) {
-      // good
-    }
-    try {
+    });
+    expectThrows(IllegalArgumentException.class, () -> {
       cms.setMaxMergesAndThreads(3, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS);
-      fail("did not hit exception");
-    } catch (IllegalArgumentException iae) {
-      // good
-    }
+    });
   }
 
   public void testLiveMaxMergeCount() throws Exception {
@@ -609,19 +599,13 @@ public class TestConcurrentMergeScheduler extends LuceneTestCase {
     assertEquals(4, cms.getMaxMergeCount());
     assertEquals(3, cms.getMaxThreadCount());
 
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, 4);
-      fail("did not hit exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
 
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       cms.setMaxMergesAndThreads(4, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS);
-      fail("did not hit exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
 
     cms.setMaxMergesAndThreads(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS);
     assertEquals(ConcurrentMergeScheduler.AUTO_DETECT_MERGES_AND_THREADS, cms.getMaxMergeCount());

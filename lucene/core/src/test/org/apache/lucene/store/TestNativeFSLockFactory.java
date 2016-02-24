@@ -1,5 +1,3 @@
-package org.apache.lucene.store;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,12 +14,15 @@ package org.apache.lucene.store;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
+
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.TestUtil;
 
 /** Simple tests for NativeFSLockFactory */
 public class TestNativeFSLockFactory extends BaseLockFactoryTestCase {
@@ -49,14 +50,11 @@ public class TestNativeFSLockFactory extends BaseLockFactoryTestCase {
     NativeFSLockFactory.NativeFSLock lock =  (NativeFSLockFactory.NativeFSLock) dir.obtainLock("test.lock");
     lock.ensureValid();
     lock.lock.release();
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       lock.ensureValid();
-      fail("no exception");
-    } catch (AlreadyClosedException expected) {
-      // ok
-    } finally {
-      IOUtils.closeWhileHandlingException(lock);
-    }
+    });
+
+    IOUtils.closeWhileHandlingException(lock);
     dir.close();
   }
   
@@ -66,43 +64,29 @@ public class TestNativeFSLockFactory extends BaseLockFactoryTestCase {
     NativeFSLockFactory.NativeFSLock lock =  (NativeFSLockFactory.NativeFSLock) dir.obtainLock("test.lock");
     lock.ensureValid();
     lock.channel.close();
-    try {
+    expectThrows(AlreadyClosedException.class, () -> {
       lock.ensureValid();
-      fail("no exception");
-    } catch (AlreadyClosedException expected) {
-      // ok
-    } finally {
-      IOUtils.closeWhileHandlingException(lock);
-    }
+    });
+
+    IOUtils.closeWhileHandlingException(lock);
     dir.close();
   }
   
   /** delete the lockfile and test ensureValid fails */
   public void testDeleteLockFile() throws IOException {
-    Directory dir = getDirectory(createTempDir());
-    try {
+    try (Directory dir = getDirectory(createTempDir())) {
+      assumeFalse("we must be able to delete an open file", TestUtil.hasWindowsFS(dir));
+
       Lock lock = dir.obtainLock("test.lock");
       lock.ensureValid();
-    
-      try {
-        dir.deleteFile("test.lock");
-      } catch (Exception e) {
-        // we can't delete a file for some reason, just clean up and assume the test.
-        IOUtils.closeWhileHandlingException(lock);
-        assumeNoException("test requires the ability to delete a locked file", e);
-      }
-    
-      try {
+
+      dir.deleteFile("test.lock");
+
+      expectThrows(IOException.class, () -> {
         lock.ensureValid();
-        fail("no exception");
-      } catch (IOException expected) {
-        // ok
-      } finally {
-        IOUtils.closeWhileHandlingException(lock);
-      }
-    } finally {
-      // Do this in finally clause in case the assumeNoException is false:
-      dir.close();
+      });
+      
+      IOUtils.closeWhileHandlingException(lock);
     }
   }
 }

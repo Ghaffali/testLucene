@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
+
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -129,14 +129,11 @@ public class TestIndexSearcher extends LuceneTestCase {
     w.close();
 
     IndexSearcher s = new IndexSearcher(r);
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       s.searchAfter(new ScoreDoc(r.maxDoc(), 0.54f), new MatchAllDocsQuery(), 10);
-      fail("should have hit IllegalArgumentException when searchAfter exceeds maxDoc");
-    } catch (IllegalArgumentException e) {
-      // ok
-    } finally {
-      IOUtils.close(r, dir);
-    }
+    });
+
+    IOUtils.close(r, dir);
   }
 
   public void testCount() throws IOException {

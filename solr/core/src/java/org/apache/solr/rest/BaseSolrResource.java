@@ -1,4 +1,3 @@
-package org.apache.solr.rest;
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -15,7 +14,7 @@ package org.apache.solr.rest;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.apache.solr.rest;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
@@ -176,10 +175,16 @@ public abstract class BaseSolrResource extends ServerResource {
     
     // TODO: should status=0 (success?) be left as-is in the response header?
     SolrCore.postDecorateResponse(null, solrRequest, solrResponse);
+    addDeprecatedWarning();
 
     if (log.isInfoEnabled() && solrResponse.getToLog().size() > 0) {
       log.info(solrResponse.getToLogAsString(solrCore.getLogId()));
     }
+  }
+
+  protected void addDeprecatedWarning(){
+    solrResponse.add("warn","This API is deprecated");
+
   }
 
   /**

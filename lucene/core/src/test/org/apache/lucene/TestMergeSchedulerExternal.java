@@ -1,5 +1,3 @@
-package org.apache.lucene;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,6 +15,14 @@ package org.apache.lucene;
  * limitations under the License.
  */
 
+package org.apache.lucene;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
@@ -24,16 +30,18 @@ import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.LogMergePolicy;
-import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergePolicy.OneMerge;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.store.RAMDirectory;
+import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.LuceneTestCase;
-
-import java.io.IOException;
+import org.apache.lucene.util.PrintStreamInfoStream;
+import org.junit.AfterClass;
 
 /**
  * Holds tests cases to verify external APIs are accessible
@@ -44,6 +52,7 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
   volatile boolean mergeCalled;
   volatile boolean mergeThreadCreated;
   volatile boolean excCalled;
+  volatile static InfoStream infoStream;
 
   private class MyMergeScheduler extends ConcurrentMergeScheduler {
 
@@ -65,6 +74,9 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     @Override
     protected void handleMergeException(Directory dir, Throwable t) {
       excCalled = true;
+      if (infoStream.isEnabled("IW")) {
+        infoStream.message("IW", "TEST: now handleMergeException");
+      }
     }
 
     @Override
@@ -80,10 +92,22 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
       StackTraceElement[] trace = new Exception().getStackTrace();
       for (int i = 0; i < trace.length; i++) {
         if ("doMerge".equals(trace[i].getMethodName())) {
-          throw new IOException("now failing during merge");
+          IOException ioe = new IOException("now failing during merge");
+          StringWriter sw = new StringWriter();
+          PrintWriter pw = new PrintWriter(sw);
+          ioe.printStackTrace(pw);
+          if (infoStream.isEnabled("IW")) {
+            infoStream.message("IW", "TEST: now throw exc:\n" + sw.toString());
+          }
+          throw ioe;
         }
       }
     }
+  }
+
+  @AfterClass
+  public static void afterClass() {
+    infoStream = null;
   }
 
   public void testSubclassConcurrentMergeScheduler() throws IOException {
@@ -93,11 +117,17 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
     Document doc = new Document();
     Field idField = newStringField("id", "", Field.Store.YES);
     doc.add(idField);
-    
-    IndexWriter writer = new IndexWriter(dir, newIndexWriterConfig(new MockAnalyzer(random()))
-        .setMergeScheduler(new MyMergeScheduler())
-        .setMaxBufferedDocs(2).setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
-        .setMergePolicy(newLogMergePolicy()));
+
+    IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()))
+      .setMergeScheduler(new MyMergeScheduler())
+      .setMaxBufferedDocs(2).setRAMBufferSizeMB(IndexWriterConfig.DISABLE_AUTO_FLUSH)
+      .setMergePolicy(newLogMergePolicy());
+
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    infoStream = new PrintStreamInfoStream(new PrintStream(baos, true, IOUtils.UTF_8));
+    iwc.setInfoStream(infoStream);
+
+    IndexWriter writer = new IndexWriter(dir, iwc);
     LogMergePolicy logMP = (LogMergePolicy) writer.getConfig().getMergePolicy();
     logMP.setMergeFactor(10);
     for(int i=0;i<20;i++) {
@@ -110,10 +140,16 @@ public class TestMergeSchedulerExternal extends LuceneTestCase {
       // OK
     }
     writer.rollback();
-    
-    assertTrue(mergeThreadCreated);
-    assertTrue(mergeCalled);
-    assertTrue(excCalled);
+
+    try {
+      assertTrue(mergeThreadCreated);
+      assertTrue(mergeCalled);
+      assertTrue(excCalled);
+    } catch (AssertionError ae) {
+      System.out.println("TEST FAILED; IW infoStream output:");
+      System.out.println(baos.toString(IOUtils.UTF_8));
+      throw ae;
+    }
     dir.close();
   }
   

@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.util;
 
 import java.io.IOException;
@@ -25,7 +24,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,8 +32,8 @@ import java.util.regex.Pattern;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.DisjunctionMaxQuery;
@@ -51,8 +49,8 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.StrUtils;
+import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.RequestParams;
-import org.apache.solr.core.SolrCore;
 import org.apache.solr.handler.component.HighlightComponent;
 import org.apache.solr.handler.component.ResponseBuilder;
 import org.apache.solr.handler.component.ShardDoc;
@@ -82,6 +80,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableMap;
+
+import static org.apache.solr.core.PluginInfo.APPENDS;
+import static org.apache.solr.core.PluginInfo.DEFAULTS;
+import static org.apache.solr.core.PluginInfo.INVARIANTS;
+import static org.apache.solr.core.RequestParams.USEPARAM;
 
 /**
  * <p>Utilities that may be of use to RequestHandlers.</p>
@@ -128,7 +131,7 @@ public class SolrPluginUtils {
   }
 
   private static final MapSolrParams maskUseParams = new MapSolrParams(ImmutableMap.<String, String>builder()
-      .put(RequestParams.USEPARAM, "")
+      .put(USEPARAM, "")
       .build());
 
   /**
@@ -148,10 +151,16 @@ public class SolrPluginUtils {
 
   public static void setDefaults(SolrRequestHandler handler, SolrQueryRequest req, SolrParams defaults,
                                  SolrParams appends, SolrParams invariants) {
-
-    List<String> paramNames = null;
-    String useParams = req.getParams().get(RequestParams.USEPARAM);
+    String useParams = (String) req.getContext().get(USEPARAM);
+    if(useParams != null) {
+      RequestParams rp = req.getCore().getSolrConfig().getRequestParams();
+      defaults = applyParamSet(rp, defaults, useParams, DEFAULTS);
+      appends = applyParamSet(rp, appends, useParams, APPENDS);
+      invariants = applyParamSet(rp, invariants, useParams, INVARIANTS);
+    }
+    useParams = req.getParams().get(USEPARAM);
     if (useParams != null && !useParams.isEmpty()) {
+      RequestParams rp = req.getCore().getSolrConfig().getRequestParams();
       // now that we have expanded the request macro useParams with the actual values
       // it makes no sense to keep it visible now on.
       // distrib request sends all params to the nodes down the line and
@@ -160,19 +169,27 @@ public class SolrPluginUtils {
       // value as an empty string to other nodes we get the desired benefit of
       // overriding the useParams specified in the requestHandler directly
       req.setParams(SolrParams.wrapDefaults(maskUseParams, req.getParams()));
+      defaults = applyParamSet(rp, defaults, useParams, DEFAULTS);
+      appends = applyParamSet(rp, appends, useParams, APPENDS);
+      invariants = applyParamSet(rp, invariants, useParams, INVARIANTS);
     }
-    if (useParams == null) useParams = (String) req.getContext().get(RequestParams.USEPARAM);
-    if (useParams != null && !useParams.isEmpty()) paramNames = StrUtils.splitSmart(useParams, ',');
-    if (paramNames != null) {
-      for (String name : paramNames) {
-        SolrParams requestParams = req.getCore().getSolrConfig().getRequestParams().getParams(name);
-        if (requestParams != null) {
-          defaults = SolrParams.wrapDefaults(requestParams, defaults);
-        }
+    RequestUtil.processParams(handler, req, defaults, appends, invariants);
+  }
+
+  private static SolrParams applyParamSet(RequestParams requestParams,
+                                          SolrParams defaults, String paramSets, String type) {
+    if (paramSets == null) return defaults;
+    for (String name : StrUtils.splitSmart(paramSets, ',')) {
+      RequestParams.VersionedParams params = requestParams.getParams(name, type);
+      if (type.equals(DEFAULTS)) {
+        defaults = SolrParams.wrapDefaults(params, defaults);
+      } else if (type.equals(INVARIANTS)) {
+        defaults = SolrParams.wrapAppended(params, defaults);
+      } else {
+        defaults = SolrParams.wrapAppended(params, defaults);
       }
     }
-
-    RequestUtil.processParams(handler, req, defaults, appends, invariants);
+    return defaults;
   }
 
 
@@ -326,14 +343,14 @@ public class SolrPluginUtils {
           DocList results,
           boolean dbgQuery,
           boolean dbgResults)
-          throws IOException 
+          throws IOException
   {
     NamedList dbg = new SimpleOrderedMap();
     doStandardQueryDebug(req, userQuery, query, dbgQuery, dbg);
     doStandardResultsDebug(req, query, results, dbgResults, dbg);
     return dbg;
   }
-  
+
 
   public static void doStandardQueryDebug(
           SolrQueryRequest req,
@@ -355,7 +372,7 @@ public class SolrPluginUtils {
       dbg.add("parsedquery_toString", query.toString());
     }
   }
-  
+
   public static void doStandardResultsDebug(
           SolrQueryRequest req,
           Query query,
@@ -523,7 +540,7 @@ public class SolrPluginUtils {
       if(in.length()==0) {
         continue;
       }
-      
+
       String[] bb = whitespacePattern.split(in);
       for (String s : bb) {
         String[] bbb = caratPattern.split(s);
@@ -533,7 +550,7 @@ public class SolrPluginUtils {
     return out;
   }
   /**
-  
+
   /**
    * Like {@link #parseFieldBoosts}, but allows for an optional slop value prefixed by "~".
    *
@@ -791,10 +808,10 @@ public class SolrPluginUtils {
     }
     return s.toString().replace("\"","");
   }
-  
+
   /**
    * Adds to {@code dest} all the not-null elements of {@code entries} that have non-null names
-   * 
+   *
    * @param entries The array of entries to be added to the {@link NamedList} {@code dest}
    * @param dest The {@link NamedList} instance where the not-null elements of entries are added
    * @return Returns The {@code dest} input object
@@ -886,7 +903,7 @@ public class SolrPluginUtils {
      */
     @Override
     protected Query getFieldQuery(String field, String queryText, boolean quoted)
-      throws SyntaxError {
+        throws SyntaxError {
 
       if (aliases.containsKey(field)) {
 
@@ -1021,7 +1038,7 @@ public class SolrPluginUtils {
 
       Document luceneDoc = searcher.doc(docid, fields);
       SolrDocument doc = new SolrDocument();
-      
+
       for( IndexableField field : luceneDoc) {
         if (null == fields || fields.contains(field.name())) {
           SchemaField sf = schema.getField( field.name() );
@@ -1042,28 +1059,15 @@ public class SolrPluginUtils {
   }
 
 
-  public static void invokeSetters(Object bean, NamedList initArgs) {
+  public static void invokeSetters(Object bean, Iterable<Map.Entry<String,Object>> initArgs) {
     if (initArgs == null) return;
-    Class clazz = bean.getClass();
-    Method[] methods = clazz.getMethods();
-    Iterator<Map.Entry<String, Object>> iterator = initArgs.iterator();
-    while (iterator.hasNext()) {
-      Map.Entry<String, Object> entry = iterator.next();
+    final Class<?> clazz = bean.getClass();
+    for (Map.Entry<String,Object> entry : initArgs) {
       String key = entry.getKey();
       String setterName = "set" + String.valueOf(Character.toUpperCase(key.charAt(0))) + key.substring(1);
-      Method method = null;
       try {
-        for (Method m : methods) {
-          if (m.getName().equals(setterName) && m.getParameterTypes().length == 1) {
-            method = m;
-            break;
-          }
-        }
-        if (method == null) {
-          throw new RuntimeException("no setter corrresponding to '" + key + "' in " + clazz.getName());
-        }
-        Class pClazz = method.getParameterTypes()[0];
-        Object val = entry.getValue();
+        final Method method = findSetter(clazz, setterName, key);
+        final Object val = entry.getValue();
         method.invoke(bean, val);
       } catch (InvocationTargetException | IllegalAccessException e1) {
         throw new RuntimeException("Error invoking setter " + setterName + " on class : " + clazz.getName(), e1);
@@ -1071,12 +1075,19 @@ public class SolrPluginUtils {
     }
   }
 
-
+  private static Method findSetter(Class<?> clazz, String setterName, String key) {
+    for (Method m : clazz.getMethods()) {
+      if (m.getName().equals(setterName) && m.getParameterTypes().length == 1) {
+        return m;
+      }
+    }
+    throw new RuntimeException("No setter corrresponding to '" + key + "' in " + clazz.getName());
+  }
 
    /**
-   * Given the integer purpose of a request generates a readable value corresponding 
-   * the request purposes (there can be more than one on a single request). If 
-   * there is a purpose parameter present that's not known this method will 
+   * Given the integer purpose of a request generates a readable value corresponding
+   * the request purposes (there can be more than one on a single request). If
+   * there is a purpose parameter present that's not known this method will
    * return {@value #UNKNOWN_VALUE}
    * @param reqPurpose Numeric request purpose
    * @return a comma separated list of purposes or {@value #UNKNOWN_VALUE}
@@ -1097,7 +1108,7 @@ public class SolrPluginUtils {
       }
       return UNKNOWN_VALUE;
   }
-  
+
 }
 
 

@@ -1,5 +1,3 @@
-package org.apache.lucene.codecs.perfield;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.codecs.perfield;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.codecs.perfield;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -44,7 +43,6 @@ import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /**
  * Enables per field docvalues support.
@@ -324,8 +322,7 @@ public abstract class PerFieldDocValuesFormat extends DocValuesFormat {
     public long ramBytesUsed() {
       long size = 0;
       for (Map.Entry<String,DocValuesProducer> entry : formats.entrySet()) {
-        size += (entry.getKey().length() * RamUsageEstimator.NUM_BYTES_CHAR) + 
-            entry.getValue().ramBytesUsed();
+        size += (entry.getKey().length() * Character.BYTES) + entry.getValue().ramBytesUsed();
       }
       return size;
     }

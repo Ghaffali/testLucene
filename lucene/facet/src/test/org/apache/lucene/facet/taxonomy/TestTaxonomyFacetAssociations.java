@@ -1,5 +1,3 @@
-package org.apache.lucene.facet.taxonomy;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,7 +14,7 @@ package org.apache.lucene.facet.taxonomy;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.apache.lucene.facet.taxonomy;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.facet.DrillDownQuery;
@@ -144,19 +142,13 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     IndexSearcher searcher = newSearcher(reader);
     searcher.search(new MatchAllDocsQuery(), fc);
     Facets facets = new TaxonomyFacetSumFloatAssociations(taxoReader, config, fc);
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       facets.getSpecificValue("float");
-      fail("should have hit exc");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
 
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       facets.getTopChildren(10, "float");
-      fail("should have hit exc");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
   }
 
   public void testMixedTypesInSameIndexField() throws Exception {
@@ -170,12 +162,9 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
     Document doc = new Document();
     doc.add(new IntAssociationFacetField(14, "a", "x"));
     doc.add(new FloatAssociationFacetField(55.0f, "b", "y"));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       writer.addDocument(config.build(taxoWriter, doc));
-      fail("did not hit expected exception");
-    } catch (IllegalArgumentException exc) {
-      // expected
-    }
+    });
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
   }
@@ -191,12 +180,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
     Document doc = new Document();
     doc.add(new IntAssociationFacetField(14, "a", "x"));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       writer.addDocument(config.build(taxoWriter, doc));
-      fail("did not hit expected exception");
-    } catch (IllegalArgumentException exc) {
-      // expected
-    }
+    });
+
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
   }
@@ -212,12 +199,10 @@ public class TestTaxonomyFacetAssociations extends FacetTestCase {
 
     Document doc = new Document();
     doc.add(new IntAssociationFacetField(14, "a", "x"));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       writer.addDocument(config.build(taxoWriter, doc));
-      fail("did not hit expected exception");
-    } catch (IllegalArgumentException exc) {
-      // expected
-    }
+    });
+
     writer.close();
     IOUtils.close(taxoWriter, dir, taxoDir);
   }

@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,7 +14,7 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.apache.lucene.index;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -174,13 +172,10 @@ public class BaseTestCheckIndex extends LuceneTestCase {
     iw.addDocument(new Document());
     iw.commit();
     
-    // keep IW open...
-    try {
+    // keep IW open... should not be able to obtain write lock
+    expectThrows(LockObtainFailedException.class, () -> {
       new CheckIndex(dir);
-      fail("should not have obtained write lock");
-    } catch (LockObtainFailedException expected) {
-      // ok
-    }
+    });
     
     iw.close();
   }

@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.core;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.core;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.core;
+
 
 import java.util.Set;
 
@@ -59,23 +59,19 @@ public class TestTypeTokenFilterFactory extends BaseTokenStreamFactoryTestCase {
   }
 
   public void testMissingTypesParameter() throws Exception {
-    try {
+    // not supplying 'types' parameter should cause an IllegalArgumentException
+    expectThrows(IllegalArgumentException.class, () -> {
       tokenFilterFactory("Type");
-      fail("not supplying 'types' parameter should cause an IllegalArgumentException");
-    } catch (IllegalArgumentException e) {
-      // everything ok
-    }
+    });
   }
   
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       tokenFilterFactory("Type", 
           "types", "stoptypes-1.txt", 
           "bogusArg", "bogusValue");
-      fail();
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("Unknown parameters"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 }

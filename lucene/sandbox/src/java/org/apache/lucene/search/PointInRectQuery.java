@@ -1,5 +1,3 @@
-package org.apache.lucene.search;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search;
 
 import java.io.IOException;
 
@@ -27,8 +26,8 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.GeoUtils;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.spatial.util.GeoUtils;
 
 /** Finds all previously indexed points that fall within the specified boundings box.
  *
@@ -99,7 +98,7 @@ public class PointInRectQuery extends Query {
                            public void visit(int docID, byte[] packedValue) {
                              assert packedValue.length == 8;
                              double lat = LatLonPoint.decodeLat(NumericUtils.bytesToInt(packedValue, 0));
-                             double lon = LatLonPoint.decodeLon(NumericUtils.bytesToInt(packedValue, 1));
+                             double lon = LatLonPoint.decodeLon(NumericUtils.bytesToInt(packedValue, Integer.BYTES));
                              if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) {
                                hitCount[0]++;
                                result.add(docID);
@@ -109,9 +108,9 @@ public class PointInRectQuery extends Query {
                            @Override
                            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
                              double cellMinLat = LatLonPoint.decodeLat(NumericUtils.bytesToInt(minPackedValue, 0));
-                             double cellMinLon = LatLonPoint.decodeLon(NumericUtils.bytesToInt(minPackedValue, 1));
+                             double cellMinLon = LatLonPoint.decodeLon(NumericUtils.bytesToInt(minPackedValue, Integer.BYTES));
                              double cellMaxLat = LatLonPoint.decodeLat(NumericUtils.bytesToInt(maxPackedValue, 0));
-                             double cellMaxLon = LatLonPoint.decodeLon(NumericUtils.bytesToInt(maxPackedValue, 1));
+                             double cellMaxLon = LatLonPoint.decodeLon(NumericUtils.bytesToInt(maxPackedValue, Integer.BYTES));
 
                              if (minLat <= cellMinLat && maxLat >= cellMaxLat && minLon <= cellMinLon && maxLon >= cellMaxLon) {
                                return Relation.CELL_INSIDE_QUERY;

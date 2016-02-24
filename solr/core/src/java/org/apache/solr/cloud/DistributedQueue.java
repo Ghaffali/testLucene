@@ -1,5 +1,4 @@
 /*
- *
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -7,7 +6,7 @@
  * (the "License"); you may not use this file except in compliance with
  * the License.  You may obtain a copy of the License at
  *
- * http://www.apache.org/licenses/LICENSE-2.0
+ *     http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -15,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.cloud;
 
 import java.lang.invoke.MethodHandles;
@@ -320,7 +318,7 @@ public class DistributedQueue {
         }
         return orderedChildren;
       } catch (KeeperException.NoNodeException e) {
-        zookeeper.create(dir, new byte[0], CreateMode.PERSISTENT, true);
+        zookeeper.makePath(dir, false, true);
         // go back to the loop and try again
       }
     }
@@ -410,6 +408,10 @@ public class DistributedQueue {
 
     @Override
     public void process(WatchedEvent event) {
+      // session events are not change events, and do not remove the watcher; except for Expired
+      if (Event.EventType.None.equals(event.getType()) && !Event.KeeperState.Expired.equals(event.getState())) {
+        return;
+      }
       updateLock.lock();
       try {
         // this watcher is automatically cleared when fired

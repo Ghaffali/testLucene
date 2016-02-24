@@ -1,5 +1,3 @@
-package org.apache.lucene.store;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.store;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.store;
+
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -44,16 +44,10 @@ public class TestSingleInstanceLockFactory extends BaseLockFactoryTestCase {
     IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())));
     
     // Create a 2nd IndexWriter.  This should fail:
-    IndexWriter writer2 = null;
-    try {
-      writer2 = new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND));
-      fail("Should have hit an IOException with two IndexWriters on default SingleInstanceLockFactory");
-    } catch (IOException e) {
-    }
+    expectThrows(IOException.class, () -> {
+      new IndexWriter(dir, new IndexWriterConfig(new MockAnalyzer(random())).setOpenMode(OpenMode.APPEND));
+    });
     
     writer.close();
-    if (writer2 != null) {
-      writer2.close();
-    }
   }
 }

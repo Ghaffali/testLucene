@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.tokenattributes;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.analysis.tokenattributes;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.tokenattributes;
 
 import java.nio.CharBuffer;
 
@@ -24,13 +23,12 @@ import org.apache.lucene.util.AttributeImpl;
 import org.apache.lucene.util.AttributeReflector;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.lucene.util.RamUsageEstimator;
 
 /** Default implementation of {@link CharTermAttribute}. */
 public class CharTermAttributeImpl extends AttributeImpl implements CharTermAttribute, TermToBytesRefAttribute, Cloneable {
   private static int MIN_BUFFER_SIZE = 10;
   
-  private char[] termBuffer = new char[ArrayUtil.oversize(MIN_BUFFER_SIZE, RamUsageEstimator.NUM_BYTES_CHAR)];
+  private char[] termBuffer = new char[ArrayUtil.oversize(MIN_BUFFER_SIZE, Character.BYTES)];
   private int termLength = 0;
   
   /** May be used by subclasses to convert to different charsets / encodings for implementing {@link #getBytesRef()}. */
@@ -56,7 +54,7 @@ public class CharTermAttributeImpl extends AttributeImpl implements CharTermAttr
     if(termBuffer.length < newSize){
       // Not big enough; create a new array with slight
       // over allocation and preserve content
-      final char[] newCharBuffer = new char[ArrayUtil.oversize(newSize, RamUsageEstimator.NUM_BYTES_CHAR)];
+      final char[] newCharBuffer = new char[ArrayUtil.oversize(newSize, Character.BYTES)];
       System.arraycopy(termBuffer, 0, newCharBuffer, 0, termBuffer.length);
       termBuffer = newCharBuffer;
     }
@@ -67,7 +65,7 @@ public class CharTermAttributeImpl extends AttributeImpl implements CharTermAttr
     if(termBuffer.length < newSize){
       // Not big enough; create a new array with slight
       // over allocation:
-      termBuffer = new char[ArrayUtil.oversize(newSize, RamUsageEstimator.NUM_BYTES_CHAR)];
+      termBuffer = new char[ArrayUtil.oversize(newSize, Character.BYTES)];
     }
   }
 

@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.miscellaneous;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.miscellaneous;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.miscellaneous;
+
 
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenStream;
@@ -43,26 +43,22 @@ public class TestLimitTokenCountFilterFactory extends BaseTokenStreamFactoryTest
 
   public void testRequired() throws Exception {
     // param is required
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       tokenFilterFactory("LimitTokenCount");
-      fail();
-    } catch (IllegalArgumentException e) {
-      assertTrue("exception doesn't mention param: " + e.getMessage(),
-          0 < e.getMessage().indexOf(LimitTokenCountFilterFactory.MAX_TOKEN_COUNT_KEY));
-    }
+    });
+    assertTrue("exception doesn't mention param: " + expected.getMessage(),
+        0 < expected.getMessage().indexOf(LimitTokenCountFilterFactory.MAX_TOKEN_COUNT_KEY));
   }
 
   /**
    * Test that bogus arguments result in exception
    */
   public void testBogusArguments() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       tokenFilterFactory("LimitTokenCount",
           LimitTokenCountFilterFactory.MAX_TOKEN_COUNT_KEY, "3",
           "bogusArg", "bogusValue");
-      fail();
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("Unknown parameters"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 }

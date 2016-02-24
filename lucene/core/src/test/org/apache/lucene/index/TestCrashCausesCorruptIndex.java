@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -72,13 +72,11 @@ public class TestCrashCausesCorruptIndex extends LuceneTestCase  {
             
     crashAfterCreateOutput.setCrashAfterCreateOutput("pending_segments_2");
     indexWriter.addDocument(getDocument());
-    try {
-      // tries to write segments_2 but hits fake exc:
+    // tries to write segments_2 but hits fake exc:
+    expectThrows(CrashingException.class, () -> {
       indexWriter.commit();
-      fail("should have hit CrashingException");
-    } catch (CrashingException e) {
-      // expected
-    }
+    });
+
     // writes segments_3
     indexWriter.close();
     assertFalse(slowFileExists(realDirectory, "segments_2"));

@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 
 import java.io.IOException;
 
@@ -40,6 +40,7 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.MockDirectoryWrapper;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 
 
 public class TestOmitTf extends LuceneTestCase {
@@ -219,10 +220,6 @@ public class TestOmitTf extends LuceneTestCase {
   // Verifies no *.prx exists when all fields omit term freq:
   public void testNoPrxFile() throws Throwable {
     Directory ram = newDirectory();
-    if (ram instanceof MockDirectoryWrapper) {
-      // we verify some files get deleted
-      ((MockDirectoryWrapper)ram).setEnableVirusScanner(false);
-    }
     Analyzer analyzer = new MockAnalyzer(random());
     IndexWriter writer = new IndexWriter(ram, newIndexWriterConfig(analyzer)
                                                 .setMaxBufferedDocs(3)
@@ -309,17 +306,15 @@ public class TestOmitTf extends LuceneTestCase {
     TermQuery q4 = new TermQuery(d);
 
     PhraseQuery pq = new PhraseQuery(a.field(), a.bytes(), c.bytes());
-    try {
+    Exception expected = expectThrows(Exception.class, () -> {
       searcher.search(pq, 10);
-      fail("did not hit expected exception");
-    } catch (Exception e) {
-      Throwable cause = e;
-      // If the searcher uses an executor service, the IAE is wrapped into other exceptions
-      while (cause.getCause() != null) {
-        cause = cause.getCause();
-      }
-      assertTrue("Expected an IAE, got " + cause, cause instanceof IllegalStateException);
+    });
+    Throwable cause = expected;
+    // If the searcher uses an executor service, the IAE is wrapped into other exceptions
+    while (cause.getCause() != null) {
+      cause = cause.getCause();
     }
+    assertTrue("Expected an IAE, got " + cause, cause instanceof IllegalStateException);
         
     searcher.search(q1,
                     new CountingHitCollector() {

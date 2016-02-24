@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.phonetic;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.phonetic;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.phonetic;
+
 
 import java.io.StringReader;
 import java.util.HashMap;
@@ -53,13 +53,11 @@ public class TestDaitchMokotoffSoundexFilterFactory extends BaseTokenStreamTestC
   
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
       new DaitchMokotoffSoundexFilterFactory(new HashMap<String,String>() {{
         put("bogusArg", "bogusValue");
       }});
-      fail();
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("Unknown parameters"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 }

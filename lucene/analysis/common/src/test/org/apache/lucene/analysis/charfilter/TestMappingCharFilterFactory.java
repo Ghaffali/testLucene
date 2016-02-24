@@ -1,5 +1,3 @@
-package org.apache.lucene.analysis.charfilter;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.analysis.charfilter;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.analysis.charfilter;
+
 
 import org.apache.lucene.analysis.util.BaseTokenStreamFactoryTestCase;
 
@@ -24,11 +24,9 @@ public class TestMappingCharFilterFactory extends BaseTokenStreamFactoryTestCase
 
     MappingCharFilterFactory f = (MappingCharFilterFactory)charFilterFactory("Mapping");
 
-    try {
-      f.parseString( "\\" );
-      fail( "escape character cannot be alone." );
-    }
-    catch (IllegalArgumentException expected) {}
+    expectThrows(IllegalArgumentException.class, () -> {      
+      f.parseString("\\");
+    });
     
     assertEquals( "unexpected escaped characters",
         "\\\"\n\t\r\b\f", f.parseString( "\\\\\\\"\\n\\t\\r\\b\\f" ) );
@@ -37,26 +35,21 @@ public class TestMappingCharFilterFactory extends BaseTokenStreamFactoryTestCase
     assertEquals( "unexpected escaped characters",
         "AB", f.parseString( "\\u0041\\u0042" ) );
 
-    try {
-      f.parseString( "\\u000" );
-      fail( "invalid length check." );
-    }
-    catch (IllegalArgumentException expected) {}
+    expectThrows(IllegalArgumentException.class, () -> {      
+      f.parseString("\\u000");
+    });
 
-    try {
-      f.parseString( "\\u123x" );
-      fail( "invalid hex number check." );
-    }
-    catch( NumberFormatException expected ){}
+    // invalid hex number
+    expectThrows(NumberFormatException.class, () -> {      
+      f.parseString("\\u123x");
+    });
   }
   
   /** Test that bogus arguments result in exception */
   public void testBogusArguments() throws Exception {
-    try {
+    IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {      
       charFilterFactory("Mapping", "bogusArg", "bogusValue");
-      fail();
-    } catch (IllegalArgumentException expected) {
-      assertTrue(expected.getMessage().contains("Unknown parameters"));
-    }
+    });
+    assertTrue(expected.getMessage().contains("Unknown parameters"));
   }
 }

@@ -1,5 +1,3 @@
-package org.apache.solr.update;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,14 +14,19 @@ package org.apache.solr.update;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.update;
 
 import java.nio.file.Path;
 import java.util.Map;
 
 import org.apache.lucene.index.ConcurrentMergeScheduler;
 import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.MergePolicy;
 import org.apache.lucene.index.SimpleMergedSegmentWarmer;
+import org.apache.lucene.index.SortingMergePolicy;
 import org.apache.lucene.index.TieredMergePolicy;
+import org.apache.lucene.search.Sort;
+import org.apache.lucene.search.SortField;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.core.DirectoryFactory;
 import org.apache.solr.core.SolrConfig;
@@ -41,9 +44,11 @@ import org.junit.Test;
 public class SolrIndexConfigTest extends SolrTestCaseJ4 {
 
   private static final String solrConfigFileName = "solrconfig.xml";
-  private static final String solrConfigFileNameWarmer = "solrconfig-warmer.xml";
+  private static final String solrConfigFileNameWarmerRandomMergePolicy = "solrconfig-warmer.xml";
+  private static final String solrConfigFileNameWarmerRandomMergePolicyFactory = "solrconfig-warmer-randommergepolicyfactory.xml";
   private static final String solrConfigFileNameTieredMergePolicy = "solrconfig-tieredmergepolicy.xml";
-
+  private static final String solrConfigFileNameTieredMergePolicyFactory = "solrconfig-tieredmergepolicyfactory.xml";
+  private static final String solrConfigFileNameSortingMergePolicyFactory = "solrconfig-sortingmergepolicyfactory.xml";
   private static final String schemaFileName = "schema.xml";
 
   @BeforeClass
@@ -56,7 +61,7 @@ public class SolrIndexConfigTest extends SolrTestCaseJ4 {
   @Test
   public void testFailingSolrIndexConfigCreation() {
     try {
-      SolrConfig solrConfig = new SolrConfig("bad-mp-solrconfig.xml");
+      SolrConfig solrConfig = new SolrConfig(random().nextBoolean() ? "bad-mp-solrconfig.xml" : "bad-mpf-solrconfig.xml");
       SolrIndexConfig solrIndexConfig = new SolrIndexConfig(solrConfig, null, null);
       IndexSchema indexSchema = IndexSchemaFactory.buildIndexSchema(schemaFileName, solrConfig);
       h.getCore().setLatestSchema(indexSchema);
@@ -69,10 +74,9 @@ public class SolrIndexConfigTest extends SolrTestCaseJ4 {
 
   @Test
   public void testTieredMPSolrIndexConfigCreation() throws Exception {
-    SolrConfig solrConfig = new SolrConfig(instanceDir, solrConfigFileNameTieredMergePolicy, null);
-    SolrIndexConfig solrIndexConfig = new SolrIndexConfig(solrConfig, null,
-        null);
-    assertNotNull(solrIndexConfig);
+    String solrConfigFileName = random().nextBoolean() ? solrConfigFileNameTieredMergePolicy : solrConfigFileNameTieredMergePolicyFactory;
+    SolrConfig solrConfig = new SolrConfig(instanceDir, solrConfigFileName, null);
+    SolrIndexConfig solrIndexConfig = new SolrIndexConfig(solrConfig, null, null);
     IndexSchema indexSchema = IndexSchemaFactory.buildIndexSchema(schemaFileName, solrConfig);
     
     h.getCore().setLatestSchema(indexSchema);
@@ -92,8 +96,30 @@ public class SolrIndexConfigTest extends SolrTestCaseJ4 {
 
   }
 
+  public void testSortingMPSolrIndexConfigCreation() throws Exception {
+    final String expectedFieldName = "timestamp";
+    final SortField.Type expectedFieldType = SortField.Type.LONG;
+    final boolean expectedFieldSortDescending = true;
+
+    SolrConfig solrConfig = new SolrConfig(instanceDir, solrConfigFileNameSortingMergePolicyFactory, null);
+    SolrIndexConfig solrIndexConfig = new SolrIndexConfig(solrConfig, null, null);
+    assertNotNull(solrIndexConfig);
+    IndexSchema indexSchema = IndexSchemaFactory.buildIndexSchema(schemaFileName, solrConfig);
+
+    h.getCore().setLatestSchema(indexSchema);
+    IndexWriterConfig iwc = solrIndexConfig.toIndexWriterConfig(h.getCore());
+
+    final MergePolicy mergePolicy = iwc.getMergePolicy();
+    assertNotNull("null mergePolicy", mergePolicy);
+    assertTrue("mergePolicy ("+mergePolicy+") is not a SortingMergePolicy", mergePolicy instanceof SortingMergePolicy);
+    final SortingMergePolicy sortingMergePolicy = (SortingMergePolicy) mergePolicy;
+    final Sort expected = new Sort(new SortField(expectedFieldName, expectedFieldType, expectedFieldSortDescending));
+    final Sort actual = sortingMergePolicy.getSort();
+    assertEquals("SortingMergePolicy.getSort", expected, actual);
+  }
+
   public void testMergedSegmentWarmerIndexConfigCreation() throws Exception {
-    SolrConfig solrConfig = new SolrConfig(instanceDir, solrConfigFileNameWarmer, null);
+    SolrConfig solrConfig = new SolrConfig(instanceDir, random().nextBoolean() ? solrConfigFileNameWarmerRandomMergePolicy : solrConfigFileNameWarmerRandomMergePolicyFactory, null);
     SolrIndexConfig solrIndexConfig = new SolrIndexConfig(solrConfig, null, null);
     assertNotNull(solrIndexConfig);
     assertNotNull(solrIndexConfig.mergedSegmentWarmerInfo);
@@ -106,12 +132,20 @@ public class SolrIndexConfigTest extends SolrTestCaseJ4 {
   }
 
   public void testToMap() throws Exception {
-    final String solrConfigFileName = (random().nextBoolean() ? solrConfigFileNameWarmer : solrConfigFileNameTieredMergePolicy);
+    final String solrConfigFileNameWarmer = random().nextBoolean() ? solrConfigFileNameWarmerRandomMergePolicy : solrConfigFileNameWarmerRandomMergePolicyFactory;
+    final String solrConfigFileNameTMP = random().nextBoolean() ? solrConfigFileNameTieredMergePolicy : solrConfigFileNameTieredMergePolicyFactory;
+    final String solrConfigFileName = (random().nextBoolean() ? solrConfigFileNameWarmer : solrConfigFileNameTMP);
     SolrConfig solrConfig = new SolrConfig(instanceDir, solrConfigFileName, null);
     SolrIndexConfig solrIndexConfig = new SolrIndexConfig(solrConfig, null, null);
     assertNotNull(solrIndexConfig);
-    assertNotNull(solrIndexConfig.mergePolicyInfo);
-    if (solrConfigFileName.equals(solrConfigFileNameWarmer)) {
+    if (solrConfigFileName.equals(solrConfigFileNameTieredMergePolicyFactory) ||
+        solrConfigFileName.equals(solrConfigFileNameWarmerRandomMergePolicyFactory)) {
+      assertNotNull(solrIndexConfig.mergePolicyFactoryInfo);
+    } else {
+      assertNotNull(solrIndexConfig.mergePolicyInfo);
+    }
+    if (solrConfigFileName.equals(solrConfigFileNameWarmerRandomMergePolicy) ||
+        solrConfigFileName.equals(solrConfigFileNameWarmerRandomMergePolicyFactory)) {
       assertNotNull(solrIndexConfig.mergedSegmentWarmerInfo);
     } else {
       assertNull(solrIndexConfig.mergedSegmentWarmerInfo);
@@ -147,8 +181,16 @@ public class SolrIndexConfigTest extends SolrTestCaseJ4 {
     }
     
     ++mSizeExpected; assertTrue(m.get("mergeScheduler") instanceof Map);
-    ++mSizeExpected; assertTrue(m.get("mergePolicy") instanceof Map);
-    if (solrConfigFileName.equals(solrConfigFileNameWarmer)) {
+    if (solrConfigFileName.equals(solrConfigFileNameTieredMergePolicyFactory) ||
+        solrConfigFileName.equals(solrConfigFileNameWarmerRandomMergePolicyFactory)) {
+      assertNull(m.get("mergePolicy"));
+      ++mSizeExpected; assertTrue(m.get("mergePolicyFactory") instanceof Map);
+    } else {
+      ++mSizeExpected; assertTrue(m.get("mergePolicy") instanceof Map);
+      assertNull(m.get("mergePolicyFactory"));
+    }
+    if (solrConfigFileName.equals(solrConfigFileNameWarmerRandomMergePolicy) ||
+        solrConfigFileName.equals(solrConfigFileNameWarmerRandomMergePolicyFactory)) {
       ++mSizeExpected; assertTrue(m.get("mergedSegmentWarmer") instanceof Map);
     } else {
       assertNull(m.get("mergedSegmentWarmer"));

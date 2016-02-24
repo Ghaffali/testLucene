@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.handler;
 
 import java.io.File;
@@ -279,7 +278,12 @@ public class PingRequestHandler extends RequestHandlerBase implements SolrCoreAw
       try {
         SolrQueryResponse pingrsp = new SolrQueryResponse();
         core.execute(handler, req, pingrsp );
-        ex = pingrsp.getException();       
+        ex = pingrsp.getException(); 
+        NamedList<Object> headers = rsp.getResponseHeader();
+        if(headers != null) {
+          headers.add("zkConnected", pingrsp.getResponseHeader().get("zkConnected"));
+        }
+        
       }
       catch( Exception e ) {
         ex = e;

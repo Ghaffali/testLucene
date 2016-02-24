@@ -1,7 +1,3 @@
-package org.apache.solr.common.cloud;
-
-import java.lang.invoke.MethodHandles;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,9 @@ import java.lang.invoke.MethodHandles;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.common.cloud;
+
+import java.lang.invoke.MethodHandles;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -38,7 +37,10 @@ public class ConnectionManager implements Watcher {
 
   private final ZkClientConnectionStrategy connectionStrategy;
 
-  private final String zkServerAddress;
+  //expert: mutable for testing
+  private String zkServerAddress;
+
+  
 
   private final SolrZkClient client;
 
@@ -129,40 +131,50 @@ public class ConnectionManager implements Watcher {
         }
       }
       
-      try {
-        connectionStrategy.reconnect(zkServerAddress,
-            client.getZkClientTimeout(), this,
-            new ZkClientConnectionStrategy.ZkUpdate() {
-              @Override
-              public void update(SolrZooKeeper keeper) {
-                try {
-                  waitForConnected(Long.MAX_VALUE);
-                } catch (Exception e1) {
-                  closeKeeper(keeper);
-                  throw new RuntimeException(e1);
+      do {
+        // This loop will break iff a valid connection is made. If a connection is not made then it will repeat and
+        // try again to create a new connection.
+        try {
+          connectionStrategy.reconnect(zkServerAddress,
+              client.getZkClientTimeout(), this,
+              new ZkClientConnectionStrategy.ZkUpdate() {
+                @Override
+                public void update(SolrZooKeeper keeper) {
+                  try {
+                    waitForConnected(Long.MAX_VALUE);
+                  } catch (Exception e1) {
+                    closeKeeper(keeper);
+                    throw new RuntimeException(e1);
+                  }
+  
+                  log.info("Connection with ZooKeeper reestablished.");
+                  try {
+                    client.updateKeeper(keeper);
+                  } catch (InterruptedException e) {
+                    closeKeeper(keeper);
+                    Thread.currentThread().interrupt();
+                    // we must have been asked to stop
+                    throw new RuntimeException(e);
+                  } catch (Exception t) {
+                    closeKeeper(keeper);
+                    throw new RuntimeException(t);
+                  }
+  
+                  if (onReconnect != null) {
+                    onReconnect.command();
+                  }
                 }
-
-                log.info("Connection with ZooKeeper reestablished.");
-                try {
-                  client.updateKeeper(keeper);
-                } catch (InterruptedException e) {
-                  closeKeeper(keeper);
-                  Thread.currentThread().interrupt();
-                  // we must have been asked to stop
-                  throw new RuntimeException(e);
-                } catch (Exception t) {
-                  closeKeeper(keeper);
-                  throw new RuntimeException(t);
-                }
-
-                if (onReconnect != null) {
-                  onReconnect.command();
-                }
-              }
-            });
-      } catch (Exception e) {
-        SolrException.log(log, "", e);
-      }
+              });
+          
+          break;
+          
+        } catch (Exception e) {
+          SolrException.log(log, "", e);
+          log.info("Could not connect due to error, sleeping for 5s and trying agian");
+          waitSleep(1000);
+        }
+        
+      } while (!isClosed);
       log.info("Connected:" + connected);
     } else if (state == KeeperState.Disconnected) {
       log.info("zkClient has disconnected");
@@ -186,6 +198,14 @@ public class ConnectionManager implements Watcher {
   
   public boolean isLikelyExpired() {
     return isClosed || likelyExpiredState.isLikelyExpired((long) (client.getZkClientTimeout() * 0.90));
+  }
+  
+  public synchronized void waitSleep(long waitFor) {
+    try {
+      wait(waitFor);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+    } 
   }
 
   public synchronized void waitForConnected(long waitForConnection)
@@ -234,5 +254,10 @@ public class ConnectionManager implements Watcher {
       throw new ZooKeeperException(SolrException.ErrorCode.SERVER_ERROR,
           "", e);
     }
+  }
+  
+  //expert: mutable for testing
+  public void setZkServerAddress(String zkServerAddress) {
+    this.zkServerAddress = zkServerAddress;
   }
 }

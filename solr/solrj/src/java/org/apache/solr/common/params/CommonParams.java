@@ -14,7 +14,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.common.params;
 
 import java.util.Locale;
@@ -152,6 +151,12 @@ public interface CommonParams {
    */
   public static final String STREAM_CONTENTTYPE = "stream.contentType";
   
+  /**
+   * Whether or not the search may be terminated early within a segment.
+   */
+  public static final String SEGMENT_TERMINATE_EARLY = "segmentTerminateEarly";
+  public static final boolean SEGMENT_TERMINATE_EARLY_DEFAULT = false;
+
   /**
    * Timeout value in milliseconds.  If not set, or the value is &gt;= 0, there is no timeout.
    */

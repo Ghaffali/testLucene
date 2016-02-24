@@ -1,5 +1,3 @@
-package org.apache.lucene.search.suggest.fst;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,7 @@ package org.apache.lucene.search.suggest.fst;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.search.suggest.fst;
 
 import org.apache.lucene.search.suggest.InMemorySorter;
 import org.apache.lucene.store.Directory;
@@ -31,9 +30,6 @@ public class BytesRefSortersTest extends LuceneTestCase {
   @Test
   public void testExternalRefSorter() throws Exception {
     Directory tempDir = newDirectory();
-    if (tempDir instanceof MockDirectoryWrapper) {
-      ((MockDirectoryWrapper) tempDir).setEnableVirusScanner(false);
-    }
     ExternalRefSorter s = new ExternalRefSorter(new OfflineSorter(tempDir, "temp"));
     check(s);
     IOUtils.close(s, tempDir);
@@ -56,12 +52,10 @@ public class BytesRefSortersTest extends LuceneTestCase {
     BytesRefIterator i2 = sorter.iterator();
     
     // Verify sorter contract.
-    try {
+    expectThrows(IllegalStateException.class, () -> {
       sorter.add(new BytesRef(new byte [1]));
-      fail("expected contract violation.");
-    } catch (IllegalStateException e) {
-      // Expected.
-    }
+    });
+
     BytesRef spare1;
     BytesRef spare2;
     while ((spare1 = i1.next()) != null && (spare2 = i2.next()) != null) {

@@ -1,7 +1,3 @@
-package org.apache.solr.cloud.rule;
-
-import java.lang.invoke.MethodHandles;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -18,6 +14,9 @@ import java.lang.invoke.MethodHandles;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.cloud.rule;
+
+import java.lang.invoke.MethodHandles;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -190,19 +189,17 @@ public class ReplicaAssigner {
 
     for (; shardPermutations.hasNext(); ) {
       int[] p = shardPermutations.next();
-      for (int i = 0; i < p.length; i++) {
-        List<Position> positions = new ArrayList<>();
-        for (int pos : p) {
-          for (int j = 0; j < shardVsReplicaCount.get(shardNames.get(pos)); j++) {
-            positions.add(new Position(shardNames.get(pos), j));
-          }
+      List<Position> positions = new ArrayList<>();
+      for (int pos : p) {
+        for (int j = 0; j < shardVsReplicaCount.get(shardNames.get(pos)); j++) {
+          positions.add(new Position(shardNames.get(pos), j));
         }
-        Collections.sort(positions);
-        for (Iterator<int[]> it = permutations(rules.size()); it.hasNext(); ) {
-          int[] permutation = it.next();
-          Map<Position, String> result = tryAPermutationOfRules(permutation, positions, fuzzyPhase);
-          if (result != null) return result;
-        }
+      }
+      Collections.sort(positions);
+      for (Iterator<int[]> it = permutations(rules.size()); it.hasNext(); ) {
+        int[] permutation = it.next();
+        Map<Position, String> result = tryAPermutationOfRules(permutation, positions, fuzzyPhase);
+        if (result != null) return result;
       }
     }
 

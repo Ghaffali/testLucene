@@ -1,5 +1,3 @@
-package org.apache.lucene.index;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.index;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.index;
+
 
 import org.apache.lucene.analysis.CannedTokenStream;
 import org.apache.lucene.analysis.Token;
@@ -45,12 +45,9 @@ public class TestMaxPosition extends LuceneTestCase {
       t2.setPayload(new BytesRef(new byte[] { 0x1 } ));
     }
     doc.add(new TextField("foo", new CannedTokenStream(new Token[] {t1, t2})));
-    try {
+    expectThrows(IllegalArgumentException.class, () -> {
       iw.addDocument(doc);
-      fail("did not hit exception");
-    } catch (IllegalArgumentException iae) {
-      // expected
-    }
+    });
 
     // Document should not be visible:
     IndexReader r = DirectoryReader.open(iw);

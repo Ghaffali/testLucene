@@ -1,5 +1,3 @@
-package org.apache.solr.update;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,12 +14,14 @@ package org.apache.solr.update;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.solr.update;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.locks.Lock;
 
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.search.Sort;
 import org.apache.solr.cloud.ActionThrottle;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.CoreDescriptor;
@@ -126,6 +126,13 @@ public abstract class SolrCoreState {
    */
   public abstract void rollbackIndexWriter(SolrCore core) throws IOException;
   
+  /**
+   * Get the current Sort of the current IndexWriter's MergePolicy..
+   *
+   * @throws IOException If there is a low-level I/O error.
+   */
+  public abstract Sort getMergePolicySort() throws IOException;
+
   /**
    * @return the {@link DirectoryFactory} that should be used.
    */
