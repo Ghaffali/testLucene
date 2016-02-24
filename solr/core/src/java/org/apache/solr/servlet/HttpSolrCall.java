@@ -155,7 +155,6 @@ public class HttpSolrCall {
   protected String coreUrl;
   protected SolrConfig config;
   protected Map<String, Integer> invalidStates;
-  protected RequestType requestType;
   protected boolean usingAliases = false;
 
   //The states of client that is invalid in this request

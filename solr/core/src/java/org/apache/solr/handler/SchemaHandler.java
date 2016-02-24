@@ -51,7 +51,7 @@ import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.core.ConfigSetProperties.IMMUTABLE_CONFIGSET_ARG;
 import static org.apache.solr.api.ApiBag.wrapRequestHandler;
 
-public class SchemaHandler extends RequestHandlerBase implements ApiSupport {
+public class SchemaHandler extends RequestHandlerBase implements ApiSupport , SolrCoreAware {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private boolean isImmutableConfigSet = false;
 
