@@ -37,6 +37,7 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.update.AddUpdateCommand;
+import org.apache.solr.update.DeleteUpdateCommand;
 import org.apache.solr.update.SolrCmdDistributor.Error;
 import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
 
@@ -109,12 +110,12 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     
     this.zkController = this.req.getCore().getCoreDescriptor().getCoreContainer().getZkController();
 
-    // nocommit: assert existence of uniqueKey & record for future processAdd+processAddError calls
+    // nocommit: assert existence of uniqueKey field & record for future use
   }
   
   @Override
   public void processAdd(AddUpdateCommand cmd) throws IOException {
-    boolean isLeader = isLeader(cmd);
+    boolean isLeader = isLeader(cmd); // nocommit: is this needed? see below...
     BytesRef id = null;
     
     try {
@@ -127,33 +128,52 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       firstErrTracker.caught(t);
       
       if (isLeader || distribPhase.equals(DistribPhase.NONE)) {
-        processAddError(getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()), t);
+        // nocommit: should we skip if condition and always do this? see comment in else...
+        
+        knownErrors.add(new KnownErr(CmdType.ADD,
+                                     getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()),
+                                     t.getMessage()));
         if (knownErrors.size() > maxErrors) {
           firstErrTracker.throwFirst();
         }
       } else {
+        // nocommit: is this if/else even relevant or important? ...
+        //
+        // 1) the factory won't even instantiate "this" if we are a replica being forwarded from our leader
+        // 2) so aren't we by definition either the leader or DistribPhase.NONE ?
+        // 3) even if we aren't, is there any downside to simplifying the code and always waiting until maxErors?
+        
         firstErrTracker.throwFirst();
       }
     }
   }
-  
-  
-  // nocommit: what about processCommit and processDelete and other UP methods? ...
-  // nocommit: ...at a minimum use firstErrTracker to catch & rethrow so finish can annotate
 
-  // nocommit: refactor this method away
-  protected void processAddError(CharSequence id, Throwable error) {
-    processAddError(id, error.getMessage());
+  @Override
+  public void processDelete(DeleteUpdateCommand cmd) throws IOException {
+    
+    // nocommit: do we need special delById => isLeader(id) vs delByQ => isAnyLeader logic?
+      
+    try {
+      
+      super.processDelete(cmd);
+      
+    } catch (Throwable t) { // nocommit: OOM trap
+      firstErrTracker.caught(t);
+
+      // nocommit: do we need isLeader type logic like processAdd ? does processAdd even need it?
+      
+      CmdType type = cmd.isDeleteById() ? CmdType.DELID : CmdType.DELQ;
+      String id = cmd.isDeleteById() ? cmd.id : cmd.query;
+      knownErrors.add(new KnownErr(type, id, t.getMessage()));
+      if (knownErrors.size() > maxErrors) {
+        firstErrTracker.throwFirst();
+      }
+    }
   }
+
   
-  /** 
-   * Logs an error for the given id, and buffers it up to be 
-   * included in the response header 
-   */
-  protected void processAddError(CharSequence id, CharSequence error) {
-  // nocommit: need refactor the KnownErr wrapping up so this method can handle deletes & commits as well
-    knownErrors.add(new KnownErr(CmdType.ADD, id.toString(), error.toString()));
-  }
+  // nocommit: what about processCommit and other UpdateProcessor methods?
+  // nocommit: ...at a minimum use firstErrTracker to catch & rethrow so finish can annotate
 
   @Override
   public void finish() throws IOException {
@@ -189,17 +209,10 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
         for (int i = 0; i < remoteErrMetadata.size(); i++) {
           KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
                                                           remoteErrMetadata.getVal(i));
-          if (null == err) {
-            // some metadata unrelated to this update processor
-            continue;
+          if (null != err) {
+            knownErrors.add(err);
           }
-          
-          if (err.type.equals(CmdType.ADD)) { // nocommit: generalize this to work with any CmdType
-            processAddError(err.id, err.errorValue);
-          } else {
-            log.error("found remote error metadata we can't handle key: " + err);
-            assert false : "found remote error metadata we can't handle key: " + err;
-          }
+          // else: some metadata unrelated to this update processor
         }
       }
     }

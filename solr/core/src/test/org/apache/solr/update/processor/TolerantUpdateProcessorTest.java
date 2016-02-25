@@ -128,7 +128,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
       //expected
       assertTrue(e.getMessage().contains("Document is missing mandatory uniqueKey field"));
     }
-    assertUSucceedsWithErrors("tolerant-chain-max-errors-10", Arrays.asList(new SolrInputDocument[]{invalidDoc}), null, 1, "(unknown)");
+    assertAddsSucceedWithErrors("tolerant-chain-max-errors-10", Arrays.asList(new SolrInputDocument[]{invalidDoc}), null, 1, "(unknown)");
     
     //a valid doc
     SolrInputDocument validDoc = doc(field("id", 1f, "1"), field("text", 1f, "the quick brown fox"));
@@ -147,7 +147,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
         ,"//result[@numFound='0']");
     
     
-    assertUSucceedsWithErrors("tolerant-chain-max-errors-10", Arrays.asList(new SolrInputDocument[]{invalidDoc, validDoc}), null, 1, "(unknown)");
+    assertAddsSucceedWithErrors("tolerant-chain-max-errors-10", Arrays.asList(new SolrInputDocument[]{invalidDoc, validDoc}), null, 1, "(unknown)");
     assertU(commit());
     
     // verify that the good document made it in. 
@@ -170,7 +170,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     assertQ(req("q","id:3")
         ,"//result[@numFound='0']");
     
-    assertUSucceedsWithErrors("tolerant-chain-max-errors-10", Arrays.asList(new SolrInputDocument[]{invalidDoc, validDoc}), null, 1, "2");
+    assertAddsSucceedWithErrors("tolerant-chain-max-errors-10", Arrays.asList(new SolrInputDocument[]{invalidDoc, validDoc}), null, 1, "2");
     assertU(commit());
     
     // The valid document was indexed
@@ -187,7 +187,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
   public void testMaxErrorsDefault() throws IOException {
     try {
       // by default the TolerantUpdateProcessor accepts all errors, so this batch should succeed with 10 errors.
-      assertUSucceedsWithErrors("tolerant-chain-max-errors-not-set", docs, null, 10, badIds);
+      assertAddsSucceedWithErrors("tolerant-chain-max-errors-not-set", docs, null, 10, badIds);
     } catch(Exception e) {
       fail("Shouldn't get an exception for this batch: " + e.getMessage());
     }
@@ -200,7 +200,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     ModifiableSolrParams requestParams = new ModifiableSolrParams();
     requestParams.add("maxErrors", "10");
     // still OK
-    assertUSucceedsWithErrors("tolerant-chain-max-errors-not-set", docs, requestParams, 10, badIds);
+    assertAddsSucceedWithErrors("tolerant-chain-max-errors-not-set", docs, requestParams, 10, badIds);
     assertU(commit());
     assertQ(req("q","*:*")
         ,"//result[@numFound='10']");
@@ -212,7 +212,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     requestParams.add("maxErrors", "5");
     try {
       // should fail
-      assertUSucceedsWithErrors("tolerant-chain-max-errors-not-set", docs, requestParams, 10, badIds);
+      assertAddsSucceedWithErrors("tolerant-chain-max-errors-not-set", docs, requestParams, 10, badIds);
       fail("Expecting exception");
     } catch (SolrException e) {
       assertTrue(e.getMessage(),
@@ -234,7 +234,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     requestParams.add("maxErrors", "0");
     try {
       // should fail
-      assertUSucceedsWithErrors("tolerant-chain-max-errors-10", smallBatch, requestParams, 1, "1");
+      assertAddsSucceedWithErrors("tolerant-chain-max-errors-10", smallBatch, requestParams, 1, "1");
       fail("Expecting exception");
     } catch (SolrException e) {
       assertTrue(e.getMessage().contains("ERROR: [doc=1] Error adding field 'weight'='b' msg=For input string: \"b\""));
@@ -253,10 +253,13 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
         "//int[@name='numErrors']=0"));
     
     response = update("tolerant-chain-max-errors-10", delQ("invalidfield:1"));
-    assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
-        "//int[@name='numErrors']=1",
-        "//lst[@name='errors']/lst[@name='invalidfield:1']",
-        "//lst[@name='errors']/lst[@name='invalidfield:1']/str[@name='message']/text()='undefined field invalidfield'"));
+    assertNull(BaseTestHarness.validateXPath
+               (response,
+                "//int[@name='status']=0",
+                "//int[@name='numErrors']=1",
+                "//arr[@name='errors']/lst/str[@name='type']/text()='DELQ'",
+                "//arr[@name='errors']/lst/str[@name='id']/text()='invalidfield:1'",
+                "//arr[@name='errors']/lst/str[@name='message']/text()='undefined field invalidfield'"));
   }
   
   @Test
@@ -370,8 +373,15 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     }
   }
   
-  // nocommit: redesign so that we can assert errors of diff types besides "add" (ie: deletes) 
-  private void assertUSucceedsWithErrors(String chain, final Collection<SolrInputDocument> docs, SolrParams requestParams, int numErrors, String... ids) throws IOException {
+  private void assertAddsSucceedWithErrors(String chain,
+                                           final Collection<SolrInputDocument> docs,
+                                           SolrParams requestParams, int numErrors,
+                                           String... idsShouldFail) throws IOException {
+
+    // nocommit: retire numErrors from this method sig ... trappy
+    assertEquals("bad test, idsShouldFail.length doesn't match numErrors",
+                 numErrors, idsShouldFail.length);
+    
     SolrQueryResponse response = add(chain, requestParams, docs);
     
     @SuppressWarnings("unchecked")
@@ -379,17 +389,15 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
       response.getResponseHeader().get("errors");
     assertNotNull(errors);
 
-    assertEquals("number of errors", ids.length, errors.size());
+    assertEquals("number of errors", idsShouldFail.length, errors.size());
     
     // nocommit: retire numErrors, we've already checked errors.size()
     assertEquals(numErrors, response.getResponseHeader().get("numErrors"));
     
-    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(ids));
+    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(idsShouldFail));
 
     for (SimpleOrderedMap<String> err : errors) {
-      // nocommit: support other types
-      assertEquals("nocommit: error type not handled yet",
-                   "ADD", err.get("type"));
+      assertEquals("this method only expects 'add' errors", "ADD", err.get("type"));
       
       String id = err.get("id");
       assertNotNull("null err id", id);

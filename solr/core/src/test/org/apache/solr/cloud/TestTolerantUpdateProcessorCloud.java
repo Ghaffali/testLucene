@@ -256,6 +256,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
   public void testSanity() throws Exception {
     
     // verify some basic sanity checking of indexing & querying across the collection
+    // w/o using our custom update processor chain
     
     assertEquals(0, CLOUD_CLIENT.add(doc(f("id", S_ONE_PRE + "1"),
                                          f("foo_i", 42))).getStatus());
@@ -267,33 +268,119 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                                       S_ONE_NON_LEADER_CLIENT, S_TWO_NON_LEADER_CLIENT,
                                       NO_COLLECTION_CLIENT, CLOUD_CLIENT)) {
       assertQueryDocIds(c, true, S_ONE_PRE + "1",  S_TWO_PRE + "2");
-      assertQueryDocIds(c, false, "42");
+      assertQueryDocIds(c, false, "id_not_exists");
+
+      // verify oportunistic concurrency deletions fail as we expect when docs are / aren't present
+      for (UpdateRequest r : new UpdateRequest[] {
+          update(params("commit", "true")).deleteById(S_ONE_PRE + "1", -1L),
+          update(params("commit", "true")).deleteById(S_TWO_PRE + "2", -1L),
+          update(params("commit", "true")).deleteById("id_not_exists",  1L)    }) {
+        try {
+          UpdateResponse rsp = r.process(c);
+          fail("sanity check for oportunistic concurrency delete didn't fail: "
+               + r.toString() + " => " + rsp.toString());
+        } catch (SolrException e) {
+          assertEquals("not the expected oportunistic concurrency failure code: "
+                       + r.toString() + " => " + e.getMessage(), 409, e.code());
+        }
+      }
     }
+  }
 
+  //
+  public void testVariousDeletesViaCloudClient() throws Exception {
+    testVariousDeletes(CLOUD_CLIENT);
+  }
+  public void testVariousDeletesViaShard1LeaderClient() throws Exception {
+    testVariousDeletes(S_ONE_LEADER_CLIENT);
+  }
+  public void testVariousDeletesViaShard2LeaderClient() throws Exception {
+    testVariousDeletes(S_TWO_LEADER_CLIENT);
+  }
+  public void testVariousDeletesViaShard1NonLeaderClient() throws Exception {
+    testVariousDeletes(S_ONE_NON_LEADER_CLIENT);
+  }
+  public void testVariousDeletesViaShard2NonLeaderClient() throws Exception {
+    testVariousDeletes(S_TWO_NON_LEADER_CLIENT);
+  }
+  public void testVariousDeletesViaNoCollectionClient() throws Exception {
+    testVariousDeletes(NO_COLLECTION_CLIENT);
+  }
+  
+  protected static void testVariousDeletes(SolrClient client) throws Exception {
+    assertNotNull("client not initialized", client);
 
+    // 2 docs, one on each shard
+    final String docId1 = S_ONE_PRE + "42";
+    final String docId2 = S_TWO_PRE + "666";
     
+    UpdateResponse rsp = null;
+    
+    // add 1 doc to each shard
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true"),
+                 doc(f("id", docId1), f("foo_i", "2001")),
+                 doc(f("id", docId2), f("foo_i", "1976"))).process(client);
+    assertEquals(0, rsp.getStatus());
+
+    // attempt to delete individual doc id(s) that should fail because of oportunistic concurrency constraints
+    for (String id : new String[] { docId1, docId2 }) {
+      rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                          "commit", "true")).deleteById(id, -1L).process(client);
+      assertEquals(0, rsp.getStatus());
+      assertUpdateTolerantErrors("failed oportunistic concurrent delId="+id, rsp,
+                                 delIErr(id));
+    }
+    
+    // attempt to delete multiple doc ids that should all fail because of oportunistic concurrency constraints
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true")).deleteById(docId2, -1L).deleteById(docId1, -1L).process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("failed oportunistic concurrent delete by id for 2 docs", rsp,
+                               delIErr(docId1), delIErr(docId2));
+    
+    // nocommit: deleteByQuery using malformed query
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true")).deleteByQuery("bogus_field:foo").process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("failed oportunistic concurrent delete by query", rsp,
+                               delQErr("bogus_field:foo"));
+
+    // nocommit: mix 2 deleteByQuery, one malformed (fail) one not but doesn't match anything (ok)
+    
+    // nocommit: mix 2 deleteById using _version_=-1, one for real doc1 (fail), one for bogus id (ok)
+    
+    // nocommit: mix 2 deleteById using _version_=1, one for real doc1 (ok, deleted), one for bogus id (fail)
+
+    // nocommit: assertQueryDocIds doc2 only doc left
+    
+    // nocommit: test multiple failed deletes from the same shard (bogus ids are fine)
+    
+
   }
 
-  public void testVariousUpdatesViaCloudClient() throws Exception {
-    testVariousUpdates(CLOUD_CLIENT);
+  
+  //
+  public void testVariousAddsViaCloudClient() throws Exception {
+    testVariousAdds(CLOUD_CLIENT);
   }
-  public void testVariousUpdatesViaShard1LeaderClient() throws Exception {
-    testVariousUpdates(S_ONE_LEADER_CLIENT);
+  public void testVariousAddsViaShard1LeaderClient() throws Exception {
+    testVariousAdds(S_ONE_LEADER_CLIENT);
   }
-  public void testVariousUpdatesViaShard2LeaderClient() throws Exception {
-    testVariousUpdates(S_TWO_LEADER_CLIENT);
+  public void testVariousAddsViaShard2LeaderClient() throws Exception {
+    testVariousAdds(S_TWO_LEADER_CLIENT);
   }
-  public void testVariousUpdatesViaShard1NonLeaderClient() throws Exception {
-    testVariousUpdates(S_ONE_NON_LEADER_CLIENT);
+  public void testVariousAddsViaShard1NonLeaderClient() throws Exception {
+    testVariousAdds(S_ONE_NON_LEADER_CLIENT);
   }
-  public void testVariousUpdatesViaShard2NonLeaderClient() throws Exception {
-    testVariousUpdates(S_TWO_NON_LEADER_CLIENT);
+  public void testVariousAddsViaShard2NonLeaderClient() throws Exception {
+    testVariousAdds(S_TWO_NON_LEADER_CLIENT);
   }
-  public void testVariousUpdatesViaNoCollectionClient() throws Exception {
-    testVariousUpdates(NO_COLLECTION_CLIENT);
+  public void testVariousAddsViaNoCollectionClient() throws Exception {
+    testVariousAdds(NO_COLLECTION_CLIENT);
   }
 
-  protected static void testVariousUpdates(SolrClient client) throws Exception {
+  protected static void testVariousAdds(SolrClient client) throws Exception {
     assertNotNull("client not initialized", client);
     
     UpdateResponse rsp = null;
@@ -306,7 +393,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_ONE_PRE + "666"), f("foo_i", "1976"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("single shard, 1st doc should fail", rsp, S_ONE_PRE + "42");
+    assertUpdateTolerantAddErrors("single shard, 1st doc should fail", rsp, S_ONE_PRE + "42");
     assertEquals(0, client.commit().getStatus());
     assertQueryDocIds(client, false, S_ONE_PRE + "42");
     assertQueryDocIds(client, true, S_ONE_PRE + "666");
@@ -319,7 +406,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_ONE_PRE + "77"), f("foo_i", "bogus_val"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("single shard, 2nd doc should fail", rsp, S_ONE_PRE + "77");
+    assertUpdateTolerantAddErrors("single shard, 2nd doc should fail", rsp, S_ONE_PRE + "77");
     assertQueryDocIds(client, false, S_ONE_PRE + "77");
     assertQueryDocIds(client, true, S_ONE_PRE + "666", S_ONE_PRE + "55");
 
@@ -334,7 +421,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_TWO_PRE + "666"), f("foo_i", "1976"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("two shards, 1st doc should fail", rsp, S_ONE_PRE + "42");
+    assertUpdateTolerantAddErrors("two shards, 1st doc should fail", rsp, S_ONE_PRE + "42");
     assertEquals(0, client.commit().getStatus());
     assertQueryDocIds(client, false, S_ONE_PRE + "42");
     assertQueryDocIds(client, true, S_TWO_PRE + "666");
@@ -347,7 +434,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_TWO_PRE + "77"), f("foo_i", "bogus_val"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("two shards, 2nd doc should fail", rsp, S_TWO_PRE + "77");
+    assertUpdateTolerantAddErrors("two shards, 2nd doc should fail", rsp, S_TWO_PRE + "77");
     assertQueryDocIds(client, false, S_TWO_PRE + "77");
     assertQueryDocIds(client, true, S_TWO_PRE + "666", S_ONE_PRE + "55");
 
@@ -372,9 +459,9 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                  doc(f("id", S_TWO_PRE + "26"))).process(client);
     
     assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantErrors("many docs, 1 from each shard should fail", rsp,
-                               S_ONE_PRE + "15",
-                               S_TWO_PRE + "22");
+    assertUpdateTolerantAddErrors("many docs, 1 from each shard should fail", rsp,
+                                  S_ONE_PRE + "15",
+                                  S_TWO_PRE + "22");
     assertQueryDocIds(client, false, S_TWO_PRE + "22", S_ONE_PRE + "15");
     assertQueryDocIds(client, true,
                       S_ONE_PRE + "11", S_TWO_PRE + "21", S_ONE_PRE + "12",
@@ -499,11 +586,76 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
 
   }
 
-  // nocommit: redesign so that we can assert errors of diff types besides "add" (ie: deletes) 
+  //
+  public void testAddsMixedWithDeletesViaCloudClient() throws Exception {
+    testAddsMixedWithDeletes(CLOUD_CLIENT);
+  }
+  public void testAddsMixedWithDeletesViaShard1LeaderClient() throws Exception {
+    testAddsMixedWithDeletes(S_ONE_LEADER_CLIENT);
+  }
+  public void testAddsMixedWithDeletesViaShard2LeaderClient() throws Exception {
+    testAddsMixedWithDeletes(S_TWO_LEADER_CLIENT);
+  }
+  public void testAddsMixedWithDeletesViaShard1NonLeaderClient() throws Exception {
+    testAddsMixedWithDeletes(S_ONE_NON_LEADER_CLIENT);
+  }
+  public void testAddsMixedWithDeletesViaShard2NonLeaderClient() throws Exception {
+    testAddsMixedWithDeletes(S_TWO_NON_LEADER_CLIENT);
+  }
+  public void testAddsMixedWithDeletesViaNoCollectionClient() throws Exception {
+    testAddsMixedWithDeletes(NO_COLLECTION_CLIENT);
+  }
+  
+  protected static void testAddsMixedWithDeletes(SolrClient client) throws Exception {
+    assertNotNull("client not initialized", client);
+
+    // nocommit: test adds & deletes mixed in a single UpdateRequest, w/ tolerated failures of both types
+  }
+
+  /** Asserts that the UpdateResponse contains the specified expectedErrs and no others */
   public static void assertUpdateTolerantErrors(String assertionMsgPrefix,
                                                 UpdateResponse response,
-                                                String... errorIdsExpected) {
+                                                ExpectedErr... expectedErrs) {
+    @SuppressWarnings("unchecked")
+    List<SimpleOrderedMap<String>> errors = (List<SimpleOrderedMap<String>>)
+      response.getResponseHeader().get("errors");
+    
+    assertNotNull(assertionMsgPrefix + ": Null errors: " + response.toString(), errors);
+    assertEquals(assertionMsgPrefix + ": Num error ids: " + errors.toString(),
+                 expectedErrs.length, errors.size());
 
+    for (SimpleOrderedMap<String> err : errors) {
+      String assertErrPre = assertionMsgPrefix + ": " + err.toString();
+
+      String id = err.get("id");
+      assertNotNull(assertErrPre + " ... null id", id);
+      String type = err.get("type");
+      assertNotNull(assertErrPre + " ... null type", type);
+
+      // inefficient scan, but good nough for the size of sets we're dealing with
+      boolean found = false;
+      for (ExpectedErr expected : expectedErrs) {
+        if (expected.type.equals(type) && expected.id.equals(id)) {
+          // nocommit: test err.get("message").contains(expected.someSubStr)
+          found = true;
+          break;
+        }
+      }
+      assertTrue(assertErrPre + " ... unexpected err, not found in: " + response.toString(), found);
+
+    }
+    
+    // nocommit: retire numErrors, we've already checked errors.size()
+    assertEquals(assertionMsgPrefix + ": numErrors: " + response.toString(),
+                 expectedErrs.length, response.getResponseHeader().get("numErrors"));
+ 
+  }
+  
+  /** convinience method when the only type of errors you expect are 'add' errors */
+  // nocommit: refactor to be wrapper arround assertUpdateTolerantErrors
+  public static void assertUpdateTolerantAddErrors(String assertionMsgPrefix,
+                                                   UpdateResponse response,
+                                                   String... errorIdsExpected) {
     @SuppressWarnings("unchecked")
     List<SimpleOrderedMap<String>> errors = (List<SimpleOrderedMap<String>>)
       response.getResponseHeader().get("errors");
@@ -516,7 +668,6 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
     for (SimpleOrderedMap<String> err : errors) {
       String assertErrPre = assertionMsgPrefix + ": " + err.toString();
       
-      // nocommit: support other types
       assertEquals(assertErrPre + " ... nocommit: this err type not handled yet",
                    "ADD", err.get("type"));
       
@@ -552,7 +703,6 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
     r.add(Arrays.asList(docs));
     return r;
   }
-
   
   public static SolrInputDocument doc(SolrInputField... fields) {
     SolrInputDocument doc = new SolrInputDocument();
@@ -568,4 +718,24 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
     return f;
   }
 
+  /** simple helper struct */
+  public static final class ExpectedErr {
+    final String type;
+    final String id;
+    // nocommit: add errorMsgSubstring to test against message, or ignored if null
+
+    public ExpectedErr(String type, String id) {
+      this.type = type;
+      this.id = id;
+    }
+  }
+  public static ExpectedErr addErr(String id) {// nocommit: add errorMsgSubstring to test against message
+    return new ExpectedErr("ADD", id);
+  }
+  public static ExpectedErr delIErr(String id) {// nocommit: add errorMsgSubstring to test against message
+    return new ExpectedErr("DELID", id);
+  }
+  public static ExpectedErr delQErr(String id) {// nocommit: add errorMsgSubstring to test against message
+    return new ExpectedErr("DELQ", id);
+  }  
 }
