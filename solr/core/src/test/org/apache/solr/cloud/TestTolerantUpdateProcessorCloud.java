@@ -270,6 +270,14 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
       assertQueryDocIds(c, true, S_ONE_PRE + "1",  S_TWO_PRE + "2");
       assertQueryDocIds(c, false, "id_not_exists");
 
+      // verify malformed deleteByQuerys fail
+      try {
+        UpdateResponse rsp = update(params()).deleteByQuery("foo_i:not_a_num").process(c);
+        fail("sanity check for malformed DBQ didn't fail: " + rsp.toString());
+      } catch (SolrException e) {
+        assertEquals("not the expected DBQ failure: " + e.getMessage(), 400, e.code());
+      }
+      
       // verify oportunistic concurrency deletions fail as we expect when docs are / aren't present
       for (UpdateRequest r : new UpdateRequest[] {
           update(params("commit", "true")).deleteById(S_ONE_PRE + "1", -1L),
