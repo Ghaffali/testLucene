@@ -18,8 +18,10 @@ package org.apache.solr.update.processor;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 
 import org.apache.lucene.util.BytesRef;
@@ -94,6 +96,27 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
    */
   private final List<KnownErr> knownErrors = new ArrayList<KnownErr>();
 
+  // Kludge: Because deleteByQuery updates are forwarded to every leader, we can get identical
+  // errors reported by every leader for the same underlying problem.
+  //
+  // It would be nice if we could cleanly handle the unlikely (but possible) situation of an
+  // update stream that includes multiple identical DBQs, with identical failures, and 
+  // to report each one once, for example...
+  //   add: id#1
+  //   dbq: foo:bar
+  //   add: id#2
+  //   add: id#3
+  //   dbq: foo:bar
+  //
+  // ...but i can't figure out a way to accurately identify & return duplicate 
+  // KnownErrs from duplicate identical underlying requests w/o erroneously returning identical 
+  // KnownErrs for the *same* underlying request but from diff shards.
+  //
+  // So as a kludge, we keep track of them for deduping against identical remote failures
+  //
+  // :nocommit: probably need to use this for "commit" as well?
+  private Set<KnownErr> knownDBQErrors = new HashSet<>();
+        
   private final FirstErrTracker firstErrTracker = new FirstErrTracker();
   private final DistribPhase distribPhase;
 
@@ -162,9 +185,19 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
 
       // nocommit: do we need isLeader type logic like processAdd ? does processAdd even need it?
       
-      CmdType type = cmd.isDeleteById() ? CmdType.DELID : CmdType.DELQ;
-      String id = cmd.isDeleteById() ? cmd.id : cmd.query;
-      knownErrors.add(new KnownErr(type, id, t.getMessage()));
+      KnownErr err = new KnownErr(cmd.isDeleteById() ? CmdType.DELID : CmdType.DELQ,
+                                  cmd.isDeleteById() ? cmd.id : cmd.query,
+                                  t.getMessage());
+      knownErrors.add(err);
+
+      // NOTE: we're not using this to dedup before adding to knownErrors.
+      // if we're lucky enough to get an immediate local failure (ie: we're a leader, or some other processor
+      // failed) then recording the multiple failures is a good thing -- helps us with an accurate fail
+      // fast if we exceed maxErrors
+      if (CmdType.DELQ.equals(err.type)) {
+        knownDBQErrors.add(err);
+      }
+      
       if (knownErrors.size() > maxErrors) {
         firstErrTracker.throwFirst();
       }
@@ -187,6 +220,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     } catch (DistributedUpdateProcessor.DistributedUpdatesAsyncException duae) {
       firstErrTracker.caught(duae);
 
+      
       // adjust out stats based on the distributed errors
       for (Error error : duae.errors) {
         // we can't trust the req info from the Error, because multiple original requests might have been
@@ -205,14 +239,25 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
           log.warn("remote error has no metadata to aggregate: " + remoteErr.getMessage(), remoteErr);
           continue;
         }
-        
+
         for (int i = 0; i < remoteErrMetadata.size(); i++) {
           KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
                                                           remoteErrMetadata.getVal(i));
-          if (null != err) {
-            knownErrors.add(err);
+          if (null == err) {
+            // some metadata unrelated to this update processor
+            continue;
           }
-          // else: some metadata unrelated to this update processor
+
+          if (CmdType.DELQ.equals(err.type)) {
+            if (knownDBQErrors.contains(err)) {
+              // we've already seen this identical error, probably a dup from another shard
+              continue;
+            } else {
+              knownDBQErrors.add(err);
+            }
+          }
+          
+          knownErrors.add(err);
         }
       }
     }
