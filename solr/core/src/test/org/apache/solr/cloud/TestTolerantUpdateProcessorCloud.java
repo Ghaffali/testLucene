@@ -58,6 +58,7 @@ import org.junit.ClassRule;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.rules.RuleChain;
 import org.junit.rules.TestRule;
@@ -73,12 +74,9 @@ import org.slf4j.LoggerFactory;
  * <p>
  * <b>NOTE:</b> This test sets up a static instance of MiniSolrCloud with a single collection 
  * and several clients pointed at specific nodes. These are all re-used across multiple test methods, 
- * and assumesthat the state of the cluster is healthy.
+ * and assumes that the state of the cluster is healthy.
  * </p>
  *
- * nocommit: test deletions that fail (and are ignored because of maxErrors) as well...
- *  - nocommit: DBQ with malformed query
- *  - nocommit: delete by id with incorrect version (optimistic concurrency fail)
  *
  * nocommit: what about shard splitting and "sub shard leaders" ? ...
  * (no idea if/how that affects things, but i notice lots of logic in DistributedUpdateProcessor along 
@@ -296,6 +294,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
   }
 
   //
+  @Ignore("nocommit: need to implement tolerante response merging in cloud client")
   public void testVariousDeletesViaCloudClient() throws Exception {
     testVariousDeletes(CLOUD_CLIENT);
   }
@@ -340,35 +339,74 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
                                  delIErr(id));
     }
     
-    // attempt to delete multiple doc ids that should all fail because of oportunistic concurrency constraints
+    // multiple failed deletes from the same shard (via oportunistic concurrent w/ bogus ids)
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true")
+                 ).deleteById(S_ONE_PRE + "X", +1L).deleteById(S_ONE_PRE + "Y", +1L).process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("failed oportunistic concurrent delete by id for 2 bogus docs", rsp,
+                               delIErr(S_ONE_PRE + "X"), delIErr(S_ONE_PRE + "Y"));
+    assertQueryDocIds(client, true, docId1, docId2);
+    
+    // multiple failed deletes from the diff shards due to oportunistic concurrency constraints
     rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
                         "commit", "true")).deleteById(docId2, -1L).deleteById(docId1, -1L).process(client);
     assertEquals(0, rsp.getStatus());
     assertUpdateTolerantErrors("failed oportunistic concurrent delete by id for 2 docs", rsp,
                                delIErr(docId1), delIErr(docId2));
-    
-    // nocommit: deleteByQuery using malformed query
+    assertQueryDocIds(client, true, docId1, docId2);
+
+    // deleteByQuery using malformed query (fail)
     rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
                         "commit", "true")).deleteByQuery("bogus_field:foo").process(client);
     assertEquals(0, rsp.getStatus());
     assertUpdateTolerantErrors("failed oportunistic concurrent delete by query", rsp,
                                delQErr("bogus_field:foo"));
+    assertQueryDocIds(client, true, docId1, docId2);
 
-    // nocommit: mix 2 deleteByQuery, one malformed (fail) one not but doesn't match anything (ok)
+    // mix 2 deleteByQuery, one malformed (fail), one that doesn't match anything (ok)
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true")
+                 ).deleteByQuery("bogus_field:foo").deleteByQuery("foo_i:23").process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("failed oportunistic concurrent delete by query", rsp,
+                               delQErr("bogus_field:foo"));
+    assertQueryDocIds(client, true, docId1, docId2);
     
-    // nocommit: mix 2 deleteById using _version_=-1, one for real doc1 (fail), one for bogus id (ok)
+    // mix 2 deleteById using _version_=-1, one for real doc1 (fail), one for bogus id (ok)
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true")
+                 ).deleteById(docId1, -1L).deleteById("bogus", -1L).process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("failed oportunistic concurrent delete by id: exists", rsp,
+                               delIErr(docId1));
+    assertQueryDocIds(client, true, docId1, docId2);
     
-    // nocommit: mix 2 deleteById using _version_=1, one for real doc1 (ok, deleted), one for bogus id (fail)
-
-    // nocommit: assertQueryDocIds doc2 only doc left
+    // mix 2 deleteById using _version_=1, one for real doc1 (ok, deleted), one for bogus id (fail)
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true")
+                 ).deleteById(docId1, +1L).deleteById("bogusId", +1L).process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("failed oportunistic concurrent delete by id: bogus", rsp,
+                               delIErr("bogusId"));
+    assertQueryDocIds(client, false, docId1);
+    assertQueryDocIds(client, true, docId2);
     
-    // nocommit: test multiple failed deletes from the same shard (bogus ids are fine)
-    
+    // mix 2 deleteByQuery, one malformed (fail), one that alctaully removes some docs (ok)
+    assertQueryDocIds(client, true, docId2);
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true")
+                 ).deleteByQuery("bogus_field:foo").deleteByQuery("foo_i:1976").process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("failed oportunistic concurrent delete by query", rsp,
+                               delQErr("bogus_field:foo"));
+    assertQueryDocIds(client, false, docId2);
 
   }
 
   
   //
+  @Ignore("nocommit: need to implement tolerante response merging in cloud client")
   public void testVariousAddsViaCloudClient() throws Exception {
     testVariousAdds(CLOUD_CLIENT);
   }
@@ -595,6 +633,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
   }
 
   //
+  @Ignore("nocommit: need to implement tolerante response merging in cloud client")
   public void testAddsMixedWithDeletesViaCloudClient() throws Exception {
     testAddsMixedWithDeletes(CLOUD_CLIENT);
   }
