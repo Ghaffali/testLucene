@@ -226,6 +226,11 @@ Bug Fixes
 * SOLR-8748: OverseerTaskProcessor limits number of concurrent tasks to just 10 even though the thread pool
   size is 100. The limit has now been increased to 100. (Scott Blum, shalin)
 
+* SOLR-8375: ReplicaAssigner rejects valid nodes (Kelvin Tan, noble)
+
+* SOLR-8738: Fixed false success response when invalid deleteByQuery requests intially hit non-leader
+  cloud nodes (hossman)
+
 Optimizations
 ----------------------
 * SOLR-7876: Speed up queries and operations that use many terms when timeAllowed has not been
