@@ -49,9 +49,9 @@ import static org.apache.solr.common.params.CoreAdminParams.INSTANCE_DIR;
 import static org.apache.solr.common.params.ShardParams._ROUTE_;
 import static org.apache.solr.common.util.StrUtils.formatString;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -63,6 +63,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
@@ -70,7 +71,6 @@ import org.apache.solr.client.solrj.request.CoreAdminRequest;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.RequestSyncShard;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.client.solrj.util.SolrIdentifierValidator;
-import org.apache.solr.cloud.DistributedMap;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler;
 import org.apache.solr.cloud.OverseerSolrResponse;
@@ -105,7 +105,6 @@ import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.CoreContainer;
-import org.apache.solr.handler.BlobHandler;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.request.SolrQueryRequest;
@@ -194,7 +193,7 @@ public class CollectionsHandler extends RequestHandlerBase {
         if (operation.sendToOCPQueue) {
           response = handleResponse(operation.action.toLower(), zkProps, rsp, operation.timeOut);
         }
-        else Overseer.getInQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
+        else Overseer.getStateUpdateQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
         final String collectionName = zkProps.getStr(NAME);
         if (action.equals(CollectionAction.CREATE) && asyncId == null) {
           if (rsp.getException() == null) {
@@ -375,13 +374,19 @@ public class CollectionsHandler extends RequestHandlerBase {
         cmdExecutor.ensureExists(ZkStateReader.CONFIGS_ZKNODE, zk);
         cmdExecutor.ensureExists(ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL, zk);
 
-        String path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/schema.xml";
-        byte[] data = BlobHandler.SCHEMA.replaceAll("'", "\"").getBytes(StandardCharsets.UTF_8);
-        cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+        try {
+          String path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/schema.xml";
+          byte[] data = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("SystemCollectionSchema.xml"));
+          cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+          path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/solrconfig.xml";
+          data = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("SystemCollectionSolrConfig.xml"));
+          cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+        } catch (IOException e) {
+          throw new SolrException(ErrorCode.SERVER_ERROR, e);
 
-        path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/solrconfig.xml";
-        data = BlobHandler.CONF.replaceAll("'", "\"").getBytes(StandardCharsets.UTF_8);
-        cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+        }
+
+
       }
     },
     DELETE_OP(DELETE) {

@@ -25,6 +25,7 @@ import org.apache.lucene.spatial.util.GeoRect;
 public class TestLatLonPointQueries extends BaseGeoPointTestCase {
   // todo deconflict GeoPoint and BKD encoding methods and error tolerance
   public static final double BKD_TOLERANCE = 1e-7;
+  public static final double ENCODING_TOLERANCE = 1e-7;
 
   @Override
   protected void addPointToDoc(String field, Document doc, double lat, double lon) {
@@ -33,13 +34,12 @@ public class TestLatLonPointQueries extends BaseGeoPointTestCase {
 
   @Override
   protected Query newRectQuery(String field, GeoRect rect) {
-    return new PointInRectQuery(field, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon);
+    return LatLonPoint.newBoxQuery(field, rect.minLat, rect.maxLat, rect.minLon, rect.maxLon);
   }
 
   @Override
   protected Query newDistanceQuery(String field, double centerLat, double centerLon, double radiusMeters) {
-    // return new BKDDistanceQuery(field, centerLat, centerLon, radiusMeters);
-    return null;
+    return LatLonPoint.newDistanceQuery(field, centerLat, centerLon, radiusMeters);
   }
 
   @Override
@@ -49,7 +49,7 @@ public class TestLatLonPointQueries extends BaseGeoPointTestCase {
 
   @Override
   protected Query newPolygonQuery(String field, double[] lats, double[] lons) {
-    return new PointInPolygonQuery(FIELD_NAME, lats, lons);
+    return LatLonPoint.newPolygonQuery(FIELD_NAME, lats, lons);
   }
 
   @Override
@@ -57,6 +57,53 @@ public class TestLatLonPointQueries extends BaseGeoPointTestCase {
 
     assert Double.isNaN(pointLat) == false;
 
+    int rectLatMinEnc = LatLonPoint.encodeLat(rect.minLat);
+    int rectLatMaxEnc = LatLonPoint.encodeLat(rect.maxLat);
+    int rectLonMinEnc = LatLonPoint.encodeLon(rect.minLon);
+    int rectLonMaxEnc = LatLonPoint.encodeLon(rect.maxLon);
+
+    int pointLatEnc = LatLonPoint.encodeLat(pointLat);
+    int pointLonEnc = LatLonPoint.encodeLon(pointLon);
+
+    if (rect.minLon < rect.maxLon) {
+      return pointLatEnc >= rectLatMinEnc &&
+        pointLatEnc < rectLatMaxEnc &&
+        pointLonEnc >= rectLonMinEnc &&
+        pointLonEnc < rectLonMaxEnc;
+    } else {
+      // Rect crosses dateline:
+      return pointLatEnc >= rectLatMinEnc &&
+        pointLatEnc < rectLatMaxEnc &&
+        (pointLonEnc >= rectLonMinEnc ||
+         pointLonEnc < rectLonMaxEnc);
+    }
+  }
+
+  @Override
+  protected double quantizeLat(double latRaw) {
+    return LatLonPoint.decodeLat(LatLonPoint.encodeLat(latRaw));
+  }
+
+  @Override
+  protected double quantizeLon(double lonRaw) {
+    return LatLonPoint.decodeLon(LatLonPoint.encodeLon(lonRaw));
+  }
+
+  // todo reconcile with GeoUtils (see LUCENE-6996)
+  public static double compare(final double v1, final double v2) {
+    final double delta = v1-v2;
+    return Math.abs(delta) <= BKD_TOLERANCE ? 0 : delta;
+  }
+
+  @Override
+  protected Boolean polyRectContainsPoint(GeoRect rect, double pointLat, double pointLon) {
+    // TODO write better random polygon tests
+
+    assert Double.isNaN(pointLat) == false;
+
+    // TODO: this comment is wrong!  we have fixed the quantization error (we now pre-quantize all randomly generated test points) yet the test
+    // still fails if we remove this evil "return null":
+    
     // false positive/negatives due to quantization error exist for both rectangles and polygons
     if (compare(pointLat, rect.minLat) == 0
         || compare(pointLat, rect.maxLat) == 0
@@ -87,18 +134,6 @@ public class TestLatLonPointQueries extends BaseGeoPointTestCase {
     }
   }
 
-  // todo reconcile with GeoUtils (see LUCENE-6996)
-  public static double compare(final double v1, final double v2) {
-    final double delta = v1-v2;
-    return Math.abs(delta) <= BKD_TOLERANCE ? 0 : delta;
-  }
-
-  @Override
-  protected Boolean polyRectContainsPoint(GeoRect rect, double pointLat, double pointLon) {
-    // TODO write better random polygon tests
-    return rectContainsPoint(rect, pointLat, pointLon);
-  }
-
   @Override
   protected Boolean circleContainsPoint(double centerLat, double centerLon, double radiusMeters, double pointLat, double pointLon) {
     double distanceMeters = GeoDistanceUtils.haversin(centerLat, centerLon, pointLat, pointLon);
@@ -119,11 +154,11 @@ public class TestLatLonPointQueries extends BaseGeoPointTestCase {
     for(int iter=0;iter<iters;iter++) {
       double lat = randomLat(small);
       double latEnc = LatLonPoint.decodeLat(LatLonPoint.encodeLat(lat));
-      assertEquals("lat=" + lat + " latEnc=" + latEnc + " diff=" + (lat - latEnc), lat, latEnc, LatLonPoint.TOLERANCE);
+      assertEquals("lat=" + lat + " latEnc=" + latEnc + " diff=" + (lat - latEnc), lat, latEnc, ENCODING_TOLERANCE);
 
       double lon = randomLon(small);
       double lonEnc = LatLonPoint.decodeLon(LatLonPoint.encodeLon(lon));
-      assertEquals("lon=" + lon + " lonEnc=" + lonEnc + " diff=" + (lon - lonEnc), lon, lonEnc, LatLonPoint.TOLERANCE);
+      assertEquals("lon=" + lon + " lonEnc=" + lonEnc + " diff=" + (lon - lonEnc), lon, lonEnc, ENCODING_TOLERANCE);
     }
   }
 

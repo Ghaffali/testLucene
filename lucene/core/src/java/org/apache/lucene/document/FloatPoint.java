@@ -16,14 +16,31 @@
  */
 package org.apache.lucene.document;
 
+import java.io.IOException;
+import java.util.Arrays;
+
+import org.apache.lucene.search.PointInSetQuery;
+import org.apache.lucene.search.PointRangeQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.util.BytesRefIterator;
 import org.apache.lucene.util.NumericUtils;
 
-/** A field that is indexed dimensionally such that finding
- *  all documents within an N-dimensional at search time is
- *  efficient.  Multiple values for the same field in one documents
- *  is allowed. */
-
+/** 
+ * An indexed {@code float} field.
+ * <p>
+ * Finding all documents within an N-dimensional at search time is
+ * efficient.  Multiple values for the same field in one document
+ * is allowed.
+ * <p>
+ * This field defines static factory methods for creating common queries:
+ * <ul>
+ *   <li>{@link #newExactQuery newExactQuery()} for matching an exact 1D point.
+ *   <li>{@link #newRangeQuery newRangeQuery()} for matching a 1D range.
+ *   <li>{@link #newMultiRangeQuery newMultiRangeQuery()} for matching points/ranges in n-dimensional space.
+ *   <li>{@link #newSetQuery newSetQuery()} for matching a set of 1D values.
+ * </ul>
+ */
 public final class FloatPoint extends Field {
 
   private static FieldType getType(int numDims) {
@@ -81,7 +98,7 @@ public final class FloatPoint extends Field {
    *  provided N-dimensional float point.
    *
    *  @param name field name
-   *  @param point int[] value
+   *  @param point float[] value
    *  @throws IllegalArgumentException if the field name or value is null.
    */
   public FloatPoint(String name, float... point) {
@@ -91,8 +108,8 @@ public final class FloatPoint extends Field {
   @Override
   public String toString() {
     StringBuilder result = new StringBuilder();
-    result.append(type.toString());
-    result.append('<');
+    result.append(getClass().getSimpleName());
+    result.append(" <");
     result.append(name);
     result.append(':');
 
@@ -108,10 +125,8 @@ public final class FloatPoint extends Field {
     return result.toString();
   }
   
-  // public helper methods (e.g. for queries)
-
   /** Encode n-dimensional float values into binary encoding */
-  public static byte[][] encode(Float value[]) {
+  private static byte[][] encode(Float value[]) {
     byte[][] encoded = new byte[value.length][];
     for (int i = 0; i < value.length; i++) {
       if (value[i] != null) {
@@ -122,13 +137,126 @@ public final class FloatPoint extends Field {
     return encoded;
   }
   
+  // public helper methods (e.g. for queries)
+  
   /** Encode single float dimension */
-  public static void encodeDimension(Float value, byte dest[], int offset) {
-    NumericUtils.intToBytesDirect(NumericUtils.floatToSortableInt(value), dest, offset);
+  public static void encodeDimension(float value, byte dest[], int offset) {
+    NumericUtils.intToBytes(NumericUtils.floatToSortableInt(value), dest, offset);
   }
   
   /** Decode single float dimension */
-  public static Float decodeDimension(byte value[], int offset) {
-    return NumericUtils.sortableIntToFloat(NumericUtils.bytesToIntDirect(value, offset));
+  public static float decodeDimension(byte value[], int offset) {
+    return NumericUtils.sortableIntToFloat(NumericUtils.bytesToInt(value, offset));
+  }
+  
+  // static methods for generating queries
+
+  /** 
+   * Create a query for matching an exact float value.
+   * <p>
+   * This is for simple one-dimension points, for multidimensional points use
+   * {@link #newMultiRangeQuery newMultiRangeQuery()} instead.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param value float value
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents with this exact value
+   */
+  public static Query newExactQuery(String field, float value) {
+    return newRangeQuery(field, value, true, value, true);
+  }
+  
+  /** 
+   * Create a range query for float values.
+   * <p>
+   * This is for simple one-dimension ranges, for multidimensional ranges use
+   * {@link #newMultiRangeQuery newMultiRangeQuery()} instead.
+   * <p>
+   * You can have half-open ranges (which are in fact &lt;/&le; or &gt;/&ge; queries)
+   * by setting the {@code lowerValue} or {@code upperValue} to {@code null}. 
+   * <p>
+   * By setting inclusive ({@code lowerInclusive} or {@code upperInclusive}) to false, it will
+   * match all documents excluding the bounds, with inclusive on, the boundaries are hits, too.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param lowerValue lower portion of the range. {@code null} means "open".
+   * @param lowerInclusive {@code true} if the lower portion of the range is inclusive, {@code false} if it should be excluded.
+   * @param upperValue upper portion of the range. {@code null} means "open".
+   * @param upperInclusive {@code true} if the upper portion of the range is inclusive, {@code false} if it should be excluded.
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this range.
+   */
+  public static Query newRangeQuery(String field, Float lowerValue, boolean lowerInclusive, Float upperValue, boolean upperInclusive) {
+    return newMultiRangeQuery(field, 
+                              new Float[] { lowerValue },
+                              new boolean[] { lowerInclusive }, 
+                              new Float[] { upperValue },
+                              new boolean[] { upperInclusive });
+  }
+
+  /** 
+   * Create a multidimensional range query for float values.
+   * <p>
+   * You can have half-open ranges (which are in fact &lt;/&le; or &gt;/&ge; queries)
+   * by setting a {@code lowerValue} element or {@code upperValue} element to {@code null}. 
+   * <p>
+   * By setting a dimension's inclusive ({@code lowerInclusive} or {@code upperInclusive}) to false, it will
+   * match all documents excluding the bounds, with inclusive on, the boundaries are hits, too.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param lowerValue lower portion of the range. {@code null} values mean "open" for that dimension.
+   * @param lowerInclusive {@code true} if the lower portion of the range is inclusive, {@code false} if it should be excluded.
+   * @param upperValue upper portion of the range. {@code null} values mean "open" for that dimension.
+   * @param upperInclusive {@code true} if the upper portion of the range is inclusive, {@code false} if it should be excluded.
+   * @throws IllegalArgumentException if {@code field} is null, or if {@code lowerValue.length != upperValue.length}
+   * @return a query matching documents within this range.
+   */
+  public static Query newMultiRangeQuery(String field, Float[] lowerValue, boolean lowerInclusive[], Float[] upperValue, boolean upperInclusive[]) {
+    PointRangeQuery.checkArgs(field, lowerValue, upperValue);
+    return new PointRangeQuery(field, FloatPoint.encode(lowerValue), lowerInclusive, FloatPoint.encode(upperValue), upperInclusive) {
+      @Override
+      protected String toString(int dimension, byte[] value) {
+        return Float.toString(FloatPoint.decodeDimension(value, 0));
+      }
+    };
+  }
+
+  /**
+   * Create a query matching any of the specified 1D values.  This is the points equivalent of {@code TermsQuery}.
+   * 
+   * @param field field name. must not be {@code null}.
+   * @param valuesIn all values to match
+   */
+  public static Query newSetQuery(String field, float... valuesIn) throws IOException {
+
+    // Don't unexpectedly change the user's incoming values array:
+    float[] values = valuesIn.clone();
+
+    Arrays.sort(values);
+
+    final BytesRef value = new BytesRef(new byte[Float.BYTES]);
+
+    return new PointInSetQuery(field, 1, Float.BYTES,
+                               new BytesRefIterator() {
+
+                                 int upto;
+
+                                 @Override
+                                 public BytesRef next() {
+                                   if (upto == values.length) {
+                                     return null;
+                                   } else {
+                                     encodeDimension(values[upto], value.bytes, 0);
+                                     upto++;
+                                     return value;
+                                   }
+                                 }
+                               }) {
+      @Override
+      protected String toString(byte[] value) {
+        assert value.length == Float.BYTES;
+        return Float.toString(decodeDimension(value, 0));
+      }
+    };
   }
 }
