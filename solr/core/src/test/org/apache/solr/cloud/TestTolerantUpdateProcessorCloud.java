@@ -27,14 +27,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.carrotsearch.randomizedtesting.rules.SystemPropertiesRestoreRule;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
-import org.apache.solr.SolrTestCaseJ4;
-import static org.apache.solr.SolrTestCaseJ4.params;
+import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.client.solrj.SolrClient;
-import org.apache.solr.client.solrj.embedded.JettyConfig;
-import org.apache.solr.client.solrj.embedded.JettyConfig.Builder;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
@@ -54,14 +48,10 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
 
-import org.junit.ClassRule;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
-import org.junit.Rule;
-import org.junit.rules.RuleChain;
-import org.junit.rules.TestRule;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,8 +78,7 @@ import org.slf4j.LoggerFactory;
  * - randomized # nodes, shards, replicas
  * - random updates contain rand # of docs with rand # failures to a random client
  */
-@SuppressSysoutChecks(bugUrl = "Solr logs to JUL")
-public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
+public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -99,8 +88,6 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
   
   private static final String COLLECTION_NAME = "test_col";
   
-  private static MiniSolrCloudCluster SOLR_CLUSTER;
-
   /** A basic client for operations at the cloud level, default collection will be set */
   private static CloudSolrClient CLOUD_CLIENT;
 
@@ -125,37 +112,24 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
   /** id field doc routing prefix for shard2 */
   private static final String S_TWO_PRE = "XYZ!";
   
-  
-  @Rule
-  public TestRule solrTestRules = RuleChain.outerRule(new SystemPropertiesRestoreRule());
-  
-  @ClassRule
-  public static TestRule solrClassRules = RuleChain.outerRule
-    (new SystemPropertiesRestoreRule()).around(new RevertDefaultThreadHandlerRule());
-
   @BeforeClass
   private static void createMiniSolrCloudCluster() throws Exception {
-    // nocommit: should we just be subclassing SolrTestCaseJ4 and get this for free?
-    SolrTestCaseJ4.chooseMPForMP();
     
-    Builder jettyConfig = JettyConfig.builder();
-    jettyConfig.waitForLoadingCoresToFinish(null);
-    SOLR_CLUSTER = new MiniSolrCloudCluster(NUM_SERVERS, createTempDir(), jettyConfig.build());
-    
-    String configName = "solrCloudCollectionConfig";
-    File configDir = new File(SolrTestCaseJ4.TEST_HOME() + File.separator + "collection1" + File.separator + "conf");
-    SOLR_CLUSTER.uploadConfigDir(configDir, configName);
+    final String configName = "solrCloudCollectionConfig";
+    final File configDir = new File(TEST_HOME() + File.separator + "collection1" + File.separator + "conf");
 
-    SolrTestCaseJ4.newRandomConfig();
+    configureCluster(NUM_SERVERS)
+      .addConfig(configName, configDir.toPath())
+      .configure();
     
     Map<String, String> collectionProperties = new HashMap<>();
     collectionProperties.put("config", "solrconfig-distrib-update-processor-chains.xml");
     collectionProperties.put("schema", "schema15.xml"); // string id for doc routing prefix
 
-    assertNotNull(SOLR_CLUSTER.createCollection(COLLECTION_NAME, NUM_SHARDS, REPLICATION_FACTOR,
-                                                configName, null, null, collectionProperties));
+    assertNotNull(cluster.createCollection(COLLECTION_NAME, NUM_SHARDS, REPLICATION_FACTOR,
+                                           configName, null, null, collectionProperties));
     
-    CLOUD_CLIENT = SOLR_CLUSTER.getSolrClient();
+    CLOUD_CLIENT = cluster.getSolrClient();
     CLOUD_CLIENT.setDefaultCollection(COLLECTION_NAME);
     
     ZkStateReader zkStateReader = CLOUD_CLIENT.getZkStateReader();
@@ -165,7 +139,7 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
     // really hackish way to get a URL for specific nodes based on shard/replica hosting
     // inspired by TestMiniSolrCloudCluster
     HashMap<String, String> urlMap = new HashMap<>();
-    for (JettySolrRunner jetty : SOLR_CLUSTER.getJettySolrRunners()) {
+    for (JettySolrRunner jetty : cluster.getJettySolrRunners()) {
       URL jettyURL = jetty.getBaseUrl();
       String nodeKey = jettyURL.getHost() + ":" + jettyURL.getPort() + jettyURL.getPath().replace("/","_");
       urlMap.put(nodeKey, jettyURL.toString());
@@ -237,16 +211,8 @@ public class TestTolerantUpdateProcessorCloud extends LuceneTestCase {
     }
   }
   
-  @AfterClass
-  private static void shutdownMiniSolrCloudCluster() throws Exception {
-    SOLR_CLUSTER.shutdown();
-
-    // nocommit: should we just be subclassing SolrTestCaseJ4 and get this for free?
-    SolrTestCaseJ4.unchooseMPForMP();
-  }
-  
   @Before
-  private void clearIndex() throws Exception {
+  private void clearCollection() throws Exception {
     assertEquals(0, CLOUD_CLIENT.deleteByQuery("*:*").getStatus());
     assertEquals(0, CLOUD_CLIENT.commit().getStatus());
   }
