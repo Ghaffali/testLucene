@@ -665,34 +665,14 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
   }
   
   /** convinience method when the only type of errors you expect are 'add' errors */
-  // nocommit: refactor to be wrapper arround assertUpdateTolerantErrors
   public static void assertUpdateTolerantAddErrors(String assertionMsgPrefix,
                                                    UpdateResponse response,
                                                    String... errorIdsExpected) {
-    @SuppressWarnings("unchecked")
-    List<SimpleOrderedMap<String>> errors = (List<SimpleOrderedMap<String>>)
-      response.getResponseHeader().get("errors");
-    assertNotNull(assertionMsgPrefix + ": Null errors: " + response.toString(), errors);
-    assertEquals(assertionMsgPrefix + ": Num error ids: " + errors.toString(),
-                 errorIdsExpected.length, errors.size());
-
-    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(errorIdsExpected));
-
-    for (SimpleOrderedMap<String> err : errors) {
-      String assertErrPre = assertionMsgPrefix + ": " + err.toString();
-      
-      assertEquals(assertErrPre + " ... nocommit: this err type not handled yet",
-                   "ADD", err.get("type"));
-      
-      String id = err.get("id");
-      assertNotNull(assertErrPre + " ... null id", id);
-      assertTrue(assertErrPre + " ... unexpected id", addErrorIdsExpected.contains(id));
-
+    ExpectedErr[] expected = new ExpectedErr[errorIdsExpected.length];
+    for (int i = 0; i < expected.length; i++) {
+      expected[i] = addErr(errorIdsExpected[i]);
     }
-
-    // nocommit: retire numErrors, we've already checked errors.size()
-    assertEquals(assertionMsgPrefix + ": numErrors: " + response.toString(),
-                 errorIdsExpected.length, response.getResponseHeader().get("numErrors"));
+    assertUpdateTolerantErrors(assertionMsgPrefix, response, expected);
   }
 
   /** 
