@@ -166,9 +166,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
   public Date getStartTimeStamp() { return startTime; }
 
-  @Deprecated
-  public long getStartTime() { return startTime.getTime(); }
-
   public long getStartNanoTime() {
     return startNanoTime;
   }
@@ -641,56 +638,11 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     return createReloadedUpdateHandler(className, "Update Handler", updateHandler);
   }
 
-  /**
-   * Creates a new core and register it in the list of cores.
-   * If a core with the same name already exists, it will be stopped and replaced by this one.
-   *
-   * @param dataDir the index directory
-   * @param config a solr config instance
-   * @param schema a solr schema instance
-   *
-   * @since solr 1.3
-   * @deprecated will be removed in the next release
-   */
-  public SolrCore(String name, String dataDir, SolrConfig config, IndexSchema schema, CoreDescriptor cd) {
-    this(name, dataDir, config, schema, null, cd, null, null, null);
-  }
-
   public SolrCore(CoreDescriptor cd, ConfigSet coreConfig) {
     this(cd.getName(), null, coreConfig.getSolrConfig(), coreConfig.getIndexSchema(), coreConfig.getProperties(),
         cd, null, null, null);
   }
 
-  /**
-   * Creates a new core that is to be loaded lazily. i.e. lazyLoad="true" in solr.xml
-   * 
-   * @since solr 4.1
-   * @deprecated will be removed in the next release
-   */
-  public SolrCore(String name, CoreDescriptor coreDescriptor) {
-    this.coreDescriptor = coreDescriptor;
-    this.setName(name);
-    this.schema = null;
-    this.dataDir = null;
-    this.ulogDir = null;
-    this.solrConfig = null;
-    this.configSetProperties = null;
-    this.maxWarmingSearchers = 2;  // we don't have a config yet, just pick a number.
-    this.slowQueryThresholdMillis = -1;
-    this.resourceLoader = null;
-    this.updateHandler = null;
-    this.isReloaded = true;
-    this.reqHandlers = null;
-    this.updateProcessorChains = null;
-    this.infoRegistry = null;
-    this.codec = null;
-    this.ruleExpiryLock = null;
-    this.memClassLoader = null;
-    this.directoryFactory = null;
-    this.solrCoreState = null;
-    this.restManager = null;
-    this.solrDelPolicy = null;
-  }
   
   /**
    * Creates a new core and register it in the list of cores. If a core with the
@@ -773,9 +725,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       updateProcessorChains = loadUpdateProcessorChains();
       reqHandlers = new RequestHandlers(this);
       reqHandlers.initHandlersFromConfig(solrConfig);
-
-      // Handle things that should eventually go away
-      initDeprecatedSupport();
 
       statsCache = initStatsCache();
 
@@ -2318,54 +2267,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   }
 
   /**
-   * Manage anything that should be taken care of in case configs change
-   */
-  private void initDeprecatedSupport()
-  {
-    // TODO -- this should be removed in deprecation release...
-    String gettable = solrConfig.get("admin/gettableFiles", null );
-    if( gettable != null ) {
-      log.warn(
-          "solrconfig.xml uses deprecated <admin/gettableFiles>, Please "+
-          "update your config to use the ShowFileRequestHandler." );
-      if( getRequestHandler( "/admin/file" ) == null ) {
-        NamedList<String> invariants = new NamedList<>();
-
-        // Hide everything...
-        Set<String> hide = new HashSet<>();
-
-        for (String file : solrConfig.getResourceLoader().listConfigDir()) {
-          hide.add(file.toUpperCase(Locale.ROOT));
-        }
-
-        // except the "gettable" list
-        StringTokenizer st = new StringTokenizer( gettable );
-        while( st.hasMoreTokens() ) {
-          hide.remove( st.nextToken().toUpperCase(Locale.ROOT) );
-        }
-        for( String s : hide ) {
-          invariants.add( ShowFileRequestHandler.HIDDEN, s );
-        }
-
-        NamedList<Object> args = new NamedList<>();
-        args.add( "invariants", invariants );
-        ShowFileRequestHandler handler = new ShowFileRequestHandler();
-        handler.init( args );
-        reqHandlers.register("/admin/file", handler);
-
-        log.warn( "adding ShowFileRequestHandler with hidden files: "+hide );
-      }
-    }
-
-    String facetSort = solrConfig.get("//bool[@name='facet.sort']", null);
-    if (facetSort != null) {
-      log.warn(
-          "solrconfig.xml uses deprecated <bool name='facet.sort'>. Please "+
-          "update your config to use <string name='facet.sort'>.");
-    }
-  }
-
-  /**
    * Creates and initializes a RestManager based on configuration args in solrconfig.xml.
    * RestManager provides basic storage support for managed resource data, such as to
    * persist stopwords to ZooKeeper if running in SolrCloud mode.
@@ -2578,46 +2479,43 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       schemaRes = mis.getResourceName();
     }
     final String managedSchmaResourcePath = schemaRes == null ? null : zkSolrResourceLoader.getConfigSetZkPath() + "/" + schemaRes;
-    return new Runnable() {
-      @Override
-      public void run() {
-        log.info("config update listener called for core {}", coreName);
-        SolrZkClient zkClient = cc.getZkController().getZkClient();
-        int solrConfigversion, overlayVersion, managedSchemaVersion = 0;
-        SolrConfig cfg = null;
-        try (SolrCore core = cc.solrCores.getCoreFromAnyList(coreName, true)) {
-          if (core == null || core.isClosed()) return;
-          cfg = core.getSolrConfig();
-          solrConfigversion = core.getSolrConfig().getOverlay().getZnodeVersion();
-          overlayVersion = core.getSolrConfig().getZnodeVersion();
-          if (managedSchmaResourcePath != null) {
-            managedSchemaVersion = ((ManagedIndexSchema) core.getLatestSchema()).getSchemaZkVersion();
-          }
-
-        }
-        if (cfg != null) {
-          cfg.refreshRequestParams();
-        }
-        if (checkStale(zkClient, overlayPath, solrConfigversion) ||
-            checkStale(zkClient, solrConfigPath, overlayVersion) ||
-            checkStale(zkClient, managedSchmaResourcePath, managedSchemaVersion)) {
-          log.info("core reload {}", coreName);
-          cc.reload(coreName);
-          return;
-        }
-        //some files in conf directory may have  other than managedschema, overlay, params
-        try (SolrCore core = cc.solrCores.getCoreFromAnyList(coreName, true)) {
-          if (core == null || core.isClosed()) return;
-          for (Runnable listener : core.confListeners) {
-            try {
-              listener.run();
-            } catch (Exception e) {
-              log.error("Error in listener ", e);
-            }
-          }
+    return () -> {
+      log.info("config update listener called for core {}", coreName);
+      SolrZkClient zkClient = cc.getZkController().getZkClient();
+      int solrConfigversion, overlayVersion, managedSchemaVersion = 0;
+      SolrConfig cfg = null;
+      try (SolrCore core1 = cc.solrCores.getCoreFromAnyList(coreName, true)) {
+        if (core1 == null || core1.isClosed()) return;
+        cfg = core1.getSolrConfig();
+        solrConfigversion = core1.getSolrConfig().getOverlay().getZnodeVersion();
+        overlayVersion = core1.getSolrConfig().getZnodeVersion();
+        if (managedSchmaResourcePath != null) {
+          managedSchemaVersion = ((ManagedIndexSchema) core1.getLatestSchema()).getSchemaZkVersion();
         }
 
       }
+      if (cfg != null) {
+        cfg.refreshRequestParams();
+      }
+      if (checkStale(zkClient, overlayPath, solrConfigversion) ||
+          checkStale(zkClient, solrConfigPath, overlayVersion) ||
+          checkStale(zkClient, managedSchmaResourcePath, managedSchemaVersion)) {
+        log.info("core reload {}", coreName);
+        cc.reload(coreName);
+        return;
+      }
+      //some files in conf directory may have  other than managedschema, overlay, params
+      try (SolrCore core1 = cc.solrCores.getCoreFromAnyList(coreName, true)) {
+        if (core1 == null || core1.isClosed()) return;
+        for (Runnable listener : core1.confListeners) {
+          try {
+            listener.run();
+          } catch (Exception e) {
+            log.error("Error in listener ", e);
+          }
+        }
+      }
+
     };
   }
 

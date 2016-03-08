@@ -16,7 +16,6 @@
  */
 package org.apache.lucene.search;
 
-
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
@@ -24,16 +23,11 @@ import java.util.Objects;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
-import org.apache.lucene.document.BinaryPoint; // javadocs
-import org.apache.lucene.document.DoublePoint; // javadocs
-import org.apache.lucene.document.FloatPoint;  // javadocs
 import org.apache.lucene.document.IntPoint;    // javadocs
-import org.apache.lucene.document.LongPoint;   // javadocs
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.StringHelper;
 
 /** 
@@ -46,83 +40,55 @@ import org.apache.lucene.util.StringHelper;
  * fields indexed with {@link IntPoint}.
  * <p>
  * For a single-dimensional field this query is a simple range query; in a multi-dimensional field it's a box shape.
- * @see IntPoint
- * @see LongPoint
- * @see FloatPoint
- * @see DoublePoint
- * @see BinaryPoint 
- *
+ * @see PointValues
  * @lucene.experimental
  */
 public abstract class PointRangeQuery extends Query {
   final String field;
   final int numDims;
+  final int bytesPerDim;
   final byte[][] lowerPoint;
-  final boolean[] lowerInclusive;
   final byte[][] upperPoint;
-  final boolean[] upperInclusive;
-  // This is null only in the "fully open range" case
-  final Integer bytesPerDim;
 
   /** 
    * Expert: create a multidimensional range query for point values.
-   * <p>
-   * You can have half-open ranges (which are in fact &lt;/&le; or &gt;/&ge; queries)
-   * by setting a {@code lowerValue} element or {@code upperValue} element to {@code null}. 
-   * <p>
-   * By setting a dimension's inclusive ({@code lowerInclusive} or {@code upperInclusive}) to false, it will
-   * match all documents excluding the bounds, with inclusive on, the boundaries are hits, too.
    *
    * @param field field name. must not be {@code null}.
-   * @param lowerPoint lower portion of the range. {@code null} values mean "open" for that dimension.
-   * @param lowerInclusive {@code true} if the lower portion of the range is inclusive, {@code false} if it should be excluded.
-   * @param upperPoint upper portion of the range. {@code null} values mean "open" for that dimension.
-   * @param upperInclusive {@code true} if the upper portion of the range is inclusive, {@code false} if it should be excluded.
+   * @param lowerPoint lower portion of the range (inclusive).
+   * @param upperPoint upper portion of the range (inclusive).
    * @throws IllegalArgumentException if {@code field} is null, or if {@code lowerValue.length != upperValue.length}
    */
-  protected PointRangeQuery(String field,
-                         byte[][] lowerPoint, boolean[] lowerInclusive,
-                         byte[][] upperPoint, boolean[] upperInclusive) {
+  protected PointRangeQuery(String field, byte[][] lowerPoint, byte[][] upperPoint) {
     checkArgs(field, lowerPoint, upperPoint);
     this.field = field;
-    numDims = lowerPoint.length;
+    if (lowerPoint.length == 0) {
+      throw new IllegalArgumentException("lowerPoint has length of zero");
+    }
+    this.numDims = lowerPoint.length;
+
     if (upperPoint.length != numDims) {
       throw new IllegalArgumentException("lowerPoint has length=" + numDims + " but upperPoint has different length=" + upperPoint.length);
     }
-    if (lowerInclusive.length != numDims) {
-      throw new IllegalArgumentException("lowerInclusive has length=" + lowerInclusive.length + " but expected=" + numDims);
-    }
-    if (upperInclusive.length != numDims) {
-      throw new IllegalArgumentException("upperInclusive has length=" + upperInclusive.length + " but expected=" + numDims);
-    }
     this.lowerPoint = lowerPoint;
-    this.lowerInclusive = lowerInclusive;
     this.upperPoint = upperPoint;
-    this.upperInclusive = upperInclusive;
 
-    int bytesPerDim = -1;
-    for(byte[] value : lowerPoint) {
-      if (value != null) {
-        if (bytesPerDim == -1) {
-          bytesPerDim = value.length;
-        } else if (value.length != bytesPerDim) {
-          throw new IllegalArgumentException("all dimensions must have same bytes length, but saw " + bytesPerDim + " and " + value.length);
-        }
-      }
+    if (lowerPoint[0] == null) {
+      throw new IllegalArgumentException("lowerPoint[0] is null");
     }
-    for(byte[] value : upperPoint) {
-      if (value != null) {
-        if (bytesPerDim == -1) {
-          bytesPerDim = value.length;
-        } else if (value.length != bytesPerDim) {
-          throw new IllegalArgumentException("all dimensions must have same bytes length, but saw " + bytesPerDim + " and " + value.length);
-        }
+    this.bytesPerDim = lowerPoint[0].length;
+    for (int i = 0; i < numDims; i++) {
+      if (lowerPoint[i] == null) {
+        throw new IllegalArgumentException("lowerPoint[" + i + "] is null");
       }
-    }
-    if (bytesPerDim == -1) {
-      this.bytesPerDim = null;
-    } else {
-      this.bytesPerDim = bytesPerDim;
+      if (upperPoint[i] == null) {
+        throw new IllegalArgumentException("upperPoint[" + i + "] is null");
+      }
+      if (lowerPoint[i].length != bytesPerDim) {
+        throw new IllegalArgumentException("all dimensions must have same bytes length, but saw " + bytesPerDim + " and " + lowerPoint[i].length);
+      }
+      if (upperPoint[i].length != bytesPerDim) {
+        throw new IllegalArgumentException("all dimensions must have same bytes length, but saw " + bytesPerDim + " and " + upperPoint[i].length);
+      }
     }
   }
 
@@ -150,6 +116,68 @@ public abstract class PointRangeQuery extends Query {
 
     return new ConstantScoreWeight(this) {
 
+      private DocIdSet buildMatchingDocIdSet(LeafReader reader, PointValues values,
+          byte[] packedLower, byte[] packedUpper) throws IOException {
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc());
+
+        values.intersect(field,
+            new IntersectVisitor() {
+
+              @Override
+              public void grow(int count) {
+                result.grow(count);
+              }
+
+              @Override
+              public void visit(int docID) {
+                result.add(docID);
+              }
+
+              @Override
+              public void visit(int docID, byte[] packedValue) {
+                for(int dim=0;dim<numDims;dim++) {
+                  int offset = dim*bytesPerDim;
+                  if (StringHelper.compare(bytesPerDim, packedValue, offset, packedLower, offset) < 0) {
+                    // Doc's value is too low, in this dimension
+                    return;
+                  }
+                  if (StringHelper.compare(bytesPerDim, packedValue, offset, packedUpper, offset) > 0) {
+                    // Doc's value is too high, in this dimension
+                    return;
+                  }
+                }
+
+                // Doc is in-bounds
+                result.add(docID);
+              }
+
+              @Override
+              public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+
+                boolean crosses = false;
+
+                for(int dim=0;dim<numDims;dim++) {
+                  int offset = dim*bytesPerDim;
+
+                  if (StringHelper.compare(bytesPerDim, minPackedValue, offset, packedUpper, offset) > 0 ||
+                      StringHelper.compare(bytesPerDim, maxPackedValue, offset, packedLower, offset) < 0) {
+                    return Relation.CELL_OUTSIDE_QUERY;
+                  }
+
+                  crosses |= StringHelper.compare(bytesPerDim, minPackedValue, offset, packedLower, offset) < 0 ||
+                    StringHelper.compare(bytesPerDim, maxPackedValue, offset, packedUpper, offset) > 0;
+                }
+
+                if (crosses) {
+                  return Relation.CELL_CROSSES_QUERY;
+                } else {
+                  return Relation.CELL_INSIDE_QUERY;
+                }
+              }
+            });
+        return result.build();
+      }
+
       @Override
       public Scorer scorer(LeafReaderContext context) throws IOException {
         LeafReader reader = context.reader();
@@ -166,118 +194,46 @@ public abstract class PointRangeQuery extends Query {
         if (fieldInfo.getPointDimensionCount() != numDims) {
           throw new IllegalArgumentException("field=\"" + field + "\" was indexed with numDims=" + fieldInfo.getPointDimensionCount() + " but this query has numDims=" + numDims);
         }
-        if (bytesPerDim != null && bytesPerDim.intValue() != fieldInfo.getPointNumBytes()) {
+        if (bytesPerDim != fieldInfo.getPointNumBytes()) {
           throw new IllegalArgumentException("field=\"" + field + "\" was indexed with bytesPerDim=" + fieldInfo.getPointNumBytes() + " but this query has bytesPerDim=" + bytesPerDim);
         }
         int bytesPerDim = fieldInfo.getPointNumBytes();
 
-        byte[] packedLowerIncl = new byte[numDims * bytesPerDim];
-        byte[] packedUpperIncl = new byte[numDims * bytesPerDim];
+        byte[] packedLower = new byte[numDims * bytesPerDim];
+        byte[] packedUpper = new byte[numDims * bytesPerDim];
 
-        byte[] minValue = new byte[bytesPerDim];
-        byte[] maxValue = new byte[bytesPerDim];
-        Arrays.fill(maxValue, (byte) 0xff);
-
-        byte[] one = new byte[bytesPerDim];
-        one[bytesPerDim-1] = 1;
-
-        // Carefully pack lower and upper bounds, taking care of per-dim inclusive:
+        // Carefully pack lower and upper bounds
         for(int dim=0;dim<numDims;dim++) {
-          if (lowerPoint[dim] != null) {
-            if (lowerInclusive[dim] == false) {
-              if (Arrays.equals(lowerPoint[dim], maxValue)) {
-                return null;
-              } else {
-                byte[] value = new byte[bytesPerDim];
-                NumericUtils.add(bytesPerDim, 0, lowerPoint[dim], one, value);
-                System.arraycopy(value, 0, packedLowerIncl, dim*bytesPerDim, bytesPerDim);
-              }
-            } else {
-              System.arraycopy(lowerPoint[dim], 0, packedLowerIncl, dim*bytesPerDim, bytesPerDim);
-            }
-          } else {
-            // Open-ended range: we just leave 0s in this packed dim for the lower value
-          }
-
-          if (upperPoint[dim] != null) {
-            if (upperInclusive[dim] == false) {
-              if (Arrays.equals(upperPoint[dim], minValue)) {
-                return null;
-              } else {
-                byte[] value = new byte[bytesPerDim];
-                NumericUtils.subtract(bytesPerDim, 0, upperPoint[dim], one, value);
-                System.arraycopy(value, 0, packedUpperIncl, dim*bytesPerDim, bytesPerDim);
-              }
-            } else {
-              System.arraycopy(upperPoint[dim], 0, packedUpperIncl, dim*bytesPerDim, bytesPerDim);
-            }
-          } else {
-            // Open-ended range: fill with max point for this dim:
-            System.arraycopy(maxValue, 0, packedUpperIncl, dim*bytesPerDim, bytesPerDim);
-          }
+          System.arraycopy(lowerPoint[dim], 0, packedLower, dim*bytesPerDim, bytesPerDim);
+          System.arraycopy(upperPoint[dim], 0, packedUpper, dim*bytesPerDim, bytesPerDim);
         }
 
-        // Now packedLowerIncl and packedUpperIncl are inclusive, and non-empty space:
+        boolean allDocsMatch;
+        if (values.getDocCount(field) == reader.maxDoc()) {
+          final byte[] fieldPackedLower = values.getMinPackedValue(field);
+          final byte[] fieldPackedUpper = values.getMaxPackedValue(field);
+          allDocsMatch = true;
+          for (int i = 0; i < numDims; ++i) {
+            int offset = i * bytesPerDim;
+            if (StringHelper.compare(bytesPerDim, packedLower, offset, fieldPackedLower, offset) > 0
+                || StringHelper.compare(bytesPerDim, packedUpper, offset, fieldPackedUpper, offset) < 0) {
+              allDocsMatch = false;
+              break;
+            }
+          }
+        } else {
+          allDocsMatch = false;
+        }
 
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc());
+        DocIdSetIterator iterator;
+        if (allDocsMatch) {
+          // all docs have a value and all points are within bounds, so everything matches
+          iterator = DocIdSetIterator.all(reader.maxDoc());
+        } else {
+          iterator = buildMatchingDocIdSet(reader, values, packedLower, packedUpper).iterator();
+        }
 
-        values.intersect(field,
-                         new IntersectVisitor() {
-
-                           @Override
-                           public void grow(int count) {
-                             result.grow(count);
-                           }
-
-                           @Override
-                           public void visit(int docID) {
-                             result.add(docID);
-                           }
-
-                           @Override
-                           public void visit(int docID, byte[] packedValue) {
-                             for(int dim=0;dim<numDims;dim++) {
-                               int offset = dim*bytesPerDim;
-                               if (StringHelper.compare(bytesPerDim, packedValue, offset, packedLowerIncl, offset) < 0) {
-                                 // Doc's value is too low, in this dimension
-                                 return;
-                               }
-                               if (StringHelper.compare(bytesPerDim, packedValue, offset, packedUpperIncl, offset) > 0) {
-                                 // Doc's value is too high, in this dimension
-                                 return;
-                               }
-                             }
-
-                             // Doc is in-bounds
-                             result.add(docID);
-                           }
-
-                           @Override
-                           public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-
-                             boolean crosses = false;
-
-                             for(int dim=0;dim<numDims;dim++) {
-                               int offset = dim*bytesPerDim;
-
-                               if (StringHelper.compare(bytesPerDim, minPackedValue, offset, packedUpperIncl, offset) > 0 ||
-                                   StringHelper.compare(bytesPerDim, maxPackedValue, offset, packedLowerIncl, offset) < 0) {
-                                 return Relation.CELL_OUTSIDE_QUERY;
-                               }
-
-                               crosses |= StringHelper.compare(bytesPerDim, minPackedValue, offset, packedLowerIncl, offset) < 0 ||
-                                 StringHelper.compare(bytesPerDim, maxPackedValue, offset, packedUpperIncl, offset) > 0;
-                             }
-
-                             if (crosses) {
-                               return Relation.CELL_CROSSES_QUERY;
-                             } else {
-                               return Relation.CELL_INSIDE_QUERY;
-                             }
-                           }
-                         });
-
-        return new ConstantScoreScorer(this, score(), result.build().iterator());
+        return new ConstantScoreScorer(this, score(), iterator);
       }
     };
   }
@@ -287,8 +243,6 @@ public abstract class PointRangeQuery extends Query {
     int hash = super.hashCode();
     hash = 31 * hash + Arrays.hashCode(lowerPoint);
     hash = 31 * hash + Arrays.hashCode(upperPoint);
-    hash = 31 * hash + Arrays.hashCode(lowerInclusive);
-    hash = 31 * hash + Arrays.hashCode(upperInclusive);
     hash = 31 * hash + numDims;
     hash = 31 * hash + Objects.hashCode(bytesPerDim);
     return hash;
@@ -301,9 +255,7 @@ public abstract class PointRangeQuery extends Query {
       return q.numDims == numDims &&
         q.bytesPerDim == bytesPerDim &&
         Arrays.equals(lowerPoint, q.lowerPoint) &&
-        Arrays.equals(lowerInclusive, q.lowerInclusive) &&
-        Arrays.equals(upperPoint, q.upperPoint) &&
-        Arrays.equals(upperInclusive, q.upperInclusive);
+        Arrays.equals(upperPoint, q.upperPoint);
     }
 
     return false;
@@ -323,31 +275,11 @@ public abstract class PointRangeQuery extends Query {
         sb.append(',');
       }
 
-      if (lowerInclusive[i]) {
-        sb.append('[');
-      } else {
-        sb.append('{');
-      }
-
-      if (lowerPoint[i] == null) {
-        sb.append('*');
-      } else {
-        sb.append(toString(i, lowerPoint[i]));
-      }
-
+      sb.append('[');
+      sb.append(toString(i, lowerPoint[i]));
       sb.append(" TO ");
-
-      if (upperPoint[i] == null) {
-        sb.append('*');
-      } else {
-        sb.append(toString(i, upperPoint[i]));
-      }
-
-      if (upperInclusive[i]) {
-        sb.append(']');
-      } else {
-        sb.append('}');
-      }
+      sb.append(toString(i, upperPoint[i]));
+      sb.append(']');
     }
 
     return sb.toString();

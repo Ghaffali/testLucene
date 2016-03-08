@@ -17,17 +17,65 @@
 package org.apache.lucene.index;
 
 import java.io.IOException;
+import java.math.BigInteger;
+import java.net.InetAddress;
 
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.DoublePoint;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.util.bkd.BKDWriter;
 
-/** Allows recursively visiting point values indexed with {@link IntPoint},
- *  {@link FloatPoint}, {@link LongPoint}, {@link DoublePoint}
- *  or {@link BinaryPoint}.
+/** 
+ * Access to indexed numeric values.
+ * <p>
+ * Points represent numeric values and are indexed differently than ordinary text. Instead of an inverted index, 
+ * points are indexed with datastructures such as <a href="https://en.wikipedia.org/wiki/K-d_tree">KD-trees</a>. 
+ * These structures are optimized for operations such as <i>range</i>, <i>distance</i>, <i>nearest-neighbor</i>, 
+ * and <i>point-in-polygon</i> queries. 
+ * <h1>Basic Point Types</h1>
+ * <table summary="Basic point types in Java and Lucene">
+ *   <tr><th>Java type</th><th>Lucene class</th></tr>
+ *   <tr><td>{@code int}</td><td>{@link IntPoint}</td></tr>
+ *   <tr><td>{@code long}</td><td>{@link LongPoint}</td></tr>
+ *   <tr><td>{@code float}</td><td>{@link FloatPoint}</td></tr>
+ *   <tr><td>{@code double}</td><td>{@link DoublePoint}</td></tr>
+ *   <tr><td>{@code byte[]}</td><td>{@link BinaryPoint}</td></tr>
+ *   <tr><td>{@link BigInteger}</td><td><a href="{@docRoot}/../sandbox/org/apache/lucene/document/BigIntegerPoint.html">BigIntegerPoint</a>*</td></tr>
+ *   <tr><td>{@link InetAddress}</td><td><a href="{@docRoot}/../sandbox/org/apache/lucene/document/InetAddressPoint.html">InetAddressPoint</a>*</td></tr>
+ * </table>
+ * * in the <i>lucene-sandbox</i> jar<br>
+ * <p>
+ * Basic Lucene point types behave like their java peers: for example {@link IntPoint} represents a signed 32-bit 
+ * {@link Integer}, supporting values ranging from {@link Integer#MIN_VALUE} to {@link Integer#MAX_VALUE}, ordered
+ * consistent with {@link Integer#compareTo(Integer)}. In addition to indexing support, point classes also contain 
+ * static methods (such as {@link IntPoint#newRangeQuery(String, int, int)}) for creating common queries. For example:
+ * <pre class="prettyprint">
+ *   // add year 1970 to document
+ *   document.add(new IntPoint("year", 1970));
+ *   // index document
+ *   writer.addDocument(document);
+ *   ...
+ *   // issue range query of 1960-1980
+ *   Query query = IntPoint.newRangeQuery("year", 1960, 1980);
+ *   TopDocs docs = searcher.search(query, ...);
+ * </pre>
+ * <h1>Geospatial Point Types</h1>
+ * Although basic point types such as {@link DoublePoint} support points in multi-dimensional space too, Lucene has
+ * specialized classes for location data. These classes are optimized for location data: they are more space-efficient and 
+ * support special operations such as <i>distance</i> and <i>polygon</i> queries. There are currently two implementations:
+ * <br>
+ * <ol>
+ *   <li><a href="{@docRoot}/../sandbox/org/apache/lucene/document/LatLonPoint.html">LatLonPoint</a> in <i>lucene-sandbox</i>: indexes {@code (latitude,longitude)} as {@code (x,y)} in two-dimensional space.
+ *   <li><a href="{@docRoot}/../spatial3d/org/apache/lucene/spatial3d/Geo3DPoint.html">Geo3DPoint</a>* in <i>lucene-spatial3d</i>: indexes {@code (latitude,longitude)} as {@code (x,y,z)} in three-dimensional space.
+ * </ol>
+ * * does <b>not</b> support altitude, 3D here means "uses three dimensions under-the-hood"<br>
+ * <h1>Advanced usage</h1>
+ * Custom structures can be created on top of single- or multi- dimensional basic types, on top of 
+ * {@link BinaryPoint} for more flexibility, or via custom {@link Field} subclasses.
  *
  *  @lucene.experimental */
 public abstract class PointValues {
@@ -61,7 +109,9 @@ public abstract class PointValues {
     void visit(int docID) throws IOException;
 
     /** Called for all documents in a leaf cell that crosses the query.  The consumer
-     *  should scrutinize the packedValue to decide whether to accept it. */
+     *  should scrutinize the packedValue to decide whether to accept it.  In the 1D case,
+     *  values are visited in increasing order, and in the case of ties, in increasing
+     *  docID order. */
     void visit(int docID, byte[] packedValue) throws IOException;
 
     /** Called for non-leaf cells to test how the cell relates to the query, to
@@ -78,10 +128,10 @@ public abstract class PointValues {
    *  to test whether each document is deleted, if necessary. */
   public abstract void intersect(String fieldName, IntersectVisitor visitor) throws IOException;
 
-  /** Returns minimum value for each dimension, packed, or null if no points were indexed */
+  /** Returns minimum value for each dimension, packed, or null if {@link #size} is <code>0</code> */
   public abstract byte[] getMinPackedValue(String fieldName) throws IOException;
 
-  /** Returns maximum value for each dimension, packed, or null if no points were indexed */
+  /** Returns maximum value for each dimension, packed, or null if {@link #size} is <code>0</code> */
   public abstract byte[] getMaxPackedValue(String fieldName) throws IOException;
 
   /** Returns how many dimensions were indexed */
@@ -89,4 +139,10 @@ public abstract class PointValues {
 
   /** Returns the number of bytes per dimension */
   public abstract int getBytesPerDimension(String fieldName) throws IOException;
+
+  /** Returns the total number of indexed points across all documents in this field. */
+  public abstract long size(String fieldName);
+
+  /** Returns the total number of documents that have indexed at least one point for this field. */
+  public abstract int getDocCount(String fieldName);
 }

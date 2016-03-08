@@ -413,22 +413,18 @@ public class OverseerTest extends SolrTestCaseJ4 {
       //register total of coreCount cores
       for (int i = 0; i < coreCount; i++) {
         final int slot = i;
-        Runnable coreStarter = new Runnable() {
-          @Override
-          public void run() {
 
-            final String coreName = "core" + slot;
-            
-            try {
-              ids[slot]=controllers[slot % nodeCount].publishState(collection, coreName, "node" + slot, Replica.State.ACTIVE, sliceCount);
-            } catch (Throwable e) {
-              e.printStackTrace();
-              fail("register threw exception:" + e.getClass());
-            }
+        nodeExecutors[i % nodeCount].submit((Runnable) () -> {
+
+          final String coreName = "core" + slot;
+
+          try {
+            ids[slot] = controllers[slot % nodeCount].publishState(collection, coreName, "node" + slot, Replica.State.ACTIVE, sliceCount);
+          } catch (Throwable e) {
+            e.printStackTrace();
+            fail("register threw exception:" + e.getClass());
           }
-        };
-        
-        nodeExecutors[i % nodeCount].submit(coreStarter);
+        });
       }
       
       for (int i = 0; i < nodeCount; i++) {
@@ -443,7 +439,6 @@ public class OverseerTest extends SolrTestCaseJ4 {
       int cloudStateSliceCount = 0;
       for (int i = 0; i < 40; i++) {
         cloudStateSliceCount = 0;
-        reader.updateClusterState();
         ClusterState state = reader.getClusterState();
         final Map<String,Slice> slices = state.getSlicesMap(collection);
         if (slices != null) {
@@ -528,7 +523,6 @@ public class OverseerTest extends SolrTestCaseJ4 {
   private void waitForCollections(ZkStateReader stateReader, String... collections) throws InterruptedException, KeeperException {
     int maxIterations = 100;
     while (0 < maxIterations--) {
-      stateReader.updateClusterState();
       final ClusterState state = stateReader.getClusterState();
       Set<String> availableCollections = state.getCollections();
       int availableCount = 0;
@@ -609,7 +603,6 @@ public class OverseerTest extends SolrTestCaseJ4 {
   private void verifyShardLeader(ZkStateReader reader, String collection, String shard, String expectedCore) throws InterruptedException, KeeperException {
     int maxIterations = 200;
     while(maxIterations-->0) {
-      reader.updateClusterState(); // poll state
       ZkNodeProps props =  reader.getClusterState().getLeader(collection, shard);
       if(props!=null) {
         if(expectedCore.equals(props.getStr(ZkStateReader.CORE_NAME_PROP))) {
@@ -836,7 +829,8 @@ public class OverseerTest extends SolrTestCaseJ4 {
       killerThread = new Thread(killer);
       killerThread.start();
 
-      reader = new ZkStateReader(controllerClient); //no watches, we'll poll
+      reader = new ZkStateReader(controllerClient);
+      reader.createClusterStateWatchersAndUpdate();
 
       for (int i = 0; i < atLeast(4); i++) {
         killCounter.incrementAndGet(); //for each round allow 1 kill
@@ -909,9 +903,10 @@ public class OverseerTest extends SolrTestCaseJ4 {
       mockController = new MockZKController(server.getZkAddress(), "node1");
       mockController.publishState(collection, "core1", "core_node1", Replica.State.RECOVERING, 1);
 
-      while (version == getClusterStateVersion(controllerClient));
+      while (version == reader.getClusterState().getZkClusterStateVersion()) {
+        Thread.sleep(100);
+      }
       
-      reader.updateClusterState();
       ClusterState state = reader.getClusterState();
       
       int numFound = 0;
@@ -1052,7 +1047,6 @@ public class OverseerTest extends SolrTestCaseJ4 {
         assertTrue(overseers.size() > 0);
 
         while (true)  {
-          reader.updateClusterState();
           ClusterState state = reader.getClusterState();
           if (state.hasCollection("perf_sentinel")) {
             break;

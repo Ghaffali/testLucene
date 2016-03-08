@@ -16,6 +16,33 @@ In this release, there is an example Solr server including a bundled
 servlet container in the directory named "example".
 See the Quick Start guide at http://lucene.apache.org/solr/quickstart.html
 
+==================  7.0.0 ==================
+(No Changes)
+
+==================  6.1.0 ==================
+Detailed Change List
+----------------------
+* SOLR-8782: Add asynchronous sugar methods to the SolrJ Collections API.  You
+  can now call .processAsync() to run a method asynchronously, or
+  .processAndWait() to wait for a call to finish without holding HTTP
+  collections open.  (Alan Woodward)
+
+New Features
+----------------------
+
+Bug Fixes
+----------------------
+
+Optimizations
+----------------------
+* SOLR-8722: Don't force a full ZkStateReader refresh on every Overseer operation.
+  (Scott Blum via shalin)
+
+Other Changes
+----------------------
+* SOLR-7516: Improve javadocs for JavaBinCodec, ObjectResolver and enforce the single-usage policy.
+  (Jason Gerlowski, Benoit Vanalderweireldt, shalin)
+
 ==================  6.0.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release
@@ -81,6 +108,9 @@ Upgrading from Solr 5.x
 * SOLR-8698: 'useParams' attribute specified in request handler cannot be overridden from request params
 
 * When requesting stats in date fields, "sum" is now a double value instead of a date. See SOLR-8671
+
+* SOLR-8736: The deprecated GET methods for schema are now accessible through the bulk API. The output
+  has less details and is not backward compatible.
 
 Detailed Change List
 ----------------------
@@ -231,6 +261,27 @@ Bug Fixes
 * SOLR-8738: Fixed false success response when invalid deleteByQuery requests intially hit non-leader
   cloud nodes (hossman)
 
+* SOLR-8771: Multi-threaded core shutdown creates executor per core. (Mike Drob via Mark Miller)
+
+* SOLR-8145: Fix position of OOM killer script when starting Solr in the background (Jurian Broertjes via
+  Timothy Potter)
+
+* SOLR-8769: Fix document exclusion in mlt query parser in Cloud mode for schemas that have non-"id"
+  unique field (Erik Hatcher, Anshum Gupta)
+
+* SOLR-8728: ReplicaAssigner throws NPE when a partial list of nodes are only participating in replica
+  placement. splitshard should preassign nodes using rules, if rules are present (noble, Shai Erera)
+
+* SOLR-8779: Fix missing InterruptedException handling in ZkStateReader.java (Varun Thacker)
+
+* SOLR-8449: Fix the core restore functionality to allow restoring multiple times on the same core
+  (Johannes Brucher, Varun Thacker)
+
+* SOLR-8155: JSON Facet API - field faceting on a multi-valued string field without
+  docValues (i.e. UnInvertedField implementation), but with a prefix or with a sort
+  other than count, resulted in incorrect results.  This has been fixed, and facet.prefix
+  support for facet.method=uif has been enabled. (Mikhail Khludnev, yonik)
+
 Optimizations
 ----------------------
 * SOLR-7876: Speed up queries and operations that use many terms when timeAllowed has not been
@@ -254,6 +305,9 @@ Optimizations
   (Mark Miller)
 
 * SOLR-8720: ZkController#publishAndWaitForDownStates should use #publishNodeAsDown. (Mark Miller)
+
+* SOLR-8745: Deprecate costly ZkStateReader.updateClusterState(), replace with a narrow
+  forceUpdateCollection(collection) (Scott Blum via shalin)
 
 Other Changes
 ----------------------
@@ -347,6 +401,12 @@ Other Changes
 
 * SOLR-8758: Add a new SolrCloudTestCase class, using MiniSolrCloudCluster (Alan
   Woodward)
+
+* SOLR-8736: schema GET operations on fields, dynamicFields, fieldTypes, copyField are
+  reimplemented as a part of the bulk API with less details (noble)
+
+* SOLR-8766: Remove deprecated <admin> tag in solrconfig.xml and support for admin/gettableFiles
+  (noble, Jason Gerlowski, Varun Thacker)
 
 ==================  5.5.1 ==================
 

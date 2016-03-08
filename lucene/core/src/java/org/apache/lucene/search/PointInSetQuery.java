@@ -16,15 +16,10 @@
  */
 package org.apache.lucene.search;
 
-
 import java.io.IOException;
 import java.util.Arrays;
 
-import org.apache.lucene.document.BinaryPoint;
-import org.apache.lucene.document.DoublePoint;
-import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
-import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -48,13 +43,7 @@ import org.apache.lucene.util.StringHelper;
  * create range queries for lucene's standard {@code Point} types, refer to factory
  * methods on those classes, e.g. {@link IntPoint#newSetQuery IntPoint.newSetQuery()} for 
  * fields indexed with {@link IntPoint}.
-
- * @see IntPoint
- * @see LongPoint
- * @see FloatPoint
- * @see DoublePoint
- * @see BinaryPoint 
- *
+ * @see PointValues
  * @lucene.experimental */
 
 public abstract class PointInSetQuery extends Query {
@@ -64,9 +53,18 @@ public abstract class PointInSetQuery extends Query {
   final String field;
   final int numDims;
   final int bytesPerDim;
+  
+  /** 
+   * Iterator of encoded point values.
+   */
+  // TODO: if we want to stream, maybe we should use jdk stream class?
+  public static abstract class Stream implements BytesRefIterator {
+    @Override
+    public abstract BytesRef next();
+  };
 
   /** The {@code packedPoints} iterator must be in sorted order. */
-  protected PointInSetQuery(String field, int numDims, int bytesPerDim, BytesRefIterator packedPoints) throws IOException {
+  protected PointInSetQuery(String field, int numDims, int bytesPerDim, Stream packedPoints) {
     this.field = field;
     if (bytesPerDim < 1 || bytesPerDim > PointValues.MAX_NUM_BYTES) {
       throw new IllegalArgumentException("bytesPerDim must be > 0 and <= " + PointValues.MAX_NUM_BYTES + "; got " + bytesPerDim);
@@ -172,10 +170,6 @@ public abstract class PointInSetQuery extends Query {
       this.sortedPackedPoints = sortedPackedPoints;
       lastMaxPackedValue = new byte[bytesPerDim];
       scratch.length = bytesPerDim;
-      resetIterator();
-    }
-
-    private void resetIterator() {
       this.iterator = sortedPackedPoints.iterator();
       nextQueryPoint = iterator.next();
     }
@@ -211,15 +205,6 @@ public abstract class PointInSetQuery extends Query {
 
     @Override
     public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
-      
-      // NOTE: this is messy ... we need it in cases where a single vistor (us) is shared across multiple leaf readers
-      // (e.g. SlowCompositeReaderWrapper), in which case we need to reset our iterator to re-start the merge sort.  Maybe we should instead
-      // add an explicit .start() to IntersectVisitor, and clarify the semantics that in the 1D case all cells will be visited in order?
-      if (StringHelper.compare(bytesPerDim, lastMaxPackedValue, 0, minPackedValue, 0) > 0) {    
-        resetIterator();
-      }
-      System.arraycopy(maxPackedValue, 0, lastMaxPackedValue, 0, bytesPerDim);
-
       while (nextQueryPoint != null) {
         scratch.bytes = minPackedValue;
         int cmpMin = nextQueryPoint.compareTo(scratch);

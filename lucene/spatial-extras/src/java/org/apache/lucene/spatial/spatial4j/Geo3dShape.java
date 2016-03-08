@@ -16,19 +16,19 @@
  */
 package org.apache.lucene.spatial.spatial4j;
 
-import com.spatial4j.core.context.SpatialContext;
-import com.spatial4j.core.distance.DistanceUtils;
-import com.spatial4j.core.shape.Point;
-import com.spatial4j.core.shape.Rectangle;
-import com.spatial4j.core.shape.Shape;
-import com.spatial4j.core.shape.SpatialRelation;
-import com.spatial4j.core.shape.impl.RectangleImpl;
-import org.apache.lucene.geo3d.LatLonBounds;
-import org.apache.lucene.geo3d.GeoArea;
-import org.apache.lucene.geo3d.GeoAreaFactory;
-import org.apache.lucene.geo3d.GeoPoint;
-import org.apache.lucene.geo3d.GeoShape;
-import org.apache.lucene.geo3d.PlanetModel;
+import org.locationtech.spatial4j.context.SpatialContext;
+import org.locationtech.spatial4j.distance.DistanceUtils;
+import org.locationtech.spatial4j.shape.Point;
+import org.locationtech.spatial4j.shape.Rectangle;
+import org.locationtech.spatial4j.shape.Shape;
+import org.locationtech.spatial4j.shape.SpatialRelation;
+import org.locationtech.spatial4j.shape.impl.RectangleImpl;
+import org.apache.lucene.spatial3d.geom.LatLonBounds;
+import org.apache.lucene.spatial3d.geom.GeoArea;
+import org.apache.lucene.spatial3d.geom.GeoAreaFactory;
+import org.apache.lucene.spatial3d.geom.GeoPoint;
+import org.apache.lucene.spatial3d.geom.GeoShape;
+import org.apache.lucene.spatial3d.geom.PlanetModel;
 
 /**
  * A Spatial4j Shape wrapping a {@link GeoShape} ("Geo3D") -- a 3D planar geometry based Spatial4j Shape implementation.

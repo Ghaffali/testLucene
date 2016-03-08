@@ -20,6 +20,7 @@ import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
 import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.ConstantScoreQuery;
@@ -43,6 +44,7 @@ import org.apache.lucene.spatial.util.GeoUtils;
  * <p>
  * <b>WARNING</b>: Values are indexed with some loss of precision, incurring up to 1E-7 error from the
  * original {@code double} values. 
+ * @see PointValues
  */
 // TODO ^^^ that is very sandy and hurts the API, usage, and tests tremendously, because what the user passes
 // to the field is not actually what gets indexed. Float would be 1E-5 error vs 1E-7, but it might be
@@ -67,8 +69,8 @@ public class LatLonPoint extends Field {
    */
   public void setLocationValue(double latitude, double longitude) {
     byte[] bytes = new byte[8];
-    NumericUtils.intToBytes(encodeLatitude(latitude), bytes, 0);
-    NumericUtils.intToBytes(encodeLongitude(longitude), bytes, Integer.BYTES);
+    NumericUtils.intToSortableBytes(encodeLatitude(latitude), bytes, 0);
+    NumericUtils.intToSortableBytes(encodeLongitude(longitude), bytes, Integer.BYTES);
     fieldsData = new BytesRef(bytes);
   }
 
@@ -159,7 +161,7 @@ public class LatLonPoint extends Field {
    * @return decoded latitude value.
    */
   public static double decodeLatitude(byte[] src, int offset) {
-    return decodeLatitude(NumericUtils.bytesToInt(src, offset));
+    return decodeLatitude(NumericUtils.sortableBytesToInt(src, offset));
   }
 
   /** 
@@ -180,16 +182,16 @@ public class LatLonPoint extends Field {
    * @return decoded longitude value.
    */
   public static double decodeLongitude(byte[] src, int offset) {
-    return decodeLongitude(NumericUtils.bytesToInt(src, offset));
+    return decodeLongitude(NumericUtils.sortableBytesToInt(src, offset));
   }
   
   /** sugar encodes a single point as a 2D byte array */
   private static byte[][] encode(double latitude, double longitude) {
     byte[][] bytes = new byte[2][];
     bytes[0] = new byte[4];
-    NumericUtils.intToBytes(encodeLatitude(latitude), bytes[0], 0);
+    NumericUtils.intToSortableBytes(encodeLatitude(latitude), bytes[0], 0);
     bytes[1] = new byte[4];
-    NumericUtils.intToBytes(encodeLongitude(longitude), bytes[1], 0);
+    NumericUtils.intToSortableBytes(encodeLongitude(longitude), bytes[1], 0);
     return bytes;
   }
 
@@ -233,12 +235,17 @@ public class LatLonPoint extends Field {
       // E.g.: maxLon = -179, minLon = 179
       byte[][] leftOpen = new byte[2][];
       leftOpen[0] = lower[0];
-      // leave longitude open (null)
+      // leave longitude open
+      leftOpen[1] = new byte[Integer.BYTES];
+      NumericUtils.intToSortableBytes(Integer.MIN_VALUE, leftOpen[1], 0);
       Query left = newBoxInternal(field, leftOpen, upper);
       q.add(new BooleanClause(left, BooleanClause.Occur.SHOULD));
+
       byte[][] rightOpen = new byte[2][];
       rightOpen[0] = upper[0];
-      // leave longitude open (null)
+      // leave longitude open
+      rightOpen[1] = new byte[Integer.BYTES];
+      NumericUtils.intToSortableBytes(Integer.MAX_VALUE, rightOpen[1], 0);
       Query right = newBoxInternal(field, lower, rightOpen);
       q.add(new BooleanClause(right, BooleanClause.Occur.SHOULD));
       return new ConstantScoreQuery(q.build());
@@ -248,7 +255,7 @@ public class LatLonPoint extends Field {
   }
   
   private static Query newBoxInternal(String field, byte[][] min, byte[][] max) {
-    return new PointRangeQuery(field, min, new boolean[] { true, true }, max, new boolean[] { false, false }) {
+    return new PointRangeQuery(field, min, max) {
       @Override
       protected String toString(int dimension, byte[] value) {
         if (dimension == 0) {
