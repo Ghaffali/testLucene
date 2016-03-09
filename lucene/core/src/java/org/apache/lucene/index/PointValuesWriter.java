@@ -18,8 +18,8 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 
-import org.apache.lucene.codecs.PointReader;
-import org.apache.lucene.codecs.PointWriter;
+import org.apache.lucene.codecs.PointsReader;
+import org.apache.lucene.codecs.PointsWriter;
 import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.ByteBlockPool;
 import org.apache.lucene.util.BytesRef;
@@ -43,6 +43,7 @@ class PointValuesWriter {
     packedValue = new byte[fieldInfo.getPointDimensionCount() * fieldInfo.getPointNumBytes()];
   }
 
+  // TODO: if exactly the same value is added to exactly the same doc, should we dedup?
   public void addPackedValue(int docID, BytesRef value) {
     if (value == null) {
       throw new IllegalArgumentException("field=" + fieldInfo.name + ": point value cannot be null");
@@ -59,10 +60,10 @@ class PointValuesWriter {
     numDocs++;
   }
 
-  public void flush(SegmentWriteState state, PointWriter writer) throws IOException {
+  public void flush(SegmentWriteState state, PointsWriter writer) throws IOException {
 
     writer.writeField(fieldInfo,
-                      new PointReader() {
+                      new PointsReader() {
                         @Override
                         public void intersect(String fieldName, IntersectVisitor visitor) throws IOException {
                           if (fieldName.equals(fieldInfo.name) == false) {
@@ -105,6 +106,16 @@ class PointValuesWriter {
 
                         @Override
                         public int getBytesPerDimension(String fieldName) {
+                          throw new UnsupportedOperationException();
+                        }
+
+                        @Override
+                        public long size(String fieldName) {
+                          throw new UnsupportedOperationException();
+                        }
+
+                        @Override
+                        public int getDocCount(String fieldName) {
                           throw new UnsupportedOperationException();
                         }
                       });

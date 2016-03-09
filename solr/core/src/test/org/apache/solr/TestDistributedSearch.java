@@ -225,27 +225,6 @@ public class TestDistributedSearch extends BaseDistributedSearchTestCase {
     
     String facetQuery = "id:[1 TO 15]";
 
-    // simple date facet on one field
-    query("q",facetQuery, "rows",100, "facet","true", 
-          "facet.date",tdate_a,
-          "facet.date",tdate_a,
-          "facet.date.other", "all", 
-          "facet.date.start","2010-05-01T11:00:00Z", 
-          "facet.date.gap","+1DAY", 
-          "facet.date.end","2010-05-20T11:00:00Z");
-
-    // date facet on multiple fields
-    query("q",facetQuery, "rows",100, "facet","true", 
-          "facet.date",tdate_a,
-          "facet.date",tdate_b,
-          "facet.date",tdate_a,
-          "facet.date.other", "all", 
-          "f."+tdate_b+".facet.date.start","2009-05-01T11:00:00Z", 
-          "f."+tdate_b+".facet.date.gap","+3MONTHS", 
-          "facet.date.start","2010-05-01T11:00:00Z", 
-          "facet.date.gap","+1DAY", 
-          "facet.date.end","2010-05-20T11:00:00Z");
-
     // simple range facet on one field
     query("q",facetQuery, "rows",100, "facet","true", 
           "facet.range",tlong,
@@ -425,8 +404,13 @@ public class TestDistributedSearch extends BaseDistributedSearchTestCase {
     
     query("q","*:*", "sort",i1+" desc", "stats", "true", "stats.field", "stats_dt");
     query("q","*:*", "sort",i1+" desc", "stats", "true", "stats.field", i1);
+
+    handle.put("stddev", FUZZY);
+    handle.put("sumOfSquares", FUZZY);
     query("q","*:*", "sort",i1+" desc", "stats", "true", "stats.field", tdate_a);
     query("q","*:*", "sort",i1+" desc", "stats", "true", "stats.field", tdate_b);
+    handle.remove("stddev");
+    handle.remove("sumOfSquares");
 
 
     rsp = query("q", "*:*", "sort", i1 + " desc", "stats", "true", 
@@ -522,6 +506,8 @@ public class TestDistributedSearch extends BaseDistributedSearchTestCase {
           "stats.field", "{!key=special_key}stats_dt",
           "stats.field", "{!ex=xxx}stats_dt");
 
+    handle.put("stddev", FUZZY);
+    handle.put("sumOfSquares", FUZZY);
     query("q","*:*", "sort",i1+" desc", "stats", "true",
           // do a really simple query so distributed IDF doesn't cause problems
           // when comparing with control collection
@@ -838,7 +824,7 @@ public class TestDistributedSearch extends BaseDistributedSearchTestCase {
             
             paras.append("}").append(field);
             numTotalStatQueries++;
-            rsp = query("q","*:*", "rows", "0", "stats", "true",
+            rsp = query("q", q, "rows", "0", "stats", "true",
                         "stats.field", paras.toString());
             // simple assert, mostly relying on comparison with single shard
             FieldStatsInfo s = rsp.getFieldStatsInfo().get("k");
@@ -850,6 +836,8 @@ public class TestDistributedSearch extends BaseDistributedSearchTestCase {
         }
       }
     }
+    handle.remove("stddev");
+    handle.remove("sumOfSquares");
     assertEquals("Sanity check failed: either test broke, or test changed, or you adjusted Stat enum" + 
                  " (adjust constant accordingly if intentional)",
                  5082, numTotalStatQueries);

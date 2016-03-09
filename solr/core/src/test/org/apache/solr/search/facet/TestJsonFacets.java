@@ -148,12 +148,9 @@ public class TestJsonFacets extends SolrTestCaseHS {
     for (int i=0; i<honda_model_counts.length-1; i++) {
       idx.add(i);
     }
-    Collections.sort(idx, new Comparator<Integer>() {
-      @Override
-      public int compare(Integer o1, Integer o2) {
-        int cmp = honda_model_counts[o2] - honda_model_counts[o1];
-        return cmp == 0 ? o1 - o2 : cmp;
-      }
+    Collections.sort(idx, (o1, o2) -> {
+      int cmp = honda_model_counts[o2] - honda_model_counts[o1];
+      return cmp == 0 ? o1 - o2 : cmp;
     });
 
 
@@ -644,6 +641,27 @@ public class TestJsonFacets extends SolrTestCaseHS {
             ",f1:{ 'buckets':[ {val:NJ,count:3}, {val:NY,count:2} ]}" +
             ",f2:{ 'buckets':[ {val:NY,count:2} ]}" +
             ",f3:{ 'buckets':[ {val:NJ,count:3} ]}" +
+            " } "
+    );
+
+    // test prefix on real multi-valued field
+    client.testJQ(params(p, "q", "*:*"
+        , "json.facet", "{" +
+            " f1:{${terms} type:terms, field:${multi_ss}, prefix:A  }" +
+            ",f2:{${terms} type:terms, field:${multi_ss}, prefix:z }" +
+            ",f3:{${terms} type:terms, field:${multi_ss}, prefix:aa }" +
+            ",f4:{${terms} type:terms, field:${multi_ss}, prefix:bb }" +
+            ",f5:{${terms} type:terms, field:${multi_ss}, prefix:a }" +
+            ",f6:{${terms} type:terms, field:${multi_ss}, prefix:b }" +
+            "}"
+        )
+        , "facets=={ 'count':6 " +
+            ",f1:{buckets:[]}" +
+            ",f2:{buckets:[]}" +
+            ",f3:{buckets:[]}" +
+            ",f4:{buckets:[]}" +
+            ",f5:{buckets:[ {val:a,count:3} ]}" +
+            ",f6:{buckets:[ {val:b,count:3} ]}" +
             " } "
     );
 

@@ -90,8 +90,8 @@ public class TestManagedSynonymFilterFactory extends RestTestBase {
                JSONUtil.toJSON(syns),
                "/responseHeader/status==0");
     
-    assertJQ(endpoint, 
-             "/synonymMappings/managedMap/happy==['cheerful','glad','joyful']");
+    assertJQ(endpoint,
+        "/synonymMappings/managedMap/happy==['cheerful','glad','joyful']");
 
     // request to a specific mapping
     assertJQ(endpoint+"/happy", 
@@ -146,7 +146,7 @@ public class TestManagedSynonymFilterFactory extends RestTestBase {
             "/response/lst[@name='error']/int[@name='code'] = '404'");
 
     // add the new field
-    assertJPut("/schema/fields/" + newFieldName, json("{'type':'managed_en'}"),
+    assertJPost("/schema", "{ add-field :  { name: managed_en_field, type : managed_en}}",
                "/responseHeader/status==0");
 
     // make sure the new field exists now
@@ -207,13 +207,13 @@ public class TestManagedSynonymFilterFactory extends RestTestBase {
     assertJPut(endpoint, JSONUtil.toJSON(m2mSyns), "/responseHeader/status==0");
 
     assertJQ(endpoint + "/funny",
-        "/funny==['entertaining','jocular','whimiscal']");
+        "/funny==['entertaining','funny','jocular','whimiscal']");
     assertJQ(endpoint + "/entertaining",
-        "/entertaining==['funny','jocular','whimiscal']");
+        "/entertaining==['entertaining','funny','jocular','whimiscal']");
     assertJQ(endpoint + "/jocular",
-        "/jocular==['entertaining','funny','whimiscal']");
+        "/jocular==['entertaining','funny','jocular','whimiscal']");
     assertJQ(endpoint + "/whimiscal",
-        "/whimiscal==['entertaining','funny','jocular']");
+        "/whimiscal==['entertaining','funny','jocular','whimiscal']");
   }
 
   /**

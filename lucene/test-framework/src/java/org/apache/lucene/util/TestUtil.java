@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -60,11 +61,6 @@ import org.apache.lucene.document.BinaryDocValuesField;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
-import org.apache.lucene.document.FieldType.LegacyNumericType;
-import org.apache.lucene.document.LegacyDoubleField;
-import org.apache.lucene.document.LegacyFloatField;
-import org.apache.lucene.document.LegacyIntField;
-import org.apache.lucene.document.LegacyLongField;
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedDocValuesField;
 import org.apache.lucene.index.CheckIndex;
@@ -115,6 +111,26 @@ public final class TestUtil {
     //
   }
 
+  /** 
+   * A comparator that compares UTF-16 strings / char sequences according to Unicode
+   * code point order. This can be used to verify {@link BytesRef} order. 
+   * <p>
+   * <b>Warning:</b> This comparator is rather inefficient, because
+   * it converts the strings to a {@code int[]} array on each invocation.
+   * */
+  public static final Comparator<CharSequence> STRING_CODEPOINT_COMPARATOR = (a, b) -> {
+    final int[] aCodePoints = a.codePoints().toArray();
+    final int[] bCodePoints = b.codePoints().toArray();
+    for(int i = 0, c = Math.min(aCodePoints.length, bCodePoints.length); i < c; i++) {
+      if (aCodePoints[i] < bCodePoints[i]) {
+        return -1;
+      } else if (aCodePoints[i] > bCodePoints[i]) {
+        return 1;
+      }
+    }
+    return aCodePoints.length - bCodePoints.length;
+  };
+  
   /** 
    * Convenience method unzipping zipName into destDir. You must pass it a clean destDir.
    *
@@ -317,6 +333,7 @@ public final class TestUtil {
     CheckIndex.testStoredFields(codecReader, infoStream, true);
     CheckIndex.testTermVectors(codecReader, infoStream, false, crossCheckTermVectors, true);
     CheckIndex.testDocValues(codecReader, infoStream, true);
+    CheckIndex.testPoints(codecReader, infoStream, true);
     
     // some checks really against the reader API
     checkReaderSanity(reader);
@@ -425,6 +442,16 @@ public final class TestUtil {
       assert result <= end;
       return result;
     }
+  }
+  
+  /**
+   * Returns a randomish big integer with {@code 1 .. maxBytes} storage.
+   */
+  public static BigInteger nextBigInteger(Random random, int maxBytes) {
+    int length = TestUtil.nextInt(random, 1, maxBytes);
+    byte[] buffer = new byte[length];
+    random.nextBytes(buffer);
+    return new BigInteger(buffer);
   }
 
   public static String randomSimpleString(Random r, int maxLength) {
@@ -769,7 +796,7 @@ public final class TestUtil {
     0x1D24F, 0x1D35F, 0x1D37F, 0x1D7FF, 0x1F02F, 0x1F09F, 0x1F1FF, 0x1F2FF, 
     0x2A6DF, 0x2B73F, 0x2FA1F, 0xE007F, 0xE01EF, 0xFFFFF, 0x10FFFF
   };
-  
+
   /** Returns random string of length between 0-20 codepoints, all codepoints within the same unicode block. */
   public static String randomRealisticUnicodeString(Random r) {
     return randomRealisticUnicodeString(r, 20);
@@ -1040,7 +1067,6 @@ public final class TestUtil {
       final Field field2;
       final DocValuesType dvType = field1.fieldType().docValuesType();
       final int dimCount = field1.fieldType().pointDimensionCount();
-      final LegacyNumericType numType = field1.fieldType().numericType();
       if (dvType != DocValuesType.NONE) {
         switch(dvType) {
           case NUMERIC:
@@ -1060,23 +1086,6 @@ public final class TestUtil {
         byte[] bytes = new byte[br.length];
         System.arraycopy(br.bytes, br.offset, bytes, 0, br.length);
         field2 = new BinaryPoint(field1.name(), bytes, field1.fieldType());
-      } else if (numType != null) {
-        switch (numType) {
-          case INT:
-            field2 = new LegacyIntField(field1.name(), field1.numericValue().intValue(), field1.fieldType());
-            break;
-          case FLOAT:
-            field2 = new LegacyFloatField(field1.name(), field1.numericValue().intValue(), field1.fieldType());
-            break;
-          case LONG:
-            field2 = new LegacyLongField(field1.name(), field1.numericValue().intValue(), field1.fieldType());
-            break;
-          case DOUBLE:
-            field2 = new LegacyDoubleField(field1.name(), field1.numericValue().intValue(), field1.fieldType());
-            break;
-          default:
-            throw new IllegalStateException("unknown Type: " + numType);
-        }
       } else {
         field2 = new Field(field1.name(), field1.stringValue(), field1.fieldType());
       }

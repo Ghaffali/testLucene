@@ -187,7 +187,7 @@ public class UnloadDistributedZkTest extends BasicDistributedZkTest {
     }
     ZkStateReader zkStateReader = getCommonCloudSolrClient().getZkStateReader();
     
-    zkStateReader.updateClusterState();
+    zkStateReader.forceUpdateCollection("unloadcollection");
 
     int slices = zkStateReader.getClusterState().getCollection("unloadcollection").getSlices().size();
     assertEquals(1, slices);
@@ -203,7 +203,7 @@ public class UnloadDistributedZkTest extends BasicDistributedZkTest {
       createCmd.setDataDir(getDataDir(core2dataDir));
       adminClient.request(createCmd);
     }
-    zkStateReader.updateClusterState();
+    zkStateReader.forceUpdateCollection("unloadcollection");
     slices = zkStateReader.getClusterState().getCollection("unloadcollection").getSlices().size();
     assertEquals(1, slices);
     
@@ -407,16 +407,13 @@ public class UnloadDistributedZkTest extends BasicDistributedZkTest {
       try {
         for (int j = 0; j < cnt; j++) {
           final int freezeJ = j;
-          executor.execute(new Runnable() {
-            @Override
-            public void run() {
-              Unload unloadCmd = new Unload(true);
-              unloadCmd.setCoreName("multiunload" + freezeJ);
-              try {
-                adminClient.request(unloadCmd);
-              } catch (SolrServerException | IOException e) {
-                throw new RuntimeException(e);
-              }
+          executor.execute(() -> {
+            Unload unloadCmd = new Unload(true);
+            unloadCmd.setCoreName("multiunload" + freezeJ);
+            try {
+              adminClient.request(unloadCmd);
+            } catch (SolrServerException | IOException e) {
+              throw new RuntimeException(e);
             }
           });
           Thread.sleep(random().nextInt(50));

@@ -552,7 +552,7 @@ public class BasicDistributedZkTest extends AbstractFullDistribZkTestBase {
 
     Thread.sleep(5000);
     ChaosMonkey.start(cloudJettys.get(0).jetty);
-    cloudClient.getZkStateReader().updateClusterState();
+    cloudClient.getZkStateReader().forceUpdateCollection("multiunload2");
     try {
       cloudClient.getZkStateReader().getLeaderRetry("multiunload2", "shard1", 30000);
     } catch (SolrException e) {
@@ -568,25 +568,20 @@ public class BasicDistributedZkTest extends AbstractFullDistribZkTestBase {
       ThreadPoolExecutor executor, final String collection, final int numShards, int cnt) {
     for (int i = 0; i < cnt; i++) {
       final int freezeI = i;
-      executor.execute(new Runnable() {
-        
-        @Override
-        public void run() {
-          Create createCmd = new Create();
-          createCmd.setCoreName(collection + freezeI);
-          createCmd.setCollection(collection);
+      executor.execute(() -> {
+        Create createCmd = new Create();
+        createCmd.setCoreName(collection + freezeI);
+        createCmd.setCollection(collection);
 
-          createCmd.setNumShards(numShards);
-          try {
-            String core3dataDir = createTempDir(collection).toFile().getAbsolutePath();
-            createCmd.setDataDir(getDataDir(core3dataDir));
+        createCmd.setNumShards(numShards);
+        try {
+          String core3dataDir = createTempDir(collection).toFile().getAbsolutePath();
+          createCmd.setDataDir(getDataDir(core3dataDir));
 
-            client.request(createCmd);
-          } catch (SolrServerException | IOException e) {
-            throw new RuntimeException(e);
-          }
+          client.request(createCmd);
+        } catch (SolrServerException | IOException e) {
+          throw new RuntimeException(e);
         }
-        
       });
     }
   }
@@ -835,7 +830,7 @@ public class BasicDistributedZkTest extends AbstractFullDistribZkTestBase {
     
     // we added a role of none on these creates - check for it
     ZkStateReader zkStateReader = getCommonCloudSolrClient().getZkStateReader();
-    zkStateReader.updateClusterState();
+    zkStateReader.forceUpdateCollection(oneInstanceCollection2);
     Map<String,Slice> slices = zkStateReader.getClusterState().getSlicesMap(oneInstanceCollection2);
     assertNotNull(slices);
     String roles = slices.get("slice1").getReplicasMap().values().iterator().next().getStr(ZkStateReader.ROLES_PROP);

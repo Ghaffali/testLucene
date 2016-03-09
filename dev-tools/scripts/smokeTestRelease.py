@@ -643,7 +643,7 @@ def verifyUnpacked(java, project, artifact, unpackPath, gitRevision, version, te
 
   if project == 'lucene':
     # TODO: clean this up to not be a list of modules that we must maintain
-    extras = ('analysis', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core', 'demo', 'docs', 'expressions', 'facet', 'grouping', 'highlighter', 'join', 'memory', 'misc', 'queries', 'queryparser', 'replicator', 'sandbox', 'spatial', 'spatial3d', 'suggest', 'test-framework', 'licenses')
+    extras = ('analysis', 'backward-codecs', 'benchmark', 'classification', 'codecs', 'core', 'demo', 'docs', 'expressions', 'facet', 'grouping', 'highlighter', 'join', 'memory', 'misc', 'queries', 'queryparser', 'replicator', 'sandbox', 'spatial', 'spatial-extras', 'spatial3d', 'suggest', 'test-framework', 'licenses')
     if isSrc:
       extras += ('build.xml', 'common-build.xml', 'module-build.xml', 'ivy-settings.xml', 'ivy-versions.properties', 'ivy-ignore-conflicts.properties', 'version.properties', 'tools', 'site')
   else:
@@ -700,7 +700,7 @@ def verifyUnpacked(java, project, artifact, unpackPath, gitRevision, version, te
       checkJavadocpathFull('%s/solr/build/docs' % unpackPath, False)
 
       print('    test solr example w/ Java 8...')
-      java.run_java8('ant clean example', '%s/antexample.log' % unpackPath)
+      java.run_java8('ant clean server', '%s/antexample.log' % unpackPath)
       testSolrExample(unpackPath, java.java8_home, True)
 
       os.chdir('..')
@@ -782,6 +782,7 @@ def readSolrOutput(p, startupEvent, failureEvent, logFile):
     f.close()
     
 def testSolrExample(unpackPath, javaPath, isSrc):
+  # test solr using some examples it comes with
   logFile = '%s/solr-example.log' % unpackPath
   if isSrc:
     os.chdir(unpackPath+'/solr')
@@ -1306,6 +1307,8 @@ def confirmAllReleasesAreTestedForBackCompat(smokeVersion, unpackPath):
       # Mixed version test case; ignore it for our purposes because we only
       # tally up the "tests single Lucene version" indices
       continue
+    elif name == '5.0.0.singlesegment':
+      tup = 5, 0, 0
     else:
       raise RuntimeError('could not parse version %s' % name)
 

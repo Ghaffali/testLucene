@@ -16,6 +16,33 @@ In this release, there is an example Solr server including a bundled
 servlet container in the directory named "example".
 See the Quick Start guide at http://lucene.apache.org/solr/quickstart.html
 
+==================  7.0.0 ==================
+(No Changes)
+
+==================  6.1.0 ==================
+Detailed Change List
+----------------------
+* SOLR-8782: Add asynchronous sugar methods to the SolrJ Collections API.  You
+  can now call .processAsync() to run a method asynchronously, or
+  .processAndWait() to wait for a call to finish without holding HTTP
+  collections open.  (Alan Woodward)
+
+New Features
+----------------------
+
+Bug Fixes
+----------------------
+
+Optimizations
+----------------------
+* SOLR-8722: Don't force a full ZkStateReader refresh on every Overseer operation.
+  (Scott Blum via shalin)
+
+Other Changes
+----------------------
+* SOLR-7516: Improve javadocs for JavaBinCodec, ObjectResolver and enforce the single-usage policy.
+  (Jason Gerlowski, Benoit Vanalderweireldt, shalin)
+
 ==================  6.0.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release
@@ -79,6 +106,11 @@ Upgrading from Solr 5.x
   in your code, you should import them under o.a.s.search (or use your IDE's "Organize Imports").
 
 * SOLR-8698: 'useParams' attribute specified in request handler cannot be overridden from request params
+
+* When requesting stats in date fields, "sum" is now a double value instead of a date. See SOLR-8671
+
+* SOLR-8736: The deprecated GET methods for schema are now accessible through the bulk API. The output
+  has less details and is not backward compatible.
 
 Detailed Change List
 ----------------------
@@ -211,6 +243,44 @@ Bug Fixes
 
 * SOLR-8599: After a failed connection during construction of SolrZkClient attempt to retry until a connection
   can be made. (Keith Laban, Dennis Gove)
+  
+* SOLR-8497: Merge index does not mark the Directory objects it creates as 'done' and they are retained in the 
+  Directory cache. (Sivlio Sanchez, Mark Miller)
+
+* SOLR-8696: Start the Overseer before actions that need the overseer on init and when reconnecting after 
+  zk expiration and improve init logic. (Scott Blum, Mark Miller)
+
+* SOLR-8420: Fix long overflow in sumOfSquares for Date statistics. (Tom Hill, Christine Poerschke, 
+  Tomás Fernández Löbbe)
+
+* SOLR-8748: OverseerTaskProcessor limits number of concurrent tasks to just 10 even though the thread pool
+  size is 100. The limit has now been increased to 100. (Scott Blum, shalin)
+
+* SOLR-8375: ReplicaAssigner rejects valid nodes (Kelvin Tan, noble)
+
+* SOLR-8738: Fixed false success response when invalid deleteByQuery requests intially hit non-leader
+  cloud nodes (hossman)
+
+* SOLR-8771: Multi-threaded core shutdown creates executor per core. (Mike Drob via Mark Miller)
+
+* SOLR-8145: Fix position of OOM killer script when starting Solr in the background (Jurian Broertjes via
+  Timothy Potter)
+
+* SOLR-8769: Fix document exclusion in mlt query parser in Cloud mode for schemas that have non-"id"
+  unique field (Erik Hatcher, Anshum Gupta)
+
+* SOLR-8728: ReplicaAssigner throws NPE when a partial list of nodes are only participating in replica
+  placement. splitshard should preassign nodes using rules, if rules are present (noble, Shai Erera)
+
+* SOLR-8779: Fix missing InterruptedException handling in ZkStateReader.java (Varun Thacker)
+
+* SOLR-8449: Fix the core restore functionality to allow restoring multiple times on the same core
+  (Johannes Brucher, Varun Thacker)
+
+* SOLR-8155: JSON Facet API - field faceting on a multi-valued string field without
+  docValues (i.e. UnInvertedField implementation), but with a prefix or with a sort
+  other than count, resulted in incorrect results.  This has been fixed, and facet.prefix
+  support for facet.method=uif has been enabled. (Mikhail Khludnev, yonik)
 
 Optimizations
 ----------------------
@@ -233,6 +303,11 @@ Optimizations
 
 * SOLR-8669: Non binary responses use chunked encoding because we flush the outputstream early.
   (Mark Miller)
+
+* SOLR-8720: ZkController#publishAndWaitForDownStates should use #publishNodeAsDown. (Mark Miller)
+
+* SOLR-8745: Deprecate costly ZkStateReader.updateClusterState(), replace with a narrow
+  forceUpdateCollection(collection) (Scott Blum via shalin)
 
 Other Changes
 ----------------------
@@ -312,6 +387,48 @@ Other Changes
   property. (yonik)
 
 * SOLR-8691: Cache index fingerprints per searcher. (yonik)
+
+* SOLR-8746: Renamed Overseer.getInQueue to getStateUpdateQueue, getInternalQueue to getInternalWorkQueue
+  and added javadocs. (Scott Blum, shalin)
+
+* SOLR-8752: Add a test for SizeLimitedDistributedMap and improve javadocs. (shalin)
+
+* SOLR-8671: Date statistics: make "sum" a double instead of a long/date (Tom Hill, Christine Poerschke,
+  Tomás Fernández Löbbe)
+
+* SOLR-8713: new UI and example solrconfig files point to Reference Guide for Solr Query Syntax instead 
+  of the wiki. (Marius Grama via Tomás Fernández Löbbe)
+
+* SOLR-8758: Add a new SolrCloudTestCase class, using MiniSolrCloudCluster (Alan
+  Woodward)
+
+* SOLR-8736: schema GET operations on fields, dynamicFields, fieldTypes, copyField are
+  reimplemented as a part of the bulk API with less details (noble)
+
+* SOLR-8766: Remove deprecated <admin> tag in solrconfig.xml and support for admin/gettableFiles
+  (noble, Jason Gerlowski, Varun Thacker)
+
+* SOLR-8799: Improve error message when tuple can't be read by SolrJ JDBC (Kevin Risden, Joel Bernstein)
+
+==================  5.5.1 ==================
+
+Bug Fixes
+----------------------
+
+* SOLR-8737: Managed synonym lists do not include the original term in the expand (janhoy)
+
+* SOLR-8734: fix (maxMergeDocs|mergeFactor) deprecation warnings: in solrconfig.xml
+  <maxMergeDocs|mergeFactor> may not be combined with <mergePolicyFactory> and
+  <maxMergeDocs|mergeFactor> on their own or combined with <mergePolicy> is a warning.
+  (Christine Poerschke, Shai Erera)
+
+* SOLR-8712: Variable solr.core.instanceDir was not being resolved (Kristine
+  Jetzke, Shawn Heisey, Alan Woodward)
+
+* SOLR-8793: Fix Core admin status API to not fail when computing the size of the segments_N
+  file if the file no longer exists (for example, if a commit happened and the IndexReader
+  hasn't refreshed yet). In this case the reported size of the file is -1.
+  (Shai Erera, Alexey Serba, Richard Coggins)
 
 ======================= 5.5.0 =======================
 

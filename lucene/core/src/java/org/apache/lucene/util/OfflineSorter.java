@@ -120,7 +120,7 @@ public class OfflineSorter {
       final long minBufferSizeBytes = MIN_BUFFER_SIZE_MB*MB;
       if (sortBufferByteSize <  minBufferSizeBytes
           || totalAvailableBytes > 10 * minBufferSizeBytes) { // lets see if we need/should to grow the heap 
-        if (totalAvailableBytes/2 > minBufferSizeBytes){ // there is enough mem for a reasonable buffer
+        if (totalAvailableBytes/2 > minBufferSizeBytes) { // there is enough mem for a reasonable buffer
           sortBufferByteSize = totalAvailableBytes/2; // grow the heap
         } else {
           //heap seems smallish lets be conservative fall back to the free/2 
@@ -174,7 +174,7 @@ public class OfflineSorter {
   private final Comparator<BytesRef> comparator;
   
   /** Default comparator: sorts in binary (codepoint) order */
-  public static final Comparator<BytesRef> DEFAULT_COMPARATOR = BytesRef.getUTF8SortedAsUnicodeComparator();
+  public static final Comparator<BytesRef> DEFAULT_COMPARATOR = Comparator.naturalOrder();
 
   /**
    * Defaults constructor.
@@ -282,7 +282,6 @@ public class OfflineSorter {
 
   /** Sort a single partition in-memory. */
   protected String sortPartition(TrackingDirectoryWrapper trackingDir) throws IOException {
-    BytesRefArray data = this.buffer;
 
     try (IndexOutput tempFile = trackingDir.createTempOutput(tempFileNamePrefix, "sort", IOContext.DEFAULT);
          ByteSequencesWriter out = getWriter(tempFile);) {
@@ -299,7 +298,7 @@ public class OfflineSorter {
       }
       
       // Clean up the buffer for the next partition.
-      data.clear();
+      buffer.clear();
 
       return tempFile.getName();
     }

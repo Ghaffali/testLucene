@@ -25,6 +25,7 @@ import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Properties;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,6 +36,7 @@ import org.apache.solr.SolrJettyTestBase;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.embedded.JettyConfig;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.response.QueryResponse;
@@ -59,8 +61,10 @@ public class TestRestoreCore extends SolrJettyTestBase {
 
   private static JettySolrRunner createJetty(TestReplicationHandler.SolrInstance instance) throws Exception {
     FileUtils.copyFile(new File(SolrTestCaseJ4.TEST_HOME(), "solr.xml"), new File(instance.getHomeDir(), "solr.xml"));
-    JettySolrRunner jetty = new JettySolrRunner(instance.getHomeDir(), "/solr", 0);
-    jetty.setDataDir(instance.getDataDir());
+    Properties nodeProperties = new Properties();
+    nodeProperties.setProperty("solr.data.dir", instance.getDataDir());
+    JettyConfig jettyConfig = JettyConfig.builder().setContext("/solr").setPort(0).build();
+    JettySolrRunner jetty = new JettySolrRunner(instance.getHomeDir(), nodeProperties, jettyConfig);
     jetty.start();
     return jetty;
   }
@@ -134,36 +138,43 @@ public class TestRestoreCore extends SolrJettyTestBase {
       Thread.sleep(1000);
     }
 
-    //Modify existing index before we call restore.
 
-    //Delete a few docs
-    int numDeletes = TestUtil.nextInt(random(), 1, nDocs);
-    for(int i=0; i<numDeletes; i++) {
-      masterClient.deleteByQuery("id:" + i);
-    }
-    masterClient.commit();
 
-    //Add a few more
-    int moreAdds = TestUtil.nextInt(random(), 1, 100);
-    for (int i=0; i<moreAdds; i++) {
-      SolrInputDocument doc = new SolrInputDocument();
-      doc.addField("id", i + nDocs);
-      doc.addField("name", "name = " + (i + nDocs));
-      masterClient.add(doc);
-    }
-    //Purposely not calling commit once in a while. There can be some docs which are not committed
-    if (usually()) {
+    int numRestoreTests = TestUtil.nextInt(random(), 1, 5);
+
+    for (int attempts=0; attempts<numRestoreTests; attempts++) {
+      //Modify existing index before we call restore.
+
+      //Delete a few docs
+      int numDeletes = TestUtil.nextInt(random(), 1, nDocs);
+      for(int i=0; i<numDeletes; i++) {
+        masterClient.deleteByQuery("id:" + i);
+      }
       masterClient.commit();
+
+      //Add a few more
+      int moreAdds = TestUtil.nextInt(random(), 1, 100);
+      for (int i=0; i<moreAdds; i++) {
+        SolrInputDocument doc = new SolrInputDocument();
+        doc.addField("id", i + nDocs);
+        doc.addField("name", "name = " + (i + nDocs));
+        masterClient.add(doc);
+      }
+      //Purposely not calling commit once in a while. There can be some docs which are not committed
+      if (usually()) {
+        masterClient.commit();
+      }
+
+      TestReplicationHandlerBackup.runBackupCommand(masterJetty, ReplicationHandler.CMD_RESTORE, params);
+
+      while (!fetchRestoreStatus()) {
+        Thread.sleep(1000);
+      }
+
+      //See if restore was successful by checking if all the docs are present again
+      verifyDocs(nDocs);
     }
 
-    TestReplicationHandlerBackup.runBackupCommand(masterJetty, ReplicationHandler.CMD_RESTORE, params);
-
-    while (!fetchRestoreStatus()) {
-      Thread.sleep(1000);
-    }
-
-    //See if restore was successful by checking if all the docs are present again
-    verifyDocs(nDocs);
   }
 
   @Test

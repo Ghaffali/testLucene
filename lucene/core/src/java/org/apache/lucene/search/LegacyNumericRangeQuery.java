@@ -29,6 +29,7 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.util.AttributeSource;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LegacyNumericUtils;
+import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.index.Term; // for javadocs
 
 /**
@@ -348,12 +349,12 @@ public final class LegacyNumericRangeQuery<T extends Number> extends MultiTermQu
   @Override
   public final int hashCode() {
     int hash = super.hashCode();
-    hash += precisionStep^0x64365465;
-    if (min != null) hash += min.hashCode()^0x14fa55fb;
-    if (max != null) hash += max.hashCode()^0x733fa5fe;
-    return hash +
-      (Boolean.valueOf(minInclusive).hashCode()^0x14fa55fb)+
-      (Boolean.valueOf(maxInclusive).hashCode()^0x733fa5fe);
+    hash = 31 * hash + precisionStep;
+    hash = 31 * hash + Objects.hashCode(min);
+    hash = 31 * hash + Objects.hashCode(max);
+    hash = 31 * hash + Objects.hashCode(minInclusive);
+    hash = 31 * hash + Objects.hashCode(maxInclusive);
+    return hash;
   }
 
   // members (package private, to be also fast accessible by NumericRangeTermEnum)
@@ -364,13 +365,13 @@ public final class LegacyNumericRangeQuery<T extends Number> extends MultiTermQu
 
   // used to handle float/double infinity correcty
   static final long LONG_NEGATIVE_INFINITY =
-    LegacyNumericUtils.doubleToSortableLong(Double.NEGATIVE_INFINITY);
+    NumericUtils.doubleToSortableLong(Double.NEGATIVE_INFINITY);
   static final long LONG_POSITIVE_INFINITY =
-    LegacyNumericUtils.doubleToSortableLong(Double.POSITIVE_INFINITY);
+    NumericUtils.doubleToSortableLong(Double.POSITIVE_INFINITY);
   static final int INT_NEGATIVE_INFINITY =
-    LegacyNumericUtils.floatToSortableInt(Float.NEGATIVE_INFINITY);
+    NumericUtils.floatToSortableInt(Float.NEGATIVE_INFINITY);
   static final int INT_POSITIVE_INFINITY =
-    LegacyNumericUtils.floatToSortableInt(Float.POSITIVE_INFINITY);
+    NumericUtils.floatToSortableInt(Float.POSITIVE_INFINITY);
 
   /**
    * Subclass of FilteredTermsEnum for enumerating all terms that match the
@@ -400,7 +401,7 @@ public final class LegacyNumericRangeQuery<T extends Number> extends MultiTermQu
           } else {
             assert dataType == FieldType.LegacyNumericType.DOUBLE;
             minBound = (min == null) ? LONG_NEGATIVE_INFINITY
-              : LegacyNumericUtils.doubleToSortableLong(min.doubleValue());
+              : NumericUtils.doubleToSortableLong(min.doubleValue());
           }
           if (!minInclusive && min != null) {
             if (minBound == Long.MAX_VALUE) break;
@@ -414,7 +415,7 @@ public final class LegacyNumericRangeQuery<T extends Number> extends MultiTermQu
           } else {
             assert dataType == FieldType.LegacyNumericType.DOUBLE;
             maxBound = (max == null) ? LONG_POSITIVE_INFINITY
-              : LegacyNumericUtils.doubleToSortableLong(max.doubleValue());
+              : NumericUtils.doubleToSortableLong(max.doubleValue());
           }
           if (!maxInclusive && max != null) {
             if (maxBound == Long.MIN_VALUE) break;
@@ -440,7 +441,7 @@ public final class LegacyNumericRangeQuery<T extends Number> extends MultiTermQu
           } else {
             assert dataType == FieldType.LegacyNumericType.FLOAT;
             minBound = (min == null) ? INT_NEGATIVE_INFINITY
-              : LegacyNumericUtils.floatToSortableInt(min.floatValue());
+              : NumericUtils.floatToSortableInt(min.floatValue());
           }
           if (!minInclusive && min != null) {
             if (minBound == Integer.MAX_VALUE) break;
@@ -454,7 +455,7 @@ public final class LegacyNumericRangeQuery<T extends Number> extends MultiTermQu
           } else {
             assert dataType == FieldType.LegacyNumericType.FLOAT;
             maxBound = (max == null) ? INT_POSITIVE_INFINITY
-              : LegacyNumericUtils.floatToSortableInt(max.floatValue());
+              : NumericUtils.floatToSortableInt(max.floatValue());
           }
           if (!maxInclusive && max != null) {
             if (maxBound == Integer.MIN_VALUE) break;

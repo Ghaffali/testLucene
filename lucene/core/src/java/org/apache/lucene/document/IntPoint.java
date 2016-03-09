@@ -16,14 +16,31 @@
  */
 package org.apache.lucene.document;
 
+import java.util.Arrays;
+
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.search.PointInSetQuery;
+import org.apache.lucene.search.PointRangeQuery;
+import org.apache.lucene.search.Query;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.NumericUtils;
 
-/** An int field that is indexed dimensionally such that finding
- *  all documents within an N-dimensional shape or range at search time is
- *  efficient.  Multiple values for the same field in one documents
- *  is allowed. */
-
+/** 
+ * An indexed {@code int} field.
+ * <p>
+ * Finding all documents within an N-dimensional shape or range at search time is
+ * efficient.  Multiple values for the same field in one document
+ * is allowed.
+ * <p>
+ * This field defines static factory methods for creating common queries:
+ * <ul>
+ *   <li>{@link #newExactQuery(String, int)} for matching an exact 1D point.
+ *   <li>{@link #newSetQuery(String, int...)} for matching a set of 1D values.
+ *   <li>{@link #newRangeQuery(String, int, int)} for matching a 1D range.
+ *   <li>{@link #newRangeQuery(String, int[], int[])} for matching points/ranges in n-dimensional space.
+ * </ul>
+ * @see PointValues
+ */
 public final class IntPoint extends Field {
 
   private static FieldType getType(int numDims) {
@@ -87,28 +104,147 @@ public final class IntPoint extends Field {
   public IntPoint(String name, int... point) {
     super(name, pack(point), getType(point.length));
   }
+  
+  @Override
+  public String toString() {
+    StringBuilder result = new StringBuilder();
+    result.append(getClass().getSimpleName());
+    result.append(" <");
+    result.append(name);
+    result.append(':');
 
-  // public helper methods (e.g. for queries)
+    BytesRef bytes = (BytesRef) fieldsData;
+    for (int dim = 0; dim < type.pointDimensionCount(); dim++) {
+      if (dim > 0) {
+        result.append(',');
+      }
+      result.append(decodeDimension(bytes.bytes, bytes.offset + dim * Integer.BYTES));
+    }
+
+    result.append('>');
+    return result.toString();
+  }
 
   /** Encode n-dimensional integer values into binary encoding */
-  public static byte[][] encode(Integer value[]) {
+  private static byte[][] encode(int value[]) {
     byte[][] encoded = new byte[value.length][];
     for (int i = 0; i < value.length; i++) {
-      if (value[i] != null) {
-        encoded[i] = new byte[Integer.BYTES];
-        encodeDimension(value[i], encoded[i], 0);
-      }
+      encoded[i] = new byte[Integer.BYTES];
+      encodeDimension(value[i], encoded[i], 0);
     }
     return encoded;
   }
   
+  // public helper methods (e.g. for queries)
+  
   /** Encode single integer dimension */
-  public static void encodeDimension(Integer value, byte dest[], int offset) {
-    NumericUtils.intToBytes(value, dest, offset);
+  public static void encodeDimension(int value, byte dest[], int offset) {
+    NumericUtils.intToSortableBytes(value, dest, offset);
   }
   
   /** Decode single integer dimension */
-  public static Integer decodeDimension(byte value[], int offset) {
-    return NumericUtils.bytesToInt(value, offset);
+  public static int decodeDimension(byte value[], int offset) {
+    return NumericUtils.sortableBytesToInt(value, offset);
+  }
+  
+  // static methods for generating queries
+  
+  /** 
+   * Create a query for matching an exact integer value.
+   * <p>
+   * This is for simple one-dimension points, for multidimensional points use
+   * {@link #newRangeQuery(String, int[], int[])} instead.
+   *
+   * @param field field name. must not be {@code null}.
+   * @param value exact value
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents with this exact value
+   */
+  public static Query newExactQuery(String field, int value) {
+    return newRangeQuery(field, value, value);
+  }
+
+  /** 
+   * Create a range query for integer values.
+   * <p>
+   * This is for simple one-dimension ranges, for multidimensional ranges use
+   * {@link #newRangeQuery(String, int[], int[])} instead.
+   * <p>
+   * You can have half-open ranges (which are in fact &lt;/&le; or &gt;/&ge; queries)
+   * by setting {@code lowerValue = Integer.MIN_VALUE} or {@code upperValue = Integer.MAX_VALUE}. 
+   * <p>
+   * Ranges are inclusive. For exclusive ranges, pass {@code lowerValue + 1} or {@code upperValue - 1}
+   *
+   * @param field field name. must not be {@code null}.
+   * @param lowerValue lower portion of the range (inclusive).
+   * @param upperValue upper portion of the range (inclusive).
+   * @throws IllegalArgumentException if {@code field} is null.
+   * @return a query matching documents within this range.
+   */
+  public static Query newRangeQuery(String field, int lowerValue, int upperValue) {
+    return newRangeQuery(field, new int[] { lowerValue }, new int[] { upperValue });
+  }
+
+  /** 
+   * Create a range query for n-dimensional integer values.
+   * <p>
+   * You can have half-open ranges (which are in fact &lt;/&le; or &gt;/&ge; queries)
+   * by setting {@code lowerValue[i] = Integer.MIN_VALUE} or {@code upperValue[i] = Integer.MAX_VALUE}. 
+   * <p>
+   * Ranges are inclusive. For exclusive ranges, pass {@code lowerValue[i] + 1} or {@code upperValue[i] - 1}
+   *
+   * @param field field name. must not be {@code null}.
+   * @param lowerValue lower portion of the range (inclusive). must not be {@code null}.
+   * @param upperValue upper portion of the range (inclusive). must not be {@code null}.
+   * @throws IllegalArgumentException if {@code field} is null, if {@code lowerValue} is null, if {@code upperValue} is null, 
+   *                                  or if {@code lowerValue.length != upperValue.length}
+   * @return a query matching documents within this range.
+   */
+  public static Query newRangeQuery(String field, int[] lowerValue, int[] upperValue) {
+    PointRangeQuery.checkArgs(field, lowerValue, upperValue);
+    return new PointRangeQuery(field, encode(lowerValue), encode(upperValue)) {
+      @Override
+      protected String toString(int dimension, byte[] value) {
+        return Integer.toString(decodeDimension(value, 0));
+      }
+    };
+  }
+
+  /**
+   * Create a query matching any of the specified 1D values.  This is the points equivalent of {@code TermsQuery}.
+   * 
+   * @param field field name. must not be {@code null}.
+   * @param values all values to match
+   */
+  public static Query newSetQuery(String field, int... values) {
+
+    // Don't unexpectedly change the user's incoming values array:
+    int[] sortedValues = values.clone();
+    Arrays.sort(sortedValues);
+
+    final BytesRef encoded = new BytesRef(new byte[Integer.BYTES]);
+
+    return new PointInSetQuery(field, 1, Integer.BYTES,
+                               new PointInSetQuery.Stream() {
+
+                                 int upto;
+
+                                 @Override
+                                 public BytesRef next() {
+                                   if (upto == sortedValues.length) {
+                                     return null;
+                                   } else {
+                                     encodeDimension(sortedValues[upto], encoded.bytes, 0);
+                                     upto++;
+                                     return encoded;
+                                   }
+                                 }
+                               }) {
+      @Override
+      protected String toString(byte[] value) {
+        assert value.length == Integer.BYTES;
+        return Integer.toString(decodeDimension(value, 0));
+      }
+    };
   }
 }

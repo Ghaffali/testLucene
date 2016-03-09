@@ -1439,7 +1439,7 @@
 
   <!-- Query Parsers
 
-       http://wiki.apache.org/solr/SolrQuerySyntax
+       https://cwiki.apache.org/confluence/display/solr/Query+Syntax+and+Parsing
 
        Multiple QParserPlugins can be registered by name, and then
        used in either the "defType" param for the QueryComponent (used
@@ -1487,11 +1487,5 @@
       EditorialMarkerFactory will do exactly that:
      <transformer name="qecBooster" class="org.apache.solr.response.transform.EditorialMarkerFactory" />
     -->
-    
-
-  <!-- Legacy config for the admin interface -->
-  <admin>
-    <defaultQuery>*:*</defaultQuery>
-  </admin>
 
 </config>

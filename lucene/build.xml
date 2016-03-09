@@ -179,7 +179,8 @@
     <!-- queries: problems -->
     <!-- queryparser: problems -->
     <!-- sandbox: problems -->
-    <!-- spatial: problems -->
+    <check-missing-javadocs dir="build/docs/spatial" level="method"/>
+    <!-- spatial-extras: problems -->
     <check-missing-javadocs dir="build/docs/suggest" level="method"/>
     <!-- test-framework: problems -->
 
@@ -394,7 +395,7 @@
 
   <!-- copy KEYS to the release folder -->
   <target name="-dist-keys">
-   <get src="http://people.apache.org/keys/group/lucene.asc" 
+   <get src="http://home.apache.org/keys/group/lucene.asc" 
         dest="${dist.dir}/KEYS"/>
   </target>
 

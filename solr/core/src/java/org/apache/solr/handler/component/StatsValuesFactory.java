@@ -705,7 +705,7 @@ class EnumStatsValues extends AbstractStatsValues<EnumFieldValue> {
  */
 class DateStatsValues extends AbstractStatsValues<Date> {
   
-  private long sum = 0;
+  private double sum = 0.0;
   double sumOfSquares = 0;
   
   final protected boolean computeSum;
@@ -737,7 +737,7 @@ class DateStatsValues extends AbstractStatsValues<Date> {
   @Override
   protected void updateTypeSpecificStats(NamedList stv) {
     if (computeSum) {
-      sum += ((Date) stv.get("sum")).getTime();
+      sum += ((Number) stv.get("sum")).doubleValue();
     }
     if (computeSumOfSquares) {
       sumOfSquares += ((Number) stv.get("sumOfSquares")).doubleValue();
@@ -751,7 +751,7 @@ class DateStatsValues extends AbstractStatsValues<Date> {
   public void updateTypeSpecificStats(Date v, int count) {
     long value = v.getTime();
     if (computeSumOfSquares) {
-      sumOfSquares += (value * value * count); // for std deviation
+      sumOfSquares += ((double)value * value * count); // for std deviation
     }
     if (computeSum) {
       sum += value * count;
@@ -784,10 +784,10 @@ class DateStatsValues extends AbstractStatsValues<Date> {
   @Override
   protected void addTypeSpecificStats(NamedList<Object> res) {
     if (statsField.includeInResponse(Stat.sum)) {
-      res.add("sum", new Date(sum));
+      res.add("sum", sum);
     }
     if (statsField.includeInResponse(Stat.mean)) {
-      res.add("mean", (count > 0) ? new Date(sum / count) : null);
+      res.add("mean", (count > 0) ? new Date((long)(sum / count)) : null);
     }
     if (statsField.includeInResponse(Stat.sumOfSquares)) {
       res.add("sumOfSquares", sumOfSquares);

@@ -17,8 +17,16 @@
 package org.apache.lucene.index;
 
 
+import java.io.IOException;
+
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.FilterCodec;
+import org.apache.lucene.codecs.PointsFormat;
+import org.apache.lucene.codecs.PointsReader;
+import org.apache.lucene.codecs.PointsWriter;
+import org.apache.lucene.codecs.lucene60.Lucene60PointsReader;
+import org.apache.lucene.codecs.lucene60.Lucene60PointsWriter;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
@@ -26,7 +34,12 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.PointValues.IntersectVisitor;
+import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -373,9 +386,8 @@ public class TestPointValues extends LuceneTestCase {
     for(int i=0;i<values.length;i++) {
       values[i] = new byte[4];
     }
-    doc.add(new BinaryPoint("dim", values));
     expectThrows(IllegalArgumentException.class, () -> {
-      w.addDocument(doc);
+      doc.add(new BinaryPoint("dim", values));
     });
 
     Document doc2 = new Document();
@@ -477,5 +489,143 @@ public class TestPointValues extends LuceneTestCase {
     expectThrows(IllegalStateException.class, () -> {
       field.numericValue();
     });
+  }
+
+  public void testTieBreakByDocID() throws Exception {
+    Directory dir = newFSDirectory(createTempDir());
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new IntPoint("int", 17));
+    for(int i=0;i<300000;i++) {
+      w.addDocument(doc);
+      if (false && random().nextInt(1000) == 17) {
+        w.commit();
+      }
+    }
+
+    IndexReader r = DirectoryReader.open(w);
+
+    for(LeafReaderContext ctx : r.leaves()) {
+      PointValues points = ctx.reader().getPointValues();
+      points.intersect("int",
+                       new IntersectVisitor() {
+
+                         int lastDocID = -1;
+
+                         @Override
+                         public void visit(int docID) {
+                           if (docID < lastDocID) {
+                             fail("docs out of order: docID=" + docID + " but lastDocID=" + lastDocID);
+                           }
+                           lastDocID = docID;
+                         }
+
+                         @Override
+                         public void visit(int docID, byte[] packedValue) {
+                           visit(docID);
+                         }
+
+                         @Override
+                         public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
+                           if (random().nextBoolean()) {
+                             return Relation.CELL_CROSSES_QUERY;
+                           } else {
+                             return Relation.CELL_INSIDE_QUERY;
+                           }
+                         }
+                       });
+    }
+    
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testDeleteAllPointDocs() throws Exception {
+    Directory dir = newDirectory();
+    IndexWriterConfig iwc = newIndexWriterConfig();
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new IntPoint("int", 17));
+    w.addDocument(doc);
+    w.addDocument(new Document());
+    w.commit();
+
+    w.deleteDocuments(new Term("id", "0"));
+    
+    w.forceMerge(1);
+    DirectoryReader r = w.getReader();
+    assertEquals(0, r.leaves().get(0).reader().getPointValues().size("int"));
+    assertEquals(0, r.leaves().get(0).reader().getPointValues().getDocCount("int"));
+    w.close();
+    r.close();
+    dir.close();
+  }
+
+  public void testPointsFieldMissingFromOneSegment() throws Exception {
+    Directory dir = FSDirectory.open(createTempDir());
+    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new IntPoint("int0", 0));
+    w.addDocument(doc);
+    w.commit();
+
+    doc = new Document();
+    doc.add(new IntPoint("int1", 17));
+    w.addDocument(doc);
+    w.forceMerge(1);
+
+    w.close();
+    dir.close();
+  }
+
+  public void testSparsePoints() throws Exception {
+    Directory dir = newDirectory();
+    int numDocs = atLeast(1000);
+    int numFields = TestUtil.nextInt(random(), 1, 10);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    int[] fieldDocCounts = new int[numFields];
+    int[] fieldSizes = new int[numFields];
+    for(int i=0;i<numDocs;i++) {
+      Document doc = new Document();
+      for(int field=0;field<numFields;field++) {
+        String fieldName = "int" + field;
+        if (random().nextInt(100) == 17) {
+          doc.add(new IntPoint(fieldName, random().nextInt()));
+          fieldDocCounts[field]++;
+          fieldSizes[field]++;
+
+          if (random().nextInt(10) == 5) {
+            // add same field again!
+            doc.add(new IntPoint(fieldName, random().nextInt()));
+            fieldSizes[field]++;
+          }
+        }
+      }
+      w.addDocument(doc);
+    }
+
+    IndexReader r = w.getReader();
+    for(int field=0;field<numFields;field++) {
+      int docCount = 0;
+      int size = 0;
+      String fieldName = "int" + field;
+      for(LeafReaderContext ctx : r.leaves()) {
+        PointValues points = ctx.reader().getPointValues();
+        if (ctx.reader().getFieldInfos().fieldInfo(fieldName) != null) {
+          docCount += points.getDocCount(fieldName);
+          size += points.size(fieldName);
+        }
+      }
+      assertEquals(fieldDocCounts[field], docCount);
+      assertEquals(fieldSizes[field], size);
+    }
+    r.close();
+    w.close();
+    dir.close();
   }
 }
