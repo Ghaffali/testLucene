@@ -113,7 +113,12 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
   private void assertUSucceedsWithErrors(String chain, SolrInputDocument[] docs,
                                          SolrParams requestParams,
                                          int numErrors,
-                                         String... ids) throws Exception {
+                                         String... idsShouldFail) throws Exception {
+    
+    // nocommit: retire numErrors from this method sig ... trappy
+    assertEquals("bad test, idsShouldFail.length doesn't match numErrors",
+                 numErrors, idsShouldFail.length);
+    
     ModifiableSolrParams newParams = new ModifiableSolrParams(requestParams);
     newParams.set("update.chain", chain);
     UpdateResponse response = indexDoc(newParams, docs);
@@ -122,17 +127,13 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
       response.getResponseHeader().get("errors");
     assertNotNull("Null errors in response: " + response.toString(), errors);
 
-    assertEquals("number of errors in response: " + response.toString(), ids.length, errors.size());
+    assertEquals("number of errors in response: " + response.toString(), idsShouldFail.length, errors.size());
     
-    // nocommit: retire numErrors, we've already checked errors.size()
-    assertEquals("Wrong numErrors in response: " + response.toString(),
-                 numErrors, response.getResponseHeader().get("numErrors"));
-    
-    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(ids));
+    Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(idsShouldFail));
     
     for (SimpleOrderedMap<String> err : errors) {
       // nocommit: support other types
-      assertEquals("nocommit: error type not handled yet",
+      assertEquals("nocommit: error type not handled yet by this method",
                    "ADD", err.get("type"));
       
       String id = err.get("id");

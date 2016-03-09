@@ -249,14 +249,16 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
   public void testInvalidDelete() throws XPathExpressionException, SAXException {
     ignoreException("undefined field invalidfield");
     String response = update("tolerant-chain-max-errors-10", adoc("id", "1", "text", "the quick brown fox"));
-    assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
-        "//int[@name='numErrors']=0"));
+    assertNull(BaseTestHarness.validateXPath(response,
+                                             "//int[@name='status']=0",
+                                             "//arr[@name='errors']",
+                                             "count(//arr[@name='errors']/lst)=0"));
     
     response = update("tolerant-chain-max-errors-10", delQ("invalidfield:1"));
     assertNull(BaseTestHarness.validateXPath
                (response,
                 "//int[@name='status']=0",
-                "//int[@name='numErrors']=1",
+                "count(//arr[@name='errors']/lst)=1",
                 "//arr[@name='errors']/lst/str[@name='type']/text()='DELQ'",
                 "//arr[@name='errors']/lst/str[@name='id']/text()='invalidfield:1'",
                 "//arr[@name='errors']/lst/str[@name='message']/text()='undefined field invalidfield'"));
@@ -266,15 +268,20 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
   public void testValidDelete() throws XPathExpressionException, SAXException {
     ignoreException("undefined field invalidfield");
     String response = update("tolerant-chain-max-errors-10", adoc("id", "1", "text", "the quick brown fox"));
-    assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
-        "//int[@name='numErrors']=0"));
+    assertNull(BaseTestHarness.validateXPath(response,
+                                             "//int[@name='status']=0",
+                                             "//arr[@name='errors']",
+                                             "count(//arr[@name='errors']/lst)=0"));
+
     assertU(commit());
     assertQ(req("q","*:*")
         ,"//result[@numFound='1']");
     
     response = update("tolerant-chain-max-errors-10", delQ("id:1"));
-    assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
-        "//int[@name='numErrors']=0"));
+    assertNull(BaseTestHarness.validateXPath(response,
+                                             "//int[@name='status']=0",
+                                             "//arr[@name='errors']",
+                                             "count(//arr[@name='errors']/lst)=0"));
     assertU(commit());
     assertQ(req("q","*:*")
         ,"//result[@numFound='0']");
@@ -283,11 +290,13 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
   @Test
   public void testResponse() throws SAXException, XPathExpressionException, IOException {
     String response = update("tolerant-chain-max-errors-10", adoc("id", "1", "text", "the quick brown fox"));
-    assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
-        "//int[@name='numErrors']=0"));
+    assertNull(BaseTestHarness.validateXPath(response,
+                                             "//int[@name='status']=0",
+                                             "//arr[@name='errors']",
+                                             "count(//arr[@name='errors']/lst)=0"));
     response = update("tolerant-chain-max-errors-10", adoc("text", "the quick brown fox"));
     assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
-        "//int[@name='numErrors']=1",
+        "count(//arr[@name='errors']/lst)=1",
         "//arr[@name='errors']/lst/str[@name='id']/text()='(unknown)'",
         "//arr[@name='errors']/lst/str[@name='message']/text()='Document is missing mandatory uniqueKey field: id'"));
     
@@ -300,7 +309,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     builder.append("</add>");
     response = update("tolerant-chain-max-errors-10", builder.toString());
     assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
-        "//int[@name='numErrors']=10",
+        "count(//arr[@name='errors']/lst)=10",
         "not(//arr[@name='errors']/lst/str[@name='id']/text()='0')",
         "//arr[@name='errors']/lst/str[@name='id']/text()='1'",
         "not(//arr[@name='errors']/lst/str[@name='id']/text()='2')",
@@ -390,9 +399,6 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     assertNotNull(errors);
 
     assertEquals("number of errors", idsShouldFail.length, errors.size());
-    
-    // nocommit: retire numErrors, we've already checked errors.size()
-    assertEquals(numErrors, response.getResponseHeader().get("numErrors"));
     
     Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(idsShouldFail));
 

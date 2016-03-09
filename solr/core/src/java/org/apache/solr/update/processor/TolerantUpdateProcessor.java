@@ -262,14 +262,8 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       }
     }
 
-    // good or bad populate the response header
-    if (0 < knownErrors.size()) { // nocommit: we should just always set errors, even if empty?
-      
-      header.add("numErrors", knownErrors.size()); // nocommit: eliminate from response, client can count
-      header.add("errors", KnownErr.formatForResponseHeader(knownErrors));
-    } else {
-      header.add("numErrors", 0); // nocommit: eliminate from response, client can count
-    }
+    header.add("errors", KnownErr.formatForResponseHeader(knownErrors));
+    // include in response so client knows what effective value was (may have been server side config)
     header.add("maxErrors", maxErrors);
 
     // annotate any error that might be thrown (or was already thrown)
