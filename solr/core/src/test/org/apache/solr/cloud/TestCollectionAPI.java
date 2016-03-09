@@ -625,7 +625,7 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
           .setCollectionName("testClusterStateMigration")
           .process(client);
 
-      client.getZkStateReader().updateClusterState();
+      client.getZkStateReader().forceUpdateCollection("testClusterStateMigration");
 
       assertEquals(2, client.getZkStateReader().getClusterState().getCollection("testClusterStateMigration").getStateFormat());
 
@@ -649,7 +649,7 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
         final String errorMessage = e.getMessage();
         assertTrue(errorMessage.contains("Invalid collection"));
         assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
-        assertTrue(errorMessage.contains("Collection names must consist entirely of"));
+        assertTrue(errorMessage.contains("collection names must consist entirely of"));
       }
     }
   }
@@ -672,7 +672,7 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
         final String errorMessage = e.getMessage();
         assertTrue(errorMessage.contains("Invalid shard"));
         assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
-        assertTrue(errorMessage.contains("Shard names must consist entirely of"));
+        assertTrue(errorMessage.contains("shard names must consist entirely of"));
       }
     }
   }
@@ -693,7 +693,7 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
         final String errorMessage = e.getMessage();
         assertTrue(errorMessage.contains("Invalid alias"));
         assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
-        assertTrue(errorMessage.contains("Aliases must consist entirely of"));
+        assertTrue(errorMessage.contains("alias names must consist entirely of"));
       }
     }
   }
@@ -726,7 +726,7 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
         final String errorMessage = e.getMessage();
         assertTrue(errorMessage.contains("Invalid shard"));
         assertTrue(errorMessage.contains("invalid@name#with$weird%characters"));
-        assertTrue(errorMessage.contains("Shard names must consist entirely of"));
+        assertTrue(errorMessage.contains("shard names must consist entirely of"));
       }
     }
   }
@@ -735,7 +735,7 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
   private Map<String, String> getProps(CloudSolrClient client, String collectionName, String replicaName, String... props)
       throws KeeperException, InterruptedException {
 
-    client.getZkStateReader().updateClusterState();
+    client.getZkStateReader().forceUpdateCollection(collectionName);
     ClusterState clusterState = client.getZkStateReader().getClusterState();
     Replica replica = clusterState.getReplica(collectionName, replicaName);
     if (replica == null) {
