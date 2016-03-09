@@ -17,16 +17,24 @@
     },
     "/update/json/docs": {
       "class": "solr.UpdateRequestHandler",
+      "useParams": "update_json_docs",
       "invariants": {
         "update.contentType": "application/json",
         "json.command": "false"
       }
     },
+    "update":{
+      "class":"solr.UpdateRequestHandlerApi",
+      "registerPath":"/v2",
+      "useParams": "update_json_docs"
+    },
     "/config": {
-      "class": "solr.SolrConfigHandler"
+      "class": "solr.SolrConfigHandler",
+      "registerPath":"/,/v2"
     },
     "/schema": {
-      "class": "solr.SchemaHandler"
+      "class": "solr.SchemaHandler",
+      "registerPath":"/,/v2"
     },
     "/replication": {
       "class": "solr.ReplicationHandler"
@@ -37,14 +45,16 @@
         "omitHeader": true,
         "wt": "json",
         "indent": true
-      }
+      },
+      "registerPath":"/,/v2"
     },
     "/admin/ping": {
       "class": "solr.PingRequestHandler",
       "invariants": {
         "echoParams": "all",
         "q": "{!lucene}*:*"
-      }
+      },
+      "registerPath":"/,/v2"
     },
     "/admin/segments": {
       "class": "solr.SegmentsInfoRequestHandler"

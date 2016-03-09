@@ -838,7 +838,7 @@
     </requestHandler>
 
   <!-- A request handler that returns indented JSON by default -->
-  <requestHandler name="/query" class="solr.SearchHandler">
+  <requestHandler name="/query" class="solr.SearchHandler" registerPath="/,/v2">
      <lst name="defaults">
        <str name="echoParams">explicit</str>
        <str name="wt">json</str>
@@ -946,33 +946,20 @@
   </requestHandler>
 
 
-  <initParams path="/update/**,/query,/select,/tvrh,/elevate,/spell,/browse,/v2/{core}/update">
+  <initParams path="/update/**,/query,/select,/tvrh,/elevate,/spell,/browse,update">
     <lst name="defaults">
       <str name="df">text</str>
     </lst>
   </initParams>
 
-  <!--TODO need to clean this up -->
-  <initParams path="/update/json/docs,/v2/{core}/update">
-    <lst name="defaults">
-      <!--this ensures that the entire json doc will be stored verbatim into one field-->
-      <str name="srcField">_src_</str>
-      <!--This means a the uniqueKeyField will be extracted from the fields and
-       all fields go into the 'df' field. In this config df is already configured to be 'text'
-        -->
-      <str name="mapUniqueKeyOnly">true</str>
-    </lst>
-
-  </initParams>
-
   <!-- The following are implicitly added
   <requestHandler name="/update/json" class="solr.UpdateRequestHandler">
-        <lst name="defaults">
+        <lst name="invariants">
          <str name="stream.contentType">application/json</str>
        </lst>
   </requestHandler>
   <requestHandler name="/update/csv" class="solr.UpdateRequestHandler">
-        <lst name="defaults">
+        <lst name="invariants">
          <str name="stream.contentType">application/csv</str>
        </lst>
   </requestHandler>

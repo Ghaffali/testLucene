@@ -190,11 +190,6 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
     }
   }
 
-  @Override
-  public boolean registerApi() {
-    return true;
-  }
-
   protected abstract void invokeCommand(SolrQueryRequest  req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c) throws Exception;
 
   protected abstract void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception;

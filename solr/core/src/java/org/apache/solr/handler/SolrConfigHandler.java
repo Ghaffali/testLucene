@@ -51,7 +51,6 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
-import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.MapSolrParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
@@ -62,7 +61,6 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.ConfigOverlay;
-import org.apache.solr.core.ImplicitPlugins;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.RequestParams;
 import org.apache.solr.core.SolrConfig;
@@ -78,7 +76,6 @@ import org.apache.solr.util.RTimer;
 import org.apache.solr.util.plugin.SolrCoreAware;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
-import org.apache.solr.api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +83,6 @@ import static java.util.Collections.singletonList;
 import static org.apache.solr.common.util.Utils.makeMap;
 import static org.apache.solr.common.params.CoreAdminParams.NAME;
 import static org.apache.solr.common.util.StrUtils.formatString;
-import static org.apache.solr.common.util.Utils.makeMap;
 import static org.apache.solr.core.ConfigOverlay.NOT_EDITABLE;
 import static org.apache.solr.core.ConfigOverlay.ZNODEVER;
 import static org.apache.solr.core.ConfigSetProperties.IMMUTABLE_CONFIGSET_ARG;
@@ -818,11 +814,6 @@ public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAwa
     protected SolrResponse createResponse(SolrClient client) {
       return null;
     }
-  }
-
-  @Override
-  public boolean registerApi() {
-    return true;
   }
 
   @Override

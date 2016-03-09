@@ -46,10 +46,14 @@ import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.params.CommonParams.VALUE_LONG;
 import static org.apache.solr.common.params.CoreAdminParams.DATA_DIR;
+import static org.apache.solr.common.params.CoreAdminParams.DELETE_DATA_DIR;
+import static org.apache.solr.common.params.CoreAdminParams.DELETE_INDEX;
+import static org.apache.solr.common.params.CoreAdminParams.DELETE_INSTANCE_DIR;
 import static org.apache.solr.common.params.CoreAdminParams.INSTANCE_DIR;
 import static org.apache.solr.common.params.ShardParams._ROUTE_;
 import static org.apache.solr.common.util.StrUtils.formatString;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
 import java.nio.charset.StandardCharsets;
@@ -64,6 +68,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
@@ -71,7 +76,6 @@ import org.apache.solr.client.solrj.request.CoreAdminRequest;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.RequestSyncShard;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.client.solrj.util.SolrIdentifierValidator;
-import org.apache.solr.cloud.DistributedMap;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler;
 import org.apache.solr.cloud.OverseerSolrResponse;
@@ -106,7 +110,6 @@ import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.CoreContainer;
-import org.apache.solr.handler.BlobHandler;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.request.SolrQueryRequest;
@@ -351,14 +354,12 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         verifyRuleParams(h.coreContainer, props);
         final String collectionName = (String) props.get(NAME);
         if (!SolrIdentifierValidator.validateCollectionName(collectionName)) {
-          throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid collection: " + collectionName
-          + ". Collection names must consist entirely of periods, underscores, and alphanumerics");
+          throw new SolrException(ErrorCode.BAD_REQUEST,
+              SolrIdentifierValidator.getIdentifierMessage(SolrIdentifierValidator.IdentifierType.COLLECTION, collectionName));
         }
         final String shardsParam = (String) props.get(SHARDS_PROP);
         if (StringUtils.isNotEmpty(shardsParam)) {
-          log.info("Validating shards param!!!!!!!!" + shardsParam);
           verifyShardsParam(shardsParam);
-          log.info("Validating shards param!!!!!!! done" + shardsParam);
         }
         if (SYSTEM_COLL.equals(collectionName)) {
           //We must always create a .system collection with only a single shard
@@ -378,13 +379,19 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         cmdExecutor.ensureExists(ZkStateReader.CONFIGS_ZKNODE, zk);
         cmdExecutor.ensureExists(ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL, zk);
 
-        String path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/schema.xml";
-        byte[] data = BlobHandler.SCHEMA.replaceAll("'", "\"").getBytes(StandardCharsets.UTF_8);
-        cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+        try {
+          String path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/schema.xml";
+          byte[] data = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("SystemCollectionSchema.xml"));
+          cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+          path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/solrconfig.xml";
+          data = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("SystemCollectionSolrConfig.xml"));
+          cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+        } catch (IOException e) {
+          throw new SolrException(ErrorCode.SERVER_ERROR, e);
 
-        path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/solrconfig.xml";
-        data = BlobHandler.CONF.replaceAll("'", "\"").getBytes(StandardCharsets.UTF_8);
-        cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
+        }
+
+
       }
     },
     DELETE_OP(DELETE) {
@@ -432,8 +439,7 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
           throws Exception {
         final String aliasName = req.getParams().get(NAME);
         if (!SolrIdentifierValidator.validateCollectionName(aliasName)) {
-          throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid alias: " + aliasName
-              + ". Aliases must consist entirely of periods, underscores, and alphanumerics");
+          throw new SolrException(ErrorCode.BAD_REQUEST, SolrIdentifierValidator.getIdentifierMessage(SolrIdentifierValidator.IdentifierType.ALIAS, aliasName));
         }
         return req.getParams().required().getAll(null, NAME, "collections");
       }
@@ -479,9 +485,14 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
     DELETESHARD_OP(DELETESHARD) {
       @Override
       Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, CollectionsHandler handler) throws Exception {
-        return req.getParams().required().getAll(null,
+        Map<String, Object> map = req.getParams().required().getAll(null,
             COLLECTION_PROP,
             SHARD_ID_PROP);
+        req.getParams().getAll(map,
+            DELETE_INDEX,
+            DELETE_DATA_DIR,
+            DELETE_INSTANCE_DIR);
+        return map;
       }
     },
     FORCELEADER_OP(FORCELEADER) {
@@ -500,8 +511,8 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         ClusterState clusterState = handler.coreContainer.getZkController().getClusterState();
         final String newShardName = req.getParams().get(SHARD_ID_PROP);
         if (!SolrIdentifierValidator.validateShardName(newShardName)) {
-          throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid shard: " + newShardName
-              + ". Shard names must consist entirely of periods, underscores, and alphanumerics");
+          throw new SolrException(ErrorCode.BAD_REQUEST, SolrIdentifierValidator.getIdentifierMessage(SolrIdentifierValidator.IdentifierType.SHARD,
+              newShardName));
         }
         if (!ImplicitDocRouter.NAME.equals(((Map) clusterState.getCollection(req.getParams().get(COLLECTION_PROP)).get(DOC_ROUTER)).get(NAME)))
           throw new SolrException(ErrorCode.BAD_REQUEST, "shards can be added only to 'implicit' collections");
@@ -518,6 +529,12 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
             COLLECTION_PROP,
             SHARD_ID_PROP,
             REPLICA_PROP);
+
+        req.getParams().getAll(map,
+            DELETE_INDEX,
+            DELETE_DATA_DIR,
+            DELETE_INSTANCE_DIR);
+
         return req.getParams().getAll(map, ONLY_IF_DOWN);
       }
     },
@@ -907,8 +924,6 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
         + (checkLeaderOnly ? "leaders" : "replicas"));
     ZkStateReader zkStateReader = cc.getZkController().getZkStateReader();
     for (int i = 0; i < numRetries; i++) {
-
-      zkStateReader.updateClusterState();
       ClusterState clusterState = zkStateReader.getClusterState();
 
       Collection<Slice> shards = clusterState.getSlices(collectionName);
@@ -987,8 +1002,8 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
   private static void verifyShardsParam(String shardsParam) {
     for (String shard : shardsParam.split(",")) {
       if (!SolrIdentifierValidator.validateShardName(shard))
-        throw new SolrException(ErrorCode.BAD_REQUEST, "Invalid shard: " + shard
-            + ". Shard names must consist entirely of periods, underscores, and alphanumerics");;
+        throw new SolrException(ErrorCode.BAD_REQUEST, SolrIdentifierValidator.getIdentifierMessage(SolrIdentifierValidator.IdentifierType.SHARD,
+            shard));
     }
   }
 
@@ -1005,8 +1020,4 @@ public class CollectionsHandler extends RequestHandlerBase implements ApiSupport
     return v2Handler.getApis();
   }
 
-  @Override
-  public boolean registerApi() {
-    return true;
-  }
 }

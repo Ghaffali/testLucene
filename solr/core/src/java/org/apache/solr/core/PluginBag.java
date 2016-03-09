@@ -174,25 +174,37 @@ public class PluginBag<T> implements AutoCloseable {
   /**
    * register a plugin by a name
    */
-  public T put(String name, T plugin) {
+  public T put(String name, T plugin , boolean registerAPI) {
     if (plugin == null) return null;
-    PluginHolder<T> old = put(name, new PluginHolder<T>(null, plugin));
+    PluginHolder<T> pluginHolder = new PluginHolder<>(null, plugin);
+    pluginHolder.registerAPI = registerAPI;
+    PluginHolder<T> old = put(name, pluginHolder);
     return old == null ? null : old.get();
   }
 
+  public T put(String name, T plugin){
+    return put(name, plugin, false);
+  }
 
   PluginHolder<T> put(String name, PluginHolder<T> plugin) {
     boolean registerApi = false;
     boolean disableHandler = false;
     if (plugin.pluginInfo != null) {
-      registerApi = "true".equals(String.valueOf(plugin.pluginInfo.attributes.get("registerApi")));
-      if("true".equals(String.valueOf(plugin.pluginInfo.attributes.get("disableHandler")))) disableHandler = true;
+      String registerAt = plugin.pluginInfo.attributes.get("registerPath");
+      if(registerAt == null){
+        registerApi = false;
+        disableHandler = false;
+      } else {
+        List<String> strs = StrUtils.splitSmart(registerAt, ',');
+        disableHandler = !strs.contains("/");
+        registerApi = strs.contains("/v2");
+      }
     }
 
     if (apiBag != null) {
       if (plugin.isLoaded()) {
         T inst = plugin.get();
-        if (inst instanceof ApiSupport && (registerApi || ((ApiSupport) inst).registerApi())) {
+        if (inst instanceof ApiSupport && (registerApi || plugin.registerAPI)) {
           ApiSupport apiSupport = (ApiSupport) inst;
           if(apiSupport.disableHandler()) disableHandler = true;
           Collection<Api> apis = apiSupport.getApis();
@@ -302,6 +314,7 @@ public class PluginBag<T> implements AutoCloseable {
   public static class PluginHolder<T> implements AutoCloseable {
     private T inst;
     protected final PluginInfo pluginInfo;
+    boolean registerAPI = false;
 
     public PluginHolder(PluginInfo info) {
       this.pluginInfo = info;

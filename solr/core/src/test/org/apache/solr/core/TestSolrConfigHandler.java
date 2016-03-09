@@ -78,7 +78,7 @@ public class TestSolrConfigHandler extends RestTestBase {
 
     createJettyAndHarness(tmpSolrHome.getAbsolutePath(), "solrconfig-managed-schema.xml", "schema-rest.xml",
         "/solr", true, extraServlets);
-    if (random().nextBoolean()) {
+    if (true) {
       log.info("These tests are run with V2 API");
       restTestHarness.setServerProvider(new RESTfulServerProvider() {
         @Override
@@ -185,7 +185,7 @@ public class TestSolrConfigHandler extends RestTestBase {
 
   public static void reqhandlertests(RestTestHarness writeHarness, String testServerBaseUrl, CloudSolrClient cloudSolrClient) throws Exception {
     String payload = "{\n" +
-        "'create-requesthandler' : { 'name' : '/x', 'class': 'org.apache.solr.handler.DumpRequestHandler' , 'startup' : 'lazy', registerApi :true }\n" +
+        "'create-requesthandler' : { 'name' : '/x', 'class': 'org.apache.solr.handler.DumpRequestHandler' , 'startup' : 'lazy', registerPath :'/,/v2' }\n" +
         "}";
     runConfigCommand(writeHarness, "/config?wt=json", payload);
 
@@ -198,7 +198,7 @@ public class TestSolrConfigHandler extends RestTestBase {
         10);
 
     payload = "{\n" +
-        "'update-requesthandler' : { 'name' : '/x', 'class': 'org.apache.solr.handler.DumpRequestHandler' , 'startup' : 'lazy' , 'a':'b' , registerApi :true, 'defaults': {'def_a':'def A val', 'multival':['a','b','c']}}\n" +
+        "'update-requesthandler' : { 'name' : '/x', 'class': 'org.apache.solr.handler.DumpRequestHandler' , 'startup' : 'lazy' , 'a':'b' , registerPath :'/,/v2', 'defaults': {'def_a':'def A val', 'multival':['a','b','c']}}\n" +
         "}";
     runConfigCommand(writeHarness, "/config?wt=json", payload);
 
@@ -211,7 +211,7 @@ public class TestSolrConfigHandler extends RestTestBase {
         10);
 
     payload = "{\n" +
-        "'update-requesthandler' : { 'name' : '/dump', registerApi :true," +
+        "'update-requesthandler' : { 'name' : '/dump', registerPath :'/,/v2'," +
         "'initParams': 'a'," +
         "'class': 'org.apache.solr.handler.DumpRequestHandler' ," +
         " 'defaults': {'a':'A','b':'B','c':'C'}}\n" +
@@ -498,7 +498,7 @@ public class TestSolrConfigHandler extends RestTestBase {
         10);
 
     payload = "{\n" +
-        "'create-requesthandler' : { 'name' : '/d', registerApi :true , 'class': 'org.apache.solr.handler.DumpRequestHandler' }\n" +
+        "'create-requesthandler' : { 'name' : '/d', registerPath :'/,/v2' , 'class': 'org.apache.solr.handler.DumpRequestHandler' }\n" +
         "}";
 
     TestSolrConfigHandler.runConfigCommand(harness, "/config?wt=json", payload);
@@ -528,7 +528,7 @@ public class TestSolrConfigHandler extends RestTestBase {
         5);
 
     payload = "{\n" +
-        "'create-requesthandler' : { 'name' : '/dump1', registerApi :true , 'class': 'org.apache.solr.handler.DumpRequestHandler', 'useParams':'x' }\n" +
+        "'create-requesthandler' : { 'name' : '/dump1', registerPath :'/,/v2' , 'class': 'org.apache.solr.handler.DumpRequestHandler', 'useParams':'x' }\n" +
         "}";
 
     TestSolrConfigHandler.runConfigCommand(harness, "/config?wt=json", payload);

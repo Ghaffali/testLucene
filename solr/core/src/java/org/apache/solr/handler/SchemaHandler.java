@@ -181,11 +181,6 @@ public class SchemaHandler extends RequestHandlerBase implements ApiSupport , So
   }
 
   @Override
-  public boolean registerApi() {
-    return true;
-  }
-
-  @Override
   public String getDescription() {
     return "CRUD operations over the Solr schema";
   }

@@ -59,7 +59,7 @@ import static org.apache.solr.common.params.CoreAdminParams.CoreAdminAction.STAT
  *
  * @since solr 1.3
  */
-public class CoreAdminHandler extends RequestHandlerBase implements ApiSupport {
+public class CoreAdminHandler extends RequestHandlerBase  {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
   protected final Map<String, Map<String, TaskObject>> requestStatusMap;

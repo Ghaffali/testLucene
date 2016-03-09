@@ -424,15 +424,15 @@ public class CoreContainer {
     containerHandlers.put(ZK_PATH, new ZookeeperInfoHandler(this));
     securityConfHandler = new SecurityConfHandler(this);
     collectionsHandler = createHandler(cfg.getCollectionsHandlerClass(), CollectionsHandler.class);
-    containerHandlers.put(COLLECTIONS_HANDLER_PATH, collectionsHandler);
+    containerHandlers.put(COLLECTIONS_HANDLER_PATH, collectionsHandler, true);
     infoHandler        = createHandler(cfg.getInfoHandlerClass(), InfoHandler.class);
-    containerHandlers.put(INFO_HANDLER_PATH, infoHandler);
+    containerHandlers.put(INFO_HANDLER_PATH, infoHandler, true);
     coreAdminHandler   = createHandler(cfg.getCoreAdminHandlerClass(), CoreAdminHandler.class);
-    containerHandlers.put(CORES_HANDLER_PATH, coreAdminHandler);
+    containerHandlers.put(CORES_HANDLER_PATH, coreAdminHandler, true);
     configSetsHandler = createHandler(cfg.getConfigSetsHandlerClass(), ConfigSetsHandler.class);
-    containerHandlers.put(CONFIGSETS_HANDLER_PATH, configSetsHandler);
-    containerHandlers.put(AUTHZ_PATH, securityConfHandler);
-    containerHandlers.put(AUTHC_PATH, securityConfHandler);
+    containerHandlers.put(CONFIGSETS_HANDLER_PATH, configSetsHandler, true);
+    containerHandlers.put(AUTHZ_PATH, securityConfHandler, true);
+    containerHandlers.put(AUTHC_PATH, securityConfHandler, true);
     if(pkiAuthenticationPlugin != null)
       containerHandlers.put(PKIAuthenticationPlugin.PATH, pkiAuthenticationPlugin.getRequestHandler());
 

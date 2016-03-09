@@ -61,11 +61,6 @@ public class UpdateRequestHandlerApi extends UpdateRequestHandler  {
     };
   }
 
-  @Override
-  public boolean disableHandler() {
-    return true;
-  }
-
   private static final Map<String, String> mapping = ImmutableMap.<String,String>builder()
       .put("/update", DOC_PATH)
       .put(JSON_PATH, DOC_PATH)
