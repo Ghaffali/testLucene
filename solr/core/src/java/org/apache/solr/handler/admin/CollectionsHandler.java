@@ -56,7 +56,6 @@ import static org.apache.solr.common.util.StrUtils.formatString;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -70,13 +69,13 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.solr.api.Api;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.CoreAdminRequest;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.RequestSyncShard;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.client.solrj.util.SolrIdentifierValidator;
-import org.apache.solr.cloud.DistributedMap;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler;
 import org.apache.solr.cloud.OverseerSolrResponse;
@@ -100,6 +99,7 @@ import org.apache.solr.common.cloud.ZkCoreNodeProps;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionAdminParams;
+import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CollectionParams.CollectionAction;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.CoreAdminParams;
@@ -111,7 +111,6 @@ import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.CoreContainer;
-import org.apache.solr.handler.BlobHandler;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.request.SolrQueryRequest;
@@ -189,20 +188,21 @@ public class CollectionsHandler extends RequestHandlerBase {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown action: " + a);
       }
       CollectionOperation operation = CollectionOperation.get(action);
-      log.info("Invoked Collection Action :{} with params {} ", action.toLower(), req.getParamString());
-      invokeAction(req, rsp, operation);
+      log.info("Invoked Collection Action :{} with params {} and sendToOCPQueue={}", action.toLower(), req.getParamString(), operation.sendToOCPQueue);
+
+      invokeAction(req, rsp, cores, action, operation);
     } else {
       throw new SolrException(ErrorCode.BAD_REQUEST, "action is a required param");
     }
     rsp.setHttpCaching(false);
   }
 
-  void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CollectionOperation operation) throws Exception {
+  void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CoreContainer cores, CollectionAction action, CollectionOperation operation) throws Exception {
     if (!coreContainer.isZooKeeperAware()) {
       throw new SolrException(BAD_REQUEST,
           "Invalid request. collections can be accessed only in SolrCloud mode");
     }
-
+    SolrResponse response = null;
     Map<String, Object> props = operation.call(req, rsp, this);
     String asyncId = req.getParams().get(ASYNC);
     if (props != null) {
@@ -211,8 +211,16 @@ public class CollectionsHandler extends RequestHandlerBase {
       }
       props.put(QUEUE_OPERATION, operation.action.toLower());
       ZkNodeProps zkProps = new ZkNodeProps(props);
-      if (operation.sendToOCPQueue) handleResponse(operation.action.toLower(), zkProps, rsp, operation.timeOut);
-      else Overseer.getInQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
+      if (operation.sendToOCPQueue) {
+        response = handleResponse(operation.action.toLower(), zkProps, rsp, operation.timeOut);
+      }
+      else Overseer.getStateUpdateQueue(coreContainer.getZkController().getZkClient()).offer(Utils.toJSON(props));
+      final String collectionName = zkProps.getStr(NAME);
+      if (action.equals(CollectionAction.CREATE) && asyncId == null) {
+        if (rsp.getException() == null) {
+          waitForActiveCollection(collectionName, zkProps, cores, response);
+        }
+      }
     }
   }
 

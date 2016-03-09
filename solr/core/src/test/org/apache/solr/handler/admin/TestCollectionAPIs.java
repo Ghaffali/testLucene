@@ -28,6 +28,7 @@ import java.util.Map;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.cloud.ZkNodeProps;
+import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.MapSolrParams;
 import org.apache.solr.common.util.Pair;
 import org.apache.solr.common.util.Utils;
@@ -99,7 +100,8 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     MockCollectionsHandler() { }
 
     @Override
-    protected void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CollectionOperation operation) throws Exception {
+    void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CoreContainer cores, CollectionParams.CollectionAction action,
+                      CollectionOperation operation) throws Exception {
       Map<String, Object> result = operation.call(req, rsp, this);
       if (result != null) {
         result.put(QUEUE_OPERATION, operation.action.toLower());
@@ -107,6 +109,5 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
       }
     }
   }
-
 
 }

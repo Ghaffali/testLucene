@@ -203,12 +203,12 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
     @Override
     public void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, CollectionHandlerApi handler) throws Exception {
-      handler.handler.invokeAction(req,rsp,target);
+      handler.handler.invokeAction(req, rsp, handler.handler.coreContainer, target.action,target);
     }
 
     @Override
     public void GET(SolrQueryRequest req, SolrQueryResponse rsp, CollectionHandlerApi handler) throws Exception {
-      handler.handler.invokeAction(req, rsp, target);
+      handler.handler.invokeAction(req, rsp, handler.handler.coreContainer, target.action,target);
     }
 
     @Override
