@@ -72,6 +72,7 @@ import org.apache.solr.common.params.UpdateParams;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.Hash;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.SolrjNamedThreadFactory;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.zookeeper.KeeperException;
@@ -726,6 +727,11 @@ public class CloudSolrClient extends SolrClient {
     int status = 0;
     Integer rf = null;
     Integer minRf = null;
+    
+    // TolerantUpdateProcessor
+    List<SimpleOrderedMap<String>> toleratedErrors = null; 
+    int maxToleratedErrors = Integer.MAX_VALUE;
+      
     for(int i=0; i<response.size(); i++) {
       NamedList shardResponse = (NamedList)response.getVal(i);
       NamedList header = (NamedList)shardResponse.get("responseHeader");      
@@ -741,6 +747,23 @@ public class CloudSolrClient extends SolrClient {
           rf = routeRf;
       }
       minRf = (Integer)header.get(UpdateRequest.MIN_REPFACT);
+
+      List<SimpleOrderedMap<String>> shardTolerantErrors = 
+        (List<SimpleOrderedMap<String>>) header.get("errors");
+      if (null != shardTolerantErrors) {
+        Number shardMaxToleratedErrors = (Number) header.get("maxErrors");
+        assert null != shardMaxToleratedErrors : "TolerantUpdateProcessor reported errors but not maxErrors";
+        // if we get into some weird state where the nodes disagree about the effective maxErrors,
+        // assume the min value seen to decide if we should fail.
+        maxToleratedErrors = Math.min(maxToleratedErrors, shardMaxToleratedErrors.intValue());
+        
+        if (null == toleratedErrors) {
+          toleratedErrors = new ArrayList<SimpleOrderedMap<String>>(shardTolerantErrors.size());
+        }
+        for (SimpleOrderedMap<String> err : shardTolerantErrors) {
+          toleratedErrors.add(err);
+        }
+      }
     }
 
     NamedList cheader = new NamedList();
@@ -750,7 +773,13 @@ public class CloudSolrClient extends SolrClient {
       cheader.add(UpdateRequest.REPFACT, rf);
     if (minRf != null)
       cheader.add(UpdateRequest.MIN_REPFACT, minRf);
-    
+    if (null != toleratedErrors) {
+      cheader.add("errors", toleratedErrors);
+      if (maxToleratedErrors < toleratedErrors.size()) {
+        // nocommit: populate metadata based on the toleratedErrors
+        throw new SolrException(ErrorCode.BAD_REQUEST, "nocommit: need better msg");
+      }
+    }
     condensed.add("responseHeader", cheader);
     return condensed;
   }

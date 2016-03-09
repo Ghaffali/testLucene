@@ -51,7 +51,6 @@ import org.apache.solr.util.RevertDefaultThreadHandlerRule;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -234,6 +233,18 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       assertQueryDocIds(c, true, S_ONE_PRE + "1",  S_TWO_PRE + "2");
       assertQueryDocIds(c, false, "id_not_exists");
 
+      // verify adding 2 broken docs causes a clint exception
+      try {
+        UpdateResponse rsp = update(params(),
+                                    doc(f("id", S_ONE_PRE + "X"), f("foo_i", "bogus_val_X")),
+                                    doc(f("id", S_TWO_PRE + "Y"), f("foo_i", "bogus_val_Y"))
+                                    ).process(c);
+        fail("did not get a top level exception when more then 10 docs failed: " + rsp.toString());
+      } catch (SolrException e) {
+        assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
+                     400, e.code());
+      }
+        
       // verify malformed deleteByQuerys fail
       try {
         UpdateResponse rsp = update(params()).deleteByQuery("foo_i:not_a_num").process(c);
@@ -260,7 +271,6 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
   }
 
   //
-  @Ignore("nocommit: need to implement tolerante response merging in cloud client")
   public void testVariousDeletesViaCloudClient() throws Exception {
     testVariousDeletes(CLOUD_CLIENT);
   }
@@ -372,7 +382,6 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
 
   
   //
-  @Ignore("nocommit: need to implement tolerante response merging in cloud client")
   public void testVariousAddsViaCloudClient() throws Exception {
     testVariousAdds(CLOUD_CLIENT);
   }
@@ -509,9 +518,6 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                    doc(f("id", S_ONE_PRE + "10")), // may be skipped, more then 10 fails
                    doc(f("id", S_TWO_PRE + "20"))  // may be skipped, more then 10 fails
                    ).process(client);
-
-      // nocommit: should this really be a top level exception?
-      // nocommit: or should it be an HTTP:200 with the details of what faild in the body?
       
       fail("did not get a top level exception when more then 10 docs failed: " + rsp.toString());
     } catch (SolrException e) {
@@ -563,9 +569,6 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                           "commit", "true"),
                    docs.toArray(new SolrInputDocument[docs.size()])).process(client);
       
-      // nocommit: should this really be a top level exception?
-      // nocommit: or should it be an HTTP:200 with the details of what faild in the body?
-      
       fail("did not get a top level exception when more then 10 docs failed: " + rsp.toString());
     } catch (SolrException e) {
       // we can't make any reliable assertions about the error message, because
@@ -599,7 +602,6 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
   }
 
   //
-  @Ignore("nocommit: need to implement tolerante response merging in cloud client")
   public void testAddsMixedWithDeletesViaCloudClient() throws Exception {
     testAddsMixedWithDeletes(CLOUD_CLIENT);
   }
@@ -623,6 +625,8 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
     assertNotNull("client not initialized", client);
 
     // nocommit: test adds & deletes mixed in a single UpdateRequest, w/ tolerated failures of both types
+
+    // nocommit: be sure to include DBQ mixed with other things.
   }
 
   /** Asserts that the UpdateResponse contains the specified expectedErrs and no others */
@@ -657,11 +661,6 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       assertTrue(assertErrPre + " ... unexpected err, not found in: " + response.toString(), found);
 
     }
-    
-    // nocommit: retire numErrors, we've already checked errors.size()
-    assertEquals(assertionMsgPrefix + ": numErrors: " + response.toString(),
-                 expectedErrs.length, response.getResponseHeader().get("numErrors"));
- 
   }
   
   /** convinience method when the only type of errors you expect are 'add' errors */

@@ -270,6 +270,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     } else {
       header.add("numErrors", 0); // nocommit: eliminate from response, client can count
     }
+    header.add("maxErrors", maxErrors);
 
     // annotate any error that might be thrown (or was already thrown)
     firstErrTracker.annotate(knownErrors);
