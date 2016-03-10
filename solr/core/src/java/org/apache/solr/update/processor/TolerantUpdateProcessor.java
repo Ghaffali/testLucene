@@ -217,7 +217,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       firstErrTracker.caught(duae);
 
       
-      // adjust out stats based on the distributed errors
+      // adjust our stats based on each of the distributed errors
       for (Error error : duae.errors) {
         // we can't trust the req info from the Error, because multiple original requests might have been
         // lumped together
@@ -373,6 +373,18 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       if (null == firstErrMetadata) { // obnoxious
         firstErrMetadata = new NamedList<String>();
         first.setMetadata(firstErrMetadata);
+      } else {
+        // any existing metadata representing ToleratedUpdateErrors in this single exception needs removed
+        // so we can add *all* of the known ToleratedUpdateErrors (from this and other exceptions)
+        for (int i = 0; i < firstErrMetadata.size(); i++) {
+          if (null != ToleratedUpdateError.parseMetadataIfToleratedUpdateError
+              (firstErrMetadata.getName(i), firstErrMetadata.getVal(i))) {
+               
+            firstErrMetadata.remove(i);
+            // NOTE: post decrementing index so we don't miss anything as we remove items
+            i--;
+          }
+        }
       }
 
       for (ToleratedUpdateError te : errors) {

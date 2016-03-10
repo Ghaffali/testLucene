@@ -1702,26 +1702,20 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
       super(buildCode(errors), buildMsg(errors), null);
       this.errors = errors;
 
-      // nocommit: the code below is useful for preserving things like "root-error-class"
-      // nocommit: but wreaks havoc on ToleranteUpdateProcessor's exception annotating.
-      //
-      // nocommit: before enabling the code below, we need to make ToleranteUpdateProcessor 
-      // nocommit: smart enough to remove metadata it cares about before adding it (and others) back
-      //
-      // // create a merged copy of the metadata from all wrapped exceptions
-      // NamedList<String> metadata = new NamedList<String>();
-      // for (Error error : errors) {
-      //   if (error.e instanceof SolrException) {
-      //     SolrException e = (SolrException) error.e;
-      //     NamedList<String> eMeta = e.getMetadata();
-      //     if (null != eMeta) {
-      //       metadata.addAll(eMeta);
-      //     }
-      //   }
-      // }
-      // if (0 < metadata.size()) {
-      //   this.setMetadata(metadata);
-      // }
+      // create a merged copy of the metadata from all wrapped exceptions
+      NamedList<String> metadata = new NamedList<String>();
+      for (Error error : errors) {
+        if (error.e instanceof SolrException) {
+          SolrException e = (SolrException) error.e;
+          NamedList<String> eMeta = e.getMetadata();
+          if (null != eMeta) {
+            metadata.addAll(eMeta);
+          }
+        }
+      }
+      if (0 < metadata.size()) {
+        this.setMetadata(metadata);
+      }
     }
 
     /** Helper method for constructor */
