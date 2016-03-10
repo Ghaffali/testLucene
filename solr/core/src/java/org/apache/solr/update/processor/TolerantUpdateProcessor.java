@@ -29,6 +29,8 @@ import org.apache.lucene.util.CharsRefBuilder;
 import org.apache.solr.cloud.ZkController;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
+import org.apache.solr.common.ToleratedUpdateError;
+import org.apache.solr.common.ToleratedUpdateError.CmdType;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.params.ShardParams;
@@ -53,7 +55,7 @@ import org.slf4j.LoggerFactory;
  * will receive a 200 response, but gets a list of errors (keyed by
  * unique key) unless <code>maxErrors</code> is reached. 
  * If <code>maxErrors</code> occur, the first exception caught will be re-thrown, 
- * Solr will respond with 5XX or 4XX (depending on the exception) and
+ * Solr will respond with 5XX or 4XX (depending on the underlying exceptions) and
  * it won't finish processing the batch. This means that the last docs
  * in the batch may not be added in this case even if they are valid. 
  * </p>
@@ -94,7 +96,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
    * Known errors that occurred in this batch, in order encountered (may not be the same as the 
    * order the commands were originally executed in due to the async distributed updates).
    */
-  private final List<KnownErr> knownErrors = new ArrayList<KnownErr>();
+  private final List<ToleratedUpdateError> knownErrors = new ArrayList<ToleratedUpdateError>();
 
   // Kludge: Because deleteByQuery updates are forwarded to every leader, we can get identical
   // errors reported by every leader for the same underlying problem.
@@ -109,13 +111,13 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   //   dbq: foo:bar
   //
   // ...but i can't figure out a way to accurately identify & return duplicate 
-  // KnownErrs from duplicate identical underlying requests w/o erroneously returning identical 
-  // KnownErrs for the *same* underlying request but from diff shards.
+  // ToleratedUpdateErrors from duplicate identical underlying requests w/o erroneously returning identical 
+  // ToleratedUpdateErrors for the *same* underlying request but from diff shards.
   //
   // So as a kludge, we keep track of them for deduping against identical remote failures
   //
   // :nocommit: probably need to use this for "commit" as well?
-  private Set<KnownErr> knownDBQErrors = new HashSet<>();
+  private Set<ToleratedUpdateError> knownDBQErrors = new HashSet<>();
         
   private final FirstErrTracker firstErrTracker = new FirstErrTracker();
   private final DistribPhase distribPhase;
@@ -153,9 +155,10 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       if (isLeader || distribPhase.equals(DistribPhase.NONE)) {
         // nocommit: should we skip if condition and always do this? see comment in else...
         
-        knownErrors.add(new KnownErr(CmdType.ADD,
-                                     getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()),
-                                     t.getMessage()));
+        knownErrors.add(new ToleratedUpdateError
+                        (CmdType.ADD,
+                         getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()),
+                         t.getMessage()));
         if (knownErrors.size() > maxErrors) {
           firstErrTracker.throwFirst();
         }
@@ -185,9 +188,9 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
 
       // nocommit: do we need isLeader type logic like processAdd ? does processAdd even need it?
       
-      KnownErr err = new KnownErr(cmd.isDeleteById() ? CmdType.DELID : CmdType.DELQ,
-                                  cmd.isDeleteById() ? cmd.id : cmd.query,
-                                  t.getMessage());
+      ToleratedUpdateError err = new ToleratedUpdateError(cmd.isDeleteById() ? CmdType.DELID : CmdType.DELQ,
+                                                          cmd.isDeleteById() ? cmd.id : cmd.query,
+                                                          t.getMessage());
       knownErrors.add(err);
 
       // NOTE: we're not using this to dedup before adding to knownErrors.
@@ -241,8 +244,9 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
         }
 
         for (int i = 0; i < remoteErrMetadata.size(); i++) {
-          KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
-                                                          remoteErrMetadata.getVal(i));
+          ToleratedUpdateError err =
+            ToleratedUpdateError.parseMetadataIfToleratedUpdateError(remoteErrMetadata.getName(i),
+                                                                     remoteErrMetadata.getVal(i));
           if (null == err) {
             // some metadata unrelated to this update processor
             continue;
@@ -262,7 +266,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       }
     }
 
-    header.add("errors", KnownErr.formatForResponseHeader(knownErrors));
+    header.add("errors", ToleratedUpdateError.formatForResponseHeader(knownErrors));
     // include in response so client knows what effective value was (may have been server side config)
     header.add("maxErrors", maxErrors);
 
@@ -364,7 +368,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
      * Annotates the first exception (which may already have been thrown, or be thrown in the future) with 
      * the metadata from this update processor.  For use in {@link TolerantUpdateProcessor#finish}
      */
-    public void annotate(List<KnownErr> errors) {
+    public void annotate(List<ToleratedUpdateError> errors) {
 
       if (null == first) {
         return; // no exception to annotate
@@ -378,8 +382,8 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
         first.setMetadata(firstErrMetadata);
       }
 
-      for (KnownErr ke : errors) {
-        firstErrMetadata.add(ke.getMetadataKey(), ke.getMetadataValue());
+      for (ToleratedUpdateError te : errors) {
+        firstErrMetadata.add(te.getMetadataKey(), te.getMetadataValue());
       }
     }
     
@@ -388,91 +392,5 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     public SolrException getFirst() {
       return first;
     }
-    
-  }
-
-  /**
-   * Helper class for dealing with SolrException metadata (String) keys 
-   */
-  public static final class KnownErr {
-    
-    private final static String META_PRE =  TolerantUpdateProcessor.class.getName() + "--";
-    private final static int META_PRE_LEN = META_PRE.length();
-
-    /** returns a map of simple objects suitable for putting in a SolrQueryResponse */
-    public static List<SimpleOrderedMap<String>> formatForResponseHeader(List<KnownErr> errs) {
-      List<SimpleOrderedMap<String>> result = new ArrayList<>(errs.size());
-      for (KnownErr e : errs) {
-        SimpleOrderedMap<String> entry = new SimpleOrderedMap<String>();
-        entry.add("type", e.type.toString());
-        entry.add("id", e.id);
-        entry.add("message", e.errorValue);
-        result.add(entry);
-      }
-      return result;
-    }
-    
-    /** returns a KnownErr instance if this metadataKey is one we care about, else null */
-    public static KnownErr parseMetadataIfKnownErr(String metadataKey, String metadataVal) {
-      if (! metadataKey.startsWith(META_PRE)) {
-        return null; // not a key we care about
-      }
-      final int typeEnd = metadataKey.indexOf(':', META_PRE_LEN);
-      assert 0 < typeEnd; // nocommit: better error handling
-      return new KnownErr(CmdType.valueOf(metadataKey.substring(META_PRE_LEN, typeEnd)),
-                          metadataKey.substring(typeEnd+1), metadataVal);
-    }
-
-    public final CmdType type;
-    /** may be null depending on type */
-    public final String id;
-    public final String errorValue; // nocommit: refactor: rename errMessage?
-    
-    public KnownErr(CmdType type, String id, String errorValue) {
-      this.type = type;
-      assert null != type;
-      
-      assert null != id;
-      this.id = id;
-      
-      assert null != errorValue;
-      this.errorValue = errorValue;
-    }
-    
-    public String getMetadataKey() {
-      return META_PRE + type + ":" + id;
-    }
-    public String getMetadataValue() {
-      return errorValue.toString();
-    }
-    public String toString() {
-      return getMetadataKey() + "=>" + getMetadataValue();
-    }
-    public int hashCode() {
-      int h = this.getClass().hashCode();
-      h = h * 31 + type.hashCode();
-      h = h * 31 + id.hashCode();
-      h = h * 31 + errorValue.hashCode();
-      return h;
-    }
-    public boolean equals(Object o) {
-      if (o instanceof KnownErr) {
-        KnownErr that = (KnownErr)o;
-        return that.type.equals(this.type)
-          && that.id.equals(this.id)
-          && that.errorValue.equals(this.errorValue);
-      }
-      return false;
-    }
-  }
-  
-  /**
-   * Helper class for dealing with SolrException metadata (String) keys 
-   */
-  public static enum CmdType {
-    ADD, DELID, DELQ; // nocommit: others supported types? (commit?) ..
-
-    // if we add support for things like commit, parsing/toString/hashCode logic
-    // needs to be smarter to account for 'id' being null ... "usesId" should be a prop of enum instances
   }
 }

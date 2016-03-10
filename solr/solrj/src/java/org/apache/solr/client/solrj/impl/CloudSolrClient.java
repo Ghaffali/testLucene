@@ -54,6 +54,7 @@ import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
+import org.apache.solr.common.ToleratedUpdateError;
 import org.apache.solr.common.cloud.Aliases;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -776,13 +777,14 @@ public class CloudSolrClient extends SolrClient {
     if (null != toleratedErrors) {
       cheader.add("errors", toleratedErrors);
       if (maxToleratedErrors < toleratedErrors.size()) {
+        // cumulative errors are too high, we need to throw a client exception w/correct metadata
+        
         NamedList metadata = new NamedList<String>();
         SolrException toThrow = new SolrException(ErrorCode.BAD_REQUEST, "nocommit: need better msg");
         toThrow.setMetadata(metadata);
         for (SimpleOrderedMap<String> err : toleratedErrors) {
-          // nocommit: hack, refactor KnownErr into solr-common and re-use here...
-          metadata.add("org.apache.solr.update.processor.TolerantUpdateProcessor--" +
-                       err.get("type") + ":" + err.get("id"), err.get("message"));
+          ToleratedUpdateError te = ToleratedUpdateError.parseMap(err);
+          metadata.add(te.getMetadataKey(), te.getMetadataValue());
         }
         throw toThrow;
       }

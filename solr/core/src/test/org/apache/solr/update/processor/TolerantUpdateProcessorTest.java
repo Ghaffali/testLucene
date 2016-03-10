@@ -30,6 +30,8 @@ import javax.xml.xpath.XPathExpressionException;
 import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.ToleratedUpdateError;
+import org.apache.solr.common.ToleratedUpdateError.CmdType;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.SimpleOrderedMap;
@@ -40,8 +42,6 @@ import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.servlet.DirectSolrConnection;
 import org.apache.solr.update.AddUpdateCommand;
-import org.apache.solr.update.processor.TolerantUpdateProcessor.KnownErr;
-import org.apache.solr.update.processor.TolerantUpdateProcessor.CmdType;
 import org.apache.solr.util.BaseTestHarness;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -333,39 +333,6 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     
   }
 
-  public void testKnownErrClass() {
-
-    assertNull(KnownErr.parseMetadataIfKnownErr("some other key", "some value"));
-
-    for (KnownErr in : new KnownErr[] {
-        new KnownErr(CmdType.ADD, "doc1", "some error"),
-        new KnownErr(CmdType.DELID, "doc1", "some diff error"),
-        new KnownErr(CmdType.DELQ, "-field:yakko other_field:wakko", "some other error"),
-      }) {
-      KnownErr out = KnownErr.parseMetadataIfKnownErr(in.getMetadataKey(), in.getMetadataValue());
-      assertNotNull(out);
-      assertEquals(out.type, in.type);
-      assertEquals(out.id, in.id);
-      assertEquals(out.errorValue, in.errorValue);
-      assertEquals(out.hashCode(), in.hashCode());
-      assertEquals(out.toString(), in.toString());
-      
-      assertEquals(out, in);
-      assertEquals(in, out);
-
-    }
-    
-    assertFalse((new KnownErr(CmdType.ADD, "doc1", "some error")).equals
-                (new KnownErr(CmdType.ADD, "doc2", "some error")));
-    assertFalse((new KnownErr(CmdType.ADD, "doc1", "some error")).equals
-                (new KnownErr(CmdType.ADD, "doc1", "some errorxx")));
-    assertFalse((new KnownErr(CmdType.ADD, "doc1", "some error")).equals
-                (new KnownErr(CmdType.DELID, "doc1", "some error")));
-    
-
-    // nocommit: add randomized testing, particularly with non-trivial 'id' values
-    
-  }
 
   
   public String update(String chain, String xml) {

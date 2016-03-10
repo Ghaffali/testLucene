@@ -39,6 +39,8 @@ import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.ToleratedUpdateError;
+import org.apache.solr.common.ToleratedUpdateError.CmdType;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
@@ -48,9 +50,6 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
-
-import org.apache.solr.update.processor.TolerantUpdateProcessor.KnownErr;
-import org.apache.solr.update.processor.TolerantUpdateProcessor.CmdType;
 
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -536,11 +535,13 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       // verify that the Exceptions metadata can tell us what failed.
       NamedList<String> remoteErrMetadata = e.getMetadata();
       assertNotNull("no metadata in: " + e.toString(), remoteErrMetadata);
-      Set<KnownErr> actualKnownErrs = new LinkedHashSet<KnownErr>(remoteErrMetadata.size());
+      Set<ToleratedUpdateError> actualKnownErrs
+        = new LinkedHashSet<ToleratedUpdateError>(remoteErrMetadata.size());
       int actualKnownErrsCount = 0;
       for (int i = 0; i < remoteErrMetadata.size(); i++) {
-        KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
-                                                        remoteErrMetadata.getVal(i));
+        ToleratedUpdateError err =
+          ToleratedUpdateError.parseMetadataIfToleratedUpdateError(remoteErrMetadata.getName(i),
+                                                                   remoteErrMetadata.getVal(i));
         if (null == err) {
           // some metadata unrelated to this update processor
           continue;
@@ -552,7 +553,7 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                    11, actualKnownErrsCount);
       assertEquals("at least one dup error in metadata: " + remoteErrMetadata.toString(),
                    actualKnownErrsCount, actualKnownErrs.size());
-      for (KnownErr err : actualKnownErrs) {
+      for (ToleratedUpdateError err : actualKnownErrs) {
         assertEquals("only expected type of error is ADD: " + err,
                      CmdType.ADD, err.type);
         assertTrue("failed err msg didn't match expected value: " + err,
@@ -609,11 +610,13 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       // verify that the Exceptions metadata can tell us what failed.
       NamedList<String> remoteErrMetadata = e.getMetadata();
       assertNotNull("no metadata in: " + e.toString(), remoteErrMetadata);
-      Set<KnownErr> actualKnownErrs = new LinkedHashSet<KnownErr>(remoteErrMetadata.size());
+      Set<ToleratedUpdateError> actualKnownErrs
+        = new LinkedHashSet<ToleratedUpdateError>(remoteErrMetadata.size());
       int actualKnownErrsCount = 0;
       for (int i = 0; i < remoteErrMetadata.size(); i++) {
-        KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
-                                                        remoteErrMetadata.getVal(i));
+        ToleratedUpdateError err =
+          ToleratedUpdateError.parseMetadataIfToleratedUpdateError(remoteErrMetadata.getName(i),
+                                                                   remoteErrMetadata.getVal(i));
         if (null == err) {
           // some metadata unrelated to this update processor
           continue;
@@ -625,7 +628,7 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                    11, actualKnownErrsCount);
       assertEquals("at least one dup error in metadata: " + remoteErrMetadata.toString(),
                    actualKnownErrsCount, actualKnownErrs.size());
-      for (KnownErr err : actualKnownErrs) {
+      for (ToleratedUpdateError err : actualKnownErrs) {
         assertEquals("only expected type of error is ADD: " + err,
                      CmdType.ADD, err.type);
         assertTrue("failed id had unexpected prefix: " + err,
