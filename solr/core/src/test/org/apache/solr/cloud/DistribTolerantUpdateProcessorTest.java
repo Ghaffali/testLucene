@@ -35,6 +35,7 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.junit.Test;
 
+// nocommit: should we just remove this class? does it give us anything not covered by TestTolerantUpdateProcessorCloud?
 public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTestBase {
   
 
@@ -90,15 +91,14 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
       fail("Expecting exception");
     } catch (SolrException e) {
       // we can't make any reliable assertions about the error message, because
-      // it varies based on how the request was routed
-      // nocommit: can we tighten this any more?
+      // it varies based on how the request was routed -- see SOLR-8830
       assertTrue("not the type of error we were expecting: " + e.toString(),
                  400 <= e.code() && e.code() < 500);
     }
-    assertUSucceedsWithErrors("tolerant-chain-max-errors-10",
-                              new SolrInputDocument[]{ invalidDoc,
-                                                      sdoc("id", 4, "text", "the brown fox") },
-                              null, 1, "1");
+    assertAddsSucceedWithErrors("tolerant-chain-max-errors-10",
+                                new SolrInputDocument[]{ invalidDoc,
+                                                         sdoc("id", 4, "text", "the brown fox") },
+                                null, "1");
     commit();
 
     ModifiableSolrParams query = new ModifiableSolrParams();
@@ -109,15 +109,9 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
 
   }
 
-  // nocommit: redesign so that we can assert errors of diff types besides "add" (ie: deletes) 
-  private void assertUSucceedsWithErrors(String chain, SolrInputDocument[] docs,
-                                         SolrParams requestParams,
-                                         int numErrors,
-                                         String... idsShouldFail) throws Exception {
-    
-    // nocommit: retire numErrors from this method sig ... trappy
-    assertEquals("bad test, idsShouldFail.length doesn't match numErrors",
-                 numErrors, idsShouldFail.length);
+  private void assertAddsSucceedWithErrors(String chain, SolrInputDocument[] docs,
+                                            SolrParams requestParams,
+                                            String... idsShouldFail) throws Exception {
     
     ModifiableSolrParams newParams = new ModifiableSolrParams(requestParams);
     newParams.set("update.chain", chain);
@@ -132,8 +126,7 @@ public class DistribTolerantUpdateProcessorTest extends AbstractFullDistribZkTes
     Set<String> addErrorIdsExpected = new HashSet<String>(Arrays.asList(idsShouldFail));
     
     for (SimpleOrderedMap<String> err : errors) {
-      // nocommit: support other types
-      assertEquals("nocommit: error type not handled yet by this method",
+      assertEquals("error type not handled yet by this method",
                    "ADD", err.get("type"));
       
       String id = err.get("id");

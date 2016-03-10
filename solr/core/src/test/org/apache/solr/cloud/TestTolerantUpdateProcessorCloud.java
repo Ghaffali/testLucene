@@ -525,8 +525,7 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       fail("did not get a top level exception when more then 10 docs failed: " + rsp.toString());
     } catch (SolrException e) {
       // we can't make any reliable assertions about the error message, because
-      // it varies based on how the request was routed
-      // nocommit: verify that we can't do an e.getMessage() substring check
+      // it varies based on how the request was routed -- see SOLR-8830
       assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
                    // NOTE: we always expect a 400 because we know that's what we would get from these types of errors
                    // on a single node setup -- a 5xx type error isn't something we should have triggered
@@ -600,8 +599,7 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       fail("did not get a top level exception when more then 10 docs failed: " + rsp.toString());
     } catch (SolrException e) {
       // we can't make any reliable assertions about the error message, because
-      // it varies based on how the request was routed
-      // nocommit: verify that we can't do an e.getMessage() substring check
+      // it varies based on how the request was routed -- see SOLR-8830
       assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
                    // NOTE: we always expect a 400 because we know that's what we would get from these types of errors
                    // on a single node setup -- a 5xx type error isn't something we should have triggered

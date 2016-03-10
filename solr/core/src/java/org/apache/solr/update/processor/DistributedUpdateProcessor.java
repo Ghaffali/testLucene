@@ -923,10 +923,6 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
 
     
     if (0 < errorsForClient.size()) {
-      // nocommit: slight intentional change here: throwing instead of using setException directly
-      // nocommit: sanity check that doesn't break any other assumptions?
-      //
-      // nocommit: if 1==errorsForClient.size() should we throw it directly? ... would mean changes for catching logic in TolerantUP.finish()
       throw new DistributedUpdatesAsyncException(errorsForClient);
     }
   }
@@ -1706,7 +1702,26 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
       super(buildCode(errors), buildMsg(errors), null);
       this.errors = errors;
 
-      // nocommit: can/should we try to merge the ((SolrException)Error.e).getMetadata() into this.getMetadata() ?
+      // nocommit: the code below is useful for preserving things like "root-error-class"
+      // nocommit: but wreaks havoc on ToleranteUpdateProcessor's exception annotating.
+      //
+      // nocommit: before enabling the code below, we need to make ToleranteUpdateProcessor 
+      // nocommit: smart enough to remove metadata it cares about before adding it (and others) back
+      //
+      // // create a merged copy of the metadata from all wrapped exceptions
+      // NamedList<String> metadata = new NamedList<String>();
+      // for (Error error : errors) {
+      //   if (error.e instanceof SolrException) {
+      //     SolrException e = (SolrException) error.e;
+      //     NamedList<String> eMeta = e.getMetadata();
+      //     if (null != eMeta) {
+      //       metadata.addAll(eMeta);
+      //     }
+      //   }
+      // }
+      // if (0 < metadata.size()) {
+      //   this.setMetadata(metadata);
+      // }
     }
 
     /** Helper method for constructor */
@@ -1721,6 +1736,8 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
         if (result != error.statusCode ) {
           // ...otherwise use sensible default
           return ErrorCode.SERVER_ERROR.code;
+          // nocommit: don't short circut - check them all...
+          // nocommit: ...even if not all same, use 400 if all 4xx, else use 500
         }
       }
       return result;

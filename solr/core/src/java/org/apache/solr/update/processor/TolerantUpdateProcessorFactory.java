@@ -112,9 +112,9 @@ public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactor
       maxErrors = this.defaultMaxErrors;
     }
 
-    // nocommit: support maxErrors < 0 to mean the same as Integer.MAX_VALUE
+    // nocommit: support maxErrors < 0 to mean the same as Integer.MAX_VALUE (add test)
     
-    // nocommit: if (effective) maxErrors==0, then bypass this processor completley?
+    // NOTE: even if 0==maxErrors, we still inject processor into chain so respones has expected header info
     return new TolerantUpdateProcessor(req, rsp, next, maxErrors, distribPhase);
   }
 }

@@ -89,7 +89,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   private final int maxErrors;
   
   private final SolrQueryRequest req;
-  private final SolrQueryResponse rsp; // nocommit: needed?
   private ZkController zkController;
 
   /**
@@ -116,7 +115,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   //
   // So as a kludge, we keep track of them for deduping against identical remote failures
   //
-  // :nocommit: probably need to use this for "commit" as well?
   private Set<ToleratedUpdateError> knownDBQErrors = new HashSet<>();
         
   private final FirstErrTracker firstErrTracker = new FirstErrTracker();
@@ -126,7 +124,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     super(next);
     assert maxErrors >= 0;
       
-    this.rsp = rsp; // nocommit: needed?
     header = rsp.getResponseHeader();
     this.maxErrors = maxErrors;
     this.req = req;
@@ -177,16 +174,12 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   @Override
   public void processDelete(DeleteUpdateCommand cmd) throws IOException {
     
-    // nocommit: do we need special delById => isLeader(id) vs delByQ => isAnyLeader logic?
-      
     try {
       
       super.processDelete(cmd);
       
     } catch (Throwable t) { // nocommit: OOM trap
       firstErrTracker.caught(t);
-
-      // nocommit: do we need isLeader type logic like processAdd ? does processAdd even need it?
       
       ToleratedUpdateError err = new ToleratedUpdateError(cmd.isDeleteById() ? CmdType.DELID : CmdType.DELQ,
                                                           cmd.isDeleteById() ? cmd.id : cmd.query,
@@ -208,8 +201,8 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   }
 
   
-  // nocommit: what about processCommit and other UpdateProcessor methods?
-  // nocommit: ...at a minimum use firstErrTracker to catch & rethrow so finish can annotate
+  // nocommit: override processCommit and other UpdateProcessor methods
+  // nocommit: ...use firstErrTracker to catch & rethrow so finish can annotate
 
   @Override
   public void finish() throws IOException {
@@ -299,7 +292,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     return field.getType().indexedToReadable(ref, new CharsRefBuilder()).toString();
   }
 
-  // nocommit: javadocs ... also: sanity check this method is even accurate
+  // nocommit: 1) is this method even needed? 2) is this method correct? 3) javadocs
   private boolean isLeader(AddUpdateCommand cmd) {
     if(!cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().isZooKeeperAware())
       return true;

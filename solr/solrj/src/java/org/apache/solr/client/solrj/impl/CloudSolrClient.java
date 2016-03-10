@@ -778,9 +778,10 @@ public class CloudSolrClient extends SolrClient {
       cheader.add("errors", toleratedErrors);
       if (maxToleratedErrors < toleratedErrors.size()) {
         // cumulative errors are too high, we need to throw a client exception w/correct metadata
-        
+
+        // nocommit: refactor & reuse DistributedUpdatesAsyncException
         NamedList metadata = new NamedList<String>();
-        SolrException toThrow = new SolrException(ErrorCode.BAD_REQUEST, "nocommit: need better msg");
+        SolrException toThrow = new SolrException(ErrorCode.BAD_REQUEST, "nocommit: better msg from DUAE");
         toThrow.setMetadata(metadata);
         for (SimpleOrderedMap<String> err : toleratedErrors) {
           ToleratedUpdateError te = ToleratedUpdateError.parseMap(err);
