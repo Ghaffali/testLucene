@@ -29,8 +29,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.collect.ImmutableSet;
+import org.apache.lucene.queryparser.flexible.core.util.StringUtils;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.request.SolrQueryRequest;
@@ -187,8 +189,10 @@ public class ApiBag {
   }
 
   public static Map2 getSpec(String name) {
-    Map2 map = getResource(APISPEC_LOCATION + name + ".json");
-    Map2 result = map.getMap(name, NOT_NULL);
+    String jsonName = APISPEC_LOCATION + name + ".json";
+    Map2 map = getResource(jsonName);
+    Map2 result = map/*.getMap(name, NOT_NULL,
+        formatString("The json file ''{0}'' must have a root object with name ''{1}''",jsonName, name))*/;
     Map2 cmds = result.getMap("commands", null);
     if (cmds != null) {
       Map<String, Map2> comands2BReplaced = new Map2<>();

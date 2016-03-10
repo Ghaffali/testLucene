@@ -1,12 +1,12 @@
 {
   "documentation": "https://cwiki.apache.org",
   "methods": [
-    "POST",
-    "GET"
+    "DELETE"
   ],
   "url": {
     "paths": [
-      "/cluster/security/authentication"
+      "/collections/{collection}",
+      "/c/{collection}"
     ]
   }
 }

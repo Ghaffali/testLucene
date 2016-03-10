@@ -189,8 +189,12 @@ public class Map2<K, V> implements Map<K, V> {
       throw new RuntimeException("value of " + k + "must be an integer");
     }
   }
-
   public Map2 getMap(String key, Predicate predicate) {
+    return getMap(key, predicate, null);
+
+  }
+
+  public Map2 getMap(String key, Predicate predicate, String message) {
     V v = get(key);
     if (v != null && !(v instanceof Map)) {
       throw new RuntimeException("" + key + " should be of type map");
@@ -199,7 +203,8 @@ public class Map2<K, V> implements Map<K, V> {
     if (predicate != null) {
       String msg = predicate.test(v);
       if (msg != null) {
-        throw new RuntimeException("" + key + msg);
+        msg = message != null ? message : key + msg;
+        throw new RuntimeException(msg);
       }
     }
     return wrap((Map) v);

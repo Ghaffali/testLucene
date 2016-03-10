@@ -1,19 +1,17 @@
 {
-  "core.Update": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
-    "methods": [
-      "POST"
-    ],
-    "url": {
-      "path": "/update",
-      "paths": [
-        "/update",
-        "/update/xml",
-        "/update/csv",
-        "/update/json",
-        "/update/json/commands"
-      ]
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "path": "/update",
+    "paths": [
+      "/update",
+      "/update/xml",
+      "/update/csv",
+      "/update/json",
+      "/update/json/commands"
+    ]
 
-    }
   }
 }

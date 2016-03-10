@@ -1,36 +1,36 @@
 {
-  "cores.core.Commands": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "POST"
-    ],
-    "url": {
-      "path": "/cores/{core}",
-      "paths": [
-        "/cores/{core}"
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "path": "/cores/{core}",
+    "paths": [
+      "/cores/{core}"
+    ]
+  },
+  "commands": {
+    "reload": {
+      "properties": {}
+    },
+    "unload": {
+      "properties": {}
+    },
+    "swap": {
+      "properties": {
+        "with": {
+          "type": "string",
+          "description": "The other core name"
+        }
+      },
+      "required": [
+        "with"
       ]
     },
-    "commands": {
-      "reload": {
-        "properties": {}
-      },
-      "unload":{
-        "properties": {}
-      },
-      "swap": {
-        "properties": {
-          "with" : {
-            "type":"string",
-            "description":"The other core name"
-          }
-        },
-        "required":["with"]
-      },
-      "merge-indexes": {
-        "properties": {}
-      },
-      "request-recovery": {},
-      "split":"cores.core.Commands.split"
-    }
+    "merge-indexes": {
+      "properties": {}
+    },
+    "request-recovery": {},
+    "split": "cores.core.Commands.split"
   }
 }

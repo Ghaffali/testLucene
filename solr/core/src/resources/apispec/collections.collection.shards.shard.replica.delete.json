@@ -1,22 +1,19 @@
 {
-  "collections.collection.shards.shard.replica.delete": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "DELETE"
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "DELETE"
+  ],
+  "url": {
+    "paths": [
+      "/collections/{collection}/shards/{shard}/{replica}",
+      "/c/{collection}/shards/{shard}/{replica}"
     ],
-    "url": {
-      "paths": [
-        "/collections/{collection}/shards/{shard}/{replica}",
-        "/c/{collection}/shards/{shard}/{replica}"
-      ],
-      "params":{
-        "onlyIfDown" : {
-          "type":"boolean",
-          "default":false,
-          "description":""
-        }
+    "params": {
+      "onlyIfDown": {
+        "type": "boolean",
+        "default": false,
+        "description": ""
       }
-
     }
 
   }

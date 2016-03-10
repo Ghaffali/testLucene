@@ -1,20 +1,18 @@
 {
-  "collections.collection.shards.shard.replica.Commands": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "GET",
-      "POST"
-    ],
-    "url": {
-      "paths": [
-        "/collections/{collection}/shards/{shard}/{replica}",
-        "/c/{collection}/shards/{shard}/{replica}"
-      ]
-    },
-    "commands": {
-      "set": {
-        "additionalProperties": true
-      }
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "GET",
+    "POST"
+  ],
+  "url": {
+    "paths": [
+      "/collections/{collection}/shards/{shard}/{replica}",
+      "/c/{collection}/shards/{shard}/{replica}"
+    ]
+  },
+  "commands": {
+    "set": {
+      "additionalProperties": true
     }
   }
 }

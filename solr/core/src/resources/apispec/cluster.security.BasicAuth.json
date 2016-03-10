@@ -1,25 +1,23 @@
 {
-  "cluster.security.BasicAuth": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "POST",
-      "GET"
-    ],
-    "url": {
-      "paths": [
-        "/cluster/security/authentication"
-      ]
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "POST",
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/cluster/security/authentication"
+    ]
+  },
+  "commands": {
+    "set-user": {
+      "description": "The set-user command allows you to add users and change their passwords",
+      "properties": {},
+      "additionalProperties": true
     },
-    "commands": {
-      "set-user": {
-        "description": "The set-user command allows you to add users and change their passwords",
-        "properties": {},
-        "additionalProperties": true
-      },
-      "delete-user": {
-        "description": "",
-        "type": "list"
-      }
+    "delete-user": {
+      "description": "",
+      "type": "list"
     }
   }
 }

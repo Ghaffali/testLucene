@@ -206,7 +206,6 @@ public class PluginBag<T> implements AutoCloseable {
         T inst = plugin.get();
         if (inst instanceof ApiSupport && (registerApi || plugin.registerAPI)) {
           ApiSupport apiSupport = (ApiSupport) inst;
-          if(apiSupport.disableHandler()) disableHandler = true;
           Collection<Api> apis = apiSupport.getApis();
           if (apis != null) {
             Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);

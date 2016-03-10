@@ -1,17 +1,17 @@
 {
-  "cluster": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
-    "methods": ["GET"],
-    "url": {
-      "paths": [
-        "/cluster",
-        "/cluster/overseer",
-        "/cluster/nodes",
-        "/cluster/command-status",
-        "/cluster/command-status/{id}",
-        "/cluster/command-status/{id}"
-      ]
-    },
-    "body": null
-  }
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/cluster",
+      "/cluster/overseer",
+      "/cluster/nodes",
+      "/cluster/command-status",
+      "/cluster/command-status/{id}",
+      "/cluster/command-status/{id}"
+    ]
+  },
+  "body": null
 }

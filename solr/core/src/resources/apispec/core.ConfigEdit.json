@@ -1,115 +1,113 @@
 {
-  "core.ConfigEdit": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
-    "methods": [
-      "POST"
-    ],
-    "url": {
-      "paths": [
-        "$handlerName",
-        "$handlerName/params"
-      ]
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "paths": [
+      "$handlerName",
+      "$handlerName/params"
+    ]
+  },
+  "commands": {
+    "add-requesthandler": {
+      "additionalProperties": true
     },
-    "commands": {
-      "add-requesthandler": {
-        "additionalProperties": true
-      },
-      "update-requesthandler": {
-        "additionalProperties": true
-      },
-      "delete-requesthandler": {
-        "additionalProperties": true
-      },
-      "add-searchcomponent": {
-        "additionalProperties": true
-      },
-      "update-searchcomponent": {
-        "additionalProperties": true
-      },
-      "delete-searchcomponent": {
-        "additionalProperties": true
-      },
-      "add-initparams": {
-        "additionalProperties": true
-      },
-      "update-initparams": {
-        "additionalProperties": true
-      },
-      "delete-initparams": {
-        "additionalProperties": true
-      },
-      "add-queryresponsewriter": {
-        "additionalProperties": true
-      },
-      "update-queryresponsewriter": {
-        "additionalProperties": true
-      },
-      "delete-queryresponsewriter": {
-        "additionalProperties": true
-      },
-      "add-queryparser": {
-        "additionalProperties": true
-      },
-      "update-queryparser": {
-        "additionalProperties": true
-      },
-      "delete-queryparser": {
-        "additionalProperties": true
-      },
-      "add-valuesourceparser": {
-        "additionalProperties": true
-      },
-      "update-valuesourceparser": {
-        "additionalProperties": true
-      },
-      "delete-valuesourceparser": {
-        "additionalProperties": true
-      },
-      "add-transformer": {
-        "additionalProperties": true
-      },
-      "update-transformer": {
-        "additionalProperties": true
-      },
-      "delete-transformer": {
-        "additionalProperties": true
-      },
-      "add-updateprocessor": {
-        "additionalProperties": true
-      },
-      "update-updateprocessor": {
-        "additionalProperties": true
-      },
-      "delete-updateprocessor": {
-        "additionalProperties": true
-      },
-      "add-queryconverter": {
-        "additionalProperties": true
-      },
-      "update-queryconverter": {
-        "additionalProperties": true
-      },
-      "delete-queryconverter": {
-        "additionalProperties": true
-      },
-      "add-listener": {
-        "additionalProperties": true
-      },
-      "update-listener": {
-        "additionalProperties": true
-      },
-      "delete-listener": {
-        "additionalProperties": true
-      },
-      "add-runtimelib": {
-        "additionalProperties": true
-      },
-      "update-runtimelib": {
-        "additionalProperties": true
-      },
-      "delete-runtimelib": {
-        "additionalProperties": true
-      }
+    "update-requesthandler": {
+      "additionalProperties": true
+    },
+    "delete-requesthandler": {
+      "additionalProperties": true
+    },
+    "add-searchcomponent": {
+      "additionalProperties": true
+    },
+    "update-searchcomponent": {
+      "additionalProperties": true
+    },
+    "delete-searchcomponent": {
+      "additionalProperties": true
+    },
+    "add-initparams": {
+      "additionalProperties": true
+    },
+    "update-initparams": {
+      "additionalProperties": true
+    },
+    "delete-initparams": {
+      "additionalProperties": true
+    },
+    "add-queryresponsewriter": {
+      "additionalProperties": true
+    },
+    "update-queryresponsewriter": {
+      "additionalProperties": true
+    },
+    "delete-queryresponsewriter": {
+      "additionalProperties": true
+    },
+    "add-queryparser": {
+      "additionalProperties": true
+    },
+    "update-queryparser": {
+      "additionalProperties": true
+    },
+    "delete-queryparser": {
+      "additionalProperties": true
+    },
+    "add-valuesourceparser": {
+      "additionalProperties": true
+    },
+    "update-valuesourceparser": {
+      "additionalProperties": true
+    },
+    "delete-valuesourceparser": {
+      "additionalProperties": true
+    },
+    "add-transformer": {
+      "additionalProperties": true
+    },
+    "update-transformer": {
+      "additionalProperties": true
+    },
+    "delete-transformer": {
+      "additionalProperties": true
+    },
+    "add-updateprocessor": {
+      "additionalProperties": true
+    },
+    "update-updateprocessor": {
+      "additionalProperties": true
+    },
+    "delete-updateprocessor": {
+      "additionalProperties": true
+    },
+    "add-queryconverter": {
+      "additionalProperties": true
+    },
+    "update-queryconverter": {
+      "additionalProperties": true
+    },
+    "delete-queryconverter": {
+      "additionalProperties": true
+    },
+    "add-listener": {
+      "additionalProperties": true
+    },
+    "update-listener": {
+      "additionalProperties": true
+    },
+    "delete-listener": {
+      "additionalProperties": true
+    },
+    "add-runtimelib": {
+      "additionalProperties": true
+    },
+    "update-runtimelib": {
+      "additionalProperties": true
+    },
+    "delete-runtimelib": {
+      "additionalProperties": true
     }
   }
 }

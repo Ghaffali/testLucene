@@ -153,8 +153,4 @@ public class InfoHandler extends RequestHandlerBase implements ApiSupport {
     });
   }
 
-  @Override
-  public boolean registerApi() {
-    return true;
-  }
 }

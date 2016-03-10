@@ -1,22 +1,23 @@
 {
-  "core.RealtimeGet": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
-    "methods": ["GET"],
-    "url": {
-      "path": "/get",
-      "paths": [
-        "$handlerName",
-        "$handlerName/versions",
-        "$handlerName/updates"],
-      "params":{
-        "id" : {
-          "type":"string",
-          "description" :"one or more ids. Separate by commas if there are more than one"
-        },
-        "ids" : {
-          "type":"string",
-          "description" :"one or more ids. Separate by commas if there are more than one"
-        }
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "path": "/get",
+    "paths": [
+      "$handlerName",
+      "$handlerName/versions",
+      "$handlerName/updates"
+    ],
+    "params": {
+      "id": {
+        "type": "string",
+        "description": "one or more ids. Separate by commas if there are more than one"
+      },
+      "ids": {
+        "type": "string",
+        "description": "one or more ids. Separate by commas if there are more than one"
       }
     }
   }

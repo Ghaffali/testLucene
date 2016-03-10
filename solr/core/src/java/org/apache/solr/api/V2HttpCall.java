@@ -52,6 +52,7 @@ import org.apache.solr.servlet.SolrRequestParsers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.solr.api.PathTrie.getParts;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.CommonParams.WT;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.ADMIN;
@@ -76,7 +77,7 @@ public class V2HttpCall extends HttpSolrCall {
     String path = this.path;
     String fullPath = path = path.substring(3);//strip off '/v2'
     try {
-      pieces = PathTrie.getParts(path);
+      pieces = getParts(path);
       if (pieces.size() == 0) {
         prefix = "c";
         path = "/c";
@@ -261,7 +262,7 @@ public class V2HttpCall extends HttpSolrCall {
     try {
       api.call(solrReq, rsp);
     } catch (RuntimeException e) {
-      //todo remove for debugging only
+      //todo remove. for debugging only
       log.error("error execute()", e);
       throw e;
     }

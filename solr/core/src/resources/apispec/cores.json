@@ -1,22 +1,20 @@
 {
-  "cores": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "GET"
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "path": "/cores",
+    "paths": [
+      "/cores"
     ],
-    "url": {
-      "path": "/cores",
-      "paths": [
-        "/cores"
-      ],
-      "params": {
-        "indexInfo": {
-          "type": "boolean",
-          "description": "return index info",
-          "default": false
-        }
+    "params": {
+      "indexInfo": {
+        "type": "boolean",
+        "description": "return index info",
+        "default": false
       }
-    },
-    "body": null
-  }
+    }
+  },
+  "body": null
 }

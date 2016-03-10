@@ -1,25 +1,25 @@
 {
-  "core.SchemaRead": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr$handlerName+API",
-    "methods": ["GET"],
-    "url": {
-      "paths": [
-        "$handlerName",
-        "$handlerName/name",
-        "$handlerName/uniquekey",
-        "$handlerName/version",
-        "$handlerName/similarity",
-        "$handlerName/solrqueryparser",
-        "$handlerName/zkversion",
-        "$handlerName/zkversion",
-        "$handlerName/solrqueryparser/defaultoperator",
-        "$handlerName/name",
-        "$handlerName/version",
-        "$handlerName/uniquekey",
-        "$handlerName/similarity",
-        "$handlerName/similarity"
-      ]
-    },
-    "body": null
-  }
+  "documentation": "https://cwiki.apache.org/confluence/display/solr$handlerName+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "$handlerName",
+      "$handlerName/name",
+      "$handlerName/uniquekey",
+      "$handlerName/version",
+      "$handlerName/similarity",
+      "$handlerName/solrqueryparser",
+      "$handlerName/zkversion",
+      "$handlerName/zkversion",
+      "$handlerName/solrqueryparser/defaultoperator",
+      "$handlerName/name",
+      "$handlerName/version",
+      "$handlerName/uniquekey",
+      "$handlerName/similarity",
+      "$handlerName/similarity"
+    ]
+  },
+  "body": null
 }

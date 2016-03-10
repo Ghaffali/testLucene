@@ -78,7 +78,7 @@ public class TestSolrConfigHandler extends RestTestBase {
 
     createJettyAndHarness(tmpSolrHome.getAbsolutePath(), "solrconfig-managed-schema.xml", "schema-rest.xml",
         "/solr", true, extraServlets);
-    if (true) {
+    if (random().nextBoolean()) {
       log.info("These tests are run with V2 API");
       restTestHarness.setServerProvider(new RESTfulServerProvider() {
         @Override
@@ -575,7 +575,7 @@ public class TestSolrConfigHandler extends RestTestBase {
 
     TestSolrConfigHandler.testForResponseElement(harness,
         null,
-        "/dump?wt=json&useParams=y",
+        "/dump1?wt=json&useParams=y",
         null,
         Arrays.asList("params", "c"),
         "CY val",

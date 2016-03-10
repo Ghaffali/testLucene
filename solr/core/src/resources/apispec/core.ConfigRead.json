@@ -1,19 +1,20 @@
 {
-  "core.ConfigRead": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
-    "methods": ["GET"],
-    "url": {
-      "paths": [
-        "$handlerName",
-        "$handlerName/overlay",
-        "$handlerName/params",
-        "$handlerName/params",
-        "$handlerName/query",
-        "$handlerName/jmx",
-        "$handlerName/requestDispatcher",
-        "$handlerName/znodeVersion",
-        "$handlerName/{plugin}"
-      ] },
-    "body": null
-  }
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "$handlerName",
+      "$handlerName/overlay",
+      "$handlerName/params",
+      "$handlerName/params",
+      "$handlerName/query",
+      "$handlerName/jmx",
+      "$handlerName/requestDispatcher",
+      "$handlerName/znodeVersion",
+      "$handlerName/{plugin}"
+    ]
+  },
+  "body": null
 }

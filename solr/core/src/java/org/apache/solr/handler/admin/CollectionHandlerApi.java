@@ -67,22 +67,21 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
   }
 
 
-
   enum Cmd implements ApiCommand<CollectionHandlerApi> {
     GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
-    GET_A_COLLECTION(EndPoint.PER_COLLECTION, GET, LIST_OP),
-    CREATE_COLLECTION(EndPoint.COLLECTIONS,
+    GET_A_COLLECTION(EndPoint.PER_COLLECTION, GET, CLUSTERSTATUS_OP),
+    CREATE_COLLECTION(EndPoint.COLLECTIONS_COMMANDS,
         POST,
         CREATE_OP,
         CREATE_OP.action.toLower(),
         ImmutableMap.of(
-            OverseerCollectionMessageHandler.COLL_CONF, "config")){
+            OverseerCollectionMessageHandler.COLL_CONF, "config")) {
       @Override
       public Collection<String> getParamNames(CommandOperation op) {
         Collection<String> names = super.getParamNames(op);
         Collection<String> result = new ArrayList<>(names.size());
         for (String paramName : names) {
-          if(paramName.startsWith("properties.")){
+          if (paramName.startsWith("properties.")) {
             result.add(paramName.replace("properties.", "property."));
           } else {
             result.add(paramName);
@@ -93,11 +92,11 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
       @Override
       public String getParamSubstitute(String param) {
-        return param.startsWith("property.")? param.replace("property.", "properties.") : super.getParamSubstitute(param);
+        return param.startsWith("property.") ? param.replace("property.", "properties.") : super.getParamSubstitute(param);
       }
     },
 
-    DELETE_COLL(EndPoint.PER_COLLECTION,
+    DELETE_COLL(EndPoint.PER_COLLECTION_DELETE,
         DELETE,
         DELETE_OP,
         DELETE_OP.action.toLower(),
@@ -117,35 +116,35 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
             "target.collection", "target",
             "forward.timeout", "forwardTimeout"
         )),
-    CREATE_ALIAS(EndPoint.COLLECTIONS,
+    CREATE_ALIAS(EndPoint.COLLECTIONS_COMMANDS,
         POST,
         CREATEALIAS_OP,
         "create-alias",
         null),
 
-    DELETE_ALIAS(EndPoint.COLLECTIONS,
+    DELETE_ALIAS(EndPoint.COLLECTIONS_COMMANDS,
         POST,
         CREATEALIAS_OP,
         "delete-alias",
         ImmutableMap.of(NAME, "")),
-    CREATE_SHARD(EndPoint.PER_COLLECTION_SHARDS,
+    CREATE_SHARD(EndPoint.PER_COLLECTION_SHARDS_COMMANDS,
         POST,
         CREATESHARD_OP,
         "create",
         null),
 
-    SPLIT_SHARD(EndPoint.PER_COLLECTION_PER_SHARD,
+    SPLIT_SHARD(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
         POST,
         SPLITSHARD_OP,
         "split",
         ImmutableMap.of(
             "split.key", "splitKey")),
-    DELETE_SHARD(EndPoint.PER_COLLECTION_PER_SHARD,
+    DELETE_SHARD(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
         DELETE,
         DELETESHARD_OP),
 
 
-    CREATE_REPLICA(EndPoint.PER_COLLECTION_PER_SHARD,
+    CREATE_REPLICA(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
         POST,
         ADDREPLICA_OP,
         "create-replica",
@@ -155,7 +154,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         DELETE,
         DELETEREPLICA_OP),
 
-    SYNC_SHARD(EndPoint.PER_COLLECTION_PER_SHARD,
+    SYNC_SHARD(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
         POST,
         SYNCSHARD_OP,
         "synch-shard",
@@ -225,13 +224,15 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
   }
 
   enum EndPoint implements V2EndPoint {
-    CLUSTER("collections.Commands"),
-    COLLECTIONS("collections.Commands"),
+    CLUSTER("cluster"),
+    COLLECTIONS_COMMANDS("collections.Commands"),
+    COLLECTIONS("collections"),
+    COLLECTION_STATE("collection"),
     PER_COLLECTION("collections.collection.Commands"),
-    PER_COLLECTION_SHARDS("collections.collection.shards.Commands"),
-    PER_COLLECTION_PER_SHARD("collections.collection.shards.Commands"),
-    PER_COLLECTION_PER_SHARD_REPLICAS("collections.collection.shards.shard.Commands"),
-    PER_COLLECTION_PER_SHARD_PER_REPLICA("collections.collection.shards.shard.replica.Commands"),
+    PER_COLLECTION_DELETE("collections.collection.delete"),
+    PER_COLLECTION_SHARDS_COMMANDS("collections.collection.shards.Commands"),
+    PER_COLLECTION_PER_SHARD_COMMANDS("collections.collection.shards.shard.Commands"),
+    PER_COLLECTION_PER_SHARD_PER_REPLICA_COMMANDS("collections.collection.shards.shard.replica.Commands"),
     PER_COLLECTION_PER_SHARD_PER_REPLICA_DELETE("collections.collection.shards.shard.replica.delete");
     final String specName;
 

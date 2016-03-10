@@ -23,12 +23,4 @@ public interface ApiSupport {
 
   Collection<Api> getApis();
 
-
-  default boolean registerApi() {
-    return false;
-  }
-
-  default boolean disableHandler() {
-    return false;
-  }
 }

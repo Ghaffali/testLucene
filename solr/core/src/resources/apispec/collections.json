@@ -1,0 +1,12 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/collections",
+      "/c"
+    ]
+  }
+}

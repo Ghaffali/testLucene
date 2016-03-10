@@ -53,14 +53,14 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     Map<String, Object> out = new HashMap<>();
     CoreContainer mockCC = TestCoreAdminApis.getCoreContainerMock(calls, out);
     PluginBag<SolrRequestHandler> containerHandlers = new PluginBag<>(SolrRequestHandler.class, null, false);
-    containerHandlers.put(COLLECTIONS_HANDLER_PATH, new TestCollectionAPIs.MockCollectionsHandler());
-    containerHandlers.put(CORES_HANDLER_PATH, new CoreAdminHandler(mockCC));
+    containerHandlers.put(COLLECTIONS_HANDLER_PATH, new TestCollectionAPIs.MockCollectionsHandler(), true);
+    containerHandlers.put(CORES_HANDLER_PATH, new CoreAdminHandler(mockCC), true);
     out.put("getRequestHandlers", containerHandlers);
 
     PluginBag<SolrRequestHandler> coreHandlers = new PluginBag<>(SolrRequestHandler.class, null, false);
-    coreHandlers.put("/schema", new SchemaHandler());
-    coreHandlers.put("/config", new SolrConfigHandler());
-    coreHandlers.put("/admin/ping", new PingRequestHandler());
+    coreHandlers.put("/schema", new SchemaHandler(), true);
+    coreHandlers.put("/config", new SolrConfigHandler(), true);
+    coreHandlers.put("/admin/ping", new PingRequestHandler(), true);
 
     Map<String, String> parts = new HashMap<>();
     String fullPath = "/collections/hello/shards";

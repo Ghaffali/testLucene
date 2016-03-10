@@ -1,22 +1,24 @@
 {
-  "core.SchemaEdit": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
-    "methods": ["POST"],
-    "url": {
-      "paths": ["$handlerName"]
-    },
-    "commands":{
-      "add-field":"core.SchemaEdit.addField",
-      "delete-field":"core.SchemaEdit.deleteField",
-      "replace-field":"core.SchemaEdit.replaceField",
-      "add-dynamic-field":"core.SchemaEdit.addDynamicField",
-      "delete-dynamic-field":"core.SchemaEdit.deleteDynamicField",
-      "replace-dynamic-field":"core.SchemaEdit.replaceDynamicField",
-      "add-field-type":"core.SchemaEdit.addFieldType",
-      "delete-field-type":"core.SchemaEdit.deleteFieldType",
-      "replace-field-type":"core.SchemaEdit.replaceFieldType",
-      "add-copy-field":"core.SchemaEdit.addCopyField",
-      "delete-copy-field":"core.SchemaEdit.deleteCopyField"
-    }
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "paths": [
+      "$handlerName"
+    ]
+  },
+  "commands": {
+    "add-field": "core.SchemaEdit.addField",
+    "delete-field": "core.SchemaEdit.deleteField",
+    "replace-field": "core.SchemaEdit.replaceField",
+    "add-dynamic-field": "core.SchemaEdit.addDynamicField",
+    "delete-dynamic-field": "core.SchemaEdit.deleteDynamicField",
+    "replace-dynamic-field": "core.SchemaEdit.replaceDynamicField",
+    "add-field-type": "core.SchemaEdit.addFieldType",
+    "delete-field-type": "core.SchemaEdit.deleteFieldType",
+    "replace-field-type": "core.SchemaEdit.replaceFieldType",
+    "add-copy-field": "core.SchemaEdit.addCopyField",
+    "delete-copy-field": "core.SchemaEdit.deleteCopyField"
   }
 }

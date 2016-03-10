@@ -1,19 +1,16 @@
 {
-  "collections.collection.Commands": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "POST",
-      "DELETE"
-    ],
-    "url": {
-      "paths": [
-        "/collections/{collection}",
-        "/c/{collection}"
-      ]
-    },
-    "commands": {
-      "modify": "collections.collection.Commands.modify",
-      "reload": "collections.collection.Commands.reload"
-    }
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "paths": [
+      "/collections/{collection}",
+      "/c/{collection}"
+    ]
+  },
+  "commands": {
+    "modify": "collections.collection.Commands.modify",
+    "reload": "collections.collection.Commands.reload"
   }
 }

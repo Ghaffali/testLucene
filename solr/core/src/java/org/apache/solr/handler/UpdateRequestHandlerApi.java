@@ -34,11 +34,6 @@ public class UpdateRequestHandlerApi extends UpdateRequestHandler  {
 
 
   @Override
-  public boolean registerApi() {
-    return true;
-  }
-
-  @Override
   public Collection<Api> getApis() {
     return Collections.singleton(getApiImpl());
   }

@@ -1,28 +1,26 @@
 {
-  "collections.collection.shards.shard.Commands": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "POST",
-      "GET",
-      "DELETE"
-    ],
-    "url": {
-      "paths": [
-        "/collections/{collection}/shards/{shard}",
-        "/c/{collection}/shards/{shard}"
-      ]
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "POST",
+    "GET",
+    "DELETE"
+  ],
+  "url": {
+    "paths": [
+      "/collections/{collection}/shards/{shard}",
+      "/c/{collection}/shards/{shard}"
+    ]
+  },
+  "commands": {
+    "split": {
+      "properties": {},
+      "additionalProperties": true
     },
-    "commands": {
-      "split": {
-        "properties": {},
-        "additionalProperties": true
-      },
-      "add-replica": {
-        "additionalProperties": true
-      },
-      "force-leader": {
-        "additionalProperties": true
-      }
+    "add-replica": {
+      "additionalProperties": true
+    },
+    "force-leader": {
+      "additionalProperties": true
     }
   }
 }

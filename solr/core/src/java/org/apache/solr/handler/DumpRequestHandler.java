@@ -110,9 +110,4 @@ public class DumpRequestHandler extends RequestHandlerBase
       if(nl!=null) subpaths = nl.getAll("subpath");
     }
   }
-
-  @Override
-  public boolean registerApi() {
-    return true;
-  }
 }

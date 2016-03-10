@@ -1,67 +1,68 @@
 {
-  "cores.Commands": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "POST"
-    ],
-    "url": {
-      "path": "/cores",
-      "paths": [
-        "/cores"
-      ]
-    },
-    "commands": {
-      "create": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The core name"
-          },
-          "instanceDir":{
-            "type": "string",
-            "description": "The core instance dir"
-          },
-          "schema": {
-            "type": "string",
-            "description": "The core name"
-          },
-          "dataDir": {
-            "type": "string",
-            "description": "The core name"
-          },
-          "configSet": {
-            "type": "string",
-            "description": "The configset name"
-          },
-          "loadOnStartup": {
-            "type": "boolean",
-            "description": "Load the core on startup"
-          },
-          "transient": {
-            "type": "boolean",
-            "description": "The core may be unloaded if required"
-          },
-          "shard": {
-            "type": "string",
-            "description": "In SolrCloud mode, which shard does this core belong to"
-          },
-          "collection": {
-            "type": "string",
-            "description": "The collection where this core belongs to"
-          },
-          "props":{
-            "type":"object",
-            "additionalProperties": true
-          },
-          "coreNodeName": {
-            "type":"string",
-            "description":"The replica name"
-          },
-          "numShards": {
-          }
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "path": "/cores",
+    "paths": [
+      "/cores"
+    ]
+  },
+  "commands": {
+    "create": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The core name"
         },
-        "required":["name","configset"]
-      }
+        "instanceDir": {
+          "type": "string",
+          "description": "The core instance dir"
+        },
+        "schema": {
+          "type": "string",
+          "description": "The core name"
+        },
+        "dataDir": {
+          "type": "string",
+          "description": "The core name"
+        },
+        "configSet": {
+          "type": "string",
+          "description": "The configset name"
+        },
+        "loadOnStartup": {
+          "type": "boolean",
+          "description": "Load the core on startup"
+        },
+        "transient": {
+          "type": "boolean",
+          "description": "The core may be unloaded if required"
+        },
+        "shard": {
+          "type": "string",
+          "description": "In SolrCloud mode, which shard does this core belong to"
+        },
+        "collection": {
+          "type": "string",
+          "description": "The collection where this core belongs to"
+        },
+        "props": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "coreNodeName": {
+          "type": "string",
+          "description": "The replica name"
+        },
+        "numShards": {
+        }
+      },
+      "required": [
+        "name",
+        "configset"
+      ]
     }
   }
 }

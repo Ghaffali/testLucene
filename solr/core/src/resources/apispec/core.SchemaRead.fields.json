@@ -1,31 +1,29 @@
 {
-  "core.SchemaRead.fields": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
-    "methods": [
-      "GET"
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/$handlerName/fields",
+      "/$handlerName/fields/{name}",
+      "/$handlerName/dynamicfields",
+      "/$handlerName/dynamicfields/{name}",
+      "/$handlerName/fieldtypes/",
+      "/$handlerName/fieldtypes/{name}"
     ],
-    "url": {
-      "paths": [
-        "/$handlerName/fields",
-        "/$handlerName/fields/{name}",
-        "/$handlerName/dynamicfields",
-        "/$handlerName/dynamicfields/{name}",
-        "/$handlerName/fieldtypes/",
-        "/$handlerName/fieldtypes/{name}"
-      ],
-      "params": {
-        "includeDynamic" :{
-          "type":"boolean",
-          "description":"If true, and if the fl query parameter is specified or the fieldname path parameter is used, matching dynamic fields are included in the response and identified with the dynamicBase property. If neither the fl query parameter nor the fieldname path parameter is specified, the includeDynamic query parameter is ignored. If false, matching dynamic fields will not be returned.",
-          "default":false
-        },
-        "showDefaults" :{
-          "type":"boolean",
-          "description":"If true, all default field properties from each field's field type will be included in the response (e.g. tokenized for solr.TextField). If false, only explicitly specified field properties will be included.",
-          "default":false
-        }
+    "params": {
+      "includeDynamic": {
+        "type": "boolean",
+        "description": "If true, and if the fl query parameter is specified or the fieldname path parameter is used, matching dynamic fields are included in the response and identified with the dynamicBase property. If neither the fl query parameter nor the fieldname path parameter is specified, the includeDynamic query parameter is ignored. If false, matching dynamic fields will not be returned.",
+        "default": false
+      },
+      "showDefaults": {
+        "type": "boolean",
+        "description": "If true, all default field properties from each field's field type will be included in the response (e.g. tokenized for solr.TextField). If false, only explicitly specified field properties will be included.",
+        "default": false
       }
-    },
-    "body": null
-  }
+    }
+  },
+  "body": null
 }

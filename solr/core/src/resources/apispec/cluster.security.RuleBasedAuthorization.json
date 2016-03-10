@@ -1,56 +1,54 @@
 {
-  "cluster.security.RuleBasedAuthorization": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "POST",
-      "GET"
-    ],
-    "url": {
-      "paths": [
-        "/cluster/security/authorization"
-      ]
-    },
-    "commands": {
-      "set-permission": {
-        "description": "create a new permission, overwrite an existing permission definition, or assign a pre-defined permission to a role.",
-        "properties": {
-          "name":{
-            "type":"string",
-            "description":""
-          },
-          "method":{
-            "type":"string",
-            "description":""
-          },
-
-          "collection":{
-            "type":"list",
-            "description":""
-          },
-
-          "path":{
-            "type":"list",
-            "description":""
-          },
-          "before":{
-            "type":"string",
-            "description":""
-          },
-          "params":{
-            "type":"object",
-            "properties":{},
-            "additionalProperties":true,
-            "description":""
-          }
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "POST",
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/cluster/security/authorization"
+    ]
+  },
+  "commands": {
+    "set-permission": {
+      "description": "create a new permission, overwrite an existing permission definition, or assign a pre-defined permission to a role.",
+      "properties": {
+        "name":{
+          "type":"string",
+          "description":""
         },
-        "required":["name","role"]
-      },
-      "set-user-role": {
-        "description": "A single command allows roles to be mapped to users. To remove a user's permission, you should set the role to null. The key is always a user id and the value is one or more role names",
-        "properties":{},
-        "additionalProperties":true
+        "method":{
+          "type":"string",
+          "description":""
+        },
 
-      }
+        "collection":{
+          "type":"list",
+          "description":""
+        },
+
+        "path":{
+          "type":"list",
+          "description":""
+        },
+        "before":{
+          "type":"string",
+          "description":""
+        },
+        "params":{
+          "type":"object",
+          "properties":{},
+          "additionalProperties":true,
+          "description":""
+        }
+      },
+      "required":["name","role"]
+    },
+    "set-user-role": {
+      "description": "A single command allows roles to be mapped to users. To remove a user's permission, you should set the role to null. The key is always a user id and the value is one or more role names",
+      "properties":{},
+      "additionalProperties":true
+
     }
   }
 }

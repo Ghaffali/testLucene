@@ -1,15 +1,13 @@
 {
-  "cluster.security.authorization": {
-    "documentation": "https://cwiki.apache.org",
-    "methods": [
-      "POST",
-      "GET"
-    ],
-    "url": {
-      "paths": [
-        "/cluster/security/authorization"
-      ]
-    }
-
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "POST",
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/cluster/security/authorization"
+    ]
   }
+
 }

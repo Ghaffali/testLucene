@@ -1,82 +1,80 @@
 {
-  "collections.Commands": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
-    "methods": [
-      "POST",
-      "GET"
-    ],
-    "url": {
-      "paths": [
-        "/collections",
-        "/c"
-      ]
-    },
-    "commands": {
-      "create": {
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": ""
-          },
-          "config": {
-            "type": "string",
-            "description": ""
-          },
-          "router": {
-            "type": "object",
-            "properties": {
-              "name": {
-              },
-              "field": {
-              }
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
+  "methods": [
+    "POST",
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/collections",
+      "/c"
+    ]
+  },
+  "commands": {
+    "create": {
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": ""
+        },
+        "config": {
+          "type": "string",
+          "description": ""
+        },
+        "router": {
+          "type": "object",
+          "properties": {
+            "name": {
+            },
+            "field": {
             }
-          },
-          "numShards": {
-            "type": "string",
-            "description": ""
-          },
-          "shards": {
-            "type": "string",
-            "description": ""
-          },
-          "replicationFactor": {
-            "type": "string",
-            "description": ""
-          },
-          "createNodeSet": {
-            "type": "string",
-            "description": ""
-          },
-          "autoAddReplicas": {
-            "type": "boolean",
-            "description": ""
-          },
-          "rule": {
-            "type": "list",
-            "description":""
+          }
+        },
+        "numShards": {
+          "type": "string",
+          "description": ""
+        },
+        "shards": {
+          "type": "string",
+          "description": ""
+        },
+        "replicationFactor": {
+          "type": "string",
+          "description": ""
+        },
+        "createNodeSet": {
+          "type": "string",
+          "description": ""
+        },
+        "autoAddReplicas": {
+          "type": "boolean",
+          "description": ""
+        },
+        "rule": {
+          "type": "list",
+          "description":""
 
-          },
-          "snitch": {
-            "type": "list",
-            "description":""
-          }
         },
-        "required":["name"]
+        "snitch": {
+          "type": "list",
+          "description":""
+        }
       },
-      "create-alias":{
-        "properties": {
-          "name": {
-            "type": "string",
-            "description": "The alias name to be created"
-          },
-          "collections" :{
-            "type":"list",
-            "description":"The list of collections to be aliased"
-          }
+      "required":["name"]
+    },
+    "create-alias":{
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The alias name to be created"
         },
-        "required" : ["name","collections"]
+        "collections" :{
+          "type":"list",
+          "description":"The list of collections to be aliased"
+        }
       },
-      "delete-alias":{}
-    }
+      "required" : ["name","collections"]
+    },
+    "delete-alias":{}
   }
 }
