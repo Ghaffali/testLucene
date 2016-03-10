@@ -22,7 +22,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,8 +45,12 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
+
+import org.apache.solr.update.processor.TolerantUpdateProcessor.KnownErr;
+import org.apache.solr.update.processor.TolerantUpdateProcessor.CmdType;
 
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -523,14 +527,37 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
     } catch (SolrException e) {
       // we can't make any reliable assertions about the error message, because
       // it varies based on how the request was routed
-      // nocommit: can we tighten this any more? substring check?
+      // nocommit: verify that we can't do an e.getMessage() substring check
       assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
                    // NOTE: we always expect a 400 because we know that's what we would get from these types of errors
                    // on a single node setup -- a 5xx type error isn't something we should have triggered
                    400, e.code());
 
-      // nocommit: is there a way to inspect the response body anyway?
-      // nocommit: look for the correct "errors" ?  .... check e's metatata
+      // verify that the Exceptions metadata can tell us what failed.
+      NamedList<String> remoteErrMetadata = e.getMetadata();
+      assertNotNull("no metadata in: " + e.toString(), remoteErrMetadata);
+      Set<KnownErr> actualKnownErrs = new LinkedHashSet<KnownErr>(remoteErrMetadata.size());
+      int actualKnownErrsCount = 0;
+      for (int i = 0; i < remoteErrMetadata.size(); i++) {
+        KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
+                                                        remoteErrMetadata.getVal(i));
+        if (null == err) {
+          // some metadata unrelated to this update processor
+          continue;
+        }
+        actualKnownErrsCount++;
+        actualKnownErrs.add(err);
+      }
+      assertEquals("wrong number of errors in metadata: " + remoteErrMetadata.toString(),
+                   11, actualKnownErrsCount);
+      assertEquals("at least one dup error in metadata: " + remoteErrMetadata.toString(),
+                   actualKnownErrsCount, actualKnownErrs.size());
+      for (KnownErr err : actualKnownErrs) {
+        assertEquals("only expected type of error is ADD: " + err,
+                     CmdType.ADD, err.type);
+        assertTrue("failed err msg didn't match expected value: " + err,
+                   err.errorValue.contains("bogus_val"));
+      }
     }
     assertEquals(0, client.commit().getStatus()); // need to force since update didn't finish
     assertQueryDocIds(client, false
@@ -573,14 +600,40 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
     } catch (SolrException e) {
       // we can't make any reliable assertions about the error message, because
       // it varies based on how the request was routed
-      // nocommit: can we tighten this any more? substring check?
+      // nocommit: verify that we can't do an e.getMessage() substring check
       assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
                    // NOTE: we always expect a 400 because we know that's what we would get from these types of errors
                    // on a single node setup -- a 5xx type error isn't something we should have triggered
                    400, e.code());
 
-      // nocommit: is there a way to inspect the response body anyway?
-      // nocommit: look for the correct "errors" ?  .... check e's metatata
+      // verify that the Exceptions metadata can tell us what failed.
+      NamedList<String> remoteErrMetadata = e.getMetadata();
+      assertNotNull("no metadata in: " + e.toString(), remoteErrMetadata);
+      Set<KnownErr> actualKnownErrs = new LinkedHashSet<KnownErr>(remoteErrMetadata.size());
+      int actualKnownErrsCount = 0;
+      for (int i = 0; i < remoteErrMetadata.size(); i++) {
+        KnownErr err = KnownErr.parseMetadataIfKnownErr(remoteErrMetadata.getName(i),
+                                                        remoteErrMetadata.getVal(i));
+        if (null == err) {
+          // some metadata unrelated to this update processor
+          continue;
+        }
+        actualKnownErrsCount++;
+        actualKnownErrs.add(err);
+      }
+      assertEquals("wrong number of errors in metadata: " + remoteErrMetadata.toString(),
+                   11, actualKnownErrsCount);
+      assertEquals("at least one dup error in metadata: " + remoteErrMetadata.toString(),
+                   actualKnownErrsCount, actualKnownErrs.size());
+      for (KnownErr err : actualKnownErrs) {
+        assertEquals("only expected type of error is ADD: " + err,
+                     CmdType.ADD, err.type);
+        assertTrue("failed id had unexpected prefix: " + err,
+                   err.id.startsWith(S_TWO_PRE));
+        assertTrue("failed err msg didn't match expected value: " + err,
+                   err.errorValue.contains("bogus_val"));
+      }
+           
     }
     assertEquals(0, client.commit().getStatus()); // need to force since update didn't finish
     assertQueryDocIds(client, true

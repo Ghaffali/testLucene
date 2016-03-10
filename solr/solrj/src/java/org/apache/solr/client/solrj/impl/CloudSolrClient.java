@@ -776,8 +776,15 @@ public class CloudSolrClient extends SolrClient {
     if (null != toleratedErrors) {
       cheader.add("errors", toleratedErrors);
       if (maxToleratedErrors < toleratedErrors.size()) {
-        // nocommit: populate metadata based on the toleratedErrors
-        throw new SolrException(ErrorCode.BAD_REQUEST, "nocommit: need better msg");
+        NamedList metadata = new NamedList<String>();
+        SolrException toThrow = new SolrException(ErrorCode.BAD_REQUEST, "nocommit: need better msg");
+        toThrow.setMetadata(metadata);
+        for (SimpleOrderedMap<String> err : toleratedErrors) {
+          // nocommit: hack, refactor KnownErr into solr-common and re-use here...
+          metadata.add("org.apache.solr.update.processor.TolerantUpdateProcessor--" +
+                       err.get("type") + ":" + err.get("id"), err.get("message"));
+        }
+        throw toThrow;
       }
     }
     condensed.add("responseHeader", cheader);
@@ -815,6 +822,22 @@ public class CloudSolrClient extends SolrClient {
       super(errorCode, throwables.getVal(0).getMessage(), throwables.getVal(0));
       this.throwables = throwables;
       this.routes = routes;
+
+      // create a merged copy of the metadata from all wrapped exceptions
+      NamedList<String> metadata = new NamedList<String>();
+      for (int i = 0; i < throwables.size(); i++) {
+        Throwable t = throwables.getVal(i);
+        if (t instanceof SolrException) {
+          SolrException e = (SolrException) t;
+          NamedList<String> eMeta = e.getMetadata();
+          if (null != eMeta) {
+            metadata.addAll(eMeta);
+          }
+        }
+      }
+      if (0 < metadata.size()) {
+        this.setMetadata(metadata);
+      }
     }
 
     public NamedList<Throwable> getThrowables() {
