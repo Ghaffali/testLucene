@@ -41,7 +41,10 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.update.AddUpdateCommand;
+import org.apache.solr.update.CommitUpdateCommand;
 import org.apache.solr.update.DeleteUpdateCommand;
+import org.apache.solr.update.MergeIndexesCommand;
+import org.apache.solr.update.RollbackUpdateCommand;
 import org.apache.solr.update.SolrCmdDistributor.Error;
 import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
 
@@ -200,9 +203,41 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     }
   }
 
-  
-  // nocommit: override processCommit and other UpdateProcessor methods
-  // nocommit: ...use firstErrTracker to catch & rethrow so finish can annotate
+  @Override
+  public void processMergeIndexes(MergeIndexesCommand cmd) throws IOException {
+    try {
+      super.processMergeIndexes(cmd);
+    } catch (Throwable t) { // nocommit: OOM trap
+      // we're not tolerante of errors from this type of command, but we
+      // do need to track it so we can annotate it with any other errors we were allready tolerant of
+      firstErrTracker.caught(t);
+      throw t;
+    }
+  }
+
+  @Override
+  public void processCommit(CommitUpdateCommand cmd) throws IOException {
+    try {
+      super.processCommit(cmd);
+    } catch (Throwable t) { // nocommit: OOM trap
+      // we're not tolerante of errors from this type of command, but we
+      // do need to track it so we can annotate it with any other errors we were allready tolerant of
+      firstErrTracker.caught(t);
+      throw t;
+    }
+  }
+
+  @Override
+  public void processRollback(RollbackUpdateCommand cmd) throws IOException {
+    try {
+      super.processRollback(cmd);
+    } catch (Throwable t) { // nocommit: OOM trap
+      // we're not tolerante of errors from this type of command, but we
+      // do need to track it so we can annotate it with any other errors we were allready tolerant of
+      firstErrTracker.caught(t);
+      throw t;
+    }
+  }
 
   @Override
   public void finish() throws IOException {

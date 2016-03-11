@@ -18,6 +18,7 @@ package org.apache.solr.update.processor;
 
 import java.io.IOException;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -100,7 +101,21 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     super.tearDown();
   }
 
-  // nocommit: add reflection based test to ensure processor overrides all methods & uses firstErrTracker
+  /**
+   * future proof TolerantUpdateProcessor against new default method impls being added to UpdateProcessor 
+   * to ensure that every method involved in a processor chain life cycle is overridden with 
+   * exception catching/tracking.
+   */
+  public void testReflection() {
+    for (Method method : TolerantUpdateProcessor.class.getMethods()) {
+      if (method.getDeclaringClass().equals(Object.class)) {
+        continue;
+      }
+      assertEquals("base class(es) has changed, TolerantUpdateProcessor needs updated to ensure it " +
+                   "overrides all solr update lifcycle methods with exception tracking: " + method.toString(),
+                   TolerantUpdateProcessor.class, method.getDeclaringClass());
+    }
+  }
  
   
   @Test
