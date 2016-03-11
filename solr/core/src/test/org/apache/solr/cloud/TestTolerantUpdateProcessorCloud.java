@@ -410,21 +410,27 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
     UpdateResponse rsp = null;
 
     // 2 docs that are both on shard1, the first one should fail
+    for (int maxErrors : new int[] { -1, 2, 47, 10 }) {
+      // regardless of which of these maxErrors values we use, behavior should be the same...
+      rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                          "maxErrors", ""+maxErrors,
+                          "commit", "true"),
+                   doc(f("id", S_ONE_PRE + "42"), f("foo_i", "bogus_value")),
+                   doc(f("id", S_ONE_PRE + "666"), f("foo_i", "1976"))).process(client);
+      
+      assertEquals(0, rsp.getStatus());
+      assertUpdateTolerantAddErrors("single shard, 1st doc should fail", rsp, S_ONE_PRE + "42");
+      assertEquals(0, client.commit().getStatus());
+      assertQueryDocIds(client, false, S_ONE_PRE + "42");
+      assertQueryDocIds(client, true, S_ONE_PRE + "666");
+
+      // ...only diff should be that we get an accurate report of the effective maxErrors
+      assertEquals(maxErrors, rsp.getResponseHeader().get("maxErrors"));
+    }
     
-    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
-                        "commit", "true"),
-                 doc(f("id", S_ONE_PRE + "42"), f("foo_i", "bogus_value")),
-                 doc(f("id", S_ONE_PRE + "666"), f("foo_i", "1976"))).process(client);
-    
-    assertEquals(0, rsp.getStatus());
-    assertUpdateTolerantAddErrors("single shard, 1st doc should fail", rsp, S_ONE_PRE + "42");
-    assertEquals(0, client.commit().getStatus());
-    assertQueryDocIds(client, false, S_ONE_PRE + "42");
-    assertQueryDocIds(client, true, S_ONE_PRE + "666");
-           
     // 2 docs that are both on shard1, the second one should fail
     
-    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-not-set",
                         "commit", "true"),
                  doc(f("id", S_ONE_PRE + "55"), f("foo_i", "1976")),
                  doc(f("id", S_ONE_PRE + "77"), f("foo_i", "bogus_val"))).process(client);
@@ -433,6 +439,8 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
     assertUpdateTolerantAddErrors("single shard, 2nd doc should fail", rsp, S_ONE_PRE + "77");
     assertQueryDocIds(client, false, S_ONE_PRE + "77");
     assertQueryDocIds(client, true, S_ONE_PRE + "666", S_ONE_PRE + "55");
+    // since maxErrors is unset, we should get an "unlimited" value back
+    assertEquals(-1, rsp.getResponseHeader().get("maxErrors"));
 
     // clean slate
     assertEquals(0, client.deleteByQuery("*:*").getStatus());

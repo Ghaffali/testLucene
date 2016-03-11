@@ -53,14 +53,17 @@ import org.slf4j.LoggerFactory;
 
 /** 
  * <p> 
- * Suppresses errors for individual add/delete commands within a batch.
- * Instead, all errors are logged and the batch continues. The client
- * will receive a 200 response, but gets a list of errors (keyed by
- * unique key) unless <code>maxErrors</code> is reached. 
- * If <code>maxErrors</code> occur, the first exception caught will be re-thrown, 
- * Solr will respond with 5XX or 4XX (depending on the underlying exceptions) and
- * it won't finish processing the batch. This means that the last docs
- * in the batch may not be added in this case even if they are valid. 
+ * Suppresses errors for individual add/delete commands within a single request.
+ * Instead of failing on the first error, at most <code>maxErrors</code> errors (or unlimited 
+ * if <code>-1==maxErrors</code>) are logged and recorded the batch continues. 
+ * The client will receive a <code>status==200</code> response, which includes a list of errors 
+ * that were tolerated.
+ * </p>
+ * <p>
+ * If more then <code>maxErrors</code> occur, the first exception recorded will be re-thrown, 
+ * Solr will respond with <code>status==5xx</code> or <code>status==4xx</code> 
+ * (depending on the underlying exceptions) and it won't finish processing any more updates in the request. 
+ * (ie: subsequent update commands in the request will not be processed even if they are valid).
  * </p>
  * 
  * <p>
@@ -125,10 +128,10 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
 
   public TolerantUpdateProcessor(SolrQueryRequest req, SolrQueryResponse rsp, UpdateRequestProcessor next, int maxErrors, DistribPhase distribPhase) {
     super(next);
-    assert maxErrors >= 0;
+    assert maxErrors >= -1;
       
     header = rsp.getResponseHeader();
-    this.maxErrors = maxErrors;
+    this.maxErrors = ToleratedUpdateError.getEffectiveMaxErrors(maxErrors);
     this.req = req;
     this.distribPhase = distribPhase;
     assert ! DistribPhase.FROMLEADER.equals(distribPhase);
@@ -296,7 +299,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
 
     header.add("errors", ToleratedUpdateError.formatForResponseHeader(knownErrors));
     // include in response so client knows what effective value was (may have been server side config)
-    header.add("maxErrors", maxErrors);
+    header.add("maxErrors", ToleratedUpdateError.getUserFriendlyMaxErrors(maxErrors));
 
     // annotate any error that might be thrown (or was already thrown)
     firstErrTracker.annotate(knownErrors);

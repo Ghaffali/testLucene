@@ -752,11 +752,12 @@ public class CloudSolrClient extends SolrClient {
       List<SimpleOrderedMap<String>> shardTolerantErrors = 
         (List<SimpleOrderedMap<String>>) header.get("errors");
       if (null != shardTolerantErrors) {
-        Number shardMaxToleratedErrors = (Number) header.get("maxErrors");
+        Integer shardMaxToleratedErrors = (Integer) header.get("maxErrors");
         assert null != shardMaxToleratedErrors : "TolerantUpdateProcessor reported errors but not maxErrors";
         // if we get into some weird state where the nodes disagree about the effective maxErrors,
         // assume the min value seen to decide if we should fail.
-        maxToleratedErrors = Math.min(maxToleratedErrors, shardMaxToleratedErrors.intValue());
+        maxToleratedErrors = Math.min(maxToleratedErrors,
+                                      ToleratedUpdateError.getEffectiveMaxErrors(shardMaxToleratedErrors.intValue()));
         
         if (null == toleratedErrors) {
           toleratedErrors = new ArrayList<SimpleOrderedMap<String>>(shardTolerantErrors.size());
@@ -775,6 +776,7 @@ public class CloudSolrClient extends SolrClient {
     if (minRf != null)
       cheader.add(UpdateRequest.MIN_REPFACT, minRf);
     if (null != toleratedErrors) {
+      cheader.add("maxErrors", ToleratedUpdateError.getUserFriendlyMaxErrors(maxToleratedErrors));
       cheader.add("errors", toleratedErrors);
       if (maxToleratedErrors < toleratedErrors.size()) {
         // cumulative errors are too high, we need to throw a client exception w/correct metadata

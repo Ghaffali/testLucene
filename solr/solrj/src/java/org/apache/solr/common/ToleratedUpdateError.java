@@ -28,6 +28,30 @@ public final class ToleratedUpdateError {
     
   private final static String META_PRE =  ToleratedUpdateError.class.getName() + "--";
   private final static int META_PRE_LEN = META_PRE.length();
+
+  /**
+   * Given a 'maxErrors' value such that<code>-1 &lt;= maxErrors &lt;= {@link Integer#MAX_VALUE}</code> 
+   * this method returns the original input unless it is <code>-1</code> in which case the effective value of
+   * {@link Integer#MAX_VALUE}  is returned.
+   * Input of <code>maxErrors &lt; -1</code> will trip an assertion and otherwise have undefined behavior.
+   * @see #getUserFriendlyMaxErrors
+   */
+  public static int getEffectiveMaxErrors(int maxErrors) {
+    assert -1 <= maxErrors;
+    return -1 == maxErrors ? Integer.MAX_VALUE : maxErrors;
+  }
+  
+  /**
+   * Given a 'maxErrors' value such that<code>-1 &lt;= maxErrors &lt;= {@link Integer#MAX_VALUE}</code> 
+   * this method returns the original input unless it is {@link Integer#MAX_VALUE} in which case 
+   * <code>-1</code> is returned for user convinience.
+   * Input of <code>maxErrors &lt; -1</code> will trip an assertion and otherwise have undefined behavior.
+   * @see #getEffectiveMaxErrors
+   */
+  public static int getUserFriendlyMaxErrors(int maxErrors) {
+    assert -1 <= maxErrors;
+    return Integer.MAX_VALUE == maxErrors ? -1 : maxErrors;
+  }
   
   /** 
    * returns a list of maps of simple objects suitable for putting in a SolrQueryResponse header 

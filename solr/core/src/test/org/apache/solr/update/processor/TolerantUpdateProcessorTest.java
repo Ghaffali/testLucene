@@ -314,6 +314,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
                                              "count(//arr[@name='errors']/lst)=0"));
     response = update("tolerant-chain-max-errors-10", adoc("text", "the quick brown fox"));
     assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
+        "//int[@name='maxErrors']/text()='10'",
         "count(//arr[@name='errors']/lst)=1",
         "//arr[@name='errors']/lst/str[@name='id']/text()='(unknown)'",
         "//arr[@name='errors']/lst/str[@name='message']/text()='Document is missing mandatory uniqueKey field: id'"));
@@ -327,6 +328,7 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
     builder.append("</add>");
     response = update("tolerant-chain-max-errors-10", builder.toString());
     assertNull(BaseTestHarness.validateXPath(response, "//int[@name='status']=0",
+        "//int[@name='maxErrors']/text()='10'",
         "count(//arr[@name='errors']/lst)=10",
         "not(//arr[@name='errors']/lst/str[@name='id']/text()='0')",
         "//arr[@name='errors']/lst/str[@name='id']/text()='1'",
@@ -348,7 +350,11 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
         "//arr[@name='errors']/lst/str[@name='id']/text()='17'",
         "not(//arr[@name='errors']/lst/str[@name='id']/text()='18')",
         "//arr[@name='errors']/lst/str[@name='id']/text()='19'"));
-    
+
+    // spot check response when effective maxErrors is unlimited
+    response = update("tolerant-chain-max-errors-not-set", builder.toString());
+    assertNull(BaseTestHarness.validateXPath(response, "//int[@name='maxErrors']/text()='-1'"));
+                                             
   }
 
 

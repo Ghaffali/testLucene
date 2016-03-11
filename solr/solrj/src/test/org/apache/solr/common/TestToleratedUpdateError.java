@@ -79,6 +79,22 @@ public class TestToleratedUpdateError extends LuceneTestCase {
     });
   }
 
+  /** trivial sanity check */
+  public void testMaxErrorsValueConversion() {
+    
+    assertEquals(-1, ToleratedUpdateError.getUserFriendlyMaxErrors(-1));
+    assertEquals(-1, ToleratedUpdateError.getUserFriendlyMaxErrors(Integer.MAX_VALUE));
+    
+    assertEquals(Integer.MAX_VALUE, ToleratedUpdateError.getEffectiveMaxErrors(Integer.MAX_VALUE));
+    assertEquals(Integer.MAX_VALUE, ToleratedUpdateError.getEffectiveMaxErrors(-1));
+
+    for (int val : new int[] {0, 1, 10, 42, 600000 }) {
+      assertEquals(val, ToleratedUpdateError.getEffectiveMaxErrors(val));
+      assertEquals(val, ToleratedUpdateError.getUserFriendlyMaxErrors(val));
+    }
+    
+  }
+
   private static abstract class Coppier {
     public abstract ToleratedUpdateError copy(ToleratedUpdateError in);
   }

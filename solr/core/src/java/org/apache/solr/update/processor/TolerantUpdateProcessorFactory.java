@@ -27,26 +27,28 @@ import static org.apache.solr.update.processor.DistributingUpdateProcessorFactor
 
 /**
  * <p> 
- * Suppresses errors for individual add/delete commands within a batch.
- * Instead, all errors are logged and the batch continues. The client
- * will receive a 200 response, but gets a list of errors (keyed by
- * unique key) unless <code>maxErrors</code> is reached. 
- * If <code>maxErrors</code> occur, the last exception caught will be re-thrown, 
- * Solr will respond with 5XX or 4XX (depending on the exception) and
- * it won't finish processing the batch. This means that the last docs
- * in the batch may not be added in this case even if they are valid. 
- * Note that this UpdateRequestProcessor will only catch exceptions that occur 
- * on later elements in the chain.  
- * 
+ * Suppresses errors for individual add/delete commands within a single request.
+ * Instead of failing on the first error, at most <code>maxErrors</code> errors (or unlimited 
+ * if <code>-1==maxErrors</code>) are logged and recorded the batch continues. 
+ * The client will receive a <code>status==200</code> response, which includes a list of errors 
+ * that were tolerated.
+ * </p>
+ * <p>
+ * If more then <code>maxErrors</code> occur, the first exception recorded will be re-thrown, 
+ * Solr will respond with <code>status==5xx</code> or <code>status==4xx</code> 
+ * (depending on the underlying exceptions) and it won't finish processing any more updates in the request. 
+ * (ie: subsequent update commands in the request will not be processed even if they are valid).
  * </p>
  * 
  * <p>
- * <code>maxErrors</code> is an int value that can be specified in the 
- * configuration and can also be overridden per request. If unset, it will 
- * default to <code>Integer.MAX_VALUE</code>
+ * <code>maxErrors</code> is an int value that can be specified in the configuration and/or overridden 
+ * per request. If unset, it will default to {@link Integer#MAX_VALUE}.  Specifying an explicit value 
+ * of <code>-1</code> is supported as shorthand for {@link Integer#MAX_VALUE}, all other negative 
+ * integer values are not supported.
  * </p>
- * 
+ * <p>
  * An example configuration would be:
+ * </p>
  * <pre class="prettyprint">
  * &lt;updateRequestProcessorChain name="tolerant-chain"&gt;
  *   &lt;processor class="solr.TolerantUpdateProcessorFactory"&gt;
@@ -58,13 +60,11 @@ import static org.apache.solr.update.processor.DistributingUpdateProcessorFactor
  * </pre>
  * 
  * <p>
- * The maxErrors parameter can be overwritten per request, for example:
+ * The <code>maxErrors</code> parameter in the above chain could be overwritten per request, for example:
  * </p>
  * <pre class="prettyprint">
- * curl http://localhost:8983/update?maxErrors=100 -H "Content-Type: text/xml" -d @myfile.xml
+ * curl http://localhost:8983/update?update.chain=tolerant-chain&amp;maxErrors=100 -H "Content-Type: text/xml" -d @myfile.xml
  * </pre>
- * 
- * 
  * 
  */
 public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactory
@@ -81,19 +81,21 @@ public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactor
    * Default maxErrors value that will be use if the value is not set in configuration
    * or in the request
    */
-  private Integer defaultMaxErrors = Integer.MAX_VALUE;
+  private int defaultMaxErrors = Integer.MAX_VALUE;
   
   @SuppressWarnings("rawtypes")
   @Override
   public void init( NamedList args ) {
 
-    // nocommit: clean error on invalid type for param ... don't fail stupidly on <str ...>42</str>
     Object maxErrorsObj = args.get(MAX_ERRORS_PARAM); 
     if (maxErrorsObj != null) {
       try {
-        defaultMaxErrors = (Integer)maxErrorsObj;
+        defaultMaxErrors = Integer.valueOf(maxErrorsObj.toString());
       } catch (Exception e) {
         throw new SolrException(ErrorCode.SERVER_ERROR, "Unnable to parse maxErrors parameter: " + maxErrorsObj, e);
+      }
+      if (defaultMaxErrors < -1) {
+        throw new SolrException(ErrorCode.SERVER_ERROR, "Config option '"+MAX_ERRORS_PARAM + "' must either be non-negative, or -1 to indicate 'unlimiited': " + maxErrorsObj.toString());
       }
     }
   }
@@ -107,13 +109,11 @@ public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactor
       return next;
     }
     
-    Integer maxErrors = req.getParams().getInt(MAX_ERRORS_PARAM);
-    if(maxErrors == null) {
-      maxErrors = this.defaultMaxErrors;
+    int maxErrors = req.getParams().getInt(MAX_ERRORS_PARAM, defaultMaxErrors);
+    if (maxErrors < -1) {
+      throw new SolrException(ErrorCode.BAD_REQUEST, "'"+MAX_ERRORS_PARAM + "' must either be non-negative, or -1 to indicate 'unlimiited': " + maxErrors);
     }
 
-    // nocommit: support maxErrors < 0 to mean the same as Integer.MAX_VALUE (add test)
-    
     // NOTE: even if 0==maxErrors, we still inject processor into chain so respones has expected header info
     return new TolerantUpdateProcessor(req, rsp, next, maxErrors, distribPhase);
   }

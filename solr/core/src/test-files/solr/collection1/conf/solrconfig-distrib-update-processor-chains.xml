@@ -64,7 +64,8 @@
   
   <updateRequestProcessorChain name="tolerant-chain-max-errors-10">
     <processor class="solr.TolerantUpdateProcessorFactory">
-      <int name="maxErrors">10</int>
+      <!-- explicitly testing that parsing still works if a valid int is specified as a string -->
+      <str name="maxErrors">10</str>
     </processor>
     <processor class="solr.DistributedUpdateProcessorFactory" />
     <processor class="solr.RunUpdateProcessorFactory" />
