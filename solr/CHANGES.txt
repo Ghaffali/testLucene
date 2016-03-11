@@ -27,6 +27,10 @@ Detailed Change List
   .processAndWait() to wait for a call to finish without holding HTTP
   collections open.  (Alan Woodward)
 
+* SOLR-8765: Enforce required parameters at query construction time in the SolrJ
+  Collections API, add static factory methods, and deprecate old setter methods.
+  (Alan Woodward, Jason Gerlowski)
+
 New Features
 ----------------------
 
@@ -191,6 +195,8 @@ New Features
 
 * SOLR-8698: params.json can now specify 'appends' and 'invariants' (noble)
 
+* SOLR-8831: allow _version_ field to be retrievable via docValues (yonik)
+
 
 Bug Fixes
 ----------------------
@@ -281,6 +287,12 @@ Bug Fixes
   docValues (i.e. UnInvertedField implementation), but with a prefix or with a sort
   other than count, resulted in incorrect results.  This has been fixed, and facet.prefix
   support for facet.method=uif has been enabled. (Mikhail Khludnev, yonik)
+
+* SOLR-8790: Collections API responses contain node name in the core-level responses that are
+  returned. (Anshum Gupta)
+
+* SOLR-8804: Fix a race condition in the ClusterStatus API call whereby the call would fail when a concurrent delete
+  collection api command was executed (Alexey Serba, Varun Thacker)
 
 Optimizations
 ----------------------
@@ -408,6 +420,8 @@ Other Changes
 * SOLR-8766: Remove deprecated <admin> tag in solrconfig.xml and support for admin/gettableFiles
   (noble, Jason Gerlowski, Varun Thacker)
 
+* SOLR-8799: Improve error message when tuple can't be read by SolrJ JDBC (Kevin Risden, Joel Bernstein)
+
 ==================  5.5.1 ==================
 
 Bug Fixes
@@ -422,6 +436,11 @@ Bug Fixes
 
 * SOLR-8712: Variable solr.core.instanceDir was not being resolved (Kristine
   Jetzke, Shawn Heisey, Alan Woodward)
+
+* SOLR-8793: Fix Core admin status API to not fail when computing the size of the segments_N
+  file if the file no longer exists (for example, if a commit happened and the IndexReader
+  hasn't refreshed yet). In this case the reported size of the file is -1.
+  (Shai Erera, Alexey Serba, Richard Coggins)
 
 ======================= 5.5.0 =======================
 

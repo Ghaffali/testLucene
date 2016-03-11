@@ -17,6 +17,7 @@
 package org.apache.lucene.index;
 
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.apache.lucene.analysis.MockAnalyzer;
@@ -39,6 +40,8 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -179,7 +182,7 @@ public class TestPointValues extends LuceneTestCase {
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
     IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addIndexes(new CodecReader[] {getOnlySegmentReader(r)});
+        w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
     });
     assertEquals("cannot change point dimension count from 2 to 1 for field=\"dim\"", expected.getMessage());
 
@@ -328,7 +331,7 @@ public class TestPointValues extends LuceneTestCase {
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
     IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addIndexes(new CodecReader[] {getOnlySegmentReader(r)});
+        w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
     });
     assertEquals("cannot change point numBytes from 6 to 4 for field=\"dim\"", expected.getMessage());
 
@@ -560,6 +563,98 @@ public class TestPointValues extends LuceneTestCase {
     assertEquals(0, r.leaves().get(0).reader().getPointValues().getDocCount("int"));
     w.close();
     r.close();
+    dir.close();
+  }
+
+  public void testPointsFieldMissingFromOneSegment() throws Exception {
+    Directory dir = FSDirectory.open(createTempDir());
+    IndexWriterConfig iwc = new IndexWriterConfig(null);
+    IndexWriter w = new IndexWriter(dir, iwc);
+    Document doc = new Document();
+    doc.add(new StringField("id", "0", Field.Store.NO));
+    doc.add(new IntPoint("int0", 0));
+    w.addDocument(doc);
+    w.commit();
+
+    doc = new Document();
+    doc.add(new IntPoint("int1", 17));
+    w.addDocument(doc);
+    w.forceMerge(1);
+
+    w.close();
+    dir.close();
+  }
+
+  public void testSparsePoints() throws Exception {
+    Directory dir = newDirectory();
+    int numDocs = atLeast(1000);
+    int numFields = TestUtil.nextInt(random(), 1, 10);
+    RandomIndexWriter w = new RandomIndexWriter(random(), dir);
+    int[] fieldDocCounts = new int[numFields];
+    int[] fieldSizes = new int[numFields];
+    for(int i=0;i<numDocs;i++) {
+      Document doc = new Document();
+      for(int field=0;field<numFields;field++) {
+        String fieldName = "int" + field;
+        if (random().nextInt(100) == 17) {
+          doc.add(new IntPoint(fieldName, random().nextInt()));
+          fieldDocCounts[field]++;
+          fieldSizes[field]++;
+
+          if (random().nextInt(10) == 5) {
+            // add same field again!
+            doc.add(new IntPoint(fieldName, random().nextInt()));
+            fieldSizes[field]++;
+          }
+        }
+      }
+      w.addDocument(doc);
+    }
+
+    IndexReader r = w.getReader();
+    for(int field=0;field<numFields;field++) {
+      int docCount = 0;
+      int size = 0;
+      String fieldName = "int" + field;
+      for(LeafReaderContext ctx : r.leaves()) {
+        PointValues points = ctx.reader().getPointValues();
+        if (ctx.reader().getFieldInfos().fieldInfo(fieldName) != null) {
+          docCount += points.getDocCount(fieldName);
+          size += points.size(fieldName);
+        }
+      }
+      assertEquals(fieldDocCounts[field], docCount);
+      assertEquals(fieldSizes[field], size);
+    }
+    r.close();
+    w.close();
+    dir.close();
+  }
+
+  public void testCheckIndexIncludesPoints() throws Exception {
+    Directory dir = new RAMDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
+    Document doc = new Document();
+    doc.add(new IntPoint("int1", 17));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new IntPoint("int1", 44));
+    doc.add(new IntPoint("int2", -17));
+    w.addDocument(doc);
+    w.close();
+
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, output);
+    assertEquals(1, status.segmentInfos.size());
+    CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
+    // total 3 point values were index:
+    assertEquals(3, segStatus.pointsStatus.totalValuePoints);
+    // ... across 2 fields:
+    assertEquals(2, segStatus.pointsStatus.totalValueFields);
+
+    // Make sure CheckIndex in fact declares that it is testing points!
+    assertTrue(output.toString(IOUtils.UTF_8).contains("test: points..."));
     dir.close();
   }
 }
