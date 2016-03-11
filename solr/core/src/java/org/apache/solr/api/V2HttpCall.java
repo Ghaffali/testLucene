@@ -238,7 +238,7 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   private static Api getSubPathImpl(final Map<String, Set<String>> subpaths, String path) {
-    return new Api(Map2.EMPTY) {
+    return new Api (Map2.EMPTY) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
         rsp.add("msg", "Invalid path, try the following");

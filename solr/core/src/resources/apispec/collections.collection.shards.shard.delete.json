@@ -1,0 +1,12 @@
+{
+  "documentation": "https://cwiki.apache.org",
+  "methods": [
+    "DELETE"
+  ],
+  "url": {
+    "paths": [
+      "/collections/{collection}/shards/{shard}",
+      "/c/{collection}/shards/{shard}"
+    ]
+  }
+}

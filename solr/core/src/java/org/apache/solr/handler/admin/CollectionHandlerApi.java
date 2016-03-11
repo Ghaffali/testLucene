@@ -69,7 +69,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
   enum Cmd implements ApiCommand<CollectionHandlerApi> {
     GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
-    GET_A_COLLECTION(EndPoint.PER_COLLECTION, GET, CLUSTERSTATUS_OP),
+    GET_A_COLLECTION(EndPoint.COLLECTION_STATE, GET, CLUSTERSTATUS_OP),
     CREATE_COLLECTION(EndPoint.COLLECTIONS_COMMANDS,
         POST,
         CREATE_OP,
@@ -139,10 +139,9 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         "split",
         ImmutableMap.of(
             "split.key", "splitKey")),
-    DELETE_SHARD(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
+    DELETE_SHARD(EndPoint.PER_COLLECTION_PER_SHARD_DELETE,
         DELETE,
         DELETESHARD_OP),
-
 
     CREATE_REPLICA(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
         POST,
@@ -232,6 +231,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     PER_COLLECTION_DELETE("collections.collection.delete"),
     PER_COLLECTION_SHARDS_COMMANDS("collections.collection.shards.Commands"),
     PER_COLLECTION_PER_SHARD_COMMANDS("collections.collection.shards.shard.Commands"),
+    PER_COLLECTION_PER_SHARD_DELETE("collections.collection.shards.shard.delete"),
     PER_COLLECTION_PER_SHARD_PER_REPLICA_COMMANDS("collections.collection.shards.shard.replica.Commands"),
     PER_COLLECTION_PER_SHARD_PER_REPLICA_DELETE("collections.collection.shards.shard.replica.delete");
     final String specName;

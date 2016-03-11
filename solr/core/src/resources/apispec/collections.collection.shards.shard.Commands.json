@@ -2,7 +2,6 @@
   "documentation": "https://cwiki.apache.org",
   "methods": [
     "POST",
-    "GET",
     "DELETE"
   ],
   "url": {
