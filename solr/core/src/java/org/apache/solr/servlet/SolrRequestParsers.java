@@ -237,6 +237,14 @@ public class SolrRequestParsers
         }
         return Collections.emptyList();
       }
+
+      @Override
+      public Map<String, String> getPathValues() {
+        if (httpSolrCall != null && httpSolrCall instanceof V2HttpCall) {
+          return ((V2HttpCall) httpSolrCall).getUrlParts();
+        }
+        return Collections.EMPTY_MAP;
+      }
     };
     if( streams != null && streams.size() > 0 ) {
       q.setContentStreams( streams );

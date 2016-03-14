@@ -64,22 +64,21 @@ public class TestApiFramework extends SolrTestCaseJ4 {
 
     Map<String, String> parts = new HashMap<>();
     String fullPath = "/collections/hello/shards";
-    Api api = V2HttpCall.getApiInfo(containerHandlers, fullPath, "GET",
+    Api api = V2HttpCall.getApiInfo(containerHandlers, fullPath, "POST",
         mockCC, "collections", fullPath, parts);
     assertNotNull(api);
     assertConditions(api.getSpec(), Utils.makeMap(
-        "/methods[0]", "GET",
-        "/methods[1]", "POST",
+        "/methods[0]", "POST",
         "/commands/create", NOT_NULL));
     assertEquals("hello", parts.get("collection"));
 
+
+
     parts = new HashMap<>();
-    api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1", "GET",
+    api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1", "POST",
         mockCC, "collections", null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
-        "/methods[1]", "GET",
-        "/methods[2]", "DELETE",
         "/commands/split", NOT_NULL,
         "/commands/add-replica", NOT_NULL,
         "/commands/force-leader", NOT_NULL
@@ -89,11 +88,10 @@ public class TestApiFramework extends SolrTestCaseJ4 {
 
 
     parts = new HashMap<>();
-    api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1/replica1", "GET",
+    api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1/replica1", "POST",
         mockCC, "collections", null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
-        "/methods[0]", "GET",
-        "/methods[1]", "POST",
+        "/methods[0]", "POST",
         "/commands/set", NOT_NULL
     ));
     assertEquals("hello", parts.get("collection"));

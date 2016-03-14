@@ -29,6 +29,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.noggit.JSONParser;
@@ -40,46 +41,36 @@ import static java.util.Collections.unmodifiableSet;
 
 public class Map2<K, V> implements Map<K, V> {
 
-  public static final Predicate<Object> NOT_NULL = new Predicate<Object>() {
-    @Override
-    public String test(Object o) {
-      if (o == null) return " Must not be NULL";
-      return null;
-    }
-
+  public static final Predicate<Object> NOT_NULL = o -> {
+    if (o == null) return " Must not be NULL";
+    return null;
   };
-  public static final Predicate<Pair> NOT_NULL_OF_TYPE = new Predicate<Pair>() {
-    @Override
-    public String test(Pair pair) {
-      if (pair.getKey() == null) return " Must not be NULL";
-      if (pair.getValue() instanceof Class) {
-        return ((Class) pair.getValue()).isAssignableFrom(pair.getKey().getClass()) ?
-            null :
-            " Must be of type " + ((Class) pair.getValue()).getName();
-      }
-      return " Unknown Type";
+  public static final Predicate<Pair> NOT_NULL_OF_TYPE = pair -> {
+    if (pair.getKey() == null) return " Must not be NULL";
+    if (pair.getValue() instanceof Class) {
+      return ((Class) pair.getValue()).isAssignableFrom(pair.getKey().getClass()) ?
+          null :
+          " Must be of type " + ((Class) pair.getValue()).getName();
     }
+    return " Unknown Type";
   };
-  public static final Predicate<Pair> ENUM_OF = new Predicate<Pair>() {
-    @Override
-    public String test(Pair pair) {
-      if (pair.getValue() instanceof Set) {
-        Set set = (Set) pair.getValue();
-        if (pair.getKey() instanceof Collection) {
-          for (Object o : (Collection) pair.getKey()) {
-            if (!set.contains(o)) {
-              return " Must be one of " + pair.getValue();
-            }
+  public static final Predicate<Pair> ENUM_OF = pair -> {
+    if (pair.getValue() instanceof Set) {
+      Set set = (Set) pair.getValue();
+      if (pair.getKey() instanceof Collection) {
+        for (Object o : (Collection) pair.getKey()) {
+          if (!set.contains(o)) {
+            return " Must be one of " + pair.getValue();
           }
-        } else {
-          if (!set.contains(pair.getKey())) return " Must be one of " + pair.getValue() + ", got " + pair.getKey();
         }
-        return null;
       } else {
-        return " Unknown type";
+        if (!set.contains(pair.getKey())) return " Must be one of " + pair.getValue() + ", got " + pair.getKey();
       }
-
+      return null;
+    } else {
+      return " Unknown type";
     }
+
   };
   private final Map<K, V> delegate;
 

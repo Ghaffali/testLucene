@@ -33,9 +33,11 @@ import com.google.common.collect.ImmutableList;
 import org.apache.commons.io.FileUtils;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.common.util.Predicate;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.TestBlobHandler;
+import org.apache.solr.handler.TestSolrConfigHandlerCloud;
 import org.apache.solr.handler.TestSolrConfigHandlerConcurrent;
 import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestBase;
@@ -80,12 +82,7 @@ public class TestSolrConfigHandler extends RestTestBase {
         "/solr", true, extraServlets);
     if (random().nextBoolean()) {
       log.info("These tests are run with V2 API");
-      restTestHarness.setServerProvider(new RESTfulServerProvider() {
-        @Override
-        public String getBaseURL() {
-          return jetty.getBaseUrl().toString() + "/v2/cores/" + DEFAULT_TEST_CORENAME;
-        }
-      });
+      restTestHarness.setServerProvider(() -> jetty.getBaseUrl().toString() + "/v2/cores/" + DEFAULT_TEST_CORENAME);
     }
   }
 
@@ -457,9 +454,20 @@ public class TestSolrConfigHandler extends RestTestBase {
         continue;
 
       }
-      if (Objects.equals(expected, Utils.getObjectByPath(m, false, jsonPath))) {
-        success = true;
-        break;
+      Object actual = Utils.getObjectByPath(m, false, jsonPath);
+
+      if (expected instanceof Predicate) {
+        Predicate predicate = (Predicate) expected;
+        if (predicate.test(actual) == null) {
+          success = true;
+          break;
+        }
+
+      } else {
+        if (Objects.equals(expected, actual)) {
+          success = true;
+          break;
+        }
       }
       Thread.sleep(100);
 
@@ -677,6 +685,65 @@ public class TestSolrConfigHandler extends RestTestBase {
         null,
         10);
 
+    payload = "{\n" +
+        "  'create-requesthandler': {\n" +
+        "    'name': 'aRequestHandler',\n" +
+        "    'registerPath': '/v2',\n" +
+        "    'class': 'org.apache.solr.handler.DumpRequestHandler',\n" +
+        "    'spec': {\n" +
+        "      'methods': [\n" +
+        "        'GET',\n" +
+        "        'POST'\n" +
+        "      ],\n" +
+        "      'url': {\n" +
+        "        'paths': [\n" +
+        "          '/something/{part1}/fixed/{part2}'\n" +
+        "        ]\n" +
+        "      }\n" +
+        "    }\n" +
+        "  }\n" +
+        "}";
+
+    TestSolrConfigHandler.runConfigCommand(harness, "/config?wt=json", payload);
+    TestSolrConfigHandler.testForResponseElement(harness,
+        null,
+        "/config/overlay?wt=json",
+        null,
+        Arrays.asList("overlay", "requestHandler", "aRequestHandler", "class"),
+        "org.apache.solr.handler.DumpRequestHandler",
+        10);
+    RESTfulServerProvider oldProvider = restTestHarness.getServerProvider();
+    restTestHarness.setServerProvider(new RESTfulServerProvider() {
+      @Override
+      public String getBaseURL() {
+        return jetty.getBaseUrl().toString() + "/v2/cores/" + DEFAULT_TEST_CORENAME;
+      }
+    });
+
+    Map rsp = TestSolrConfigHandler.testForResponseElement(
+        harness,
+        null,
+        "/something/part1_Value/fixed/part2_Value?urlPart=part1&urlPart=part2",
+        null,
+        Arrays.asList("urlPart"),
+        (Predicate) new Predicate() {
+          @Override
+          public String test(Object o) {
+            if (o instanceof Map) {
+              Map m = (Map) o;
+              if ("part1_Value".equals(m.get("part1"))  && "part2_Value".equals(m.get("part2"))) return null;
+
+            }
+            return "no match";
+          }
+
+          @Override
+          public String toString() {
+            return "{part1:part1_Value, part2 : part2_Value]";
+          }
+        },
+        10);
+    restTestHarness.setServerProvider(oldProvider);
 
   }
 

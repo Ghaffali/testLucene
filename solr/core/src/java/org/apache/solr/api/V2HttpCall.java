@@ -268,6 +268,10 @@ public class V2HttpCall extends HttpSolrCall {
     }
   }
 
+  public Map<String,String> getUrlParts(){
+    return parts;
+  }
+
   @Override
   protected QueryResponseWriter getResponseWriter() {
     String wt = solrReq.getParams().get(WT, JSON);
