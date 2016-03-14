@@ -686,9 +686,92 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
   protected static void testAddsMixedWithDeletes(SolrClient client) throws Exception {
     assertNotNull("client not initialized", client);
 
-    // nocommit: test adds & deletes mixed in a single UpdateRequest, w/ tolerated failures of both types
+    // 3 doc ids, exactly one on shard1
+    final String docId1  = S_ONE_PRE + "42";
+    final String docId21 = S_TWO_PRE + "42";
+    final String docId22 = S_TWO_PRE + "666";
+    
+    UpdateResponse rsp = null;
+    
+    // add 2 docs to each shard
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true"),
+                 doc(f("id", docId1), f("foo_i", "2001")),
+                 doc(f("id", docId21), f("foo_i", "1976"))).process(client);
+    assertEquals(0, rsp.getStatus());
 
-    // nocommit: be sure to include DBQ mixed with other things.
+    // add failure on shard2, delete failure on shard1
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true"),
+                 doc(f("id", docId22), f("foo_i", "not_a_num")))
+      .deleteById(docId1, -1L)
+      .process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("shard2 add fail, shard1 delI fail", rsp,
+                               delIErr(docId1, "version conflict"),
+                               addErr(docId22,"not_a_num"));
+    
+    // attempt a request containing 5 errors of various types (add, delI, delQ)
+    for (String maxErrors : new String[] {"5", "-1", "100"}) {
+      // for all of these maxErrors values, the overall request should still succeed
+      rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                          "maxErrors", maxErrors,
+                          "commit", "true"),
+                   doc(f("id", docId22), f("foo_i", "bogus_val")))
+        .deleteById(docId1, -1L)
+        .deleteByQuery("malformed:[")
+        .deleteById(docId21, -1L)
+        .process(client);
+      
+      assertEquals(0, rsp.getStatus());
+      assertUpdateTolerantErrors("failed variety of updates", rsp,
+                                 delIErr(docId1, "version conflict"),
+                                 delQErr("malformed:[", "SyntaxError"),
+                                 delIErr(docId21,"version conflict"),
+                                 addErr(docId22,"bogus_val"));
+    }
+    
+    // attempt a request containing 5 errors of various types (add, delI, delQ) .. 1 too many
+    try {
+      rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                          "maxErrors", "4",
+                          "commit", "true"),
+                   doc(f("id", docId22), f("foo_i", "bogus_val")))
+        .deleteById(docId1, -1L)
+        .deleteByQuery("malformed:[")
+        .deleteById(docId21, -1L)
+        .process(client);
+    } catch (SolrException e) {
+      // we can't make any reliable assertions about the error message, because
+      // it varies based on how the request was routed -- see SOLR-8830
+      assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
+                   // NOTE: we always expect a 400 because we know that's what we would get from these types of errors
+                   // on a single node setup -- a 5xx type error isn't something we should have triggered
+                   400, e.code());
+
+      // verify that the Exceptions metadata can tell us what failed.
+      NamedList<String> remoteErrMetadata = e.getMetadata();
+      assertNotNull("no metadata in: " + e.toString(), remoteErrMetadata);
+      Set<ToleratedUpdateError> actualKnownErrs
+        = new LinkedHashSet<ToleratedUpdateError>(remoteErrMetadata.size());
+      int actualKnownErrsCount = 0;
+      for (int i = 0; i < remoteErrMetadata.size(); i++) {
+        ToleratedUpdateError err =
+          ToleratedUpdateError.parseMetadataIfToleratedUpdateError(remoteErrMetadata.getName(i),
+                                                                   remoteErrMetadata.getVal(i));
+        if (null == err) {
+          // some metadata unrelated to this update processor
+          continue;
+        }
+        actualKnownErrsCount++;
+        actualKnownErrs.add(err);
+      }
+      assertEquals("wrong number of errors in metadata: " + remoteErrMetadata.toString(),
+                   5, actualKnownErrsCount);
+      assertEquals("at least one dup error in metadata: " + remoteErrMetadata.toString(),
+                   actualKnownErrsCount, actualKnownErrs.size());
+    }
+    
   }
 
   /** Asserts that the UpdateResponse contains the specified expectedErrs and no others */
@@ -710,17 +793,19 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       assertNotNull(assertErrPre + " ... null id", id);
       String type = err.get("type");
       assertNotNull(assertErrPre + " ... null type", type);
+      String message = err.get("message");
+      assertNotNull(assertErrPre + " ... null message", message);
 
       // inefficient scan, but good nough for the size of sets we're dealing with
       boolean found = false;
       for (ExpectedErr expected : expectedErrs) {
-        if (expected.type.equals(type) && expected.id.equals(id)) {
-          // nocommit: test err.get("message").contains(expected.someSubStr)
+        if (expected.type.equals(type) && expected.id.equals(id)
+            && (null == expected.msgSubStr || message.contains(expected.msgSubStr))) {
           found = true;
           break;
         }
       }
-      assertTrue(assertErrPre + " ... unexpected err, not found in: " + response.toString(), found);
+      assertTrue(assertErrPre + " ... unexpected err in: " + response.toString(), found);
 
     }
   }
@@ -776,20 +861,30 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
   public static final class ExpectedErr {
     final String type;
     final String id;
-    // nocommit: add errorMsgSubstring to test against message, or ignored if null
+    final String msgSubStr; // ignored if null
 
-    public ExpectedErr(String type, String id) {
+    public ExpectedErr(String type, String id, String msgSubStr) {
       this.type = type;
       this.id = id;
+      this.msgSubStr = msgSubStr;
     }
   }
-  public static ExpectedErr addErr(String id) {// nocommit: add errorMsgSubstring to test against message
-    return new ExpectedErr("ADD", id);
+  public static ExpectedErr addErr(String id, String msgSubStr) {
+    return new ExpectedErr("ADD", id, msgSubStr);
   }
-  public static ExpectedErr delIErr(String id) {// nocommit: add errorMsgSubstring to test against message
-    return new ExpectedErr("DELID", id);
+  public static ExpectedErr delIErr(String id, String msgSubStr) {
+    return new ExpectedErr("DELID", id, msgSubStr);
   }
-  public static ExpectedErr delQErr(String id) {// nocommit: add errorMsgSubstring to test against message
-    return new ExpectedErr("DELQ", id);
+  public static ExpectedErr delQErr(String id, String msgSubStr) {
+    return new ExpectedErr("DELQ", id, msgSubStr);
+  }  
+  public static ExpectedErr addErr(String id) {
+    return addErr(id, null);
+  }
+  public static ExpectedErr delIErr(String id) {
+    return delIErr(id, null);
+  }
+  public static ExpectedErr delQErr(String id) {
+    return delQErr(id, null);
   }  
 }
