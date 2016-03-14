@@ -1,8 +1,7 @@
 {
   "documentation": "https://cwiki.apache.org",
   "methods": [
-    "POST",
-    "GET"
+    "POST"
   ],
   "url": {
     "paths": [
@@ -16,8 +15,8 @@
       "additionalProperties": true
     },
     "delete-user": {
-      "description": "",
-      "type": "list"
+      "description": "Delete a user or a list of users",
+      "type":"string"
     }
   }
 }

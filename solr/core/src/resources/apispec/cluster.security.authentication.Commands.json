@@ -1,12 +1,11 @@
 {
   "documentation": "https://cwiki.apache.org",
   "methods": [
-    "GET"
+    "POST"
   ],
   "url": {
     "paths": [
-      "/cluster/security/authorization"
+      "/cluster/security/authentication"
     ]
   }
-
 }

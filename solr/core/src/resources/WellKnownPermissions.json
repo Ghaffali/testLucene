@@ -1,12 +1,16 @@
 {
   "security-edit":{
     "path":[
+      "/v2/cluster/security/authentication",
+      "/v2/cluster/security/authorization",
       "/admin/authentication",
       "/admin/authorization"],
     "collection":null,
     "method":"POST"},
   "security-read":{
     "path":[
+      "/v2/cluster/security/authentication",
+      "/v2/cluster/security/authorization",
       "/admin/authentication",
       "/admin/authorization"],
     "collection":null,

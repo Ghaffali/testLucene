@@ -46,7 +46,7 @@ import org.apache.solr.api.ApiSupport;
 import org.apache.solr.api.SpecProvider;
 import org.apache.zookeeper.KeeperException;
 
-public class SecurityConfHandler extends RequestHandlerBase implements ApiSupport {
+public class SecurityConfHandler extends RequestHandlerBase {
   private CoreContainer cores;
 
   public SecurityConfHandler(CoreContainer coreContainer) {
@@ -171,34 +171,31 @@ public class SecurityConfHandler extends RequestHandlerBase implements ApiSuppor
   }
 
 
+  private Collection<Api> apis;
   @Override
   public Collection<Api> getApis() {
-    return
-    ImmutableList.of(
-        getApi("authentication"),
-        getApi("authorization"));
-  }
+    if (apis == null) {
+      synchronized (this) {
+        if (apis == null) {
+          Collection<Api> apis = new ArrayList<>();
+          final Map2 authcCommands = ApiBag.getSpec("cluster.security.authentication.Commands");
+          final Map2 authzCommands = ApiBag.getSpec("cluster.security.authorization.Commands");
+          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authentication"), null));
+          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authorization"), null));
+          apis.add(ApiBag.wrapRequestHandler(this, null, () -> {
+            AuthenticationPlugin plugin = cores.getAuthenticationPlugin();
+            return plugin != null && plugin instanceof SpecProvider ? ((SpecProvider) plugin).getSpec() : authcCommands ;
+          }));
+          apis.add(ApiBag.wrapRequestHandler(this, null, () -> {
+            AuthorizationPlugin plugin = cores.getAuthorizationPlugin();
+            return plugin != null && plugin instanceof SpecProvider ? ((SpecProvider) plugin).getSpec() : authzCommands ;
+          }));
 
-  private Api getApi( String type) {
-    return ApiBag.wrapRequestHandler(this, null, new SpecProvider() {
-      @Override
-      public Map2 getSpec() {
-        if (type.equals("authentication")) {
-          AuthenticationPlugin plugin = cores.getAuthenticationPlugin();
-          if (plugin == null || !(plugin instanceof SpecProvider)) return ApiBag.getSpec("cluster.security.authentication");
-          return ((SpecProvider) plugin).getSpec();
-        } else {
-          AuthorizationPlugin plugin = cores.getAuthorizationPlugin();
-          if (plugin == null || !(plugin instanceof SpecProvider)){
-            return ApiBag.getSpec("cluster.security.authorization");
-          }
-          return ((SpecProvider) plugin).getSpec();
-
+          this.apis = ImmutableList.copyOf(apis);
         }
       }
-    });
+    }
+    return this.apis;
   }
-
-
 }
 

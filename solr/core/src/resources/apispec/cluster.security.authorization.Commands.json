@@ -1,7 +1,7 @@
 {
   "documentation": "https://cwiki.apache.org",
   "methods": [
-    "GET"
+    "POST"
   ],
   "url": {
     "paths": [

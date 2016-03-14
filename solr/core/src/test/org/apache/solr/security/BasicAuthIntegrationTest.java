@@ -17,7 +17,6 @@
 package org.apache.solr.security;
 
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,7 +35,6 @@ import org.apache.http.message.AbstractHttpMessage;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
@@ -57,7 +55,6 @@ import org.apache.solr.common.util.ContentStreamBase;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
-import org.apache.solr.util.CommandOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +74,7 @@ public class BasicAuthIntegrationTest extends TestMiniSolrCloudClusterBase {
 
     String authcPrefix = "/admin/authentication";
     String authzPrefix = "/admin/authorization";
-    if(random().nextBoolean()){
+    if(true){
       authcPrefix = "/v2/cluster/security/authentication";
       authzPrefix = "/v2/cluster/security/authorization";
     }

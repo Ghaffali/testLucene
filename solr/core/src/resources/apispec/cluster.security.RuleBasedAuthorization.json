@@ -1,8 +1,7 @@
 {
   "documentation": "https://cwiki.apache.org",
   "methods": [
-    "POST",
-    "GET"
+    "POST"
   ],
   "url": {
     "paths": [
@@ -15,31 +14,31 @@
       "properties": {
         "name":{
           "type":"string",
-          "description":""
+          "description":"The name of the permission. The name will be used to update or delete the permission later."
         },
         "method":{
           "type":"string",
-          "description":""
+          "description":"HTTP methods that are allowed for this permission. You could allow only GET requests, or have a role that allows PUT and POST requests. The method values that are allowed for this property are GET, POST, PUT, DELETE and HEAD."
         },
 
         "collection":{
           "type":"list",
-          "description":""
+          "description":"The collection or collections the permission will apply to. When the path that will be allowed is collection-specific, such as when setting permissions to allow use of the Schema API, omitting the collection property will allow the defined path and/or method for all collections. However, when the path is one that is non-collection-specific, such as the Collections API, the collection value must be null."
         },
 
         "path":{
           "type":"list",
-          "description":""
+          "description":"A request handler name, such as /update or /select. A wild card is supported, to allow for all paths as appropriate (such as, /update/*)."
         },
         "before":{
           "type":"string",
-          "description":""
+          "description":"This property allows ordering of permissions. The value for this property is the name of the permission that this new permission should be placed before in security.json."
         },
         "params":{
           "type":"object",
           "properties":{},
           "additionalProperties":true,
-          "description":""
+          "description":"The names and values of request parameters. This property can be omitted if all request parameters are allowed, but will restrict access only to the values provided if defined."
         }
       },
       "required":["name","role"]
