@@ -1,4 +1,4 @@
-package org.apache.solr.api;
+package org.apache.solr.util;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -29,7 +29,15 @@ import org.apache.solr.common.util.StrUtils;
 import static java.util.Collections.emptyList;
 
 public class PathTrie<T> {
+  private final Set<String> reserved = new HashSet<>();
   Node root = new Node(emptyList(), null);
+
+  public PathTrie() { }
+
+  public PathTrie(Set<String> reserved) {
+    this.reserved.addAll(reserved);
+  }
+
 
 
   public void insert(String path, Map<String, String> replacements, T o) {
@@ -163,9 +171,4 @@ public class PathTrie<T> {
     }
   }
 
-  private Set<String> reserved = new HashSet<>();
-
-  {
-    reserved.add("_introspect");
-  }
 }

@@ -820,8 +820,8 @@ public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAwa
   @Override
   public Collection<Api> getApis() {
     return ImmutableList.of(
-        wrapRequestHandler(this, ApiBag.getSpec("core.ConfigRead"), null),
-        wrapRequestHandler(this, ApiBag.getSpec("core.ConfigEdit"), null)
+        wrapRequestHandler(this, ApiBag.getSpec("core.ConfigRead")),
+        wrapRequestHandler(this, ApiBag.getSpec("core.ConfigEdit"))
 
     );
   }

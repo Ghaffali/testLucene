@@ -468,11 +468,10 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
 
   }
 
-  private Map2 spec;
 
   @Override
   public Map2 getSpec() {
-    if(spec == null) spec = ApiBag.getSpec("cluster.security.RuleBasedAuthorization");
-    return spec;
+    return ApiBag.getSpec("cluster.security.RuleBasedAuthorization").getSpec();
+
   }
 }

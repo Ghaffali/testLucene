@@ -28,6 +28,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.solr.api.SpecProvider;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.SolrParams;
@@ -67,8 +68,7 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
 
 
   private Api getApi(final V2EndPoint op) {
-    final Map2 spec = ApiBag.getSpec(op.getSpecName());
-    return new Api(spec) {
+    return new Api(ApiBag.getSpec(op.getSpecName())) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
         SolrParams params = req.getParams();

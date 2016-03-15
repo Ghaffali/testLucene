@@ -244,8 +244,8 @@ public class SchemaHandler extends RequestHandlerBase implements ApiSupport , So
   @Override
   public Collection<Api> getApis() {
     return ImmutableList.of(
-        wrapRequestHandler(this, ApiBag.getSpec("core.SchemaRead"), null) ,
-        wrapRequestHandler(this, ApiBag.getSpec("core.SchemaEdit"), null));
+        wrapRequestHandler(this, ApiBag.getSpec("core.SchemaRead")) ,
+        wrapRequestHandler(this, ApiBag.getSpec("core.SchemaEdit")));
   }
 
 

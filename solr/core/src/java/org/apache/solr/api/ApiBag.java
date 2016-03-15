@@ -29,16 +29,15 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.collect.ImmutableSet;
-import org.apache.lucene.queryparser.flexible.core.util.StringUtils;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.Map2;
-import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.util.PathTrie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,7 +93,8 @@ public class ApiBag {
     List<String> methods = spec.getList("methods", ENUM_OF, SUPPORTED_METHODS);
     for (String method : methods) {
       PathTrie<Api> registry = apis.get(method);
-      if (registry == null) apis.put(method, registry = new PathTrie<>());
+
+      if (registry == null) apis.put(method, registry = new PathTrie<>(ImmutableSet.of("_introspect")));
       Map2 url = spec.getMap("url", NOT_NULL);
       Map2 params = url.getMap("params", null);
       if (params != null) {
@@ -124,13 +124,7 @@ public class ApiBag {
   }
 
   private Api getIntrospect(final Api baseApi) {
-    return new Api(Map2.EMPTY) {
-
-      @Override
-      public Map2 getSpec() {
-        return INTROSPECT_SPEC;
-      }
-
+    return new Api(EMPTY_SPEC) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
 
@@ -188,35 +182,38 @@ public class ApiBag {
     }
   }
 
-  public static Map2 getSpec(String name) {
-    String jsonName = APISPEC_LOCATION + name + ".json";
-    Map2 map = getResource(jsonName);
-    Map2 result = map/*.getMap(name, NOT_NULL,
-        formatString("The json file ''{0}'' must have a root object with name ''{1}''",jsonName, name))*/;
-    Map2 cmds = result.getMap("commands", null);
-    if (cmds != null) {
-      Map<String, Map2> comands2BReplaced = new Map2<>();
-      for (Object o : cmds.keySet()) {
-        Object val = cmds.get(o);
-        if (val instanceof String) {
-          String s = (String) val;
-          Map2 cmdSpec = getResource(APISPEC_LOCATION + s + ".json");
-          comands2BReplaced.put(o.toString(), cmdSpec);
+  public static SpecProvider getSpec(final String name) {
+    return () -> {
+      String jsonName = APISPEC_LOCATION + name + ".json";
+      Map2 map = getResource(jsonName);
+      Map2 result = map;
+      Map2 cmds = result.getMap("commands", null);
+      if (cmds != null) {
+        Map<String, Map2> comands2BReplaced = new Map2<>();
+        for (Object o : cmds.keySet()) {
+          Object val = cmds.get(o);
+          if (val instanceof String) {
+            String s = (String) val;
+            Map2 cmdSpec = getResource(APISPEC_LOCATION + s + ".json");
+            comands2BReplaced.put(o.toString(), cmdSpec);
+          }
+        }
+
+        if (!comands2BReplaced.isEmpty()) {
+          Map2 mapCopy = Map2.getDeepCopy(result, 4, true);
+          mapCopy.getMap("commands", NOT_NULL).putAll(comands2BReplaced);
+          result = Map2.getDeepCopy(mapCopy, 4, false);
         }
       }
 
-      if (!comands2BReplaced.isEmpty()) {
-        Map2 mapCopy = Map2.getDeepCopy(result, 4, true);
-        mapCopy.getMap("commands", NOT_NULL).putAll(comands2BReplaced);
-        result = Map2.getDeepCopy(mapCopy, 4, false);
-      }
-    }
+      return result;
+    };
 
-    return result;
+
   }
 
-  public static Api wrapRequestHandler(final SolrRequestHandler rh, final Map2 spec, SpecProvider specProvider) {
-    return new Api(spec) {
+  public static Api wrapRequestHandler(final SolrRequestHandler rh, SpecProvider specProvider) {
+    return new Api(specProvider) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
         rh.handleRequest(req, rsp);
@@ -235,7 +232,7 @@ public class ApiBag {
   public static final String INTROSPECT = "/_introspect";
 
 
-  public static final Map2 INTROSPECT_SPEC = new Map2(Collections.EMPTY_MAP);
+  public static final SpecProvider EMPTY_SPEC = () -> Map2.EMPTY;
   public static final String HANDLER_NAME = "handlerName";
   public static final Set<String> KNOWN_TYPES = ImmutableSet.of("string", "boolean", "list", "int", "double");
 
@@ -246,16 +243,15 @@ public class ApiBag {
   public <T> void registerLazy(PluginBag.PluginHolder<SolrRequestHandler> holder, PluginInfo info) {
     String specName = info.attributes.get("spec");
     if (specName == null) specName = "emptySpec";
-    Map2 spec = ApiBag.getSpec(specName);
-    register(new LazyLoadedApi(spec, holder), Collections.singletonMap(HANDLER_NAME, info.attributes.get(NAME)));
+    register(new LazyLoadedApi(ApiBag.getSpec(specName), holder), Collections.singletonMap(HANDLER_NAME, info.attributes.get(NAME)));
   }
 
-  public static Map2 constructSpec(PluginInfo info) {
+  public static SpecProvider constructSpec(PluginInfo info) {
     Object specObj = info == null ? null : info.attributes.get("spec");
     if (specObj == null) specObj = "emptySpec";
     if (specObj instanceof Map) {
       Map map = (Map) specObj;
-      return Map2.getDeepCopy(map, 4, false);
+      return () -> Map2.getDeepCopy(map, 4, false);
     } else {
       return ApiBag.getSpec((String) specObj);
     }
@@ -304,15 +300,15 @@ public class ApiBag {
     private final PluginBag.PluginHolder<SolrRequestHandler> holder;
     private Api delegate;
 
-    protected LazyLoadedApi(Map2 spec, PluginBag.PluginHolder<SolrRequestHandler> lazyPluginHolder) {
-      super(spec);
+    protected LazyLoadedApi(SpecProvider specProvider, PluginBag.PluginHolder<SolrRequestHandler> lazyPluginHolder) {
+      super(specProvider);
       this.holder = lazyPluginHolder;
     }
 
     @Override
     public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
       if (!holder.isLoaded()) {
-        delegate = wrapRequestHandler(holder.get(), null, null);
+        delegate = wrapRequestHandler(holder.get(), ApiBag.EMPTY_SPEC);
       }
       delegate.call(req, rsp);
     }

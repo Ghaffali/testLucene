@@ -18,14 +18,16 @@ package org.apache.solr.api;
  */
 
 
+import java.util.concurrent.Callable;
+
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 
 public abstract class Api implements SpecProvider {
-  protected Map2 spec;
+  protected SpecProvider spec;
 
-  protected Api(Map2 spec) {
+  protected Api(SpecProvider spec) {
     this.spec = spec;
   }
 
@@ -34,7 +36,7 @@ public abstract class Api implements SpecProvider {
 
   @Override
   public Map2 getSpec() {
-    return spec;
+    return spec.getSpec();
   }
 
 }

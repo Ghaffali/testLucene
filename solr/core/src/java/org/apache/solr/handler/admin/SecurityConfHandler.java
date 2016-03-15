@@ -178,19 +178,14 @@ public class SecurityConfHandler extends RequestHandlerBase {
       synchronized (this) {
         if (apis == null) {
           Collection<Api> apis = new ArrayList<>();
-          final Map2 authcCommands = ApiBag.getSpec("cluster.security.authentication.Commands");
-          final Map2 authzCommands = ApiBag.getSpec("cluster.security.authorization.Commands");
-          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authentication"), null));
-          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authorization"), null));
-          apis.add(ApiBag.wrapRequestHandler(this, null, () -> {
-            AuthenticationPlugin plugin = cores.getAuthenticationPlugin();
-            return plugin != null && plugin instanceof SpecProvider ? ((SpecProvider) plugin).getSpec() : authcCommands ;
-          }));
-          apis.add(ApiBag.wrapRequestHandler(this, null, () -> {
-            AuthorizationPlugin plugin = cores.getAuthorizationPlugin();
-            return plugin != null && plugin instanceof SpecProvider ? ((SpecProvider) plugin).getSpec() : authzCommands ;
-          }));
-
+          final SpecProvider authcCommands = ApiBag.getSpec("cluster.security.authentication.Commands");
+          final SpecProvider authzCommands = ApiBag.getSpec("cluster.security.authorization.Commands");
+          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authentication")));
+          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authorization")));
+          AuthenticationPlugin authcPlugin = cores.getAuthenticationPlugin();
+          apis.add(ApiBag.wrapRequestHandler(this, authcPlugin != null && authcPlugin instanceof SpecProvider ? ((SpecProvider) authcPlugin) : authcCommands));
+          AuthorizationPlugin authzPlugin = cores.getAuthorizationPlugin();
+          apis.add(ApiBag.wrapRequestHandler(this, authzPlugin != null && authzPlugin instanceof SpecProvider ? ((SpecProvider) authzPlugin) : authzCommands));
           this.apis = ImmutableList.copyOf(apis);
         }
       }

@@ -30,6 +30,7 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.solr.api.SpecProvider;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.ApiBag;
@@ -156,7 +157,7 @@ public class Sha256AuthenticationProvider implements ConfigEditablePlugin,  Basi
 
   @Override
   public Map2 getSpec() {
-    return ApiBag.getSpec("cluster.security.BasicAuth");
+    return ApiBag.getSpec("cluster.security.BasicAuth").getSpec();
   }
 
   static final Set<String> supported_ops = ImmutableSet.of("set-user", "delete-user");

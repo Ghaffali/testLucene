@@ -20,7 +20,9 @@ package org.apache.solr.api;
 
 import java.util.HashMap;
 
+import com.google.common.collect.ImmutableSet;
 import org.apache.solr.SolrTestCaseJ4;
+import org.apache.solr.util.PathTrie;
 
 import static java.util.Collections.emptyMap;
 import static java.util.Collections.singletonMap;
@@ -29,7 +31,7 @@ import static org.apache.solr.api.ApiBag.HANDLER_NAME;
 public class TestPathTrie extends SolrTestCaseJ4 {
 
   public void testPathTrie() {
-    PathTrie<String> pathTrie = new PathTrie<>();
+    PathTrie<String> pathTrie = new PathTrie<>(ImmutableSet.of("_introspect"));
     pathTrie.insert("/", emptyMap(), "R");
     pathTrie.insert("/aa", emptyMap(), "d");
     pathTrie.insert("/aa/bb/{cc}/dd", emptyMap(), "a");

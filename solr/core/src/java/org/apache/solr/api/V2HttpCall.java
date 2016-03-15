@@ -19,8 +19,6 @@ package org.apache.solr.api;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,7 +33,6 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.PluginBag;
@@ -49,10 +46,11 @@ import org.apache.solr.security.AuthorizationContext;
 import org.apache.solr.servlet.HttpSolrCall;
 import org.apache.solr.servlet.SolrDispatchFilter;
 import org.apache.solr.servlet.SolrRequestParsers;
+import org.apache.solr.util.PathTrie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.solr.api.PathTrie.getParts;
+import static org.apache.solr.util.PathTrie.getParts;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.CommonParams.WT;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.ADMIN;
@@ -191,7 +189,7 @@ public class V2HttpCall extends HttpSolrCall {
         return getSubPathImpl(subpaths, fullPath);
       }
     }
-    if (api.getSpec() == ApiBag.INTROSPECT_SPEC)
+    if (api.getSpec() == Map2.EMPTY)
       api = mergeIntrospect(requestHandlers, path, method, parts);
     return api;
   }
@@ -219,7 +217,7 @@ public class V2HttpCall extends HttpSolrCall {
       api = requestHandlers.v2lookup(path, m, parts);
       if (api != null) apis.put(m, api);
     }
-    api = new Api(ApiBag.INTROSPECT_SPEC) {
+    api = new Api(ApiBag.EMPTY_SPEC) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
         String method = req.getParams().get("method");
@@ -238,7 +236,7 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   private static Api getSubPathImpl(final Map<String, Set<String>> subpaths, String path) {
-    return new Api (Map2.EMPTY) {
+    return new Api(() -> Map2.EMPTY) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
         rsp.add("msg", "Invalid path, try the following");

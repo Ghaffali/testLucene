@@ -17,7 +17,6 @@ package org.apache.solr.handler.admin;
  * limitations under the License.
  */
 
-import java.io.StringReader;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +41,7 @@ import org.apache.solr.api.V2HttpCall;
 import org.apache.solr.util.CommandOperation;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CORES_HANDLER_PATH;
 import static org.apache.solr.common.util.Map2.NOT_NULL;
@@ -129,10 +129,6 @@ public class TestApiFramework extends SolrTestCaseJ4 {
         "availableSubPaths /collections/hello/shards/{shard}", NOT_NULL,
         "availableSubPaths /collections/hello/shards/{shard}/{replica}", NOT_NULL
     ));
-
-    rsp = invoke(coreHandlers,"/collections/hello/schema",SolrRequest.METHOD.POST, mockCC);
-
-
 
   }
 
