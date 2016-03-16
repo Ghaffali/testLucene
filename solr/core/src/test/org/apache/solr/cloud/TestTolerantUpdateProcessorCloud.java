@@ -868,6 +868,9 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       this.id = id;
       this.msgSubStr = msgSubStr;
     }
+    public String toString() {
+      return "type=<"+type+">,id=<"+id+">,msgSubStr=<"+msgSubStr+">";
+    }
   }
   public static ExpectedErr addErr(String id, String msgSubStr) {
     return new ExpectedErr("ADD", id, msgSubStr);
