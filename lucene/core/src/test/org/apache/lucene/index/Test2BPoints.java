@@ -49,7 +49,6 @@ import com.carrotsearch.randomizedtesting.annotations.TimeoutSuite;
 public class Test2BPoints extends LuceneTestCase {
   public void test1D() throws Exception {
     Directory dir = FSDirectory.open(createTempDir("2BPoints1D"));
-    System.out.println("DIR: " + ((FSDirectory) dir).getDirectory());
 
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()))
       .setCodec(getCodec())
@@ -70,11 +69,12 @@ public class Test2BPoints extends LuceneTestCase {
     }
 
     final int numDocs = (Integer.MAX_VALUE / 26) + 1;
-    long counter = 0;
+    int counter = 0;
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       for (int j=0;j<26;j++) {
-        doc.add(new LongPoint("long", counter));
+        long x = (((long) random().nextInt() << 32)) | (long) counter;
+        doc.add(new LongPoint("long", x));
         counter++;
       }
       w.addDocument(doc);
@@ -85,7 +85,7 @@ public class Test2BPoints extends LuceneTestCase {
     w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher s = new IndexSearcher(r);
-    assertEquals(1250, s.count(LongPoint.newRangeQuery("long", 33640828, 33673327)));
+    assertEquals(numDocs, s.count(LongPoint.newRangeQuery("long", Long.MIN_VALUE, Long.MAX_VALUE)));
     assertTrue(r.leaves().get(0).reader().getPointValues().size("long") > Integer.MAX_VALUE);
     r.close();
     w.close();
@@ -116,11 +116,13 @@ public class Test2BPoints extends LuceneTestCase {
     }
 
     final int numDocs = (Integer.MAX_VALUE / 26) + 1;
-    long counter = 0;
+    int counter = 0;
     for (int i = 0; i < numDocs; i++) {
       Document doc = new Document();
       for (int j=0;j<26;j++) {
-        doc.add(new LongPoint("long", counter, 2*counter+1));
+        long x = (((long) random().nextInt() << 32)) | (long) counter;
+        long y = (((long) random().nextInt() << 32)) | (long) random().nextInt();
+        doc.add(new LongPoint("long", x, y));
         counter++;
       }
       w.addDocument(doc);
@@ -131,7 +133,7 @@ public class Test2BPoints extends LuceneTestCase {
     w.forceMerge(1);
     DirectoryReader r = DirectoryReader.open(w);
     IndexSearcher s = new IndexSearcher(r);
-    assertEquals(1250, s.count(LongPoint.newRangeQuery("long", new long[] {33640828, 33673327}, new long[] {Long.MIN_VALUE, Long.MAX_VALUE})));
+    assertEquals(numDocs, s.count(LongPoint.newRangeQuery("long", new long[] {Long.MIN_VALUE, Long.MIN_VALUE}, new long[] {Long.MAX_VALUE, Long.MAX_VALUE})));
     assertTrue(r.leaves().get(0).reader().getPointValues().size("long") > Integer.MAX_VALUE);
     r.close();
     w.close();
@@ -141,24 +143,6 @@ public class Test2BPoints extends LuceneTestCase {
   }
 
   private static Codec getCodec() {
-
-    return new FilterCodec("Lucene60", Codec.forName("Lucene60")) {
-      @Override
-      public PointsFormat pointsFormat() {
-        return new PointsFormat() {
-          @Override
-          public PointsWriter fieldsWriter(SegmentWriteState writeState) throws IOException {
-            int maxPointsInLeafNode = 1024;
-            double maxMBSortInHeap = 256.0;
-            return new Lucene60PointsWriter(writeState, maxPointsInLeafNode, maxMBSortInHeap);
-          }
-
-          @Override
-          public PointsReader fieldsReader(SegmentReadState readState) throws IOException {
-            return new Lucene60PointsReader(readState);
-          }
-        };
-      }
-    };
+    return Codec.forName("Lucene60");
   }
 }

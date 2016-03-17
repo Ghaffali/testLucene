@@ -39,7 +39,7 @@ public class TestLatLonPoint extends LuceneTestCase {
     
     // search and verify we found our doc
     IndexReader reader = writer.getReader();
-    IndexSearcher searcher = newSearcher(reader, false);
+    IndexSearcher searcher = newSearcher(reader);
     assertEquals(1, searcher.count(LatLonPoint.newBoxQuery("field", 18, 19, -66, -65)));
 
     reader.close();
@@ -56,6 +56,9 @@ public class TestLatLonPoint extends LuceneTestCase {
     
     // distance query does not quantize inputs
     assertEquals("field:18.0,19.0 +/- 25.0 meters", LatLonPoint.newDistanceQuery("field", 18, 19, 25).toString());
+    
+    // sort field
+    assertEquals("<distance:\"field\" latitude=18.0 longitude=19.0>", LatLonPoint.newDistanceSort("field", 18.0, 19.0).toString());
   }
   
   /** Valid values that should not cause exception */
@@ -154,6 +157,16 @@ public class TestLatLonPoint extends LuceneTestCase {
     assertEquals(0.0, LatLonPoint.decodeLongitude(LatLonPoint.encodeLongitude(0.0)), ENCODING_TOLERANCE);
     assertEquals(180.0, LatLonPoint.decodeLongitude(LatLonPoint.encodeLongitude(180.0)), ENCODING_TOLERANCE);
     assertEquals(-180.0, LatLonPoint.decodeLongitude(LatLonPoint.encodeLongitude(-180.0)), ENCODING_TOLERANCE);
+  }
+
+  public void testEncodeDecodeExtremeValues() throws Exception {
+    assertEquals(Integer.MIN_VALUE, LatLonPoint.encodeLatitude(-90.0));
+    assertEquals(0, LatLonPoint.encodeLatitude(0.0));
+    assertEquals(Integer.MAX_VALUE, LatLonPoint.encodeLatitude(90.0));
+
+    assertEquals(Integer.MIN_VALUE, LatLonPoint.encodeLongitude(-180.0));
+    assertEquals(0, LatLonPoint.encodeLatitude(0.0));
+    assertEquals(Integer.MAX_VALUE, LatLonPoint.encodeLongitude(180.0));
   }
 
   public void testEncodeDecodeIsStable() throws Exception {

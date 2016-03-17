@@ -34,6 +34,20 @@ Detailed Change List
 New Features
 ----------------------
 
+* SOLR-8814: Support GeoJSON response writer and general spatial formatting.  Adding
+     &wt=geojson&geojson.field=<your geometry field>
+  Will return a FeatureCollection for each SolrDocumentList and a Feature with the
+  requested geometry for each SolrDocument.  The requested geometry field needs
+  to either extend AbstractSpatialFieldType or store a GeoJSON string.  This also adds
+  a [geo] DocumentTransformer that can return the Shape in a variety of formats:
+    &fl=[geo f=<your geometry field> w=(GeoJSON|WKT|POLY)]
+  The default format is GeoJSON.  For information on the supported formats, see:
+  https://github.com/locationtech/spatial4j/blob/master/FORMATS.md
+  To return the FeatureCollection as the root element, add '&omitHeader=true" (ryan)
+
+* SOLR-8859: AbstractSpatialFieldType will now convert Shapes to/from Strings
+  using the SpatialContext.  (ryan)
+
 Bug Fixes
 ----------------------
 
@@ -42,10 +56,18 @@ Optimizations
 * SOLR-8722: Don't force a full ZkStateReader refresh on every Overseer operation.
   (Scott Blum via shalin)
 
+* SOLR-8745: Deprecate costly ZkStateReader.updateClusterState(), replace with a narrow
+  forceUpdateCollection(collection) (Scott Blum via shalin)
+
 Other Changes
 ----------------------
 * SOLR-7516: Improve javadocs for JavaBinCodec, ObjectResolver and enforce the single-usage policy.
   (Jason Gerlowski, Benoit Vanalderweireldt, shalin)
+
+* SOLR-8860: Remove back-compat handling of router format made in SOLR-4221 in 4.5.0. (shalin)
+
+* SOLR-8866: UpdateLog will now throw an exception if it doesn't know how to serialize a value.
+  (David Smiley)
 
 ==================  6.0.0 ==================
 
@@ -58,7 +80,7 @@ Carrot2 3.12.0
 Velocity 1.7 and Velocity Tools 2.0
 Apache UIMA 2.3.1
 Apache ZooKeeper 3.4.6
-Jetty 9.3.6.v20151106
+Jetty 9.3.8.v20160314
 
 System Requirements
 ----------------------
@@ -115,6 +137,12 @@ Upgrading from Solr 5.x
 
 * SOLR-8736: The deprecated GET methods for schema are now accessible through the bulk API. The output
   has less details and is not backward compatible.
+
+* In the past, Solr guaranteed that retrieval of multi-valued fields would preserve the order of values.
+  Because values may now be retrieved from column-stored fields (docValues="true"), in conjunction with the
+  fact that docValues do not currently preserve order, means that users should set useDocValuesAsStored="false"
+  to prevent future optizations from using the column-stored values over the row-stored values when
+  fields have both stored="true" and docValues="true".
 
 Detailed Change List
 ----------------------
@@ -294,6 +322,12 @@ Bug Fixes
 * SOLR-8804: Fix a race condition in the ClusterStatus API call whereby the call would fail when a concurrent delete
   collection api command was executed (Alexey Serba, Varun Thacker)
 
+* SOLR-8835: JSON Facet API: fix faceting exception on multi-valued numeric fields that
+  have docValues. (yonik)
+
+* SOLR-8838: Returning non-stored docValues is incorrect for negative floats and doubles.
+  (Ishan Chattopadhyaya, Steve Rowe)
+
 Optimizations
 ----------------------
 * SOLR-7876: Speed up queries and operations that use many terms when timeAllowed has not been
@@ -317,9 +351,6 @@ Optimizations
   (Mark Miller)
 
 * SOLR-8720: ZkController#publishAndWaitForDownStates should use #publishNodeAsDown. (Mark Miller)
-
-* SOLR-8745: Deprecate costly ZkStateReader.updateClusterState(), replace with a narrow
-  forceUpdateCollection(collection) (Scott Blum via shalin)
 
 Other Changes
 ----------------------
@@ -381,7 +412,7 @@ Other Changes
 
 * SOLR-8529: Improve JdbcTest to not use plain assert statements (Kevin Risden, Joel Bernstein)
 
-* SOLR-7339: Upgrade Jetty to v9.3.6.v20151106. (Gregg Donovan, shalin, Mark Miller)
+* SOLR-7339: Upgrade Jetty to v9.3.8.v20160314. (Gregg Donovan, shalin, Mark Miller, Steve Rowe)
 
 * SOLR-5730: Make Lucene's SortingMergePolicy and EarlyTerminatingSortingCollector configurable in Solr.
   (Christine Poerschke, hossmann, Tomás Fernández Löbbe, Shai Erera)
@@ -421,6 +452,12 @@ Other Changes
   (noble, Jason Gerlowski, Varun Thacker)
 
 * SOLR-8799: Improve error message when tuple can't be read by SolrJ JDBC (Kevin Risden, Joel Bernstein)
+
+* SOLR-8836: Return 400, and a SolrException when an invalid json is provided to the update handler
+  instead of 500. (Jason Gerlowski via Anshum Gupta)
+
+* SOLR-8740: docValues are now enabled by default for most non-text (string, date, and numeric) fields
+  in the schema templates. (yonik)
 
 ==================  5.5.1 ==================
 
