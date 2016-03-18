@@ -940,6 +940,10 @@ public class HttpSolrCall {
     return null;
   }
 
+  protected Object _getHandler(){
+    return handler;
+  }
+
   private AuthorizationContext getAuthCtx() {
 
     String resource = getPath();
@@ -1029,7 +1033,7 @@ public class HttpSolrCall {
 
       @Override
       public Object getHandler() {
-        return handler;
+        return _getHandler();
       }
 
       @Override

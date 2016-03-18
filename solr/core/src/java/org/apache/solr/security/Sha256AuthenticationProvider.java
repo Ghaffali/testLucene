@@ -157,7 +157,7 @@ public class Sha256AuthenticationProvider implements ConfigEditablePlugin,  Basi
 
   @Override
   public Map2 getSpec() {
-    return ApiBag.getSpec("cluster.security.BasicAuth").getSpec();
+    return ApiBag.getSpec("cluster.security.BasicAuth.Commands").getSpec();
   }
 
   static final Set<String> supported_ops = ImmutableSet.of("set-user", "delete-user");

@@ -16,43 +16,6 @@
  */
 package org.apache.solr.handler.admin;
 
-import static org.apache.solr.client.solrj.response.RequestStatusState.*;
-import static org.apache.solr.cloud.Overseer.QUEUE_OPERATION;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.COLL_CONF;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.COLL_PROP_PREFIX;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET_SHUFFLE;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.NUM_SLICES;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.ONLY_ACTIVE_NODES;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.ONLY_IF_DOWN;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.REQUESTID;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARDS_PROP;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARD_UNIQUE;
-import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;
-import static org.apache.solr.common.cloud.DocCollection.DOC_ROUTER;
-import static org.apache.solr.common.cloud.DocCollection.RULE;
-import static org.apache.solr.common.cloud.DocCollection.SNITCH;
-import static org.apache.solr.common.cloud.DocCollection.STATE_FORMAT;
-import static org.apache.solr.common.cloud.ZkStateReader.AUTO_ADD_REPLICAS;
-import static org.apache.solr.common.cloud.ZkStateReader.COLLECTION_PROP;
-import static org.apache.solr.common.cloud.ZkStateReader.MAX_SHARDS_PER_NODE;
-import static org.apache.solr.common.cloud.ZkStateReader.PROPERTY_PROP;
-import static org.apache.solr.common.cloud.ZkStateReader.PROPERTY_VALUE_PROP;
-import static org.apache.solr.common.cloud.ZkStateReader.REPLICATION_FACTOR;
-import static org.apache.solr.common.cloud.ZkStateReader.REPLICA_PROP;
-import static org.apache.solr.common.cloud.ZkStateReader.SHARD_ID_PROP;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.*;
-import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
-import static org.apache.solr.common.params.CommonParams.NAME;
-import static org.apache.solr.common.params.CommonParams.VALUE_LONG;
-import static org.apache.solr.common.params.CoreAdminParams.DATA_DIR;
-import static org.apache.solr.common.params.CoreAdminParams.DELETE_DATA_DIR;
-import static org.apache.solr.common.params.CoreAdminParams.DELETE_INDEX;
-import static org.apache.solr.common.params.CoreAdminParams.DELETE_INSTANCE_DIR;
-import static org.apache.solr.common.params.CoreAdminParams.INSTANCE_DIR;
-import static org.apache.solr.common.params.ShardParams._ROUTE_;
-import static org.apache.solr.common.util.StrUtils.formatString;
-
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -139,6 +102,7 @@ import static org.apache.solr.cloud.OverseerCollectionMessageHandler.ONLY_IF_DOW
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.REQUESTID;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARDS_PROP;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARD_UNIQUE;
+import static org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST;
 import static org.apache.solr.common.cloud.DocCollection.DOC_ROUTER;
 import static org.apache.solr.common.cloud.DocCollection.RULE;
 import static org.apache.solr.common.cloud.DocCollection.SNITCH;
@@ -273,7 +237,6 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       }
     }
   }
-
 
 
   static final Set<String> KNOWN_ROLES = ImmutableSet.of("overseer");

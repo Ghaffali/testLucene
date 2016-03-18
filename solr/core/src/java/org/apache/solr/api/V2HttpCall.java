@@ -266,6 +266,11 @@ public class V2HttpCall extends HttpSolrCall {
     }
   }
 
+  @Override
+  protected Object _getHandler() {
+    return api;
+  }
+
   public Map<String,String> getUrlParts(){
     return parts;
   }

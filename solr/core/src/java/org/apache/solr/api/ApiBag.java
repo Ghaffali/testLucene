@@ -36,6 +36,8 @@ import org.apache.solr.core.PluginInfo;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.security.AuthorizationContext;
+import org.apache.solr.security.PermissionNameProvider;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.PathTrie;
 import org.slf4j.Logger;
@@ -212,20 +214,30 @@ public class ApiBag {
 
   }
 
-  public static Api wrapRequestHandler(final SolrRequestHandler rh, SpecProvider specProvider) {
-    return new Api(specProvider) {
-      @Override
-      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
-        rh.handleRequest(req, rsp);
-      }
+  public static class ReqHandlerToApi extends Api implements PermissionNameProvider {
+    SolrRequestHandler rh;
 
-      @Override
-      public Map2 getSpec() {
-        return specProvider != null ?
-            specProvider.getSpec() :
-            super.getSpec();
+    protected ReqHandlerToApi(SolrRequestHandler rh, SpecProvider spec) {
+      super(spec);
+      this.rh = rh;
+    }
+
+    @Override
+    public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+      rh.handleRequest(req, rsp);
+    }
+
+    @Override
+    public Name getPermissionName(AuthorizationContext ctx) {
+      if (rh instanceof PermissionNameProvider) {
+        return ((PermissionNameProvider) rh).getPermissionName(ctx);
       }
-    };
+      return null;
+    }
+  }
+
+  public static Api wrapRequestHandler(final SolrRequestHandler rh, SpecProvider specProvider) {
+    return new ReqHandlerToApi(rh, specProvider);
   }
 
   public static final String APISPEC_LOCATION = "apispec/";
