@@ -76,7 +76,8 @@ class SimpleTextPointsWriter extends PointsWriter {
                                           fieldInfo.getPointDimensionCount(),
                                           fieldInfo.getPointNumBytes(),
                                           BKDWriter.DEFAULT_MAX_POINTS_IN_LEAF_NODE,
-                                          BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP) {
+                                          BKDWriter.DEFAULT_MAX_MB_SORT_IN_HEAP,
+                                          values.size(fieldInfo.name)) {
 
         @Override
         protected void writeIndex(IndexOutput out, long[] leafBlockFPs, byte[] splitPackedValues) throws IOException {
@@ -157,11 +158,10 @@ class SimpleTextPointsWriter extends PointsWriter {
         }
 
         @Override
-        protected void writeLeafBlockPackedValue(IndexOutput out, int[] commonPrefixLengths, byte[] bytes) throws IOException {
+        protected void writeLeafBlockPackedValue(IndexOutput out, int[] commonPrefixLengths, byte[] bytes, int bytesOffset) throws IOException {
           // NOTE: we don't do prefix coding, so we ignore commonPrefixLengths
-          assert bytes.length == packedBytesLength;
           write(out, BLOCK_VALUE);
-          write(out, new BytesRef(bytes, 0, bytes.length).toString());
+          write(out, new BytesRef(bytes, bytesOffset, packedBytesLength).toString());
           newline(out);
         }          
       }) {

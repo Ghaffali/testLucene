@@ -17,6 +17,7 @@
 package org.apache.lucene.document;
 
 import java.util.Arrays;
+import java.util.Collection;
 
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.search.PointInSetQuery;
@@ -173,7 +174,8 @@ public final class LongPoint extends Field {
    * You can have half-open ranges (which are in fact &lt;/&le; or &gt;/&ge; queries)
    * by setting {@code lowerValue = Long.MIN_VALUE} or {@code upperValue = Long.MAX_VALUE}. 
    * <p>
-   * Ranges are inclusive. For exclusive ranges, pass {@code lowerValue + 1} or {@code upperValue - 1}
+   * Ranges are inclusive. For exclusive ranges, pass {@code Math.addExact(lowerValue, 1)}
+   * or {@code Math.addExact(upperValue, -1)}.
    *
    * @param field field name. must not be {@code null}.
    * @param lowerValue lower portion of the range (inclusive).
@@ -191,7 +193,8 @@ public final class LongPoint extends Field {
    * You can have half-open ranges (which are in fact &lt;/&le; or &gt;/&ge; queries)
    * by setting {@code lowerValue[i] = Long.MIN_VALUE} or {@code upperValue[i] = Long.MAX_VALUE}. 
    * <p>
-   * Ranges are inclusive. For exclusive ranges, pass {@code lowerValue[i] + 1} or {@code upperValue[i] - 1}
+   * Ranges are inclusive. For exclusive ranges, pass {@code Math.addExact(lowerValue[i], 1)}
+   * or {@code Math.addExact(upperValue[i], -1)}.
    *
    * @param field field name. must not be {@code null}.
    * @param lowerValue lower portion of the range (inclusive). must not be {@code null}.
@@ -246,5 +249,20 @@ public final class LongPoint extends Field {
         return Long.toString(decodeDimension(value, 0));
       }
     };
+  }
+  
+  /**
+   * Create a query matching any of the specified 1D values.  This is the points equivalent of {@code TermsQuery}.
+   * 
+   * @param field field name. must not be {@code null}.
+   * @param values all values to match
+   */
+  public static Query newSetQuery(String field, Collection<Long> values) {
+    Long[] boxed = values.toArray(new Long[0]);
+    long[] unboxed = new long[boxed.length];
+    for (int i = 0; i < boxed.length; i++) {
+      unboxed[i] = boxed[i];
+    }
+    return newSetQuery(field, unboxed);
   }
 }

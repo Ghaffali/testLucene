@@ -17,16 +17,11 @@
 package org.apache.lucene.index;
 
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.FilterCodec;
-import org.apache.lucene.codecs.PointsFormat;
-import org.apache.lucene.codecs.PointsReader;
-import org.apache.lucene.codecs.PointsWriter;
-import org.apache.lucene.codecs.lucene60.Lucene60PointsReader;
-import org.apache.lucene.codecs.lucene60.Lucene60PointsWriter;
 import org.apache.lucene.document.BinaryPoint;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DoublePoint;
@@ -40,6 +35,7 @@ import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PointValues;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.store.RAMDirectory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -180,7 +176,7 @@ public class TestPointValues extends LuceneTestCase {
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
     IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addIndexes(new CodecReader[] {getOnlySegmentReader(r)});
+        w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
     });
     assertEquals("cannot change point dimension count from 2 to 1 for field=\"dim\"", expected.getMessage());
 
@@ -329,7 +325,7 @@ public class TestPointValues extends LuceneTestCase {
     w2.addDocument(doc);
     DirectoryReader r = DirectoryReader.open(dir);
     IllegalArgumentException expected = expectThrows(IllegalArgumentException.class, () -> {
-      w2.addIndexes(new CodecReader[] {getOnlySegmentReader(r)});
+        w2.addIndexes(new CodecReader[] {(CodecReader) getOnlyLeafReader(r)});
     });
     assertEquals("cannot change point numBytes from 6 to 4 for field=\"dim\"", expected.getMessage());
 
@@ -499,7 +495,7 @@ public class TestPointValues extends LuceneTestCase {
     doc.add(new IntPoint("int", 17));
     for(int i=0;i<300000;i++) {
       w.addDocument(doc);
-      if (false && random().nextInt(1000) == 17) {
+      if (random().nextInt(1000) == 17) {
         w.commit();
       }
     }
@@ -627,5 +623,88 @@ public class TestPointValues extends LuceneTestCase {
     r.close();
     w.close();
     dir.close();
+  }
+
+  public void testCheckIndexIncludesPoints() throws Exception {
+    Directory dir = new RAMDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
+    Document doc = new Document();
+    doc.add(new IntPoint("int1", 17));
+    w.addDocument(doc);
+
+    doc = new Document();
+    doc.add(new IntPoint("int1", 44));
+    doc.add(new IntPoint("int2", -17));
+    w.addDocument(doc);
+    w.close();
+
+    ByteArrayOutputStream output = new ByteArrayOutputStream();
+    CheckIndex.Status status = TestUtil.checkIndex(dir, false, true, output);
+    assertEquals(1, status.segmentInfos.size());
+    CheckIndex.Status.SegmentInfoStatus segStatus = status.segmentInfos.get(0);
+    // total 3 point values were index:
+    assertEquals(3, segStatus.pointsStatus.totalValuePoints);
+    // ... across 2 fields:
+    assertEquals(2, segStatus.pointsStatus.totalValueFields);
+
+    // Make sure CheckIndex in fact declares that it is testing points!
+    assertTrue(output.toString(IOUtils.UTF_8).contains("test: points..."));
+    dir.close();
+  }
+
+  public void testMergedStats() throws IOException {
+    final int iters = atLeast(3);
+    for (int iter = 0; iter < iters; ++iter) {
+      doTestMergedStats();
+    }
+  }
+
+  private static byte[][] randomBinaryValue(int numDims, int numBytesPerDim) {
+    byte[][] bytes = new byte[numDims][];
+    for (int i = 0; i < numDims; ++i) {
+      bytes[i] = new byte[numBytesPerDim];
+      random().nextBytes(bytes[i]);
+    }
+    return bytes;
+  }
+
+  private void doTestMergedStats() throws IOException {
+    final int numDims = TestUtil.nextInt(random(), 1, 8);
+    final int numBytesPerDim = TestUtil.nextInt(random(), 1, 16);
+    Directory dir = new RAMDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
+    final int numDocs = TestUtil.nextInt(random(), 10, 20);
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      final int numPoints = random().nextInt(3);
+      for (int j = 0; j < numPoints; ++j) {
+        doc.add(new BinaryPoint("field", randomBinaryValue(numDims, numBytesPerDim)));
+      }
+      w.addDocument(doc);
+      if (random().nextBoolean()) {
+        DirectoryReader.open(w).close();
+      }
+    }
+
+    final IndexReader reader1 = DirectoryReader.open(w);
+    w.forceMerge(1);
+    final IndexReader reader2 = DirectoryReader.open(w);
+    final PointValues expected = getOnlyLeafReader(reader2).getPointValues();
+    if (expected == null) {
+      assertNull(PointValues.getMinPackedValue(reader1, "field"));
+      assertNull(PointValues.getMaxPackedValue(reader1, "field"));
+      assertEquals(0, PointValues.getDocCount(reader1, "field"));
+      assertEquals(0, PointValues.size(reader1, "field"));
+    } else {
+      assertArrayEquals(
+          expected.getMinPackedValue("field"),
+          PointValues.getMinPackedValue(reader1, "field"));
+      assertArrayEquals(
+          expected.getMaxPackedValue("field"),
+          PointValues.getMaxPackedValue(reader1, "field"));
+      assertEquals(expected.getDocCount("field"), PointValues.getDocCount(reader1, "field"));
+      assertEquals(expected.size("field"),  PointValues.size(reader1, "field"));
+    }
+    IOUtils.close(w, reader1, reader2, dir);
   }
 }

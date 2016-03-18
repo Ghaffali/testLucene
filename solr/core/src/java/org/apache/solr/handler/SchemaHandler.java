@@ -16,7 +16,6 @@
  */
 package org.apache.solr.handler;
 
-
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
@@ -48,6 +47,8 @@ import org.apache.solr.schema.ZkIndexSchemaReader;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.ApiSupport;
+import org.apache.solr.security.AuthorizationContext;
+import org.apache.solr.security.PermissionNameProvider;
 import org.apache.solr.util.plugin.SolrCoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,7 +57,7 @@ import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.core.ConfigSetProperties.IMMUTABLE_CONFIGSET_ARG;
 import static org.apache.solr.api.ApiBag.wrapRequestHandler;
 
-public class SchemaHandler extends RequestHandlerBase implements ApiSupport , SolrCoreAware {
+public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, PermissionNameProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private boolean isImmutableConfigSet = false;
 
@@ -101,6 +102,18 @@ public class SchemaHandler extends RequestHandlerBase implements ApiSupport , So
       }
     } else {
       handleGET(req, rsp);
+    }
+  }
+
+  @Override
+  public PermissionNameProvider.Name getPermissionName(AuthorizationContext ctx) {
+    switch (ctx.getHttpMethod()) {
+      case "GET":
+        return PermissionNameProvider.Name.SCHEMA_READ_PERM;
+      case "POST":
+        return PermissionNameProvider.Name.SCHEMA_EDIT_PERM;
+      default:
+        return null;
     }
   }
 

@@ -534,8 +534,8 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
     // Create the index if it doesn't exist.
     if(!indexExists) {
-      log.warn(logid+"Solr index directory '" + new File(indexDir) + "' doesn't exist."
-              + " Creating new index...");
+      log.warn(logid + "Solr index directory '" + new File(indexDir) + "' doesn't exist."
+          + " Creating new index...");
 
       SolrIndexWriter writer = SolrIndexWriter.create(this, "SolrCore.initIndex", indexDir, getDirectoryFactory(), true,
                                                       getLatestSchema(), solrConfig.indexConfig, solrDelPolicy, codec);
@@ -2123,10 +2123,11 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   private final PluginBag<QueryResponseWriter> responseWriters = new PluginBag<>(QueryResponseWriter.class, this);
   public static final Map<String ,QueryResponseWriter> DEFAULT_RESPONSE_WRITERS ;
   static{
-    HashMap<String, QueryResponseWriter> m= new HashMap<>(14, 1);
+    HashMap<String, QueryResponseWriter> m= new HashMap<>(15, 1);
     m.put("xml", new XMLResponseWriter());
     m.put("standard", m.get("xml"));
     m.put(CommonParams.JSON, new JSONResponseWriter());
+    m.put("geojson", new GeoJSONResponseWriter());
     m.put("python", new PythonResponseWriter());
     m.put("php", new PHPResponseWriter());
     m.put("phps", new PHPSerializedResponseWriter());
@@ -2501,7 +2502,11 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
           checkStale(zkClient, solrConfigPath, overlayVersion) ||
           checkStale(zkClient, managedSchmaResourcePath, managedSchemaVersion)) {
         log.info("core reload {}", coreName);
-        cc.reload(coreName);
+        try {
+          cc.reload(coreName);
+        } catch (SolrCoreState.CoreIsClosedException e) {
+          /*no problem this core is already closed*/
+        }
         return;
       }
       //some files in conf directory may have  other than managedschema, overlay, params
