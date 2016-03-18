@@ -1,6 +1,72 @@
 {
+  "documentation" :"https://cwiki.apache.org/confluence/display/solr/Schema+API#SchemaAPI-AddaNewField",
   "properties":{
-
+    "name": {
+      "type": "string"
+    },
+    "type": {
+      "type": "string"
+    },
+    "defaultValue": {
+      "type": "string"
+    },
+    "indexed": {
+      "type": "boolean"
+    },
+    "tokenized": {
+      "type": "boolean"
+    },
+    "stored": {
+      "type": "boolean"
+    },
+    "binary": {
+      "type": "boolean"
+    },
+    "omitNorms": {
+      "type": "boolean"
+    },
+    "omitTermFreqAndPositions": {
+      "type": "boolean"
+    },
+    "termVectors": {
+      "type": "boolean"
+    },
+    "termPositions": {
+      "type": "boolean"
+    },
+    "termOffsets": {
+      "type": "boolean"
+    },
+    "multiValued": {
+      "type": "boolean"
+    },
+    "sortMissingFirst": {
+      "type": "boolean"
+    },
+    "sortMissingLast": {
+      "type": "boolean"
+    },
+    "required": {
+      "type": "boolean"
+    },
+    "omitPositions": {
+      "type": "boolean"
+    },
+    "storeOffsetsWithPositions": {
+      "type": "boolean"
+    },
+    "docValues": {
+      "type": "boolean"
+    },
+    "termPayloads": {
+      "type": "boolean"
+    },
+    "useDocValuesAsStored": {
+      "type": "boolean"
+    }
   },
-  "additionalProperties": true
+  "required": [
+    "name",
+    "type"
+  ]
 }

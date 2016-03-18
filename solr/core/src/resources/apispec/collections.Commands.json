@@ -1,5 +1,6 @@
 {
   "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
+  "Description": "The add-field command adds a new field definition to your schema.",
   "methods": [
     "POST",
     "GET"
@@ -12,47 +13,56 @@
   },
   "commands": {
     "create": {
+      "type":"object",
+      "documentation":"https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
+      "description":"",
       "properties": {
         "name": {
           "type": "string",
-          "description": ""
+          "description": "The name of the collection to be created."
         },
         "config": {
           "type": "string",
-          "description": ""
+          "description": "Defines the name of the configurations (which must already be stored in ZooKeeper) to use for this collection. If not provided, Solr will default to the collection name as the configuration name."
         },
         "router": {
           "type": "object",
           "properties": {
+            "type":"object",
             "name": {
+              "type":"string",
+              "description" :"Router implementation compositeId or implicit",
+              "default" :"compositeId"
             },
             "field": {
+              "type":"string",
+              "description" :"Field on which doc routing is done"
             }
           }
         },
         "numShards": {
           "type": "string",
-          "description": ""
+          "description": "The number of shards to be created as part of the collection. This is a required parameter when using the 'compositeId' router."
         },
         "shards": {
           "type": "string",
-          "description": ""
+          "description": "A comma separated list of shard names, e.g., shard-x,shard-y,shard-z . This is a required parameter when using the 'implicit' router."
         },
         "replicationFactor": {
           "type": "string",
-          "description": ""
+          "description": "The number of replicas to be created for each shard."
         },
         "createNodeSet": {
           "type": "string",
-          "description": ""
+          "description": " comma-separated list of node_names, such as localhost:8983_solr, localhost:8984_solr, localhost:8985_solr. "
         },
         "autoAddReplicas": {
           "type": "boolean",
-          "description": ""
+          "description": "When set to true, enables auto addition of replicas on shared file systems. See the section autoAddReplicas Settings for more details on settings and overrides."
         },
         "rule": {
           "type": "list",
-          "description":""
+          "description":"replica placement rules. See the section Rule-based Replica Placement for details."
 
         },
         "snitch": {
@@ -75,6 +85,9 @@
       },
       "required" : ["name","collections"]
     },
-    "delete-alias":{}
+    "delete-alias":{
+      "type":"list",
+      "description":""
+    }
   }
 }

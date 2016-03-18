@@ -6,8 +6,8 @@
     ],
     "url": {
       "paths": [
-        "$handlerName/copyfields",
-        "$handlerName/copyfields/{name}"
+        "schema/copyfields",
+        "schema/copyfields/{name}"
       ],
       "params": {
         "source.fl" :{

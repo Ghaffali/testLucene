@@ -246,7 +246,7 @@ public class ApiBag {
 
   public static final SpecProvider EMPTY_SPEC = () -> Map2.EMPTY;
   public static final String HANDLER_NAME = "handlerName";
-  public static final Set<String> KNOWN_TYPES = ImmutableSet.of("string", "boolean", "list", "int", "double");
+  public static final Set<String> KNOWN_TYPES = ImmutableSet.of("string", "boolean", "list", "int", "double", "object");
 
   public PathTrie<Api> getRegistry(String method) {
     return apis.get(method);

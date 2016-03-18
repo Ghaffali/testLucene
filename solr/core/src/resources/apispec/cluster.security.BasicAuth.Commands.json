@@ -10,6 +10,7 @@
   },
   "commands": {
     "set-user": {
+      "type":"object",
       "description": "The set-user command allows you to add users and change their passwords",
       "properties": {},
       "additionalProperties": true

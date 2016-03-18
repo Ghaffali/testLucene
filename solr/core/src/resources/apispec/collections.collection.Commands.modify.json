@@ -1,6 +1,23 @@
 {
+  "type": "object",
   "additionalProperties":true,
   "properties":{
+    "rule": {
+      "type": "list",
+      "description": ""
+    },
+    "snitch": {
+      "type": "list",
+      "description": ""
+    },
+    "autoAddReplicas": {
+      "type": "boolean",
+      "description": "When set to true, enables auto addition of replicas on shared file systems. See the section autoAddReplicas Settings for more details on settings and overrides."
+    },
+    "replicationFactor": {
+      "type": "string",
+      "description": ""
+    }
 
   }
 }

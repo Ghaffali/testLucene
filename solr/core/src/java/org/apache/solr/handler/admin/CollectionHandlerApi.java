@@ -124,7 +124,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
     DELETE_ALIAS(EndPoint.COLLECTIONS_COMMANDS,
         POST,
-        CREATEALIAS_OP,
+        DELETEALIAS_OP,
         "delete-alias",
         ImmutableMap.of(NAME, "")),
     CREATE_SHARD(EndPoint.PER_COLLECTION_SHARDS_COMMANDS,
