@@ -103,25 +103,13 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
       .addConfig(configName, configDir.toPath())
       .configure();
     
+    Thread.sleep(2000); // anoying attempt to work arround SOLR-8862 // nocommit ? ? ? 
+    
     Map<String, String> collectionProperties = new HashMap<>();
     collectionProperties.put("config", "solrconfig-distrib-update-processor-chains.xml");
     collectionProperties.put("schema", "schema15.xml"); // string id 
 
-    // nocommit: SOLR-8862 why does this seed constantly cause createCollection to reliably complain that there are no live servers?!?!?!
-    //
-    // ant test  -Dtestcase=TestTolerantUpdateProcessorChaosMonkey -Dtests.seed=E73756F21DF21ECC -Dtests.slow=true -Dtests.locale=tr-TR -Dtests.timezone=America/Manaus -Dtests.asserts=true -Dtests.file.encoding=US-ASCII
-    //
-    //
-    // [junit4]    > Throwable #1: org.apache.solr.client.solrj.SolrServerException: No live SolrServers available to handle this request:[http://127.0.0.1:43171/solr, http://127.0.0.1:49629/solr, http://127.0.0.1:59664/solr, http://127.0.0.1:40944/solr, http://127.0.0.1:38476/solr]
-    // [junit4]    > 	at __randomizedtesting.SeedInfo.seed([E73756F21DF21ECC]:0)
-    // [junit4]    > 	at org.apache.solr.client.solrj.impl.LBHttpSolrClient.request(LBHttpSolrClient.java:352)
-    // [junit4]    > 	at org.apache.solr.client.solrj.impl.CloudSolrClient.sendRequest(CloudSolrClient.java:1157)
-    // [junit4]    > 	at org.apache.solr.client.solrj.impl.CloudSolrClient.requestWithRetryOnStaleState(CloudSolrClient.java:927)
-    // [junit4]    > 	at org.apache.solr.client.solrj.impl.CloudSolrClient.request(CloudSolrClient.java:863)
-    // [junit4]    > 	at org.apache.solr.client.solrj.SolrClient.request(SolrClient.java:1219)
-    // [junit4]    > 	at org.apache.solr.cloud.MiniSolrCloudCluster.makeCollectionsRequest(MiniSolrCloudCluster.java:415)
-    // [junit4]    > 	at org.apache.solr.cloud.MiniSolrCloudCluster.createCollection(MiniSolrCloudCluster.java:399)
-    //
+
     assertNotNull(cluster.createCollection(COLLECTION_NAME, numShards, repFactor,
                                            configName, null, null, collectionProperties));
     
@@ -144,7 +132,7 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
   private void deleteAllDocs() throws Exception {
     assertEquals(0, update(params("commit","true")).deleteByQuery("*:*").process(CLOUD_CLIENT).getStatus());
     assertEquals("index should be empty",
-                 CLOUD_CLIENT.query(params("q","*:*","rows","0")).getResults().getNumFound());
+                 0, CLOUD_CLIENT.query(params("q","*:*","rows","0")).getResults().getNumFound());
   }
   
   public void testRandomUpdatesWithChaos() throws Exception {
@@ -166,6 +154,11 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
       // and ensure that no single doc Id is affected by more then one command in the same request
       final BitSet docsAffectedThisRequest = new BitSet(maxDocId+1);
       for (int cmdIter = 0; cmdIter < numCmds; cmdIter++) {
+        if ((maxDocId / 2) < docsAffectedThisRequest.cardinality()) {
+          // we're already mucking with more then half the docs in the index
+          break;
+        }
+        
         final boolean causeError = random().nextBoolean();
         if (causeError) {
           expectedErrorsCount++;
@@ -173,7 +166,7 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
         
         if (random().nextBoolean()) {
           // add a doc
-          final int id_i = randomUnsetBit(random(), docsAffectedThisRequest);
+          final int id_i = randomUnsetBit(random(), docsAffectedThisRequest, maxDocId);
           final String id = "id_"+id_i;
           docsAffectedThisRequest.set(id_i);
           if (causeError) {
@@ -189,7 +182,7 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
           // delete something
           if (random().nextBoolean()) {
             // delete by id
-            final int id_i = randomUnsetBit(random(), docsAffectedThisRequest);
+            final int id_i = randomUnsetBit(random(), docsAffectedThisRequest, maxDocId);
             final String id = "id_"+id_i;
             final boolean docExists = expectedDocIds.get(id_i);
             docsAffectedThisRequest.set(id_i);
@@ -214,7 +207,7 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
             } else {
               // ensure our DBQ is only over a range of docs not already affected
               // by any other cmds in this request
-              final int rangeAxis = randomUnsetBit(random(), docsAffectedThisRequest);
+              final int rangeAxis = randomUnsetBit(random(), docsAffectedThisRequest, maxDocId);
               final int loBound = docsAffectedThisRequest.previousSetBit(rangeAxis);
               final int hiBound = docsAffectedThisRequest.nextSetBit(rangeAxis);
               final int lo = TestUtil.nextInt(random(), loBound+1, rangeAxis);
@@ -253,22 +246,32 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
    * @see #randomUnsetBit
    */
   public void testSanityRandomUnsetBit() {
-    BitSet bits = new BitSet(atLeast(100));
-    int nextBit = -2;
-    for (int i = 0; i < bits.size(); i++) {
-      assertFalse("how is bitset already full? iter="+i+" card="+bits.cardinality()+"/size="+bits.size(),
-                  bits.cardinality() == bits.size());
-      nextBit = randomUnsetBit(random(), bits);
+    final int max = atLeast(100);
+    BitSet bits = new BitSet(max+1);
+    for (int i = 0; i <= max; i++) {
+      assertFalse("how is bitset already full? iter="+i+" card="+bits.cardinality()+"/max="+max,
+                  bits.cardinality() == max+1);
+      final int nextBit = randomUnsetBit(random(), bits, max);
       assertTrue("nextBit shouldn't be negative yet: " + nextBit,
                  0 <= nextBit);
+      assertTrue("nextBit can't exceed max: " + nextBit,
+                 nextBit <= max);
       assertFalse("expect unset: " + nextBit, bits.get(nextBit));
       bits.set(nextBit);
     }
-    assertEquals("why isn't bitset full?", bits.size(), bits.cardinality());
-    nextBit = randomUnsetBit(random(), bits);
-    assertEquals("wrong nextBit at end of all iters", -1, nextBit);
-    nextBit = randomUnsetBit(random(), bits);
-    assertEquals("wrong nextBit at redundent end of all iters", -1, nextBit);
+    
+    assertEquals("why isn't bitset full?", max+1, bits.cardinality());
+
+    final int firstClearBit = bits.nextClearBit(0);
+    assertTrue("why is there a clear bit? = " + firstClearBit,
+               max < firstClearBit);
+    assertEquals("why is a bit set above max?",
+                 -1, bits.nextSetBit(max+1));
+    
+    assertEquals("wrong nextBit at end of all iters", -1,
+                 randomUnsetBit(random(), bits, max));
+    assertEquals("wrong nextBit at redundent end of all iters", -1,
+                 randomUnsetBit(random(), bits, max));
   }
   
   public static SolrInputDocument doc(SolrInputField... fields) {
@@ -280,19 +283,20 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
    * Given a BitSet, returns a random bit that is currently false, or -1 if all bits are true.
    * NOTE: this method is not fair.
    */
-  public static final int randomUnsetBit(Random r, BitSet bits) {
-    if (bits.cardinality() == bits.size()) {
+  public static final int randomUnsetBit(Random r, BitSet bits, final int max) {
+    // NOTE: don't forget, BitSet will grow automatically if not careful
+    if (bits.cardinality() == max+1) {
       return -1;
     }
-    final int candidate = TestUtil.nextInt(r, 0, bits.size()-1);
+    final int candidate = TestUtil.nextInt(r, 0, max);
     if (bits.get(candidate)) {
       final int lo = bits.previousClearBit(candidate);
       final int hi = bits.nextClearBit(candidate);
-      if (lo < 0 && bits.size() <= hi) {
+      if (lo < 0 && max < hi) {
         fail("how the hell did we not short circut out? card="+bits.cardinality()+"/size="+bits.size());
       } else if (lo < 0) {
         return hi;
-      } else if (bits.size() <= hi) {
+      } else if (max < hi) {
         return lo;
       } // else...
       return ((candidate - lo) < (hi - candidate)) ? lo : hi;
