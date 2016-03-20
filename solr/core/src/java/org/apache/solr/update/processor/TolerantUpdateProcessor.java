@@ -200,7 +200,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       // if we're lucky enough to get an immediate local failure (ie: we're a leader, or some other processor
       // failed) then recording the multiple failures is a good thing -- helps us with an accurate fail
       // fast if we exceed maxErrors
-      if (CmdType.DELQ.equals(err.type)) {
+      if (CmdType.DELQ.equals(err.getType())) {
         knownDBQErrors.add(err);
       }
       
@@ -287,7 +287,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
             continue;
           }
 
-          if (CmdType.DELQ.equals(err.type)) {
+          if (CmdType.DELQ.equals(err.getType())) {
             if (knownDBQErrors.contains(err)) {
               // we've already seen this identical error, probably a dup from another shard
               continue;

@@ -105,22 +105,31 @@ public final class ToleratedUpdateError {
                                     metadataKey.substring(typeEnd+1), metadataVal);
   }
 
-  // nocommit: make these private & provide getter methods
-  public final CmdType type;
-  public final String id; // may be null depending on type
-  public final String errorValue; // nocommit: refactor: rename message?
+  private final CmdType type;
+  private final String id; 
+  private final String message;
   
-  public ToleratedUpdateError(CmdType type, String id, String errorValue) {
-    this.type = type;
+  public ToleratedUpdateError(CmdType type, String id, String message) {
     assert null != type;
+    this.type = type;
     
     assert null != id;
     this.id = id;
     
-    assert null != errorValue;
-    this.errorValue = errorValue;
+    assert null != message;
+    this.message = message;
   }
 
+  public CmdType getType() {
+    return type;
+  }
+  public String getId() {
+    return id;
+  }
+  public String getMessage() {
+    return message;
+  }
+  
   /**
    * returns a string suitable for use as a key in {@link SolrException#setMetadata}
    *
@@ -136,7 +145,7 @@ public final class ToleratedUpdateError {
    * @see #parseMetadataIfToleratedUpdateError
    */
   public String getMetadataValue() {
-    return errorValue.toString();
+    return message.toString();
   }
   
   /** 
@@ -148,7 +157,7 @@ public final class ToleratedUpdateError {
     SimpleOrderedMap<String> entry = new SimpleOrderedMap<String>();
     entry.add("type", type.toString());
     entry.add("id", id);
-    entry.add("message", errorValue);
+    entry.add("message", message);
     return entry;
   }
   
@@ -160,7 +169,7 @@ public final class ToleratedUpdateError {
     int h = this.getClass().hashCode();
     h = h * 31 + type.hashCode();
     h = h * 31 + id.hashCode();
-    h = h * 31 + errorValue.hashCode();
+    h = h * 31 + message.hashCode();
     return h;
   }
   
@@ -169,7 +178,7 @@ public final class ToleratedUpdateError {
       ToleratedUpdateError that = (ToleratedUpdateError)o;
       return that.type.equals(this.type)
         && that.id.equals(this.id)
-        && that.errorValue.equals(this.errorValue);
+        && that.message.equals(this.message);
     }
     return false;
   }

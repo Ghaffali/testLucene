@@ -155,9 +155,9 @@ public class TestToleratedUpdateError extends LuceneTestCase {
   }
   
   public void compare(ToleratedUpdateError in, ToleratedUpdateError out) {
-    assertEquals(out.type, in.type);
-    assertEquals(out.id, in.id);
-    assertEquals(out.errorValue, in.errorValue);
+    assertEquals(out.getType(), in.getType());
+    assertEquals(out.getId(), in.getId());
+    assertEquals(out.getMessage(), in.getMessage());
     
     assertEquals(out.hashCode(), in.hashCode());
     assertEquals(out.toString(), in.toString());

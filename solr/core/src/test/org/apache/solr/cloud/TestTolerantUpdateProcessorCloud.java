@@ -562,9 +562,9 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                    actualKnownErrsCount, actualKnownErrs.size());
       for (ToleratedUpdateError err : actualKnownErrs) {
         assertEquals("only expected type of error is ADD: " + err,
-                     CmdType.ADD, err.type);
+                     CmdType.ADD, err.getType());
         assertTrue("failed err msg didn't match expected value: " + err,
-                   err.errorValue.contains("bogus_val"));
+                   err.getMessage().contains("bogus_val"));
       }
     }
     assertEquals(0, client.commit().getStatus()); // need to force since update didn't finish
@@ -636,11 +636,11 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                    actualKnownErrsCount, actualKnownErrs.size());
       for (ToleratedUpdateError err : actualKnownErrs) {
         assertEquals("only expected type of error is ADD: " + err,
-                     CmdType.ADD, err.type);
+                     CmdType.ADD, err.getType());
         assertTrue("failed id had unexpected prefix: " + err,
-                   err.id.startsWith(S_TWO_PRE));
+                   err.getId().startsWith(S_TWO_PRE));
         assertTrue("failed err msg didn't match expected value: " + err,
-                   err.errorValue.contains("bogus_val"));
+                   err.getMessage().contains("bogus_val"));
       }
            
     }
