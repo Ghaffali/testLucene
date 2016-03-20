@@ -1722,19 +1722,23 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     private static final int buildCode(List<Error> errors) {
       assert null != errors;
       assert 0 < errors.size();
-      
-      // if they are all the same, then we use that...
-      int result = errors.get(0).statusCode;
+
+      int minCode = Integer.MAX_VALUE;
+      int maxCode = Integer.MIN_VALUE;
       for (Error error : errors) {
         log.trace("REMOTE ERROR: {}", error);
-        if (result != error.statusCode ) {
-          // ...otherwise use sensible default
-          return ErrorCode.SERVER_ERROR.code;
-          // nocommit: don't short circut - check them all...
-          // nocommit: ...even if not all same, use 400 if all 4xx, else use 500
-        }
+        minCode = Math.min(error.statusCode, minCode);
+        maxCode = Math.max(error.statusCode, maxCode);
       }
-      return result;
+      if (minCode == maxCode) {
+        // all codes are consistent, use that...
+        return minCode;
+      } else if (400 <= minCode && maxCode < 500) {
+        // all codes are 4xx, use 400
+        return ErrorCode.BAD_REQUEST.code;
+      } 
+      // ...otherwise use sensible default
+      return ErrorCode.SERVER_ERROR.code;
     }
     
     /** Helper method for constructor */

@@ -19,9 +19,12 @@ package org.apache.solr.update.processor;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.core.SolrCore;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.schema.SchemaField;
 import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
+import org.apache.solr.util.plugin.SolrCoreAware;
 
 import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
 
@@ -68,9 +71,7 @@ import static org.apache.solr.update.processor.DistributingUpdateProcessorFactor
  * 
  */
 public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactory
-    implements UpdateRequestProcessorFactory.RunAlways {
-
-  // nocommit: make SolrCoreAware and fail fast if no uniqueKey configured
+  implements SolrCoreAware, UpdateRequestProcessorFactory.RunAlways {
   
   /**
    * Parameter that defines how many errors the UpdateRequestProcessor will tolerate
@@ -82,6 +83,8 @@ public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactor
    * or in the request
    */
   private int defaultMaxErrors = Integer.MAX_VALUE;
+
+  private boolean informed = false;
   
   @SuppressWarnings("rawtypes")
   @Override
@@ -101,8 +104,19 @@ public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactor
   }
   
   @Override
+  public void inform(SolrCore core) {
+    informed = true;
+    if (null == core.getLatestSchema().getUniqueKeyField()) {
+      throw new SolrException(ErrorCode.SERVER_ERROR, this.getClass().getName() +
+                              " requires a schema that includes a uniqueKey field.");
+    }
+  }
+
+  @Override
   public UpdateRequestProcessor getInstance(SolrQueryRequest req, SolrQueryResponse rsp, UpdateRequestProcessor next) {
 
+    assert informed : "inform(SolrCore) never called?";
+    
     // short circut if we're a replica processing commands from our leader
     DistribPhase distribPhase = DistribPhase.parseParam(req.getParams().get(DISTRIB_UPDATE_PARAM));
     if (DistribPhase.FROMLEADER.equals(distribPhase)) {

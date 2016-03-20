@@ -242,7 +242,19 @@ public class TolerantUpdateProcessorTest extends UpdateProcessorTestBase {
         ,"//result[@numFound='6']");
   }
 
-  // nocommit: need a testMaxErrorsNegative (ie: infinite)
+  @Test
+  public void testMaxErrorsInfinite() throws IOException {
+    ModifiableSolrParams requestParams = new ModifiableSolrParams();
+    requestParams.add("maxErrors", "-1");
+    try {
+      assertAddsSucceedWithErrors("tolerant-chain-max-errors-not-set", docs, null, badIds);
+    } catch(Exception e) {
+      fail("Shouldn't get an exception for this batch: " + e.getMessage());
+    }
+    assertU(commit());
+    assertQ(req("q","*:*")
+            ,"//result[@numFound='10']");
+  }
   
   @Test
   public void testMaxErrors0() throws IOException {

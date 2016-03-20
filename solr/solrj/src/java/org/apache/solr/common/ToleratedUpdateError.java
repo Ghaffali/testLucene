@@ -19,10 +19,13 @@ package org.apache.solr.common;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.solr.common.util.SimpleOrderedMap;
-
+import org.apache.solr.common.SolrException;
+import org.apache.solr.common.SolrException.ErrorCode;
 
 /**
- * nocommit: more javadocs, mention (but obviously no link) to TolerantUpdateProcessor
+ * Models the basic information related to a single "tolerated" error that occured during updates.  
+ * This class is only useful when the <code>ToleranteUpdateProcessorFactory</code> is used in an update 
+ * processor chain
  */
 public final class ToleratedUpdateError {
     
@@ -71,8 +74,17 @@ public final class ToleratedUpdateError {
    * @see #getSimpleMap
    */
   public static ToleratedUpdateError parseMap(SimpleOrderedMap<String> data) {
-    // nocommit: error handling and clean exception reporting if data is bogus
-    return new ToleratedUpdateError(CmdType.valueOf(data.get("type")), data.get("id"), data.get("message"));
+    final String id = data.get("id");
+    final String message = data.get("message");
+    final String t = data.get("type");
+    if (null == t || null == id || null == message) {
+      throw new SolrException(ErrorCode.SERVER_ERROR, "Map does not represent a ToleratedUpdateError, must contain 'type', 'id', and 'message'");
+    }
+    try {
+      return new ToleratedUpdateError(CmdType.valueOf(t), id, message);
+    } catch (IllegalArgumentException iae) {
+      throw new SolrException(ErrorCode.SERVER_ERROR, "Invalid type for ToleratedUpdateError: " + t, iae);
+    }
   }
   
   /** 
@@ -86,7 +98,9 @@ public final class ToleratedUpdateError {
       return null; // not a key we care about
     }
     final int typeEnd = metadataKey.indexOf(':', META_PRE_LEN);
-    assert 0 < typeEnd; // nocommit: better error handling
+    if (typeEnd < 0) {
+      return null; // has our prefix, but not our format -- must not be a key we (actually) care about
+    }
     return new ToleratedUpdateError(CmdType.valueOf(metadataKey.substring(META_PRE_LEN, typeEnd)),
                                     metadataKey.substring(typeEnd+1), metadataVal);
   }

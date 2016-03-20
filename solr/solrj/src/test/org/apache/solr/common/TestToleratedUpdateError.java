@@ -16,42 +16,20 @@
  */
 package org.apache.solr.common;
 
+import java.util.EnumSet;
 import org.apache.solr.common.ToleratedUpdateError;
 import org.apache.solr.common.ToleratedUpdateError.CmdType;
+import org.apache.solr.common.util.SimpleOrderedMap;
 
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 
 /** Basic testing of the serialization/encapsulation code in ToleratedUpdateError */
 public class TestToleratedUpdateError extends LuceneTestCase {
   
-  // nocommit: add randomized testing, particularly with non-trivial 'id' values
-
-  public void checkRoundTripComparisons(Coppier coppier) {
-
-    assertNull(ToleratedUpdateError.parseMetadataIfToleratedUpdateError("some other key", "some value"));
-    
-    for (ToleratedUpdateError in : new ToleratedUpdateError[] {
-        new ToleratedUpdateError(CmdType.ADD, "doc1", "some error"),
-        new ToleratedUpdateError(CmdType.DELID, "doc1", "some diff error"),
-        new ToleratedUpdateError(CmdType.DELQ, "-field:yakko other_field:wakko", "some other error"),
-      }) {
-      
-      ToleratedUpdateError out = coppier.copy(in);
-      
-      assertNotNull(out);
-      assertEquals(out.type, in.type);
-      assertEquals(out.id, in.id);
-      assertEquals(out.errorValue, in.errorValue);
-      assertEquals(out.hashCode(), in.hashCode());
-      assertEquals(out.toString(), in.toString());
-
-      assertEquals(in.getMetadataKey(), out.getMetadataKey());
-      assertEquals(in.getMetadataValue(), out.getMetadataValue());
-      
-      assertEquals(out, in);
-      assertEquals(in, out);
-
-    }
+  private final static CmdType[] ALL_TYPES = EnumSet.allOf(CmdType.class).toArray(new CmdType[0]);
+  
+  public void testBasics() {
     
     assertFalse((new ToleratedUpdateError(CmdType.ADD, "doc1", "some error")).equals
                 (new ToleratedUpdateError(CmdType.ADD, "doc2", "some error")));
@@ -59,24 +37,99 @@ public class TestToleratedUpdateError extends LuceneTestCase {
                 (new ToleratedUpdateError(CmdType.ADD, "doc1", "some errorxx")));
     assertFalse((new ToleratedUpdateError(CmdType.ADD, "doc1", "some error")).equals
                 (new ToleratedUpdateError(CmdType.DELID, "doc1", "some error")));
-    
+  }
+
+  public void testParseMetadataErrorHandling() {
+
+    assertNull(ToleratedUpdateError.parseMetadataIfToleratedUpdateError("some other key", "some value"));
+
+    // see if someone tries to trick us into having an NPE...
+    ToleratedUpdateError valid = new ToleratedUpdateError(CmdType.ADD, "doc2", "some error");
+    String badKey = valid.getMetadataKey().replace(":", "X");
+    assertNull(ToleratedUpdateError.parseMetadataIfToleratedUpdateError(badKey, valid.getMetadataValue()));
   }
   
+  public void testParseMapErrorChecking() {
+    SimpleOrderedMap<String> bogus = new SimpleOrderedMap<String>();
+    try {
+      ToleratedUpdateError.parseMap(bogus);
+      fail("map should not be parsable");
+    } catch (SolrException e) {
+      assertTrue(e.toString(), e.getMessage().contains("Map does not represent a ToleratedUpdateError") );
+    }
+
+    bogus.add("id", "some id");
+    bogus.add("message", "some message");
+    try {
+      ToleratedUpdateError.parseMap(bogus);
+      fail("map should still not be parsable");
+    } catch (SolrException e) {
+      assertTrue(e.toString(), e.getMessage().contains("Map does not represent a ToleratedUpdateError") );
+    }
+    
+    bogus.add("type", "not a real type");
+    try {
+      ToleratedUpdateError.parseMap(bogus);
+      fail("invalid type should not be parsable");
+    } catch (SolrException e) {
+      assertTrue(e.toString(), e.getMessage().contains("Invalid type")); 
+    }
+  }
+  
+  public void testParseMap() {
+    // trivial
+    SimpleOrderedMap valid = new SimpleOrderedMap<String>();
+    valid.add("type", CmdType.ADD.toString());
+    valid.add("id", "some id");
+    valid.add("message", "some message");
+    
+    ToleratedUpdateError in = ToleratedUpdateError.parseMap(valid);
+    compare(in, MAP_COPPIER);
+    compare(in, METADATA_COPPIER);
+
+    // randomized
+    int numIters = atLeast(5000);
+    for (int i = 0; i < numIters; i++) {
+      valid = new SimpleOrderedMap<String>();
+      valid.add("type", ALL_TYPES[TestUtil.nextInt(random(), 0, ALL_TYPES.length-1)].toString());
+      valid.add("id", TestUtil.randomUnicodeString(random()));
+      valid.add("message", TestUtil.randomUnicodeString(random()));
+      
+      in = ToleratedUpdateError.parseMap(valid);
+      compare(in, MAP_COPPIER);
+      compare(in, METADATA_COPPIER);
+    }
+  }
+  
+  public void checkRoundTripComparisons(Coppier coppier) {
+
+    // some simple basics
+    for (ToleratedUpdateError in : new ToleratedUpdateError[] {
+        new ToleratedUpdateError(CmdType.ADD, "doc1", "some error"),
+        new ToleratedUpdateError(CmdType.DELID, "doc1", "some diff error"),
+        new ToleratedUpdateError(CmdType.DELQ, "-field:yakko other_field:wakko", "some other error"),
+      }) {
+      
+      compare(in, coppier);
+    }
+
+    // randomized testing of non trivial keys/values
+    int numIters = atLeast(5000);
+    for (int i = 0; i < numIters; i++) {
+      ToleratedUpdateError in = new ToleratedUpdateError
+        (ALL_TYPES[TestUtil.nextInt(random(), 0, ALL_TYPES.length-1)],
+         TestUtil.randomUnicodeString(random()),
+         TestUtil.randomUnicodeString(random()));
+      compare(in, coppier);
+    }
+  }
+
   public void testMetadataRoundTripComparisons(Coppier coppier) {
-    checkRoundTripComparisons(new Coppier() {
-      public ToleratedUpdateError copy(ToleratedUpdateError in) {
-        return ToleratedUpdateError.parseMetadataIfToleratedUpdateError
-          (in.getMetadataKey(), in.getMetadataValue());
-      }
-    });
+    checkRoundTripComparisons(METADATA_COPPIER);
   }
   
   public void testMapRoundTripComparisons() {
-    checkRoundTripComparisons(new Coppier() {
-      public ToleratedUpdateError copy(ToleratedUpdateError in) {
-        return ToleratedUpdateError.parseMap(in.getSimpleMap());
-      }
-    });
+    checkRoundTripComparisons(MAP_COPPIER);
   }
 
   /** trivial sanity check */
@@ -95,9 +148,44 @@ public class TestToleratedUpdateError extends LuceneTestCase {
     
   }
 
+  public void compare(ToleratedUpdateError in, Coppier coppier) {
+      ToleratedUpdateError out = coppier.copy(in);
+      assertNotNull(out);
+      compare(in, out);
+  }
+  
+  public void compare(ToleratedUpdateError in, ToleratedUpdateError out) {
+    assertEquals(out.type, in.type);
+    assertEquals(out.id, in.id);
+    assertEquals(out.errorValue, in.errorValue);
+    
+    assertEquals(out.hashCode(), in.hashCode());
+    assertEquals(out.toString(), in.toString());
+    
+    assertEquals(in.getMetadataKey(), out.getMetadataKey());
+    assertEquals(in.getMetadataValue(), out.getMetadataValue());
+    
+    assertEquals(out, in);
+    assertEquals(in, out);
+  }
+  
   private static abstract class Coppier {
     public abstract ToleratedUpdateError copy(ToleratedUpdateError in);
   }
+
+  private static final Coppier MAP_COPPIER = new Coppier() {
+    public ToleratedUpdateError copy(ToleratedUpdateError in) {
+      return ToleratedUpdateError.parseMap(in.getSimpleMap());
+    }
+  };
+  
+  private static final Coppier METADATA_COPPIER = new Coppier() {
+    public ToleratedUpdateError copy(ToleratedUpdateError in) {
+      return ToleratedUpdateError.parseMetadataIfToleratedUpdateError
+        (in.getMetadataKey(), in.getMetadataValue());
+    }
+  };
+  
 }
 
 

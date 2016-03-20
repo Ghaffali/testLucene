@@ -77,10 +77,11 @@ import org.slf4j.LoggerFactory;
  */
 public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   private static final Logger log = LoggerFactory.getLogger(TolerantUpdateProcessor.class);
+  
   /**
-   * String to be used as document key in the response if a real ID can't be determined
+   * String to be used as document key for errors when a real uniqueKey can't be determined
    */
-  private static final String UNKNOWN_ID = "(unknown)"; // nocommit: fail hard and fast if no uniqueKey
+  private static final String UNKNOWN_ID = "(unknown)"; 
 
   /**
    * Response Header
@@ -93,7 +94,10 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
    * batch
    */
   private final int maxErrors;
-  
+
+  /** The uniqueKey field */
+  private SchemaField uniqueKeyField;
+
   private final SolrQueryRequest req;
   private ZkController zkController;
 
@@ -137,8 +141,8 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
     assert ! DistribPhase.FROMLEADER.equals(distribPhase);
     
     this.zkController = this.req.getCore().getCoreDescriptor().getCoreContainer().getZkController();
-
-    // nocommit: assert existence of uniqueKey field & record for future use
+    this.uniqueKeyField = this.req.getCore().getLatestSchema().getUniqueKeyField();
+    assert null != uniqueKeyField : "Factory didn't enforce uniqueKey field?";
   }
   
   @Override
@@ -160,7 +164,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
         
         knownErrors.add(new ToleratedUpdateError
                         (CmdType.ADD,
-                         getPrintableId(id, cmd.getReq().getSchema().getUniqueKeyField()),
+                         getPrintableId(id),
                          t.getMessage()));
         if (knownErrors.size() > maxErrors) {
           firstErrTracker.throwFirst();
@@ -319,15 +323,14 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
    * Returns the output of {@link org.apache.solr.schema.FieldType#
    * indexedToReadable(BytesRef, CharsRefBuilder)} of the field
    * type of the uniqueKey on the {@link BytesRef} passed as parameter.
-   * <code>ref</code> should be the indexed representation of the id and
-   * <code>field</code> should be the uniqueKey schema field. If any of
-   * the two parameters is null this method will return {@link #UNKNOWN_ID}
+   * <code>ref</code> should be the indexed representation of the id -- if null
+   * (possibly because it's missing in the update) this method will return {@link #UNKNOWN_ID}
    */
-  private String getPrintableId(BytesRef ref, SchemaField field) {
-    if(ref == null || field == null) {
-      return UNKNOWN_ID; // nocommit: fail hard and fast
+  private String getPrintableId(BytesRef ref) {
+    if (ref == null) {
+      return UNKNOWN_ID;
     }
-    return field.getType().indexedToReadable(ref, new CharsRefBuilder()).toString();
+    return uniqueKeyField.getType().indexedToReadable(ref, new CharsRefBuilder()).toString();
   }
 
   // nocommit: 1) is this method even needed? 2) is this method correct? 3) javadocs
