@@ -69,7 +69,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Test of TolerantUpdateProcessor using a randomized MiniSolrCloud &amp; ChaosMokney.  
+ * Test of TolerantUpdateProcessor using a randomized MiniSolrCloud.
  * Reuses some utility methods in {@link TestTolerantUpdateProcessorCloud}
  *
  * <p>
@@ -79,7 +79,7 @@ import org.slf4j.LoggerFactory;
  * </p>
  *
  */
-public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
+public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -87,6 +87,8 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
   
   /** A basic client for operations at the cloud level, default collection will be set */
   private static CloudSolrClient CLOUD_CLIENT;
+  /** one HttpSolrClient for each server */
+  private static List<SolrClient> NODE_CLIENTS;
 
   @BeforeClass
   private static void createMiniSolrCloudCluster() throws Exception {
@@ -116,34 +118,31 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
     CLOUD_CLIENT = cluster.getSolrClient();
     CLOUD_CLIENT.setDefaultCollection(COLLECTION_NAME);
 
+    NODE_CLIENTS = new ArrayList<SolrClient>(numServers);
+    
+    for (JettySolrRunner jetty : cluster.getJettySolrRunners()) {
+      URL jettyURL = jetty.getBaseUrl();
+      NODE_CLIENTS.add(new HttpSolrClient(jettyURL.toString() + "/" + COLLECTION_NAME + "/"));
+    }
+
     ZkStateReader zkStateReader = CLOUD_CLIENT.getZkStateReader();
     AbstractDistribZkTestBase.waitForRecoveriesToFinish(COLLECTION_NAME, zkStateReader, true, true, 330);
-
-    // nocommit: init chaos monkey
     
   }
   
-  @AfterClass
-  private static void cleanup() throws Exception {
-    // nocommit: shutdown the monkey
-  }
-
   @Before
   private void deleteAllDocs() throws Exception {
     assertEquals(0, update(params("commit","true")).deleteByQuery("*:*").process(CLOUD_CLIENT).getStatus());
-    assertEquals("index should be empty",
-                 0, CLOUD_CLIENT.query(params("q","*:*","rows","0")).getResults().getNumFound());
+    assertEquals("index should be empty", 0L, countDocs(CLOUD_CLIENT));
   }
   
-  public void testRandomUpdatesWithChaos() throws Exception {
+  public void testRandomUpdates() throws Exception {
     final int maxDocId = atLeast(10000);
     final BitSet expectedDocIds = new BitSet(maxDocId+1);
     
     final int numIters = atLeast(50);
     for (int i = 0; i < numIters; i++) {
 
-      // nocommit: chaosMonkey.causeSomeChaos()
-      
       final UpdateRequest req = update(params("maxErrors","-1",
                                               "update.chain", "tolerant-chain-max-errors-10"));
       final int numCmds = TestUtil.nextInt(random(), 1, 20);
@@ -158,7 +157,7 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
           // we're already mucking with more then half the docs in the index
           break;
         }
-        
+
         final boolean causeError = random().nextBoolean();
         if (causeError) {
           expectedErrorsCount++;
@@ -174,10 +173,11 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
           } else {
             expectedDocIds.set(id_i);
           }
+          final String val = causeError ? "bogus_val" : (""+TestUtil.nextInt(random(), 42, 666));
           req.add(doc(f("id",id),
                       f("id_i", id_i),
-                      f("foo_i", causeError ? "bogus_val" : TestUtil.nextInt(random(), 42, 666))));
-          
+                      f("foo_i", val)));
+          log.info("ADD: {} = {}", id, val);
         } else {
           // delete something
           if (random().nextBoolean()) {
@@ -195,14 +195,17 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
               expectedDocIds.clear(id_i);
             }
             req.deleteById(id, versionConstraint);
-            
+            log.info("DEL: {} = {}", id, causeError ? "ERR" : "OK" );
           } else {
             // delete by query
             final String q;
             if (causeError) {
-              // if our DBQ is going to fail, then it doesn't matter what q we use,
-              // none of the docs in the index will be affected either way
-              q = "foo_i:[42 TO ....giberish";
+              // even though our DBQ is gibberish that's going to fail, record a docId as affected
+              // so that we don't generate the same random DBQ and get redundent errors
+              // (problematic because of how DUP forwarded DBQs have to have their errors deduped by TUP)
+              final int id_i = randomUnsetBit(random(), docsAffectedThisRequest, maxDocId);
+              docsAffectedThisRequest.set(id_i);
+              q = "foo_i:["+id_i+" TO ....giberish";
               expectedErrors.add(delQErr(q));
             } else {
               // ensure our DBQ is only over a range of docs not already affected
@@ -214,32 +217,49 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
               final int hi = TestUtil.nextInt(random(), rangeAxis,
                                               // bound might be negative if no set bits above axis
                                               (hiBound < 0) ? maxDocId : hiBound-1);
-              
-              // NOTE: clear & set are exclusive of hi, so we use "}" in range query accordingly
-              q = "id_i:[" + lo + " TO " + hi + (causeError ? "...giberish" : "}");
-              expectedDocIds.clear(lo, hi);
-              docsAffectedThisRequest.set(lo, hi);
+
+              if (lo != hi) {
+                assert lo < hi : "lo="+lo+" hi="+hi;
+                // NOTE: clear & set are exclusive of hi, so we use "}" in range query accordingly
+                q = "id_i:[" + lo + " TO " + hi + "}";
+                expectedDocIds.clear(lo, hi);
+                docsAffectedThisRequest.set(lo, hi);
+              } else {
+                // edge case: special case DBQ of one doc
+                assert (lo == rangeAxis && hi == rangeAxis) : "lo="+lo+" axis="+rangeAxis+" hi="+hi;
+                q = "id_i:[" + lo + " TO " + lo + "]"; // have to be inclusive of both ends
+                expectedDocIds.clear(lo);
+                docsAffectedThisRequest.set(lo);
+              }
             }
             req.deleteByQuery(q);
+            log.info("DEL: {}", q);
           }
         }
       }
       assertEquals("expected error count sanity check: " + req.toString(),
                    expectedErrorsCount, expectedErrors.size());
         
-      // nocommit: 50% randomly: use an HttpSolrClient from the list of servers the monkey says are up
-      final SolrClient client = CLOUD_CLIENT;
-
-      UpdateResponse rsp = req.process(client);
-      assertUpdateTolerantErrors(expectedErrors.toString(), rsp,
-                                 expectedErrors.toArray(new ExpectedErr[expectedErrors.size()]));
+      final SolrClient client = random().nextBoolean() ? CLOUD_CLIENT
+        : NODE_CLIENTS.get(TestUtil.nextInt(random(), 0, NODE_CLIENTS.size()-1));
       
+      final UpdateResponse rsp = req.process(client);
+      assertUpdateTolerantErrors(client.toString() + " => " + expectedErrors.toString(), rsp,
+                                 expectedErrors.toArray(new ExpectedErr[expectedErrors.size()]));
+      log.info("END: {}", expectedDocIds.cardinality());
+
+      assertEquals("post update commit failed?", 0, CLOUD_CLIENT.commit().getStatus());
+      
+      for (int j = 0; j < 5; j++) {
+        if (expectedDocIds.cardinality() == countDocs(CLOUD_CLIENT)) {
+          break;
+        }
+        log.info("sleeping to give searchers a chance to re-open #" + j);
+        Thread.sleep(200);
+      }
+      assertEquals("cloud client doc count doesn't match bitself cardinality",
+                   expectedDocIds.cardinality(), countDocs(CLOUD_CLIENT));
     }
-    assertEquals("commit failed?", 0, CLOUD_CLIENT.commit().getStatus());
-    
-    assertEquals("final doc count doesn't match bitself cardinality",
-                 expectedDocIds.cardinality(),
-                 CLOUD_CLIENT.query(params("q","*:*","rows","0")).getResults().getNumFound());
   }
 
   /** sanity check that randomUnsetBit works as expected 
@@ -303,5 +323,8 @@ public class TestTolerantUpdateProcessorChaosMonkey extends SolrCloudTestCase {
     }
     return candidate;
   }
-  
+
+  public static final long countDocs(SolrClient c) throws Exception {
+    return c.query(params("q","*:*","rows","0")).getResults().getNumFound();
+  }
 }
