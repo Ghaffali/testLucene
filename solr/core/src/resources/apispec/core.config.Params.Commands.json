@@ -1,0 +1,27 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Request+Parameters+API",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "paths": [
+      "/config/params"
+    ]
+  },
+  "commands": {
+    "set:": {
+      "description":"add or overwrite one or more param sets",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "unset": {
+      "type": "list",
+      "description": "delete one or more parameter sets"
+    },
+    "update": {
+      "description": "update one or more configsets",
+      "type": "object",
+      "additionalProperties": true
+    }
+  }
+}

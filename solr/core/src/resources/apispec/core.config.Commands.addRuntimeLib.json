@@ -1,0 +1,23 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Adding+Custom+Plugins+in+SolrCloud+Mode",
+  "description": "",
+  "type": "object",
+  "properties": {
+    "name": {
+      "description": "Name of the jar blob in .system collection",
+      "type": "string"
+    },
+    "version": {
+      "type": "int",
+      "description": "The version of the blob in .system colection"
+    },
+    "sig": {
+      "type": "string",
+      "description": "sha1 signature of the jar"
+    }
+  },
+  "required": [
+    "name",
+    "version"
+  ]
+}

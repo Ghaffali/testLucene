@@ -1,0 +1,12 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Request+Parameters+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/config/params",
+      "/config/params/{params_set}"
+    ]
+  }
+}

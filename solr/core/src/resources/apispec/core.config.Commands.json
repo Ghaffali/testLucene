@@ -1,113 +1,145 @@
 {
-  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
+  "description": "The Config API enables manipulating various aspects of your solrconfig.xml using REST-like API calls.",
   "methods": [
     "POST"
   ],
   "url": {
     "paths": [
-      "$handlerName",
-      "$handlerName/params"
+      "/config"
     ]
   },
   "commands": {
+    "set-property:": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "unset-property": {
+      "type": "list"
+    },
     "add-requesthandler": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-requesthandler": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-requesthandler": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-searchcomponent": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-searchcomponent": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-searchcomponent": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-initparams": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-initparams": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-initparams": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-queryresponsewriter": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-queryresponsewriter": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-queryresponsewriter": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-queryparser": {
       "additionalProperties": true
     },
     "update-queryparser": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-queryparser": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-valuesourceparser": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-valuesourceparser": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-valuesourceparser": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-transformer": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-transformer": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-transformer": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-updateprocessor": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-updateprocessor": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-updateprocessor": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-queryconverter": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-queryconverter": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-queryconverter": {
+      "type": "object",
       "additionalProperties": true
     },
     "add-listener": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-listener": {
+      "type": "object",
       "additionalProperties": true
     },
     "delete-listener": {
+      "type": "object",
       "additionalProperties": true
     },
-    "add-runtimelib": {
-      "additionalProperties": true
-    },
-    "update-runtimelib": {
-      "additionalProperties": true
-    },
+    "add-runtimelib": "core.config.Commands.addRuntimeLib",
+    "update-runtimelib": "core.config.Commands.updateRuntimeLib",
     "delete-runtimelib": {
-      "additionalProperties": true
+      "type": "list"
     }
   }
 }
