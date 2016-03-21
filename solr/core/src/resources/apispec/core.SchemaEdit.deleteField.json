@@ -1,3 +1,10 @@
 {
-  "additionalProperties":true
+  "type":"object",
+  "properties":{
+    "name":{
+     "description" :"name of the field",
+      "type" : "string"
+    }
+  },
+  "required" : ["name"]
 }

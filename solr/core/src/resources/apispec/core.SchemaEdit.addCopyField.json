@@ -1,4 +1,23 @@
 {
-  "additionalProperties":true
+  "documentation" : "https://cwiki.apache.org/confluence/display/solr/Schema+API#SchemaAPI-AddaNewCopyFieldRule",
+  "type": "object",
+  "properties": {
+    "source": {
+      "type": "string",
+      "description": "The source field"
+    },
+    "dest": {
+      "type": "list",
+      "description": "A field or an array of fields to which the source field will be copied."
+    },
+    "maxChars": {
+      "type": "int",
+      "description": "The upper limit for the number of characters to be copied. The section Copying Fields has more details."
+    }
+  },
+  "required": [
+    "source",
+    "dest"
+  ]
 
 }

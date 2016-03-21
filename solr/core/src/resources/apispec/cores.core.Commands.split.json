@@ -1,3 +1,26 @@
 {
-  "properties":{}
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/CoreAdmin+API",
+  "type": "object",
+  "properties": {
+    "path": {
+      "type": "list",
+      "description": "the directory path in which a piece of the index will be written"
+    },
+    "targetCore": {
+      "type": "list",
+      "descripton": "the target Solr core to which a piece of the index will be merged"
+    },
+    "splitKey": {
+      "description": "The key to be used for splitting the index"
+    },
+    "ranges": {
+      "type": "string",
+      "description": "A comma-separated list of hash ranges in hexadecimal format"
+    },
+    "async": {
+      "type": "string",
+      "description": "Request ID to track this action which will be processed asynchronously"
+    }
+  }
+
 }
