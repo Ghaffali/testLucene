@@ -29,7 +29,6 @@ import com.google.common.collect.ImmutableList;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader.ConfigData;
 import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.RequestHandlerBase;
@@ -44,7 +43,6 @@ import org.apache.solr.security.PermissionNameProvider;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
-import org.apache.solr.api.ApiSupport;
 import org.apache.solr.api.SpecProvider;
 import org.apache.zookeeper.KeeperException;
 
@@ -196,15 +194,30 @@ public class SecurityConfHandler extends RequestHandlerBase implements Permissio
           final SpecProvider authzCommands = ApiBag.getSpec("cluster.security.authorization.Commands");
           apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authentication")));
           apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authorization")));
-          AuthenticationPlugin authcPlugin = cores.getAuthenticationPlugin();
-          apis.add(ApiBag.wrapRequestHandler(this, authcPlugin != null && authcPlugin instanceof SpecProvider ? ((SpecProvider) authcPlugin) : authcCommands));
-          AuthorizationPlugin authzPlugin = cores.getAuthorizationPlugin();
-          apis.add(ApiBag.wrapRequestHandler(this, authzPlugin != null && authzPlugin instanceof SpecProvider ? ((SpecProvider) authzPlugin) : authzCommands));
+          apis.add(ApiBag.wrapRequestHandler(this, () -> {
+            AuthenticationPlugin authcPlugin = cores.getAuthenticationPlugin();
+            return authcPlugin != null && authcPlugin instanceof SpecProvider ?
+                ((SpecProvider) authcPlugin).getSpec() :
+                ApiBag.getSpec("cluster.security.authentication.Commands").getSpec();
+          }));
+
+//          AuthorizationPlugin authzPlugin = cores.getAuthorizationPlugin();
+//          apis.add(ApiBag.wrapRequestHandler(this, authzPlugin != null && authzPlugin instanceof SpecProvider ? ((SpecProvider) authzPlugin) : authzCommands));
+
+          apis.add(ApiBag.wrapRequestHandler(this, () -> {
+            AuthorizationPlugin authzPlugin = cores.getAuthorizationPlugin();
+            return authzPlugin != null && authzPlugin instanceof SpecProvider ?
+                ((SpecProvider) authzPlugin).getSpec() :
+                ApiBag.getSpec("cluster.security.authorization.Commands").getSpec();
+          }));
+
+
           this.apis = ImmutableList.copyOf(apis);
         }
       }
     }
     return this.apis;
   }
+
 }
 
