@@ -156,7 +156,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       
       super.processAdd(cmd);
 
-    } catch (Throwable t) { // nocommit: OOM trap
+    } catch (Throwable t) { 
       firstErrTracker.caught(t);
       
       if (isLeader || distribPhase.equals(DistribPhase.NONE)) {
@@ -188,7 +188,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       
       super.processDelete(cmd);
       
-    } catch (Throwable t) { // nocommit: OOM trap
+    } catch (Throwable t) {
       firstErrTracker.caught(t);
       
       ToleratedUpdateError err = new ToleratedUpdateError(cmd.isDeleteById() ? CmdType.DELID : CmdType.DELQ,
@@ -214,7 +214,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   public void processMergeIndexes(MergeIndexesCommand cmd) throws IOException {
     try {
       super.processMergeIndexes(cmd);
-    } catch (Throwable t) { // nocommit: OOM trap
+    } catch (Throwable t) {
       // we're not tolerante of errors from this type of command, but we
       // do need to track it so we can annotate it with any other errors we were allready tolerant of
       firstErrTracker.caught(t);
@@ -226,7 +226,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   public void processCommit(CommitUpdateCommand cmd) throws IOException {
     try {
       super.processCommit(cmd);
-    } catch (Throwable t) { // nocommit: OOM trap
+    } catch (Throwable t) {
       // we're not tolerante of errors from this type of command, but we
       // do need to track it so we can annotate it with any other errors we were allready tolerant of
       firstErrTracker.caught(t);
@@ -238,7 +238,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   public void processRollback(RollbackUpdateCommand cmd) throws IOException {
     try {
       super.processRollback(cmd);
-    } catch (Throwable t) { // nocommit: OOM trap
+    } catch (Throwable t) {
       // we're not tolerante of errors from this type of command, but we
       // do need to track it so we can annotate it with any other errors we were allready tolerant of
       firstErrTracker.caught(t);
@@ -370,7 +370,7 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
      * even if you are going to ignore it (for now).  If you plan to rethrow the Exception, use 
      * {@link #throwFirst} instead.
      */
-    public void caught(Throwable t) {    // nocommit: switch to just Exception?
+    public void caught(Throwable t) {
       assert null != t;
       if (null == first) {
         if (t instanceof SolrException) {
