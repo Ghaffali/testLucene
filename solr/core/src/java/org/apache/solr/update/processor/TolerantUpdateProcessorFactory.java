@@ -69,6 +69,13 @@ import static org.apache.solr.update.processor.DistributingUpdateProcessorFactor
  * curl http://localhost:8983/update?update.chain=tolerant-chain&amp;maxErrors=100 -H "Content-Type: text/xml" -d @myfile.xml
  * </pre>
  * 
+ * <p>
+ * <b>NOTE:</b> The behavior of this UpdateProcessofFactory in conjunction with indexing operations 
+ * while a Shard Split is actively in progress is not well defined (or sufficiently tested).  Users 
+ * of this update processor are encouraged to either disable it, or pause updates, while any shard 
+ * splitting is in progress (see <a href="https://issues.apache.org/jira/browse/SOLR-8881">SOLR-8881</a> 
+ * for more details.)
+ * </p>
  */
 public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactory
   implements SolrCoreAware, UpdateRequestProcessorFactory.RunAlways {

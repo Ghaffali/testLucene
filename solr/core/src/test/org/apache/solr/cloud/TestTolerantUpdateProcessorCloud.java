@@ -69,16 +69,6 @@ import org.slf4j.LoggerFactory;
  * and assumes that the state of the cluster is healthy.
  * </p>
  *
- *
- * nocommit: what about shard splitting and "sub shard leaders" ? ...
- * (no idea if/how that affects things, but i notice lots of logic in DistributedUpdateProcessor along 
- * the lines of "if (isLeader || isSubShardLeader)" and "if (!isLeader) { if (subShardLeader) {..." 
- * which makes me worry that we may need explict testing of "tolerant" behavior when updates are routed 
- * to subshards and then fail?
- *
- * nocommit: once these tests are passing reliably, we should also have a fully randomized sibling test...
- * - randomized # nodes, shards, replicas
- * - random updates contain rand # of docs with rand # failures to a random client
  */
 public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
 
