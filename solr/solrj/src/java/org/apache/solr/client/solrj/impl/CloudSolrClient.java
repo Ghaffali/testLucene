@@ -781,14 +781,22 @@ public class CloudSolrClient extends SolrClient {
       if (maxToleratedErrors < toleratedErrors.size()) {
         // cumulative errors are too high, we need to throw a client exception w/correct metadata
 
-        // nocommit: refactor & reuse DistributedUpdatesAsyncException
+        // NOTE: it shouldn't be possible for 1 == toleratedErrors.size(), because if that were the case
+        // then at least one shard should have thrown a real error before this, so we don't worry
+        // about having a more "singular" exception msg for that situation
+        StringBuilder msgBuf =  new StringBuilder()
+          .append(toleratedErrors.size()).append(" Async failures during distributed update: ");
+          
         NamedList metadata = new NamedList<String>();
-        SolrException toThrow = new SolrException(ErrorCode.BAD_REQUEST, "nocommit: better msg from DUAE");
-        toThrow.setMetadata(metadata);
         for (SimpleOrderedMap<String> err : toleratedErrors) {
           ToleratedUpdateError te = ToleratedUpdateError.parseMap(err);
           metadata.add(te.getMetadataKey(), te.getMetadataValue());
+          
+          msgBuf.append("\n").append(te.getMessage());
         }
+        
+        SolrException toThrow = new SolrException(ErrorCode.BAD_REQUEST, msgBuf.toString());
+        toThrow.setMetadata(metadata);
         throw toThrow;
       }
     }
