@@ -793,8 +793,8 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                                delIErr(docId1, "version conflict"),
                                addErr(docId22,"not_a_num"));
     
-    // attempt a request containing 5 errors of various types (add, delI, delQ)
-    for (String maxErrors : new String[] {"5", "-1", "100"}) {
+    // attempt a request containing 4 errors of various types (add, delI, delQ)
+    for (String maxErrors : new String[] {"4", "-1", "100"}) {
       // for all of these maxErrors values, the overall request should still succeed
       rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
                           "maxErrors", maxErrors,
@@ -813,23 +813,26 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                                  addErr(docId22,"bogus_val"));
     }
     
-    // attempt a request containing 5 errors of various types (add, delI, delQ) .. 1 too many
+    // attempt a request containing 4 errors of various types (add, delI, delQ) .. 1 too many
     try {
       rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
-                          "maxErrors", "4",
+                          "maxErrors", "3",
                           "commit", "true"),
                    doc(f("id", docId22), f("foo_i", "bogus_val")))
         .deleteById(docId1, -1L)
         .deleteByQuery("malformed:[")
         .deleteById(docId21, -1L)
         .process(client);
+      fail("did not get a top level exception when more then 4 updates failed: " + rsp.toString());
     } catch (SolrException e) {
       // we can't make any reliable assertions about the error message, because
       // it varies based on how the request was routed -- see SOLR-8830
-      assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
-                   // NOTE: we always expect a 400 because we know that's what we would get from these types of errors
-                   // on a single node setup -- a 5xx type error isn't something we should have triggered
-                   400, e.code());
+      
+      // likewise, we can't make a firm(er) assertion about the response code...
+      assertTrue("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
+                 // should be one these 2 depending on order that the async errors were hit...
+                 // on a single node setup -- a 5xx type error isn't something we should have triggered
+                 400 == e.code() || 409 == e.code());
 
       // verify that the Exceptions metadata can tell us what failed.
       NamedList<String> remoteErrMetadata = e.getMetadata();
@@ -849,7 +852,7 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
         actualKnownErrs.add(err);
       }
       assertEquals("wrong number of errors in metadata: " + remoteErrMetadata.toString(),
-                   5, actualKnownErrsCount);
+                   4, actualKnownErrsCount);
       assertEquals("at least one dup error in metadata: " + remoteErrMetadata.toString(),
                    actualKnownErrsCount, actualKnownErrs.size());
     }
