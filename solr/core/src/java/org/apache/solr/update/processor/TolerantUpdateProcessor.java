@@ -147,12 +147,14 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   
   @Override
   public void processAdd(AddUpdateCommand cmd) throws IOException {
-    boolean isLeader = isLeader(cmd); // nocommit: is this needed? see below...
+    boolean isLeader = true; // set below during 'try'   // nocommit: is this var really needed (see below)
     BytesRef id = null;
     
     try {
       // force AddUpdateCommand to validate+cache the id before proceeding
       id = cmd.getIndexedId();
+      // if the id is missing from doc, act like we're the leader, let downstream throw error
+      isLeader = (null == id) || isLeader(cmd); // nocommit: is this needed? see below...
       
       super.processAdd(cmd);
 

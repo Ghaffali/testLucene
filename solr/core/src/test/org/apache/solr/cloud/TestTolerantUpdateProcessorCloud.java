@@ -493,6 +493,38 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
 
     // clean slate
     assertEquals(0, client.deleteByQuery("*:*").getStatus());
+
+    // many docs from diff shards, 1 from each shard should fail and 1 w/o uniqueKey
+    
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true"),
+                 doc(f("id", S_ONE_PRE + "11")),
+                 doc(f("id", S_TWO_PRE + "21")),
+                 doc(f("id", S_ONE_PRE + "12")),
+                 doc(f("id", S_TWO_PRE + "22"), f("foo_i", "bogus_val")),
+                 doc(f("id", S_ONE_PRE + "13")),
+                 doc(f("id", S_TWO_PRE + "23")),
+                 doc(f("foo_i", "42")),          // no "id"
+                 doc(f("id", S_ONE_PRE + "14")),
+                 doc(f("id", S_TWO_PRE + "24")),
+                 doc(f("id", S_ONE_PRE + "15"), f("foo_i", "bogus_val")),
+                 doc(f("id", S_TWO_PRE + "25")),
+                 doc(f("id", S_ONE_PRE + "16")),
+                 doc(f("id", S_TWO_PRE + "26"))).process(client);
+    
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantAddErrors("many docs, 1 from each shard (+ no id) should fail", rsp,
+                                  S_ONE_PRE + "15",
+                                  "(unknown)",
+                                  S_TWO_PRE + "22");
+    assertQueryDocIds(client, false, S_TWO_PRE + "22", S_ONE_PRE + "15");
+    assertQueryDocIds(client, true,
+                      S_ONE_PRE + "11", S_TWO_PRE + "21", S_ONE_PRE + "12",
+                      S_ONE_PRE + "13", S_TWO_PRE + "23", S_ONE_PRE + "14", S_TWO_PRE + "24",
+                      S_TWO_PRE + "25", S_ONE_PRE + "16", S_TWO_PRE + "26");
+
+    // clean slate
+    assertEquals(0, client.deleteByQuery("*:*").getStatus());
     
     // many docs from diff shards, more then 10 (total) should fail
 
@@ -652,6 +684,65 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                       // , S_ONE_PRE + "x", S_TWO_PRE + "x", // skipped
                       );
 
+    // clean slate
+    assertEquals(0, client.deleteByQuery("*:*").getStatus());
+    
+    // many docs from diff shards, more then 10 don't have any uniqueKey specified
+
+    try {
+      ArrayList<SolrInputDocument> docs = new ArrayList<SolrInputDocument>(30);
+      docs.add(doc(f("id", S_ONE_PRE + "z")));
+      docs.add(doc(f("id", S_TWO_PRE + "z")));
+      docs.add(doc(f("id", S_ONE_PRE + "y")));
+      docs.add(doc(f("id", S_TWO_PRE + "y")));
+      for (int i = 0; i < 11; i++) {
+        // no "id" field
+        docs.add(doc(f("foo_i", "" + i)));
+      }
+      docs.add(doc(f("id", S_ONE_PRE + "x"))); // may be skipped, more then 10 fails
+      docs.add(doc(f("id", S_TWO_PRE + "x"))); // may be skipped, more then 10 fails
+          
+      rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                          "commit", "true"),
+                   docs.toArray(new SolrInputDocument[docs.size()])).process(client);
+      
+      fail("did not get a top level exception when more then 10 docs mising uniqueKey: " + rsp.toString());
+    } catch (SolrException e) {
+      // we can't make any reliable assertions about the error message, because
+      // it varies based on how the request was routed -- see SOLR-8830
+      assertEquals("not the type of error we were expecting ("+e.code()+"): " + e.toString(),
+                   // NOTE: we always expect a 400 because we know that's what we would get from these types of errors
+                   // on a single node setup -- a 5xx type error isn't something we should have triggered
+                   400, e.code());
+
+      // verify that the Exceptions metadata can tell us what failed.
+      NamedList<String> remoteErrMetadata = e.getMetadata();
+      assertNotNull("no metadata in: " + e.toString(), remoteErrMetadata);
+      int actualKnownErrsCount = 0;
+      for (int i = 0; i < remoteErrMetadata.size(); i++) {
+        ToleratedUpdateError err =
+          ToleratedUpdateError.parseMetadataIfToleratedUpdateError(remoteErrMetadata.getName(i),
+                                                                   remoteErrMetadata.getVal(i));
+        if (null == err) {
+          // some metadata unrelated to this update processor
+          continue;
+        }
+        actualKnownErrsCount++;
+        assertEquals("only expected type of error is ADD: " + err,
+                     CmdType.ADD, err.getType());
+        assertTrue("failed id didn't match 'unknown': " + err,
+                   err.getId().contains("unknown"));
+      }
+      assertEquals("wrong number of errors in metadata: " + remoteErrMetadata.toString(),
+                   11, actualKnownErrsCount);
+    }
+    assertEquals(0, client.commit().getStatus()); // need to force since update didn't finish
+    assertQueryDocIds(client, true
+                      , S_ONE_PRE + "z", S_ONE_PRE + "y", S_TWO_PRE + "z", S_TWO_PRE + "y" // first
+                      // // we can't assert for sure these docs were skipped or added
+                      // // depending on shard we hit, they may have been added async before errors were exceeded
+                      // , S_ONE_PRE + "x", S_TWO_PRE + "x" // skipped
+                      );
   }
 
   //
