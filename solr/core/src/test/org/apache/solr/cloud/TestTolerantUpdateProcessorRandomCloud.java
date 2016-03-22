@@ -104,8 +104,8 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
     configureCluster(numServers)
       .addConfig(configName, configDir.toPath())
       .configure();
-    
-    Thread.sleep(2000); // anoying attempt to work arround SOLR-8862 // nocommit ? ? ? 
+
+    TestTolerantUpdateProcessorCloud.assertSpinLoopAllJettyAreRunning(cluster);
     
     Map<String, String> collectionProperties = new HashMap<>();
     collectionProperties.put("config", "solrconfig-distrib-update-processor-chains.xml");
