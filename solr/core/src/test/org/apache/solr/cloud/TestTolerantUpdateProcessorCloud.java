@@ -775,7 +775,7 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
     
     UpdateResponse rsp = null;
     
-    // add 2 docs to each shard
+    // add 2 docs, one to each shard
     rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
                         "commit", "true"),
                  doc(f("id", docId1), f("foo_i", "2001")),
@@ -856,7 +856,28 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
       assertEquals("at least one dup error in metadata: " + remoteErrMetadata.toString(),
                    actualKnownErrsCount, actualKnownErrs.size());
     }
-    
+
+    // sanity check our 2 existing docs are still here
+    assertQueryDocIds(client, true, docId1, docId21);
+    assertQueryDocIds(client, false, docId22);
+
+    // tolerate some failures along with a DELQ that should succeed
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "commit", "true"),
+                 doc(f("id", docId22), f("foo_i", "not_a_num")))
+      .deleteById(docId1, -1L)
+      .deleteByQuery("zot_i:[42 to gibberish...")
+      .deleteByQuery("foo_i:[50 TO 2000}")
+      .process(client);
+    assertEquals(0, rsp.getStatus());
+    assertUpdateTolerantErrors("mix fails with one valid DELQ", rsp,
+                               delIErr(docId1, "version conflict"),
+                               delQErr("zot_i:[42 to gibberish..."),
+                               addErr(docId22,"not_a_num"));
+    // one of our previous docs should have been deleted now
+    assertQueryDocIds(client, true, docId1);
+    assertQueryDocIds(client, false, docId21, docId22);
+                      
   }
 
   /**
