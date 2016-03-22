@@ -11,6 +11,7 @@
   },
   "commands": {
     "create": {
+      "type" : "object",
       "properties": {
         "name": {
           "type": "string",
@@ -57,6 +58,8 @@
           "description": "The replica name"
         },
         "numShards": {
+          "type":"number",
+          "description":"NO:of shards"
         }
       },
       "required": [

@@ -28,7 +28,6 @@
         "router": {
           "type": "object",
           "properties": {
-            "type":"object",
             "name": {
               "type":"string",
               "description" :"Router implementation compositeId or implicit",
@@ -61,32 +60,45 @@
           "description": "When set to true, enables auto addition of replicas on shared file systems. See the section autoAddReplicas Settings for more details on settings and overrides."
         },
         "rule": {
-          "type": "list",
+          "type":"array",
+          "items": {
+            "type": "string"
+          },
           "description":"replica placement rules. See the section Rule-based Replica Placement for details."
 
         },
         "snitch": {
-          "type": "list",
+          "type":"array",
+          "items": {
+            "type": "string"
+          },
           "description":""
         }
       },
       "required":["name"]
     },
     "create-alias":{
+      "type":"object",
       "properties": {
         "name": {
           "type": "string",
           "description": "The alias name to be created"
         },
         "collections" :{
-          "type":"list",
+          "type":"array",
+          "items": {
+            "type": "string"
+          },
           "description":"The list of collections to be aliased"
         }
       },
       "required" : ["name","collections"]
     },
     "delete-alias":{
-      "type":"list",
+      "type":"array",
+      "items": {
+        "type": "string"
+      },
       "description":""
     }
   }

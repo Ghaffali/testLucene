@@ -11,7 +11,7 @@
   },
   "commands": {
     "create": {
-      "properties":{},
+      "type":"object",
       "additionalProperties":true
     }
   }

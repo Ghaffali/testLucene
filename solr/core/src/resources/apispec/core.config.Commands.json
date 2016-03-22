@@ -15,7 +15,10 @@
       "additionalProperties": true
     },
     "unset-property": {
-      "type": "list"
+      "type":"array",
+      "items": {
+        "type": "string"
+      }
     },
     "add-requesthandler": {
       "type": "object",
@@ -66,6 +69,7 @@
       "additionalProperties": true
     },
     "add-queryparser": {
+      "type": "object",
       "additionalProperties": true
     },
     "update-queryparser": {
@@ -139,7 +143,10 @@
     "add-runtimelib": "core.config.Commands.addRuntimeLib",
     "update-runtimelib": "core.config.Commands.updateRuntimeLib",
     "delete-runtimelib": {
-      "type": "list"
+      "type":"array",
+      "items": {
+        "type": "string"
+      }
     }
   }
 }

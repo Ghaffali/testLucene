@@ -16,7 +16,10 @@
       "additionalProperties": true
     },
     "unset": {
-      "type": "list",
+      "type":"array",
+      "items": {
+        "type": "string"
+      },
       "description": "delete one or more parameter sets"
     },
     "update": {

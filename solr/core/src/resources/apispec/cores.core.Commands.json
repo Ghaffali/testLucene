@@ -11,12 +11,15 @@
   },
   "commands": {
     "reload": {
-      "properties": {}
+      "type":"object",
+      "additionalProperties":true
     },
     "unload": {
-      "properties": {}
+      "type":"object",
+      "additionalProperties":true
     },
     "swap": {
+      "type":"object",
       "properties": {
         "with": {
           "type": "string",
@@ -28,9 +31,14 @@
       ]
     },
     "merge-indexes": {
-      "properties": {}
+      "type":"object",
+      "additionalProperties":true
     },
-    "request-recovery": {},
+    "request-recovery": {
+      "type":"object",
+      "additionalProperties":true
+
+    },
     "split": "cores.core.Commands.split"
   }
 }

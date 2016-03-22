@@ -3,14 +3,21 @@
   "type": "object",
   "properties": {
     "path": {
-      "type": "list",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
       "description": "the directory path in which a piece of the index will be written"
     },
     "targetCore": {
-      "type": "list",
-      "descripton": "the target Solr core to which a piece of the index will be merged"
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "the target Solr core to which a piece of the index will be merged"
     },
     "splitKey": {
+      "type":"string",
       "description": "The key to be used for splitting the index"
     },
     "ranges": {

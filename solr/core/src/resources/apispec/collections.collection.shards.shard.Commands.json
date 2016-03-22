@@ -31,9 +31,12 @@
       "additionalProperties": true
     },
     "add-replica": {
+      "type" : "object",
       "additionalProperties": true
     },
     "force-leader": {
+      "type" : "object",
+
       "additionalProperties": true
     }
   }

@@ -7,7 +7,10 @@
       "description": "The source field"
     },
     "dest": {
-      "type": "list",
+      "type":"array",
+      "items": {
+        "type": "string"
+      },
       "description": "A field or an array of fields to which the source field will be copied."
     },
     "maxChars": {

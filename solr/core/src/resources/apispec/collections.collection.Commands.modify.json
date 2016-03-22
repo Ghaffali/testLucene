@@ -3,11 +3,17 @@
   "additionalProperties":true,
   "properties":{
     "rule": {
-      "type": "list",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
       "description": ""
     },
     "snitch": {
-      "type": "list",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
       "description": ""
     },
     "autoAddReplicas": {
@@ -18,6 +24,5 @@
       "type": "string",
       "description": ""
     }
-
   }
 }
