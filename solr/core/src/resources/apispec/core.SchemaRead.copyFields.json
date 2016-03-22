@@ -17,7 +17,6 @@
           "type":"string",
           "description":"Comma- or space-separated list of one or more copyField dest fields to include in the response - copyField directives with all other dest fields will be excluded. If not specified, all copyField-s will be included in the response."}
       }
-    },
-    "body": null
+    }
   }
 }

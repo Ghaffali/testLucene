@@ -1,5 +1,5 @@
 {
-  "documentation" :"https://cwiki.apache.org/confluence/display/solr/Schema+API#SchemaAPI-AddaNewField",
+  "documentation" :"https://cwiki.apache.org/confluence/display/solr/Schema+API",
   "type":"object",
   "properties":{
     "name": {

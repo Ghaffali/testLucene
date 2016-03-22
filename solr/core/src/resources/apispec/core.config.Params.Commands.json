@@ -10,6 +10,7 @@
   },
   "commands": {
     "set:": {
+      "type":"object",
       "description":"add or overwrite one or more param sets",
       "type": "object",
       "additionalProperties": true
@@ -19,6 +20,7 @@
       "description": "delete one or more parameter sets"
     },
     "update": {
+      "type":"object",
       "description": "update one or more configsets",
       "type": "object",
       "additionalProperties": true

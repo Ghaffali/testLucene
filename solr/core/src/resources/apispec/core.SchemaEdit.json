@@ -11,10 +11,10 @@
   "commands": {
     "add-field": "core.SchemaEdit.addField",
     "delete-field": "core.SchemaEdit.deleteField",
-    "replace-field": "core.SchemaEdit.replaceField",
-    "add-dynamic-field": "core.SchemaEdit.addDynamicField",
+    "replace-field": "core.SchemaEdit.addField",
+    "add-dynamic-field": "core.SchemaEdit.addField",
     "delete-dynamic-field": "core.SchemaEdit.deleteDynamicField",
-    "replace-dynamic-field": "core.SchemaEdit.replaceDynamicField",
+    "replace-dynamic-field": "core.SchemaEdit.addField",
     "add-field-type": "core.SchemaEdit.addFieldType",
     "delete-field-type": "core.SchemaEdit.deleteFieldType",
     "replace-field-type": "core.SchemaEdit.replaceFieldType",

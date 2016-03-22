@@ -12,6 +12,5 @@
       "/cluster/command-status/{id}",
       "/cluster/command-status/{id}"
     ]
-  },
-  "body": null
+  }
 }
