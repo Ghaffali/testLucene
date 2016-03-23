@@ -2,7 +2,6 @@
   "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
   "methods": ["GET"],
   "url": {
-    "path": "/node",
     "paths": [
       "/node/properties",
       "/node/threads",

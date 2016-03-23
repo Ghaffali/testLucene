@@ -22,6 +22,7 @@ import java.io.InputStream;
 import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +40,7 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.security.AuthorizationContext;
 import org.apache.solr.security.PermissionNameProvider;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.util.JsonSchemaValidator;
 import org.apache.solr.util.PathTrie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -149,11 +151,24 @@ public class ApiBag {
       }
     };
   }
+  public static Map<String, JsonSchemaValidator> getPartsedSchema(Map2 commands) {
+    Map<String,JsonSchemaValidator> validators =  new HashMap<>();
+    for (Object o : commands.entrySet()) {
+      Map.Entry cmd = (Map.Entry) o;
+      try {
+        validators.put((String) cmd.getKey(), new JsonSchemaValidator((Map) cmd.getValue()));
+      } catch (Exception e) {
+        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error in spi spec" , e);
+      }
+    }
+    return validators;
+  }
+
 
   private void verifyCommands(Map2 spec) {
     Map2 commands = spec.getMap("commands", null);
     if (commands == null) return;
-    //TODO do verify
+    getPartsedSchema(commands);
 
   }
 
@@ -217,7 +232,7 @@ public class ApiBag {
   public static class ReqHandlerToApi extends Api implements PermissionNameProvider {
     SolrRequestHandler rh;
 
-    protected ReqHandlerToApi(SolrRequestHandler rh, SpecProvider spec) {
+    public ReqHandlerToApi(SolrRequestHandler rh, SpecProvider spec) {
       super(spec);
       this.rh = rh;
     }
@@ -269,26 +284,29 @@ public class ApiBag {
     }
   }
 
-  public static List<CommandOperation> getCommandOperations(Reader reader, Map2 spec, boolean validate) {
+  public static List<CommandOperation> getCommandOperations(Reader reader, Map<String,JsonSchemaValidator> validators, boolean validate) {
     List<CommandOperation> parsedCommands = null;
     try {
       parsedCommands = CommandOperation.parse(reader);
     } catch (IOException e) {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
     }
-    if (spec == null || !validate) {    // no validation possible because we do not have a spec
+    if (validators == null || !validate) {    // no validation possible because we do not have a spec
       return parsedCommands;
     }
 
-    Map2 cmds = spec.getMap("commands", NOT_NULL);
     List<CommandOperation> commandsCopy = CommandOperation.clone(parsedCommands);
 
     for (CommandOperation cmd : commandsCopy) {
-      if (!cmds.containsKey(cmd.name)) {
-        cmd.addError(formatString("Unknown operation ''{0}'' in path ''{1}''", cmd.name,
-            spec.getMap("url", NOT_NULL).get("paths")));
+      JsonSchemaValidator validator = validators.get(cmd.name);
+      if (validator == null) {
+        cmd.addError(formatString("Unknown operation ''{0}'' available ops are ''{1}''", cmd.name,
+            validators.keySet()));
+        continue;
+      } else {
+        List<String> errs = validator.validateJson(cmd.getCommandData());
+        if(errs != null) for (String err : errs) cmd.addError(err);
       }
-      //TODO validation
 
     }
     List<Map> errs = CommandOperation.captureErrors(commandsCopy);
@@ -298,12 +316,16 @@ public class ApiBag {
     return commandsCopy;
   }
 
-  static class ExceptionWithErrObject extends SolrException {
+  public static class ExceptionWithErrObject extends SolrException {
     private List<Map> errs;
 
     public ExceptionWithErrObject(ErrorCode code, String msg, List<Map> errs) {
       super(code, msg);
       this.errs = errs;
+    }
+
+    public List<Map> getErrs(){
+      return errs;
     }
   }
 

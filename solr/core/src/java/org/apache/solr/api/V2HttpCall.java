@@ -46,6 +46,7 @@ import org.apache.solr.security.AuthorizationContext;
 import org.apache.solr.servlet.HttpSolrCall;
 import org.apache.solr.servlet.SolrDispatchFilter;
 import org.apache.solr.servlet.SolrRequestParsers;
+import org.apache.solr.util.JsonSchemaValidator;
 import org.apache.solr.util.PathTrie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -285,5 +286,10 @@ public class V2HttpCall extends HttpSolrCall {
   @Override
   protected Map2 getSpec() {
     return api == null ? null : api.getSpec();
+  }
+
+  @Override
+  protected Map<String, JsonSchemaValidator> getValidators() {
+    return api == null ? null : api.getCommandSchema();
   }
 }

@@ -22,6 +22,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.solr.api.ApiBag.ReqHandlerToApi;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
@@ -35,6 +36,8 @@ import org.apache.solr.api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.util.Collections.singletonList;
+import static org.apache.solr.api.ApiBag.getSpec;
 import static org.apache.solr.common.params.CommonParams.PATH;
 
 public class InfoHandler extends RequestHandlerBase implements ApiSupport {
@@ -144,13 +147,7 @@ public class InfoHandler extends RequestHandlerBase implements ApiSupport {
 
   @Override
   public Collection<Api> getApis() {
-    return Collections.singletonList(new Api(ApiBag.getSpec("node.Info")) {
-      @Override
-      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
-        handle(req, rsp, req.getPath());
-
-      }
-    });
+    return singletonList(new ReqHandlerToApi(this, getSpec("node.Info")));
   }
 
 }

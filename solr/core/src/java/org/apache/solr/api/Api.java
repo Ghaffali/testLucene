@@ -18,19 +18,35 @@ package org.apache.solr.api;
  */
 
 
-import java.util.concurrent.Callable;
+import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.solr.common.util.Map2;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.util.JsonSchemaValidator;
 
 public abstract class Api implements SpecProvider {
   protected SpecProvider spec;
+  protected volatile Map<String, JsonSchemaValidator> commandSchema;
 
   protected Api(SpecProvider spec) {
     this.spec = spec;
   }
 
+  public Map<String, JsonSchemaValidator> getCommandSchema() {
+    if (commandSchema == null) {
+      synchronized (this) {
+        if(commandSchema == null) {
+          Map2 commands = getSpec().getMap("commands", null);
+          commandSchema = commands != null ?
+              ImmutableMap.copyOf(ApiBag.getPartsedSchema(commands)) :
+              ImmutableMap.of();
+        }
+      }
+    }
+    return commandSchema;
+  }
 
   public abstract void call(SolrQueryRequest req , SolrQueryResponse rsp);
 

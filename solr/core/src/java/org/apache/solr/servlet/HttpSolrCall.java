@@ -105,6 +105,7 @@ import org.apache.solr.servlet.cache.HttpCacheHeaderUtil;
 import org.apache.solr.servlet.cache.Method;
 import org.apache.solr.update.processor.DistributingUpdateProcessorFactory;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.util.JsonSchemaValidator;
 import org.apache.solr.util.RTimerTree;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -1075,7 +1076,7 @@ public class HttpSolrCall {
       if (contentStreams == null) throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "No content stream");
       for (ContentStream contentStream : contentStreams) {
         try {
-          parsedCommands = ApiBag.getCommandOperations(contentStream.getReader(), getSpec(), validateInput);
+          parsedCommands = ApiBag.getCommandOperations(contentStream.getReader(), getValidators(), validateInput);
         } catch (IOException e) {
           throw new SolrException(ErrorCode.BAD_REQUEST, "Error reading commands");
         }
@@ -1087,4 +1088,10 @@ public class HttpSolrCall {
   protected Map2 getSpec() {
     return null;
   }
+
+  protected Map<String, JsonSchemaValidator> getValidators(){
+    return Collections.EMPTY_MAP;
+  }
+
+
 }
