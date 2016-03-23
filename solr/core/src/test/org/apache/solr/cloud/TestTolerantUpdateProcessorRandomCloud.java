@@ -173,19 +173,27 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
         
         if (random().nextBoolean()) {
           // add a doc
-          final int id_i = randomUnsetBit(random(), docsAffectedThisRequest, maxDocId);
-          final String id = "id_"+id_i;
-          docsAffectedThisRequest.set(id_i);
-          if (causeError) {
-            expectedErrors.add(addErr(id));
+          String id = null;
+          SolrInputDocument doc = null;
+          if (causeError && (0 == TestUtil.nextInt(random(), 0, 21))) {
+            doc = doc(f("foo_s","no unique key"));
+            expectedErrors.add(addErr("(unknown)"));
           } else {
-            expectedDocIds.set(id_i);
-          }
-          final String val = causeError ? "bogus_val" : (""+TestUtil.nextInt(random(), 42, 666));
-          req.add(doc(f("id",id),
+            final int id_i = randomUnsetBit(random(), docsAffectedThisRequest, maxDocId);
+            docsAffectedThisRequest.set(id_i);
+            id = "id_"+id_i;
+            if (causeError) {
+              expectedErrors.add(addErr(id));
+            } else {
+              expectedDocIds.set(id_i);
+            }
+            final String val = causeError ? "bogus_val" : (""+TestUtil.nextInt(random(), 42, 666));
+            doc = doc(f("id",id),
                       f("id_i", id_i),
-                      f("foo_i", val)));
-          log.info("ADD: {} = {}", id, val);
+                      f("foo_i", val));
+          }
+          req.add(doc);
+          log.info("ADD: {} = {}", id, doc);
         } else {
           // delete something
           if (random().nextBoolean()) {
