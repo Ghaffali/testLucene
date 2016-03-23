@@ -743,6 +743,38 @@ public class TestTolerantUpdateProcessorCloud extends SolrCloudTestCase {
                       // // depending on shard we hit, they may have been added async before errors were exceeded
                       // , S_ONE_PRE + "x", S_TWO_PRE + "x" // skipped
                       );
+
+    // clean slate
+    assertEquals(0, client.deleteByQuery("*:*").getStatus());
+    
+    // many docs from diff shards, more then 10 from a single shard (two) should fail but
+    // request should still succeed because of maxErrors=-1 param
+
+    ArrayList<SolrInputDocument> docs = new ArrayList<SolrInputDocument>(30);
+    ArrayList<ExpectedErr> expectedErrs = new ArrayList<ExpectedErr>(30);
+    docs.add(doc(f("id", S_ONE_PRE + "z")));
+    docs.add(doc(f("id", S_TWO_PRE + "z")));
+    docs.add(doc(f("id", S_ONE_PRE + "y")));
+    docs.add(doc(f("id", S_TWO_PRE + "y")));
+    for (int i = 0; i < 11; i++) {
+      docs.add(doc(f("id", S_ONE_PRE + i)));
+      docs.add(doc(f("id", S_TWO_PRE + i), f("foo_i", "bogus_val")));
+      expectedErrs.add(addErr(S_TWO_PRE + i));
+    }
+    docs.add(doc(f("id", S_ONE_PRE + "x"))); 
+    docs.add(doc(f("id", S_TWO_PRE + "x"))); 
+    
+    rsp = update(params("update.chain", "tolerant-chain-max-errors-10",
+                        "maxErrors", "-1",
+                        "commit", "true"),
+                 docs.toArray(new SolrInputDocument[docs.size()])).process(client);
+    assertUpdateTolerantErrors("many docs from shard2 fail, but req should succeed", rsp,
+                               expectedErrs.toArray(new ExpectedErr[expectedErrs.size()]));
+    assertQueryDocIds(client, true
+                      , S_ONE_PRE + "z", S_ONE_PRE + "y", S_TWO_PRE + "z", S_TWO_PRE + "y" // first
+                      , S_ONE_PRE + "x", S_TWO_PRE + "x" // later
+                      );
+
   }
 
   //

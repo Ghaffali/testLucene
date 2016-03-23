@@ -43,7 +43,11 @@ import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.UpdateRequest;
+import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.response.UpdateResponse;
+import static org.apache.solr.common.params.CursorMarkParams.CURSOR_MARK_PARAM;
+import static org.apache.solr.common.params.CursorMarkParams.CURSOR_MARK_NEXT;
+import static org.apache.solr.common.params.CursorMarkParams.CURSOR_MARK_START;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrInputDocument;
@@ -100,7 +104,8 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
     final int repFactor = TestUtil.nextInt(random(), 2, TEST_NIGHTLY ? 5 : 3);
     // at least one server won't have any replicas
     final int numServers = 1 + (numShards * repFactor);
-    
+
+    log.info("Configuring cluster: servers={}, shards={}, repfactor={}", numServers, numShards, repFactor);
     configureCluster(numServers)
       .addConfig(configName, configDir.toPath())
       .configure();
@@ -124,7 +129,8 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
       URL jettyURL = jetty.getBaseUrl();
       NODE_CLIENTS.add(new HttpSolrClient(jettyURL.toString() + "/" + COLLECTION_NAME + "/"));
     }
-
+    assertEquals(numServers, NODE_CLIENTS.size());
+    
     ZkStateReader zkStateReader = CLOUD_CLIENT.getZkStateReader();
     AbstractDistribZkTestBase.waitForRecoveriesToFinish(COLLECTION_NAME, zkStateReader, true, true, 330);
     
@@ -143,6 +149,8 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
     final int numIters = atLeast(50);
     for (int i = 0; i < numIters; i++) {
 
+      log.info("BEGIN ITER #{}", i);
+      
       final UpdateRequest req = update(params("maxErrors","-1",
                                               "update.chain", "tolerant-chain-max-errors-10"));
       final int numCmds = TestUtil.nextInt(random(), 1, 20);
@@ -246,7 +254,8 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
       final UpdateResponse rsp = req.process(client);
       assertUpdateTolerantErrors(client.toString() + " => " + expectedErrors.toString(), rsp,
                                  expectedErrors.toArray(new ExpectedErr[expectedErrors.size()]));
-      log.info("END: {}", expectedDocIds.cardinality());
+               
+      log.info("END ITER #{}, expecting #docs: {}", i, expectedDocIds.cardinality());
 
       assertEquals("post update commit failed?", 0, CLOUD_CLIENT.commit().getStatus());
       
@@ -257,8 +266,23 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
         log.info("sleeping to give searchers a chance to re-open #" + j);
         Thread.sleep(200);
       }
-      assertEquals("cloud client doc count doesn't match bitself cardinality",
-                   expectedDocIds.cardinality(), countDocs(CLOUD_CLIENT));
+
+      // check the index contents against our expecationts
+      final BitSet actualDocIds = allDocs(CLOUD_CLIENT, maxDocId);
+      if ( expectedDocIds.cardinality() != actualDocIds.cardinality() ) {
+        log.error("cardinality missmatch: expected {} BUT actual {}",
+                  expectedDocIds.cardinality(),
+                  actualDocIds.cardinality());
+      }
+      final BitSet x = (BitSet) actualDocIds.clone();
+      x.xor(expectedDocIds);
+      for (int b = x.nextSetBit(0); 0 <= b; b = x.nextSetBit(b+1)) {
+        final boolean expectedBit = expectedDocIds.get(b);
+        final boolean actualBit = actualDocIds.get(b);
+        log.error("bit #"+b+" mismatch: expected {} BUT actual {}", expectedBit, actualBit);
+      }
+      assertEquals(x.cardinality() + " mismatched bits",
+                   expectedDocIds.cardinality(), actualDocIds.cardinality());
     }
   }
 
@@ -324,7 +348,34 @@ public class TestTolerantUpdateProcessorRandomCloud extends SolrCloudTestCase {
     return candidate;
   }
 
+  /** returns the numFound from a *:* query */
   public static final long countDocs(SolrClient c) throws Exception {
     return c.query(params("q","*:*","rows","0")).getResults().getNumFound();
+  }
+
+  /** uses a Cursor to iterate over every doc in the index, recording the 'id_i' value in a BitSet */
+  private static final BitSet allDocs(final SolrClient c, final int maxDocIdExpected) throws Exception {
+    BitSet docs = new BitSet(maxDocIdExpected+1);
+    String cursorMark = CURSOR_MARK_START;
+    int docsOnThisPage = Integer.MAX_VALUE;
+    while (0 < docsOnThisPage) {
+      final SolrParams p = params("q","*:*",
+                                  "rows","100",
+                                  // note: not numeric, but we don't actual care about the order
+                                  "sort", "id asc",
+                                  CURSOR_MARK_PARAM, cursorMark);
+      QueryResponse rsp = c.query(p);
+      cursorMark = rsp.getNextCursorMark();
+      docsOnThisPage = 0;
+      for (SolrDocument doc : rsp.getResults()) {
+        docsOnThisPage++;
+        int id_i = ((Integer)doc.get("id_i")).intValue();
+        assertTrue("found id_i bigger then expected "+maxDocIdExpected+": " + id_i,
+                   id_i <= maxDocIdExpected);
+        docs.set(id_i);
+      }
+      cursorMark = rsp.getNextCursorMark();
+    }
+    return docs;
   }
 }

@@ -1211,6 +1211,8 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     ModifiableSolrParams fparams = new ModifiableSolrParams();
     passParam(params, fparams, UpdateParams.UPDATE_CHAIN);
     passParam(params, fparams, TEST_DISTRIB_SKIP_SERVERS);
+    // nocommit ... generalize this...
+    passParam(params, fparams, "maxErrors");
     return fparams;
   }
 
