@@ -129,7 +129,8 @@ public class TolerantUpdateProcessorFactory extends UpdateRequestProcessorFactor
     if (DistribPhase.FROMLEADER.equals(distribPhase)) {
       return next;
     }
-    
+
+    DistributedUpdateProcessorFactory.addParamToDistributedRequestWhitelist(req, MAX_ERRORS_PARAM);
     int maxErrors = req.getParams().getInt(MAX_ERRORS_PARAM, defaultMaxErrors);
     if (maxErrors < -1) {
       throw new SolrException(ErrorCode.BAD_REQUEST, "'"+MAX_ERRORS_PARAM + "' must either be non-negative, or -1 to indicate 'unlimiited': " + maxErrors);

@@ -92,7 +92,8 @@ import org.slf4j.LoggerFactory;
 // NOT mt-safe... create a new processor for each add thread
 // TODO: we really should not wait for distrib after local? unless a certain replication factor is asked for
 public class DistributedUpdateProcessor extends UpdateRequestProcessor {
-  
+
+  final static String PARAM_WHITELIST_CTX_KEY = DistributedUpdateProcessor.class + "PARAM_WHITELIST_CTX_KEY";
   public static final String DISTRIB_FROM_SHARD = "distrib.from.shard";
   public static final String DISTRIB_FROM_COLLECTION = "distrib.from.collection";
   public static final String DISTRIB_FROM_PARENT = "distrib.from.parent";
@@ -291,6 +292,10 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     // SolrRequestInfo reqInfo = returnVersions ? SolrRequestInfo.getRequestInfo() : null;
 
     this.req = req;
+    
+    // this should always be used - see filterParams
+    DistributedUpdateProcessorFactory.addParamToDistributedRequestWhitelist
+      (this.req, UpdateParams.UPDATE_CHAIN, TEST_DISTRIB_SKIP_SERVERS);
     
     CoreDescriptor coreDesc = req.getCore().getCoreDescriptor();
     
@@ -1207,12 +1212,16 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     }
   }
 
+  /** @see DistributedUpdateProcessorFactory#addParamToDistributedRequestWhitelist */
   protected ModifiableSolrParams filterParams(SolrParams params) {
     ModifiableSolrParams fparams = new ModifiableSolrParams();
-    passParam(params, fparams, UpdateParams.UPDATE_CHAIN);
-    passParam(params, fparams, TEST_DISTRIB_SKIP_SERVERS);
-    // nocommit ... generalize this...
-    passParam(params, fparams, "maxErrors");
+    
+    Set<String> whitelist = (Set<String>) this.req.getContext().get(PARAM_WHITELIST_CTX_KEY);
+    assert null != whitelist : "whitelist can't be null, constructor adds to it";
+
+    for (String p : whitelist) {
+      passParam(params, fparams, p);
+    }
     return fparams;
   }
 
