@@ -40,7 +40,7 @@
           }
         },
         "numShards": {
-          "type": "string",
+          "type": "number",
           "description": "The number of shards to be created as part of the collection. This is a required parameter when using the 'compositeId' router."
         },
         "shards": {
@@ -65,7 +65,6 @@
             "type": "string"
           },
           "description":"replica placement rules. See the section Rule-based Replica Placement for details."
-
         },
         "snitch": {
           "type":"array",
