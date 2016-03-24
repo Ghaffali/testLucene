@@ -147,37 +147,22 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
   
   @Override
   public void processAdd(AddUpdateCommand cmd) throws IOException {
-    boolean isLeader = true; // set below during 'try'   // nocommit: is this var really needed (see below)
     BytesRef id = null;
     
     try {
       // force AddUpdateCommand to validate+cache the id before proceeding
       id = cmd.getIndexedId();
-      // if the id is missing from doc, act like we're the leader, let downstream throw error
-      isLeader = (null == id) || isLeader(cmd); // nocommit: is this needed? see below...
       
       super.processAdd(cmd);
 
     } catch (Throwable t) { 
       firstErrTracker.caught(t);
+      knownErrors.add(new ToleratedUpdateError
+                      (CmdType.ADD,
+                       getPrintableId(id),
+                       t.getMessage()));
       
-      if (isLeader || distribPhase.equals(DistribPhase.NONE)) {
-        // nocommit: should we skip if condition and always do this? see comment in else...
-        
-        knownErrors.add(new ToleratedUpdateError
-                        (CmdType.ADD,
-                         getPrintableId(id),
-                         t.getMessage()));
-        if (knownErrors.size() > maxErrors) {
-          firstErrTracker.throwFirst();
-        }
-      } else {
-        // nocommit: is this if/else even relevant or important? ...
-        //
-        // 1) the factory won't even instantiate "this" if we are a replica being forwarded from our leader
-        // 2) so aren't we by definition either the leader or DistribPhase.NONE ?
-        // 3) even if we aren't, is there any downside to simplifying the code and always waiting until maxErors?
-        
+      if (knownErrors.size() > maxErrors) {
         firstErrTracker.throwFirst();
       }
     }
@@ -333,20 +318,6 @@ public class TolerantUpdateProcessor extends UpdateRequestProcessor {
       return UNKNOWN_ID;
     }
     return uniqueKeyField.getType().indexedToReadable(ref, new CharsRefBuilder()).toString();
-  }
-
-  // nocommit: 1) is this method even needed? 2) is this method correct? 3) javadocs
-  private boolean isLeader(AddUpdateCommand cmd) {
-    if(!cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().isZooKeeperAware())
-      return true;
-    String collection = cmd.getReq().getCore().getCoreDescriptor().getCollectionName();
-    DocCollection coll = zkController.getClusterState().getCollection(collection);
-
-    SolrParams params = req.getParams();
-    String route = req.getParams().get(ShardParams._ROUTE_);
-    Slice slice = coll.getRouter().getTargetSlice(cmd.getHashableId(), cmd.getSolrInputDocument(), route, params, coll);
-    return slice.getLeader().getName().equals(req.getCore().getCoreDescriptor().getCloudDescriptor().getCoreNodeName());
-
   }
 
   /**
