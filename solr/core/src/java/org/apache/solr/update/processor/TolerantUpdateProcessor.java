@@ -22,7 +22,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
-
+import java.lang.invoke.MethodHandles;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
@@ -76,7 +76,7 @@ import org.slf4j.LoggerFactory;
  * @see TolerantUpdateProcessorFactory
  */
 public class TolerantUpdateProcessor extends UpdateRequestProcessor {
-  private static final Logger log = LoggerFactory.getLogger(TolerantUpdateProcessor.class);
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   
   /**
    * String to be used as document key for errors when a real uniqueKey can't be determined
