@@ -40,7 +40,7 @@ public abstract class Api implements SpecProvider {
         if(commandSchema == null) {
           Map2 commands = getSpec().getMap("commands", null);
           commandSchema = commands != null ?
-              ImmutableMap.copyOf(ApiBag.getPartsedSchema(commands)) :
+              ImmutableMap.copyOf(ApiBag.getParsedSchema(commands)) :
               ImmutableMap.of();
         }
       }

@@ -48,7 +48,7 @@
           "description": "A comma separated list of shard names, e.g., shard-x,shard-y,shard-z . This is a required parameter when using the 'implicit' router."
         },
         "replicationFactor": {
-          "type": "string",
+          "type": "number",
           "description": "The number of replicas to be created for each shard."
         },
         "createNodeSet": {

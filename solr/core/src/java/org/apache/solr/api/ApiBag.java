@@ -151,7 +151,7 @@ public class ApiBag {
       }
     };
   }
-  public static Map<String, JsonSchemaValidator> getPartsedSchema(Map2 commands) {
+  public static Map<String, JsonSchemaValidator> getParsedSchema(Map2 commands) {
     Map<String,JsonSchemaValidator> validators =  new HashMap<>();
     for (Object o : commands.entrySet()) {
       Map.Entry cmd = (Map.Entry) o;
@@ -168,7 +168,7 @@ public class ApiBag {
   private void verifyCommands(Map2 spec) {
     Map2 commands = spec.getMap("commands", null);
     if (commands == null) return;
-    getPartsedSchema(commands);
+    getParsedSchema(commands);
 
   }
 
