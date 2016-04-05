@@ -74,7 +74,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>())){
       @Override
       public List<CommandOperation> getCommands(boolean validateInput) {
-        return ApiBag.getCommandOperations(new StringReader(payload), api.getSpec(),true);
+        return ApiBag.getCommandOperations(new StringReader(payload), api.getCommandSchema(),true);
       }
 
       @Override

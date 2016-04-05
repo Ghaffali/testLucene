@@ -49,12 +49,11 @@ public class TestCoreAdminApis extends SolrTestCaseJ4 {
       apiBag.register(api, Collections.EMPTY_MAP);
     }
     TestCollectionAPIs.makeCall(apiBag, "/cores", SolrRequest.METHOD.POST,
-        "{create:{name: hello, instanceDir : someDir, config : 'solrconfig.xml', schema: 'schema.xml'}}", mockCC);
+        "{create:{name: hello, instanceDir : someDir, schema: 'schema.xml'}}", mockCC);
     Object[] create = calls.get("create");
     assertEquals("hello" ,create[0]);
     HashMap expected = new HashMap();
     expected.put("schema", "schema.xml");
-    expected.put("config", "solrconfig.xml");
     assertEquals(expected ,create[2]);
 
   }
@@ -63,36 +62,18 @@ public class TestCoreAdminApis extends SolrTestCaseJ4 {
     CoreContainer mockCC = EasyMock.createMock(CoreContainer.class);
     EasyMock.reset(mockCC);
     mockCC.create(EasyMock.anyObject(String.class), EasyMock.anyObject(Path.class ) ,EasyMock.anyObject(Map.class));
-    EasyMock.expectLastCall().andAnswer(new IAnswer<SolrCore>() {
-      @Override
-      public SolrCore answer() throws Throwable {
-        in.put("create", getCurrentArguments());
-        return null;
-      }
+    EasyMock.expectLastCall().andAnswer(() -> {
+      in.put("create", getCurrentArguments());
+      return null;
     }).anyTimes();
 
     mockCC.getCoreRootDirectory();
-    EasyMock.expectLastCall().andAnswer(new IAnswer<Path>() {
-      @Override
-      public Path answer() throws Throwable {
-        return Paths.get("coreroot");
-      }
-    }).anyTimes();
+    EasyMock.expectLastCall().andAnswer(() -> Paths.get("coreroot")).anyTimes();
     mockCC.getContainerProperties();
-    EasyMock.expectLastCall().andAnswer(new IAnswer<Properties>() {
-      @Override
-      public Properties answer() throws Throwable {
-        return new Properties();
-      }
-    }).anyTimes();
+    EasyMock.expectLastCall().andAnswer(() -> new Properties()).anyTimes();
 
     mockCC.getRequestHandlers();
-    EasyMock.expectLastCall().andAnswer(new IAnswer<PluginBag>() {
-      @Override
-      public PluginBag answer() throws Throwable {
-        return (PluginBag)out.get("getRequestHandlers");
-      }
-    }).anyTimes();
+    EasyMock.expectLastCall().andAnswer(() -> out.get("getRequestHandlers")).anyTimes();
 
     EasyMock.replay(mockCC);
     return mockCC;

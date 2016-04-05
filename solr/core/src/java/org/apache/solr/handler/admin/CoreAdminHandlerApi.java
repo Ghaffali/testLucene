@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
@@ -44,7 +45,7 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
   }
 
   enum Cmd implements ApiCommand<CoreAdminHandlerApi> {
-    CREATE(CORES_COMMANDS, POST, CREATE_OP, null, null),
+    CREATE(CORES_COMMANDS, POST, CREATE_OP, null, ImmutableMap.of("config", "configSet")),
     UNLOAD(PER_CORE_COMMANDS, POST, UNLOAD_OP, null, null),
     RELOAD(PER_CORE_COMMANDS, POST, RELOAD_OP, null, null),
     STATUS(CORES_STATUS, GET, STATUS_OP),

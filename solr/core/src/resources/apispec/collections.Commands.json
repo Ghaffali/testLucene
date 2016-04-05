@@ -72,6 +72,10 @@
             "type": "string"
           },
           "description":""
+        },
+        "properties": {
+          "type": "object",
+          "additionalProperties": true
         }
       },
       "required":["name"]

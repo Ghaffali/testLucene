@@ -29,6 +29,10 @@
           "type": "string",
           "description": "The core name"
         },
+        "config": {
+          "type": "string",
+          "description": "Name of the config file (i.e., solrconfig.xml) relative to instanceDir."
+        },
         "configSet": {
           "type": "string",
           "description": "The configset name"
