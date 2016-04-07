@@ -17,9 +17,36 @@ servlet container in the directory named "example".
 See the Quick Start guide at http://lucene.apache.org/solr/quickstart.html
 
 ==================  7.0.0 ==================
-(No Changes)
+
+Upgrading from Solr 5.x
+----------------------
+
+* HttpClientInterceptorPlugin is now HttpClientBuilderPlugin and must work with a 
+  SolrHttpClientBuilder rather than an HttpClientConfigurer.
+  
+* HttpClientUtil now allows configuring HttpClient instances via SolrHttpClientBuilder
+  rather than an HttpClientConfigurer.
+
+* SolrClient implementations now use their own internal configuration for socket timeouts,
+  connect timeouts, and allowing redirects rather than what is set as the default when
+  building the HttpClient instance. Use the appropriate setters on the SolrClient instance.
+  
+* HttpSolrClient#setAllowCompression has been removed and compression must be enabled as
+  a constructor param. 
+  
+* HttpSolrClient#setDefaultMaxConnectionsPerHost and
+  HttpSolrClient#setMaxTotalConnections have been removed. These now default very
+  high and can only be changed via param when creating an HttpClient instance.
+  
+Optimizations
+----------------------
+
+* SOLR-4509: Move to non deprecated HttpClient impl classes to remove stale connection 
+  check on every request and move connection lifecycle management towards the client.
+  (Ryan Zezeski, Mark Miller, Shawn Heisey, Steve Davids)
 
 ==================  6.1.0 ==================
+
 Detailed Change List
 ----------------------
 * SOLR-8782: Add asynchronous sugar methods to the SolrJ Collections API.  You
@@ -30,13 +57,13 @@ Detailed Change List
 * SOLR-8765: Enforce required parameters at query construction time in the SolrJ
   Collections API, add static factory methods, and deprecate old setter methods.
   (Alan Woodward, Jason Gerlowski)
-* SOLR-8842: authorization APIs do not use name as an identifier for  a permission
-  for update, delete   commands and 'before' attribute (noble)
+ 
+* SOLR-8842: authorization APIs do not use name as an identifier for a permission
+  for update, delete commands and 'before' attribute (noble)
 
 
 New Features
 ----------------------
-
 * SOLR-8814: Support GeoJSON response writer and general spatial formatting.  Adding
      &wt=geojson&geojson.field=<your geometry field>
   Will return a FeatureCollection for each SolrDocumentList and a Feature with the
@@ -51,8 +78,28 @@ New Features
 * SOLR-8859: AbstractSpatialFieldType will now convert Shapes to/from Strings
   using the SpatialContext.  (ryan)
 
+* SOLR-445: new ToleranteUpdateProcessorFactory to support skipping update commands that cause
+  failures when sending multiple updates in a single request.
+  (Erick Erickson, Tomás Fernández Löbbe, Anshum Gupta, hossman)
+
+* SOLR-8890: New static method in DistributedUpdateProcessorFactory to allow UpdateProcessorFactories
+  to indicate request params that should be forwarded when DUP distributes updates. (hossman)
+
+* SOLR-8888: Add shortestPath Streaming Expression. This expression performs a breadth first
+  graph traversal to find the shortest path(s) in an unweighted, directed graph stored in a 
+  SolrCloud collection. (Joel Bernstein)
+
+
 Bug Fixes
 ----------------------
+
+* SOLR-8857: HdfsUpdateLog does not use configured or new default number of version buckets and is
+  hard coded to 256. (Mark Miller, yonik, Gregory Chanan)
+
+* SOLR-8855: The HDFS BlockDirectory should not clean up it's cache on shutdown. (Mark Miller)
+
+* SOLR-8902: Make sure ReturnFields only returns the requested fields from (fl=) evn when 
+  DocumentTransformers ask for getExtraRequestFields()  (ryan)
 
 Optimizations
 ----------------------
@@ -61,6 +108,8 @@ Optimizations
 
 * SOLR-8745: Deprecate costly ZkStateReader.updateClusterState(), replace with a narrow
   forceUpdateCollection(collection) (Scott Blum via shalin)
+  
+* SOLR-8856: Do not cache merge or 'read once' contexts in the hdfs block cache. (Mark Miller, Mike Drob)
 
 Other Changes
 ----------------------
@@ -75,6 +124,11 @@ Other Changes
 * SOLR-8842: security rules made more foolproof by asking the requesthandler  about the well known
   permission name.   The APIs are also modified to ue 'index' as the unique identifier instead of name.
   Name is an optional attribute   now and only to be used when specifying well-known permissions (noble)
+
+* SOLR-5616: Simplifies grouping code to use ResponseBuilder.needDocList() to determine if it needs to
+  generate a doc list for grouped results. (Steven Bower, Keith Laban, Dennis Gove)
+
+* SOLR-8869: Optionally disable printing field cache entries in SolrFieldCacheMBean (Gregory Chanan)
 
 ==================  6.0.0 ==================
 
@@ -150,6 +204,13 @@ Upgrading from Solr 5.x
   fact that docValues do not currently preserve order, means that users should set useDocValuesAsStored="false"
   to prevent future optizations from using the column-stored values over the row-stored values when
   fields have both stored="true" and docValues="true".
+
+* Formatted date-times from Solr have some differences. If the year is more than 4 digits, there is a leading '+'.
+  When there is a non-zero number of milliseconds, it is padded with zeros to 3 digits. Negative year (BC) dates are
+  now possible.  Parsing: It is now an error to supply a portion of the date out of its, range, like 67 seconds.
+
+* SolrJ no longer includes DateUtil. If for some reason you need to format or parse dates, simply use Instant.format()
+  and Instant.parse().
 
 Detailed Change List
 ----------------------
@@ -279,8 +340,9 @@ Bug Fixes
   
 * SOLR-8656: PeerSync should use same nUpdates everywhere. (Ramsey Haddad via Mark Miller)
 
-* SOLR-8697: Scope ZK election nodes by session to prevent elections from interfering with each other
-  and other small LeaderElector improvements. (Scott Blum via Mark Miller)
+* SOLR-8697, SOLR-8837: Scope ZK election nodes by session to prevent elections from interfering with each other
+  and other small LeaderElector improvements. (Scott Blum via Mark Miller, Alan
+  Woodward)
 
 * SOLR-8599: After a failed connection during construction of SolrZkClient attempt to retry until a connection
   can be made. (Keith Laban, Dennis Gove)
@@ -339,6 +401,15 @@ Bug Fixes
   numeric field.  For more complex functions, FunctionValues.exists() must also return true
   for the document to match.  (yonik)
 
+* SOLR-8886: Fix TrieField.toObject(IndexableField) to work for field with docValues
+  enabled. (yonik)
+
+* SOLR-8891: Fix StrField.toObject and toExternal to work with docValue IndexableField
+  instances. (yonik)
+
+* SOLR-8865: Real-time get sometimes fails to retrieve stored fields from docValues.
+  (Ishan Chattopadhyaya, yonik)
+
 Optimizations
 ----------------------
 * SOLR-7876: Speed up queries and operations that use many terms when timeAllowed has not been
@@ -362,6 +433,9 @@ Optimizations
   (Mark Miller)
 
 * SOLR-8720: ZkController#publishAndWaitForDownStates should use #publishNodeAsDown. (Mark Miller)
+
+* SOLR-8082: Can't query against negative float or double values when indexed="false"
+  docValues="true" multiValued="false".  (hossman, Ishan Chattopadhyaya, yonik, Steve Rowe)
 
 Other Changes
 ----------------------
@@ -470,6 +544,19 @@ Other Changes
 * SOLR-8740: docValues are now enabled by default for most non-text (string, date, and numeric) fields
   in the schema templates. (yonik)
 
+* SOLR-8819: Implement DatabaseMetaDataImpl getTables() and fix getSchemas(). (Trey Cahill,
+  Joel Bernstein, Kevin Risden)
+
+* SOLR-8810: Implement Connection.setReadOnly, Statement.set/getFetchSize, 
+  ResultSet.getType (Kevin Risden)
+
+* SOLR-8904: All dates are formatted via Instant.toString() (ISO-8601); see Solr upgrade notes for differences. Will
+  now parse (and format) dates with a leading '+' or '-' (BC dates or dates > 4 digit year.
+  [value] and ms() and contrib/analytics now parse with date math. (David Smiley)
+
+* SOLR-8904: DateUtil in SolrJ moved to the extraction contrib as ExtractionDateUtil.  Obsolete methods were removed.
+  (David Smiley)
+
 ==================  5.5.1 ==================
 
 Bug Fixes
@@ -489,6 +576,9 @@ Bug Fixes
   file if the file no longer exists (for example, if a commit happened and the IndexReader
   hasn't refreshed yet). In this case the reported size of the file is -1.
   (Shai Erera, Alexey Serba, Richard Coggins)
+
+* SOLR-8870: AngularJS Query tab no longer URL-encodes the /select part of the request, fixing possible 404 issue
+  when Solr is behind a proxy. Also, now supports old-style &qt param when handler not prefixed with "/" (janhoy)
 
 ======================= 5.5.0 =======================
 

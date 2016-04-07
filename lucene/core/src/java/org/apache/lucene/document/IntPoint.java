@@ -81,10 +81,10 @@ public final class IntPoint extends Field {
 
   private static BytesRef pack(int... point) {
     if (point == null) {
-      throw new IllegalArgumentException("point cannot be null");
+      throw new IllegalArgumentException("point must not be null");
     }
     if (point.length == 0) {
-      throw new IllegalArgumentException("point cannot be 0 dimensions");
+      throw new IllegalArgumentException("point must not be 0 dimensions");
     }
     byte[] packed = new byte[point.length * Integer.BYTES];
     
@@ -124,16 +124,6 @@ public final class IntPoint extends Field {
 
     result.append('>');
     return result.toString();
-  }
-
-  /** Encode n-dimensional integer values into binary encoding */
-  private static byte[][] encode(int value[]) {
-    byte[][] encoded = new byte[value.length][];
-    for (int i = 0; i < value.length; i++) {
-      encoded[i] = new byte[Integer.BYTES];
-      encodeDimension(value[i], encoded[i], 0);
-    }
-    return encoded;
   }
   
   // public helper methods (e.g. for queries)
@@ -205,7 +195,7 @@ public final class IntPoint extends Field {
    */
   public static Query newRangeQuery(String field, int[] lowerValue, int[] upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
-    return new PointRangeQuery(field, encode(lowerValue), encode(upperValue)) {
+    return new PointRangeQuery(field, pack(lowerValue).bytes, pack(upperValue).bytes, lowerValue.length) {
       @Override
       protected String toString(int dimension, byte[] value) {
         return Integer.toString(decodeDimension(value, 0));

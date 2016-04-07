@@ -19,6 +19,8 @@ package org.apache.solr.cloud;
 import java.io.File;
 import java.lang.invoke.MethodHandles;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -46,7 +48,7 @@ import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.SimpleOrderedMap;
-
+import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 
@@ -87,14 +89,24 @@ public class TestCloudDeleteByQuery extends SolrCloudTestCase {
   /** id field doc routing prefix for shard2 */
   private static final String S_TWO_PRE = "XYZ!";
   
+  @AfterClass
+  private static void afterClass() throws Exception {
+    CLOUD_CLIENT.close(); CLOUD_CLIENT = null;
+    S_ONE_LEADER_CLIENT.close(); S_ONE_LEADER_CLIENT = null;
+    S_TWO_LEADER_CLIENT.close(); S_TWO_LEADER_CLIENT = null;
+    S_ONE_NON_LEADER_CLIENT.close(); S_ONE_NON_LEADER_CLIENT = null;
+    S_TWO_NON_LEADER_CLIENT.close(); S_TWO_NON_LEADER_CLIENT = null;
+    NO_COLLECTION_CLIENT.close(); NO_COLLECTION_CLIENT = null;
+  }
+  
   @BeforeClass
   private static void createMiniSolrCloudCluster() throws Exception {
     
     final String configName = "solrCloudCollectionConfig";
-    File configDir = new File(TEST_HOME() + File.separator + "collection1" + File.separator + "conf");
+    final Path configDir = Paths.get(TEST_HOME(), "collection1", "conf");
     
     configureCluster(NUM_SERVERS)
-      .addConfig(configName, configDir.toPath())
+      .addConfig(configName, configDir)
       .configure();
     
     Map<String, String> collectionProperties = new HashMap<>();

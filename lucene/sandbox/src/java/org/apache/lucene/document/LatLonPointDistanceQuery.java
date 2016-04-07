@@ -18,6 +18,7 @@ package org.apache.lucene.document;
 
 import java.io.IOException;
 
+import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
@@ -35,13 +36,12 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.spatial.util.GeoDistanceUtils;
-import org.apache.lucene.spatial.util.GeoRect;
-import org.apache.lucene.spatial.util.GeoUtils;
+import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
+import org.apache.lucene.util.SloppyMath;
 import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.StringHelper;
 
@@ -56,17 +56,13 @@ final class LatLonPointDistanceQuery extends Query {
 
   public LatLonPointDistanceQuery(String field, double latitude, double longitude, double radiusMeters) {
     if (field == null) {
-      throw new IllegalArgumentException("field cannot be null");
+      throw new IllegalArgumentException("field must not be null");
     }
     if (Double.isFinite(radiusMeters) == false || radiusMeters < 0) {
       throw new IllegalArgumentException("radiusMeters: '" + radiusMeters + "' is invalid");
     }
-    if (GeoUtils.isValidLat(latitude) == false) {
-      throw new IllegalArgumentException("latitude: '" + latitude + "' is invalid");
-    }
-    if (GeoUtils.isValidLon(longitude) == false) {
-      throw new IllegalArgumentException("longitude: '" + longitude + "' is invalid");
-    }
+    GeoUtils.checkLatitude(latitude);
+    GeoUtils.checkLongitude(longitude);
     this.field = field;
     this.latitude = latitude;
     this.longitude = longitude;
@@ -75,7 +71,7 @@ final class LatLonPointDistanceQuery extends Query {
 
   @Override
   public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-    GeoRect box = GeoUtils.circleToBBox(longitude, latitude, radiusMeters);
+    Rectangle box = Rectangle.fromPointDistance(latitude, longitude, radiusMeters);
     // create bounding box(es) for the distance range
     // these are pre-encoded with LatLonPoint's encoding
     final byte minLat[] = new byte[Integer.BYTES];
@@ -104,14 +100,15 @@ final class LatLonPointDistanceQuery extends Query {
 
     // compute a maximum partial haversin: unless our box is crazy, we can use this bound
     // to reject edge cases faster in matches()
-    final double minPartialDistance;
+    final double maxPartialDistance;
     if (box.maxLon - longitude < 90 && longitude - box.minLon < 90) {
-      minPartialDistance = Math.max(LatLonPointDistanceComparator.haversin1(latitude, longitude, latitude, box.maxLon),
-                                    LatLonPointDistanceComparator.haversin1(latitude, longitude, box.maxLat, longitude));
-      assert LatLonPointDistanceComparator.haversin2(minPartialDistance) >= radiusMeters;
+      maxPartialDistance = Math.max(SloppyMath.haversinSortKey(latitude, longitude, latitude, box.maxLon),
+                                    SloppyMath.haversinSortKey(latitude, longitude, box.maxLat, longitude));
     } else {
-      minPartialDistance = Double.POSITIVE_INFINITY;
+      maxPartialDistance = Double.POSITIVE_INFINITY;
     }
+
+    final double axisLat = Rectangle.axisLat(latitude, radiusMeters);
 
     return new ConstantScoreWeight(this) {
 
@@ -176,8 +173,9 @@ final class LatLonPointDistanceQuery extends Query {
                            
                            // algorithm: we create a bounding box (two bounding boxes if we cross the dateline).
                            // 1. check our bounding box(es) first. if the subtree is entirely outside of those, bail.
-                           // 2. see if the subtree is fully contained. if the subtree is enormous along the x axis, wrapping half way around the world, etc: then this can't work, just go to step 3.
-                           // 3. recurse naively.
+                           // 2. check if the subtree is disjoint. it may cross the bounding box but not intersect with circle
+                           // 3. see if the subtree is fully contained. if the subtree is enormous along the x axis, wrapping half way around the world, etc: then this can't work, just go to step 3.
+                           // 4. recurse naively (subtrees crossing over circle edge)
                            @Override
                            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
                              if (StringHelper.compare(Integer.BYTES, minPackedValue, 0, maxLat, 0) > 0 ||
@@ -198,11 +196,22 @@ final class LatLonPointDistanceQuery extends Query {
                              double latMax = LatLonPoint.decodeLatitude(maxPackedValue, 0);
                              double lonMax = LatLonPoint.decodeLongitude(maxPackedValue, Integer.BYTES);
 
+                             if ((longitude < lonMin || longitude > lonMax) && (axisLat+ Rectangle.AXISLAT_ERROR < latMin || axisLat- Rectangle.AXISLAT_ERROR > latMax)) {
+                               // circle not fully inside / crossing axis
+                               if (SloppyMath.haversinMeters(latitude, longitude, latMin, lonMin) > radiusMeters &&
+                                   SloppyMath.haversinMeters(latitude, longitude, latMin, lonMax) > radiusMeters &&
+                                   SloppyMath.haversinMeters(latitude, longitude, latMax, lonMin) > radiusMeters &&
+                                   SloppyMath.haversinMeters(latitude, longitude, latMax, lonMax) > radiusMeters) {
+                                 // no points inside
+                                 return Relation.CELL_OUTSIDE_QUERY;
+                               }
+                             }
+
                              if (lonMax - longitude < 90 && longitude - lonMin < 90 &&
-                                 GeoDistanceUtils.haversin(latitude, longitude, latMin, lonMin) <= radiusMeters &&
-                                 GeoDistanceUtils.haversin(latitude, longitude, latMin, lonMax) <= radiusMeters &&
-                                 GeoDistanceUtils.haversin(latitude, longitude, latMax, lonMin) <= radiusMeters &&
-                                 GeoDistanceUtils.haversin(latitude, longitude, latMax, lonMax) <= radiusMeters) {
+                                 SloppyMath.haversinMeters(latitude, longitude, latMin, lonMin) <= radiusMeters &&
+                                 SloppyMath.haversinMeters(latitude, longitude, latMin, lonMax) <= radiusMeters &&
+                                 SloppyMath.haversinMeters(latitude, longitude, latMax, lonMin) <= radiusMeters &&
+                                 SloppyMath.haversinMeters(latitude, longitude, latMax, lonMax) <= radiusMeters) {
                                // we are fully enclosed, collect everything within this subtree
                                return Relation.CELL_INSIDE_QUERY;
                              } else {
@@ -235,13 +244,13 @@ final class LatLonPointDistanceQuery extends Query {
                 double docLongitude = LatLonPoint.decodeLongitude((int)(encoded & 0xFFFFFFFF));
 
                 // first check the partial distance, if its more than that, it can't be <= radiusMeters
-                double h1 = LatLonPointDistanceComparator.haversin1(latitude, longitude, docLatitude, docLongitude);
-                if (h1 > minPartialDistance) {
+                double h1 = SloppyMath.haversinSortKey(latitude, longitude, docLatitude, docLongitude);
+                if (h1 > maxPartialDistance) {
                   continue;
                 }
 
                 // fully confirm with part 2:
-                if (LatLonPointDistanceComparator.haversin2(h1) <= radiusMeters) {
+                if (SloppyMath.haversinMeters(h1) <= radiusMeters) {
                   return true;
                 }
               }
@@ -296,7 +305,7 @@ final class LatLonPointDistanceQuery extends Query {
     if (!super.equals(obj)) return false;
     if (getClass() != obj.getClass()) return false;
     LatLonPointDistanceQuery other = (LatLonPointDistanceQuery) obj;
-    if (!field.equals(other.field)) return false;
+    if (field.equals(other.field) == false) return false;
     if (Double.doubleToLongBits(latitude) != Double.doubleToLongBits(other.latitude)) return false;
     if (Double.doubleToLongBits(longitude) != Double.doubleToLongBits(other.longitude)) return false;
     if (Double.doubleToLongBits(radiusMeters) != Double.doubleToLongBits(other.radiusMeters)) return false;

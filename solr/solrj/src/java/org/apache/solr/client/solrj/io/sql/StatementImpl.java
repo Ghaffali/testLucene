@@ -26,7 +26,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Random;
@@ -76,10 +75,10 @@ class StatementImpl implements Statement {
     try {
       ZkStateReader zkStateReader = this.connection.getClient().getZkStateReader();
       ClusterState clusterState = zkStateReader.getClusterState();
-      Collection<Slice> slices = clusterState.getActiveSlices(this.connection.getSchema());
+      Collection<Slice> slices = clusterState.getActiveSlices(this.connection.getCollection());
 
       if(slices == null) {
-        throw new Exception("Collection not found:"+this.connection.getSchema());
+        throw new Exception("Collection not found:"+this.connection.getCollection());
       }
 
       List<Replica> shuffler = new ArrayList<>();
@@ -240,12 +239,12 @@ class StatementImpl implements Statement {
 
   @Override
   public void setFetchSize(int rows) throws SQLException {
-    throw new UnsupportedOperationException();
+
   }
 
   @Override
   public int getFetchSize() throws SQLException {
-    throw new UnsupportedOperationException();
+    return 0;
   }
 
   @Override

@@ -37,7 +37,18 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Properties;
 import java.util.logging.Level;
 
 import com.carrotsearch.randomizedtesting.RandomizedContext;
@@ -55,7 +66,6 @@ import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.QuickPatchThreadsFilter;
 import org.apache.lucene.util.TestUtil;
 import org.apache.solr.client.solrj.embedded.JettyConfig;
-import org.apache.solr.client.solrj.impl.HttpClientConfigurer;
 import org.apache.solr.client.solrj.impl.HttpClientUtil;
 import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.cloud.IpTables;
@@ -86,7 +96,6 @@ import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.servlet.DirectSolrConnection;
 import org.apache.solr.util.AbstractSolrTestCase;
-import org.apache.solr.util.DateFormatUtil;
 import org.apache.solr.util.RefCounted;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
 import org.apache.solr.util.SSLTestConfig;
@@ -216,7 +225,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     
     sslConfig = buildSSLConfig();
     //will use ssl specific or default depending on sslConfig
-    HttpClientUtil.setConfigurer(sslConfig.getHttpClientConfigurer());
+    HttpClientUtil.setHttpClientBuilder(sslConfig.getHttpClientBuilder());
     if(isSSLMode()) {
       // SolrCloud tests should usually clear this
       System.setProperty("urlScheme", "https");
@@ -259,12 +268,11 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
       System.clearProperty("useCompoundFile");
       System.clearProperty("urlScheme");
       
-      if (isSSLMode()) {
-        HttpClientUtil.setConfigurer(new HttpClientConfigurer());
-      }
+      HttpClientUtil.resetHttpClientBuilder();
 
       // clean up static
       sslConfig = null;
+      testSolrHome = null;
     }
     
     IpTables.unblockAllPorts();
@@ -2035,7 +2043,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
    * @see #randomSkewedDate
    */
   public static String randomDate() {
-    return DateFormatUtil.formatExternal(new Date(random().nextLong()));
+    return Instant.ofEpochMilli(random().nextLong()).toString();
   }
 
   /** 

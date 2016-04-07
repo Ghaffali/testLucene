@@ -81,10 +81,10 @@ public final class LongPoint extends Field {
 
   private static BytesRef pack(long... point) {
     if (point == null) {
-      throw new IllegalArgumentException("point cannot be null");
+      throw new IllegalArgumentException("point must not be null");
     }
     if (point.length == 0) {
-      throw new IllegalArgumentException("point cannot be 0 dimensions");
+      throw new IllegalArgumentException("point must not be 0 dimensions");
     }
     byte[] packed = new byte[point.length * Long.BYTES];
     
@@ -124,16 +124,6 @@ public final class LongPoint extends Field {
 
     result.append('>');
     return result.toString();
-  }
-  
-  /** Encode n-dimensional long values into binary encoding */
-  private static byte[][] encode(long value[]) {
-    byte[][] encoded = new byte[value.length][];
-    for (int i = 0; i < value.length; i++) {
-      encoded[i] = new byte[Long.BYTES];
-      encodeDimension(value[i], encoded[i], 0);
-    }
-    return encoded;
   }
   
   // public helper methods (e.g. for queries)
@@ -205,7 +195,7 @@ public final class LongPoint extends Field {
    */
   public static Query newRangeQuery(String field, long[] lowerValue, long[] upperValue) {
     PointRangeQuery.checkArgs(field, lowerValue, upperValue);
-    return new PointRangeQuery(field, encode(lowerValue), encode(upperValue)) {
+    return new PointRangeQuery(field, pack(lowerValue).bytes, pack(upperValue).bytes, lowerValue.length) {
       @Override
       protected String toString(int dimension, byte[] value) {
         return Long.toString(decodeDimension(value, 0));
