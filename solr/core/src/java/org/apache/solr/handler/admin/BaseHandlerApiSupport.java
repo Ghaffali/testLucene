@@ -120,7 +120,7 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
   private static void wrapParams(final SolrQueryRequest req, final CommandOperation co, final ApiCommand cmd, final boolean useRequestParams) {
     final Map<String, String> pathValues = req.getPathValues();
     final Map<String, Object> map = co == null || !(co.getCommandData() instanceof Map) ?
-        Collections.emptyMap() : co.getDataMap();
+        Collections.singletonMap("", co.getCommandData()) : co.getDataMap();
     final SolrParams origParams = req.getParams();
 
     req.setParams(

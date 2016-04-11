@@ -87,6 +87,16 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{collection: collName , split.key : id12345 , operation : splitshard, property.prop1:prop1Val, property.prop2: prop2Val}"
     );
 
+    compareOutput(apiBag, "/collections/collName/shards/shard1/replica1", POST,
+        "{set-property : {name:propA , value: VALA}}", null,
+        "{collection: collName, shard: shard1, replica : replica1 , property : propA , operation : addreplicaprop, property.value : 'VALA'}"
+    );
+
+    compareOutput(apiBag, "/collections/collName/shards/shard1/replica1", POST,
+        "{delete-property : propA }", null,
+        "{collection: collName, shard: shard1, replica : replica1 , property : propA , operation : deletereplicaprop}"
+    );
+
 
     System.out.println();
 
