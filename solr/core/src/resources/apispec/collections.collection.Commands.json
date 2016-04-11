@@ -11,6 +11,19 @@
   },
   "commands": {
     "modify": "collections.collection.Commands.modify",
-    "reload": "collections.collection.Commands.reload"
+    "reload": "collections.collection.Commands.reload",
+    "rebalance-leaders" :{
+      "type":"object",
+      "properties":{
+        "maxAtOnce":{
+          "type":"number",
+          "description":"The maximum number of reassignments to have queue up at once. Values <=0 are use the default value Integer.MAX_VALUE. When this number is reached, the process waits for one or more leaders to be successfully assigned before adding more to the queue."
+        },
+        "maxWaitSeconds":{
+          "type":"number",
+          "description":"This is the timeout value when waiting for leaders to be reassigned"
+        }
+      }
+    }
   }
 }

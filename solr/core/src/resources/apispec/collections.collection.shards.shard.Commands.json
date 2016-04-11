@@ -13,9 +13,33 @@
   "commands": {
     "add-replica": {
       "type" : "object",
+      "properties": {
+        "_route_": {
+          "type": "string",
+          "description": "If the exact shard name is not known, users may pass the _route_ value and the system would identify the name of the shard. Ignored if the shard param is also specified"
+        },
+        "node": {
+          "type": "string",
+          "description": "The name of the node where the replica should be created"
+        },
+        "instanceDir": {
+          "type": "string",
+          "description": "The instanceDir for the core that will be created"
+        },
+        "dataDir": {
+          "type": "string",
+          "description": "The directory in which the core should be created"
+        },
+        "coreProperties":{
+          "type":"object",
+          "additionalProperties":true
+        }
+      },
       "additionalProperties": true
     },
     "force-leader": {
+      "description":"In the unlikely event of a shard losing its leader, this command can be invoked to force the election of a new leader",
+      "documentation" :"https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-ForceLeader",
       "type" : "object",
       "additionalProperties": true
     }

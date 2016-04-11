@@ -24,7 +24,6 @@
     "update": {
       "type":"object",
       "description": "update one or more configsets",
-      "type": "object",
       "additionalProperties": true
     }
   }

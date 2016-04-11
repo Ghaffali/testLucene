@@ -10,9 +10,31 @@
     ]
   },
   "commands": {
-    "set": {
+    "set-property": {
+      "description": "Assign an arbitrary property to a particular replica and give it the value specified. If the property already exists, it will be overwritten with the new value",
       "type":"object",
-      "additionalProperties": true
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The property name"
+        },
+        "value": {
+          "type": "string",
+          "description": "The property name"
+        },
+        "shardUnique": {
+          "type": "boolean",
+          "description": "If true, then setting this property in one replica will remove the property from all other replicas in that shard"
+        }
+      }
+    },
+    "delete-property": {
+      "description": "Deletes an arbitrary property from a particular replica",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+
     }
   }
 }

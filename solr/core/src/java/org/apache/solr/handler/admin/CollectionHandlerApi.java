@@ -98,6 +98,10 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
             "target.collection", "target",
             "forward.timeout", "forwardTimeout"
         )),
+    REBALANCELEADERS(EndPoint.PER_COLLECTION,
+        POST,
+        REBALANCELEADERS_OP,
+        "rebalance-leaders", null),
     CREATE_ALIAS(EndPoint.COLLECTIONS_COMMANDS,
         POST,
         CREATEALIAS_OP,
@@ -113,7 +117,8 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         POST,
         CREATESHARD_OP,
         "create",
-        null),
+        null,
+        ImmutableMap.of("coreProperties.", "property.")),
 
     SPLIT_SHARD(EndPoint.PER_COLLECTION_SHARDS_COMMANDS,
         POST,
@@ -130,7 +135,8 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         POST,
         ADDREPLICA_OP,
         "create-replica",
-        null),
+        null,
+        ImmutableMap.of("coreProperties.", "property.")),
 
     DELETE_REPLICA(EndPoint.PER_COLLECTION_PER_SHARD_PER_REPLICA_DELETE,
         DELETE,
@@ -140,7 +146,17 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         POST,
         SYNCSHARD_OP,
         "synch-shard",
-        null),;
+        null),
+    ADDREPLICAPROP(EndPoint.PER_COLLECTION_PER_SHARD_PER_REPLICA_COMMANDS,
+        POST,
+        ADDREPLICAPROP_OP,
+        "set-property",
+        ImmutableMap.of("property", "name", "property.value", "value")),
+    DELETEREPLICAPROP(EndPoint.PER_COLLECTION_PER_SHARD_PER_REPLICA_COMMANDS,
+        POST,
+        DELETEREPLICAPROP_OP,
+        "delete-property",
+        ImmutableMap.of("property", ""));
     public final String commandName;
     public final EndPoint endPoint;
     public final SolrRequest.METHOD method;

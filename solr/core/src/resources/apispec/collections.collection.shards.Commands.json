@@ -30,12 +30,24 @@
           "type":"object",
           "additionalProperties":true
         }
-      },
-      "additionalProperties": true
+      }
     },
     "create": {
       "type":"object",
-      "additionalProperties":true
+      "properties": {
+        "createNodeSet": {
+          "description": "Allows defining the nodes to spread the new collection across",
+          "type": "string"
+        },
+        "shard": {
+          "description": "The name of the shard to be created",
+          "type": "string"
+        },
+        "coreProperties": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
     }
   }
 }
