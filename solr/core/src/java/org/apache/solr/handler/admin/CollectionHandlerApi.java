@@ -75,26 +75,8 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         CREATE_OP,
         CREATE_OP.action.toLower(),
         ImmutableMap.of(
-            OverseerCollectionMessageHandler.COLL_CONF, "config")) {
-      @Override
-      public Collection<String> getParamNames(CommandOperation op) {
-        Collection<String> names = super.getParamNames(op);
-        Collection<String> result = new ArrayList<>(names.size());
-        for (String paramName : names) {
-          if (paramName.startsWith("properties.")) {
-            result.add(paramName.replace("properties.", "property."));
-          } else {
-            result.add(paramName);
-          }
-        }
-        return result;
-      }
-
-      @Override
-      public String getParamSubstitute(String param) {
-        return param.startsWith("property.") ? param.replace("property.", "properties.") : super.getParamSubstitute(param);
-      }
-    },
+            OverseerCollectionMessageHandler.COLL_CONF, "config"),
+        ImmutableMap.of("properties.", "property.")),
 
     DELETE_COLL(EndPoint.PER_COLLECTION_DELETE,
         DELETE,
@@ -133,12 +115,13 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         "create",
         null),
 
-    SPLIT_SHARD(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
+    SPLIT_SHARD(EndPoint.PER_COLLECTION_SHARDS_COMMANDS,
         POST,
         SPLITSHARD_OP,
         "split",
         ImmutableMap.of(
-            "split.key", "splitKey")),
+            "split.key", "splitKey"),
+        ImmutableMap.of("coreProperties.", "property.")),
     DELETE_SHARD(EndPoint.PER_COLLECTION_PER_SHARD_DELETE,
         DELETE,
         DELETESHARD_OP),
@@ -163,6 +146,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     public final SolrRequest.METHOD method;
     public final CollectionOperation target;
     public final Map<String, String> paramstoAttr;
+    public final Map<String, String> prefixSubStitutes;
 
     public SolrRequest.METHOD getMethod() {
       return method;
@@ -175,13 +159,20 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
     Cmd(EndPoint endPoint, SolrRequest.METHOD method, CollectionOperation target,
         String commandName, Map<String, String> paramstoAttr) {
+      this(endPoint, method, target, commandName, paramstoAttr, Collections.EMPTY_MAP);
+
+    }
+
+    Cmd(EndPoint endPoint, SolrRequest.METHOD method, CollectionOperation target,
+        String commandName, Map<String, String> paramstoAttr, Map<String, String> prefixSubStitutes) {
       this.commandName = commandName;
       this.endPoint = endPoint;
       this.method = method;
       this.target = target;
       this.paramstoAttr = paramstoAttr == null ? Collections.EMPTY_MAP : paramstoAttr;
-    }
+      this.prefixSubStitutes = prefixSubStitutes;
 
+    }
 
     @Override
     public String getName() {
@@ -211,14 +202,34 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
     @Override
     public Collection<String> getParamNames(CommandOperation op) {
-      return BaseHandlerApiSupport.getParamNames(op, this);
+      Collection<String> paramNames = BaseHandlerApiSupport.getParamNames(op, this);
+      if (!prefixSubStitutes.isEmpty()) {
+        Collection<String> result = new ArrayList<>(paramNames.size());
+        for (Map.Entry<String, String> e : prefixSubStitutes.entrySet()) {
+          for (String paramName : paramNames) {
+            if (paramName.startsWith(e.getKey())) {
+              result.add(paramName.replace(e.getKey(), e.getValue()));
+            } else {
+              result.add(paramName);
+            }
+          }
+          paramNames = result;
+        }
+      }
+
+      return paramNames;
     }
 
     @Override
     public String getParamSubstitute(String param) {
-      return paramstoAttr.containsKey(param) ? paramstoAttr.get(param) : param;
+      String s = paramstoAttr.containsKey(param) ? paramstoAttr.get(param) : param;
+      if (prefixSubStitutes != null) {
+        for (Map.Entry<String, String> e : prefixSubStitutes.entrySet()) {
+          if (s.startsWith(e.getValue())) return s.replace(e.getValue(), e.getKey());
+        }
+      }
+      return s;
     }
-
 
   }
 

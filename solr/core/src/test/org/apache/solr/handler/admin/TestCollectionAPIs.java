@@ -19,6 +19,8 @@ package org.apache.solr.handler.admin;
 
 
 import java.io.StringReader;
+import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -39,29 +41,64 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.DELETE;
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.cloud.Overseer.QUEUE_OPERATION;
+import static org.apache.solr.common.util.Utils.fromJSONString;
 
 public class TestCollectionAPIs extends SolrTestCaseJ4 {
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public void testCreate() throws Exception{
+
+  public void testCommands() throws Exception {
     MockCollectionsHandler collectionsHandler = new MockCollectionsHandler();
     ApiBag apiBag = new ApiBag();
     Collection<Api> apis = collectionsHandler.getApis();
     for (Api api : apis) apiBag.register(api, Collections.EMPTY_MAP);
     //test a simple create collection call
-    Pair<SolrQueryRequest,SolrQueryResponse> ctx = makeCall(apiBag, "/collections", SolrRequest.METHOD.POST,
-        "{create:{name:'newcoll', config:'schemaless', numShards:2, replicationFactor:2 }}", null);
-    assertMapEqual((Map) Utils.fromJSONString("{name:newcoll, fromApi:'true', replicationFactor:'2', collection.configName:schemaless, numShards:'2', stateFormat:'2', operation:create}"),
-        (ZkNodeProps) ctx.getKey().getContext().get(ZkNodeProps.class.getName()));
+    ZkNodeProps output = compareOutput(apiBag, "/collections", POST,
+        "{create:{name:'newcoll', config:'schemaless', numShards:2, replicationFactor:2 }}", null,
+        "{name:newcoll, fromApi:'true', replicationFactor:'2', collection.configName:schemaless, numShards:'2', stateFormat:'2', operation:create}");
 
     //test a create collection with custom properties
-    ctx = makeCall(apiBag, "/collections", SolrRequest.METHOD.POST,
-        "{create:{name:'newcoll', config:'schemaless', numShards:2, replicationFactor:2, properties:{prop1:'prop1val', prop2: prop2val} }}", null);
+    compareOutput(apiBag, "/collections", POST,
+        "{create:{name:'newcoll', config:'schemaless', numShards:2, replicationFactor:2, properties:{prop1:'prop1val', prop2: prop2val} }}", null,
+        "{name:newcoll, fromApi:'true', replicationFactor:'2', collection.configName:schemaless, numShards:'2', stateFormat:'2', operation:create, property.prop1:prop1val, property.prop2:prop2val}");
 
-    assertMapEqual(
-        (Map) Utils.fromJSONString("{name:newcoll, fromApi:'true', replicationFactor:'2', collection.configName:schemaless, numShards:'2', stateFormat:'2', operation:create, property.prop1:prop1val, property.prop2:prop2val}"),
-        (ZkNodeProps) ctx.getKey().getContext().get(ZkNodeProps.class.getName()));
+
+    compareOutput(apiBag, "/collections", POST,
+        "{create-alias:{name: aliasName , collections:[c1,c2] }}", null, "{operation : createalias, name: aliasName, collections:[c1,c2] }");
+    compareOutput(apiBag, "/collections/collName", POST, "{reload:{}}", null,
+        "{name:collName, operation :reload}");
+
+    compareOutput(apiBag, "/collections/collName", POST, "{reload:{}}", null,
+        "{name:collName, operation :reload}");
+
+    compareOutput(apiBag, "/collections/collName/shards", POST,
+        "{split:{shard:shard1, ranges: '0-1f4,1f5-3e8,3e9-5dc', coreProperties : {prop1:prop1Val, prop2:prop2Val} }}", null,
+        "{collection: collName , shard : shard1, ranges :'0-1f4,1f5-3e8,3e9-5dc', operation : splitshard, property.prop1:prop1Val, property.prop2: prop2Val}"
+    );
+
+    compareOutput(apiBag, "/collections/collName/shards", POST,
+        "{split:{ splitKey:id12345, coreProperties : {prop1:prop1Val, prop2:prop2Val} }}", null,
+        "{collection: collName , split.key : id12345 , operation : splitshard, property.prop1:prop1Val, property.prop2: prop2Val}"
+    );
+
+
+    System.out.println();
+
+  }
+
+  ZkNodeProps compareOutput(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
+                            final String payload, final CoreContainer cc, String expectedOutputMapJson) throws Exception {
+    Pair<SolrQueryRequest, SolrQueryResponse> ctx = makeCall(apiBag, path, method, payload, cc);
+    ZkNodeProps output = (ZkNodeProps) ctx.getKey().getContext().get(ZkNodeProps.class.getName());
+    Map expected = (Map) fromJSONString(expectedOutputMapJson);
+    assertMapEqual(expected, output);
+    return output;
 
   }
 
@@ -74,7 +111,13 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>())){
       @Override
       public List<CommandOperation> getCommands(boolean validateInput) {
+        if (payload == null) return Collections.emptyList();
         return ApiBag.getCommandOperations(new StringReader(payload), api.getCommandSchema(),true);
+      }
+
+      @Override
+      public Map<String, String> getPathValues() {
+        return parts;
       }
 
       @Override
@@ -87,11 +130,20 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
   }
 
   private void assertMapEqual(Map expected, ZkNodeProps actual) {
-    assertEquals(expected.size(), actual.getProperties().size());
+    assertEquals(errorMessage(expected, actual), expected.size(), actual.getProperties().size());
     for (Object o : expected.entrySet()) {
       Map.Entry e = (Map.Entry) o;
-      assertEquals(e.getValue(), actual.get((String) e.getKey()));
+      Object actualVal = actual.get((String) e.getKey());
+      if (actualVal instanceof String[]) {
+        actualVal = Arrays.asList((String[]) actualVal);
+      }
+      assertEquals(errorMessage(expected, actual), e.getValue(), actualVal);
     }
+  }
+
+  private String errorMessage(Map expected, ZkNodeProps actual) {
+    return "expected: " + Utils.toJSONString(expected) + "\nactual: " + Utils.toJSONString(actual);
+
   }
 
   static class MockCollectionsHandler extends CollectionsHandler {

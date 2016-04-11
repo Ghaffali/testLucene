@@ -1074,7 +1074,7 @@ public class HttpSolrCall {
   public List<CommandOperation> getCommands(boolean validateInput) {
     if (parsedCommands == null) {
       Iterable<ContentStream> contentStreams = solrReq.getContentStreams();
-      if (contentStreams == null) throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "No content stream");
+      if (contentStreams == null) parsedCommands = Collections.EMPTY_LIST;
       for (ContentStream contentStream : contentStreams) {
         try {
           parsedCommands = ApiBag.getCommandOperations(contentStream.getReader(), getValidators(), validateInput);

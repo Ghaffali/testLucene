@@ -61,8 +61,6 @@ import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
-import org.apache.solr.common.util.Lookup;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.admin.CollectionsHandler;
@@ -334,7 +332,7 @@ public class CoreContainer {
         httpClientBuilder.setAuthSchemeRegistryProvider(new AuthSchemeRegistryProvider() {
           
           @Override
-          public Lookup<AuthSchemeProvider> getAuthSchemeRegistry() {
+          public org.apache.http.config.Lookup<AuthSchemeProvider> getAuthSchemeRegistry() {
             return builder.getAuthSchemeRegistryProvider().getAuthSchemeRegistry();
           }
         });

@@ -1,4 +1,9 @@
 {
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api2",
   "type" : "object",
-  "additionalProperties" : true
+  "properties":{
+    "async" : {
+      "type" : "string"
+    }
+  }
 }

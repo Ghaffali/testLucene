@@ -11,32 +11,12 @@
     ]
   },
   "commands": {
-    "split": {
-      "type" : "object",
-      "documentation":"https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api3",
-      "properties": {
-        "ranges" : {
-          "description" : "A comma-separated list of hash ranges in hexadecimal e.g. ranges=0-1f4,1f5-3e8,3e9-5dc",
-          "type":"string"
-        },
-        "splitKey":{
-          "description" : "The key to use for splitting the index",
-          "type":"string"
-        },
-        "coreProperties":{
-          "type":"object",
-          "additionalProperties":true
-        }
-      },
-      "additionalProperties": true
-    },
     "add-replica": {
       "type" : "object",
       "additionalProperties": true
     },
     "force-leader": {
       "type" : "object",
-
       "additionalProperties": true
     }
   }
