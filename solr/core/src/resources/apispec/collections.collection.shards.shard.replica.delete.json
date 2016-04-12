@@ -12,9 +12,23 @@
       "onlyIfDown": {
         "type": "boolean",
         "default": false,
-        "description": ""
+        "description": "When set to 'true' will not take any action if the replica is active. Default 'false"
+      },
+      "deleteIndex": {
+        "type": "boolean",
+        "default": false,
+        "description": "By default Solr will delete the index of the replica that is deleted. Set this to false to prevent the index directory from being deleted"
+      },
+      "deleteDataDir": {
+        "type": "boolean",
+        "default": false,
+        "description": "By default Solr will delete the dataDir of the replica that is deleted. Set this to false to prevent the data directory from being deleted"
+      },
+      "deleteInstanceDir": {
+        "type": "boolean",
+        "default": false,
+        "description": "By default Solr will delete the entire instanceDir of the replica that is deleted. Set this to false to prevent the instance directory from being deleted"
       }
     }
-
   }
 }

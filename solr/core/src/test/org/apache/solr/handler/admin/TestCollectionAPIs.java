@@ -32,12 +32,15 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.MapSolrParams;
+import org.apache.solr.common.params.MultiMapSolrParams;
+import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.Pair;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.servlet.SolrRequestParsers;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
@@ -59,7 +62,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     Collection<Api> apis = collectionsHandler.getApis();
     for (Api api : apis) apiBag.register(api, Collections.EMPTY_MAP);
     //test a simple create collection call
-    ZkNodeProps output = compareOutput(apiBag, "/collections", POST,
+    compareOutput(apiBag, "/collections", POST,
         "{create:{name:'newcoll', config:'schemaless', numShards:2, replicationFactor:2 }}", null,
         "{name:newcoll, fromApi:'true', replicationFactor:'2', collection.configName:schemaless, numShards:'2', stateFormat:'2', operation:create}");
 
@@ -71,15 +74,34 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
 
     compareOutput(apiBag, "/collections", POST,
         "{create-alias:{name: aliasName , collections:[c1,c2] }}", null, "{operation : createalias, name: aliasName, collections:[c1,c2] }");
-    compareOutput(apiBag, "/collections/collName", POST, "{reload:{}}", null,
+
+    compareOutput(apiBag, "/collections", POST,
+        "{delete-alias:aliasName}", null, "{operation : deletealias, name: aliasName}");
+
+    compareOutput(apiBag, "/collections/collName", POST,
+        "{reload:{}}", null,
         "{name:collName, operation :reload}");
 
-    compareOutput(apiBag, "/collections/collName", POST, "{reload:{}}", null,
-        "{name:collName, operation :reload}");
+    compareOutput(apiBag, "/collections/collName", DELETE,
+        null, null,
+        "{name:collName, operation :delete}");
+
+    compareOutput(apiBag, "/collections/collName/shards/shard1", DELETE,
+        null, null,
+        "{collection:collName, shard: shard1 , operation :deleteshard }");
+
+    compareOutput(apiBag, "/collections/collName/shards/shard1/replica1?deleteDataDir=true&onlyIfDown=true", DELETE,
+        null, null,
+        "{collection:collName, shard: shard1, replica :replica1 , deleteDataDir:'true', onlyIfDown: 'true', operation :deletereplica }");
 
     compareOutput(apiBag, "/collections/collName/shards", POST,
         "{split:{shard:shard1, ranges: '0-1f4,1f5-3e8,3e9-5dc', coreProperties : {prop1:prop1Val, prop2:prop2Val} }}", null,
         "{collection: collName , shard : shard1, ranges :'0-1f4,1f5-3e8,3e9-5dc', operation : splitshard, property.prop1:prop1Val, property.prop2: prop2Val}"
+    );
+
+    compareOutput(apiBag, "/collections/collName/shards", POST,
+        "{add-replica:{shard: shard1, node: 'localhost_8978' , coreProperties : {prop1:prop1Val, prop2:prop2Val} }}", null,
+        "{collection: collName , shard : shard1, node :'localhost_8978', operation : addreplica, property.prop1:prop1Val, property.prop2: prop2Val}"
     );
 
     compareOutput(apiBag, "/collections/collName/shards", POST,
@@ -97,6 +119,11 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{collection: collName, shard: shard1, replica : replica1 , property : propA , operation : deletereplicaprop}"
     );
 
+    compareOutput(apiBag, "/collections/collName", POST,
+        "{modify : {rule : 'replica:*,cores:<5', autoAddReplicas : false} }", null,
+        "{collection: collName, operation : modifycollection , autoAddReplicas : 'false', rule : [{replica: '*', cores : '<5' }]}"
+    );
+
 
     System.out.println();
 
@@ -112,13 +139,19 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
 
   }
 
-  public static Pair<SolrQueryRequest, SolrQueryResponse> makeCall(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
+  public static Pair<SolrQueryRequest, SolrQueryResponse> makeCall(final ApiBag apiBag, String path, final SolrRequest.METHOD method,
                                     final String payload, final CoreContainer cc) throws Exception {
+    SolrParams queryParams = new MultiMapSolrParams(Collections.EMPTY_MAP);
+    if (path.indexOf('?') > 0) {
+      String queryStr = path.substring(path.indexOf('?')+1);
+      path = path.substring(0, path.indexOf('?'));
+      queryParams = SolrRequestParsers.parseQueryString(queryStr);
+    }
     final HashMap<String, String> parts = new HashMap<>();
     Api api = apiBag.lookup(path, method.toString(), parts);
     if (api == null) throw new RuntimeException("No handler at path :" + path);
     SolrQueryResponse rsp = new SolrQueryResponse();
-    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>())){
+    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, queryParams){
       @Override
       public List<CommandOperation> getCommands(boolean validateInput) {
         if (payload == null) return Collections.emptyList();

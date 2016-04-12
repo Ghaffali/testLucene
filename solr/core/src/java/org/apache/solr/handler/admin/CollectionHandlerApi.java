@@ -89,6 +89,10 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         RELOAD_OP,
         RELOAD_OP.action.toLower(),
         ImmutableMap.of(NAME, "collection")),
+    MODIFYCOLLECTION(EndPoint.PER_COLLECTION,
+        POST,
+        MODIFYCOLLECTION_OP,
+        "modify",null),
 
     MIGRATE_DOCS(EndPoint.PER_COLLECTION,
         POST,
@@ -131,10 +135,10 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         DELETE,
         DELETESHARD_OP),
 
-    CREATE_REPLICA(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,
+    CREATE_REPLICA(EndPoint.PER_COLLECTION_SHARDS_COMMANDS,
         POST,
         ADDREPLICA_OP,
-        "create-replica",
+        "add-replica",
         null,
         ImmutableMap.of("coreProperties.", "property.")),
 

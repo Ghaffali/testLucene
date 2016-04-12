@@ -8,14 +8,14 @@
       "items": {
         "type": "string"
       },
-      "description": ""
+      "description": "Replica placement rules"
     },
     "snitch": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": ""
+      "description": "Details of the snitch provider"
     },
     "autoAddReplicas": {
       "type": "boolean",
@@ -23,7 +23,7 @@
     },
     "replicationFactor": {
       "type": "string",
-      "description": ""
+      "description": "The number of replicas to be created for each shard"
     }
   }
 }
