@@ -27,6 +27,7 @@ import java.util.Properties;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.SolrCore;
@@ -35,11 +36,14 @@ import org.apache.solr.api.ApiBag;
 import org.easymock.EasyMock;
 import org.easymock.IAnswer;
 
+import static org.apache.solr.common.util.Utils.fromJSONString;
+import static org.easymock.EasyMock.anyBoolean;
+import static org.easymock.EasyMock.anyObject;
 import static org.easymock.EasyMock.getCurrentArguments;
 
 public class TestCoreAdminApis extends SolrTestCaseJ4 {
 
-  public void testCreate() throws Exception {
+  public void testCalls() throws Exception {
     Map<String, Object[]> calls = new HashMap<>();
     CoreContainer mockCC = getCoreContainerMock(calls, new HashMap<>());
 
@@ -50,20 +54,53 @@ public class TestCoreAdminApis extends SolrTestCaseJ4 {
     }
     TestCollectionAPIs.makeCall(apiBag, "/cores", SolrRequest.METHOD.POST,
         "{create:{name: hello, instanceDir : someDir, schema: 'schema.xml'}}", mockCC);
-    Object[] create = calls.get("create");
-    assertEquals("hello" ,create[0]);
-    HashMap expected = new HashMap();
-    expected.put("schema", "schema.xml");
-    assertEquals(expected ,create[2]);
+    Object[] params = calls.get("create");
+    assertEquals("hello" ,params[0]);
+    assertEquals(fromJSONString("{schema : schema.xml}") ,params[2]);
 
+    TestCollectionAPIs.makeCall(apiBag, "/cores/core1", SolrRequest.METHOD.POST,
+        "{swap:{with: core2}}", mockCC);
+    params = calls.get("swap");
+    assertEquals("core1" ,params[0]);
+    assertEquals("core2" ,params[1]);
+
+    TestCollectionAPIs.makeCall(apiBag, "/cores/core1", SolrRequest.METHOD.POST,
+        "{rename:{to: core2}}", mockCC);
+    params = calls.get("swap");
+    assertEquals("core1" ,params[0]);
+    assertEquals("core2" ,params[1]);
+
+    TestCollectionAPIs.makeCall(apiBag, "/cores/core1", SolrRequest.METHOD.POST,
+        "{unload:{deleteIndex : true}}", mockCC);
+    params = calls.get("unload");
+    assertEquals("core1" ,params[0]);
+    assertEquals(Boolean.TRUE ,params[1]);
   }
 
   public static CoreContainer getCoreContainerMock(final Map<String, Object[]> in,Map<String,Object> out ) {
     CoreContainer mockCC = EasyMock.createMock(CoreContainer.class);
     EasyMock.reset(mockCC);
-    mockCC.create(EasyMock.anyObject(String.class), EasyMock.anyObject(Path.class ) ,EasyMock.anyObject(Map.class));
+    mockCC.create(anyObject(String.class), anyObject(Path.class) , anyObject(Map.class));
     EasyMock.expectLastCall().andAnswer(() -> {
       in.put("create", getCurrentArguments());
+      return null;
+    }).anyTimes();
+    mockCC.swap(anyObject(String.class), anyObject(String.class));
+    EasyMock.expectLastCall().andAnswer(() -> {
+      in.put("swap", getCurrentArguments());
+      return null;
+    }).anyTimes();
+
+    mockCC.rename(anyObject(String.class), anyObject(String.class));
+    EasyMock.expectLastCall().andAnswer(() -> {
+      in.put("rename", getCurrentArguments());
+      return null;
+    }).anyTimes();
+
+    mockCC.unload(anyObject(String.class), anyBoolean(),
+        anyBoolean(), anyBoolean());
+    EasyMock.expectLastCall().andAnswer(() -> {
+      in.put("unload", getCurrentArguments());
       return null;
     }).anyTimes();
 

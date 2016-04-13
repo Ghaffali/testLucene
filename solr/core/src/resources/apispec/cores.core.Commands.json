@@ -14,10 +14,6 @@
       "type":"object",
       "additionalProperties":true
     },
-    "unload": {
-      "type":"object",
-      "additionalProperties":true
-    },
     "swap": {
       "type":"object",
       "properties": {
@@ -30,6 +26,36 @@
         "with"
       ]
     },
+    "rename": {
+      "type": "object",
+      "properties": {
+        "to": {
+          "type": "string",
+          "description": "The new name"
+        }
+      },
+      "required": [
+        "to"
+      ]
+    },
+    "unload": {
+      "type": "object",
+      "properties": {
+        "deleteIndex": {
+          "type": "boolean",
+          "description": ""
+        },
+        "deleteDataDir": {
+          "type": "boolean",
+          "description": ""
+        },
+        "deleteInstanceDir": {
+          "type": "boolean",
+          "description": ""
+        }
+      }
+    },
+
     "merge-indexes": {
       "type":"object",
       "additionalProperties":true
@@ -37,7 +63,6 @@
     "request-recovery": {
       "type":"object",
       "additionalProperties":true
-
     },
     "split": "cores.core.Commands.split"
   }

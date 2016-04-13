@@ -130,6 +130,7 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
             Object vals = getParams0(param);
             if (vals == null) return null;
             if (vals instanceof String) return (String) vals;
+            if(vals instanceof Boolean || vals instanceof Number) return String.valueOf(vals);
             if (vals instanceof String[] && ((String[]) vals).length > 0) return ((String[]) vals)[0];
             return null;
           }
