@@ -28,16 +28,20 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.GenericSolrRequest;
 import org.apache.solr.client.solrj.response.CollectionAdminResponse;
+import org.apache.solr.client.solrj.response.SimpleSolrResponse;
 import org.apache.solr.cloud.AbstractFullDistribZkTestBase;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.ImplicitDocRouter;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.DefaultSolrParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.params.SolrParams;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
 import static org.junit.matchers.JUnitMatchers.containsString;
@@ -200,6 +204,23 @@ public class RulesTest extends AbstractFullDistribZkTestBase {
 
       create.process(client);
     }
+
+  }
+
+  @Test
+  public void testInvokeApi() throws Exception {
+    String baseUrl = getBaseUrl((HttpSolrClient) clients.get(0));
+    try (SolrClient client = createNewSolrClient("", baseUrl)) {
+      GenericSolrRequest req =  new GenericSolrRequest(GET, "/v2/node/invoke", new ModifiableSolrParams()
+          .add("class", ImplicitSnitch.class.getName())
+          .add("cores", "1")
+          .add("freedisk", "1")
+      );
+      SimpleSolrResponse rsp = req.process(client);
+      assertNotNull(((Map) rsp.getResponse().get(ImplicitSnitch.class.getName())).get("cores"));
+      assertNotNull(((Map) rsp.getResponse().get(ImplicitSnitch.class.getName())).get("freedisk"));
+    }
+
 
   }
 

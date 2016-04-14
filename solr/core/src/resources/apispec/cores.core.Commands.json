@@ -64,6 +64,10 @@
       "type":"object",
       "additionalProperties":true
     },
+    "forceprepareforleadership": {
+      "type": "object",
+      "additionalProperties": true
+    },
     "split": "cores.core.Commands.split"
   }
 }

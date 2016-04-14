@@ -32,6 +32,8 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.*;
+import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.NODEAPIS;
+import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.NODEINVOKE;
 import static org.apache.solr.handler.admin.CoreAdminOperation.*;
 import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.CORES_COMMANDS;
 import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.CORES_STATUS;
@@ -59,9 +61,9 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     REQUESTBUFFERUPDATES(PER_CORE_COMMANDS, POST, REQUESTBUFFERUPDATES_OP, null, null),
     REQUESTAPPLYUPDATES(PER_CORE_COMMANDS, POST, REQUESTAPPLYUPDATES_OP, null, null),
     REQUESTSTATUS(PER_CORE_COMMANDS, POST, REQUESTSTATUS_OP, null, null),
-    OVERSEEROP(PER_CORE_COMMANDS, POST, OVERSEEROP_OP, null, null),
-    REJOINLEADERELECTION(PER_CORE_COMMANDS, POST, REJOINLEADERELECTION_OP, null, null),
-    INVOKE(PER_CORE_COMMANDS, POST, INVOKE_OP, null, null),
+    OVERSEEROP(NODEAPIS, POST, OVERSEEROP_OP, null, null),
+    REJOINLEADERELECTION(NODEAPIS, POST, REJOINLEADERELECTION_OP, null, null),
+    INVOKE(NODEINVOKE, GET, INVOKE_OP, null, null),
     FORCEPREPAREFORLEADERSHIP(PER_CORE_COMMANDS, POST, FORCEPREPAREFORLEADERSHIP_OP, null, null);
 
     public final String commandName;
@@ -133,7 +135,10 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
   enum EndPoint implements V2EndPoint {
     CORES_STATUS("cores.Status"),
     CORES_COMMANDS("cores.Commands"),
-    PER_CORE_COMMANDS("cores.core.Commands");
+    PER_CORE_COMMANDS("cores.core.Commands"),
+    NODEINVOKE("node.invoke"),
+    NODEAPIS("node.Commands")
+    ;
 
     final String specName;
 
