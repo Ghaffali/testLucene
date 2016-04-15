@@ -69,6 +69,21 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
     errs = validator.validateJson(Utils.fromJSONString("{name : x, collections: [ 1 , 2]}"));
     assertFalse(toJSONString(errs), errs.isEmpty());
     assertTrue(toJSONString(errs), errs.get(0).contains("Expected elements of type"));
+    Map schema = (Map) Utils.fromJSONString("{" +
+        "  type:object," +
+        "  properties: {" +
+        "   age : {type: number}," +
+        "   adult : {type: boolean}," +
+        "   name: {type: string}}}");
+    validator = new JsonSchemaValidator(schema);
+    errs = validator.validateJson(Utils.fromJSONString("{name:x, age:21, adult:true}"));
+    assertNull(errs);
+    errs = validator.validateJson(Utils.fromJSONString("{name:x, age:'21', adult:'true'}"));
+    assertNull(errs);
+
+    errs = validator.validateJson(Utils.fromJSONString("{name:x, age:'x21', adult:'true'}"));
+    assertEquals(1, errs.size());
+    
 
   }
 

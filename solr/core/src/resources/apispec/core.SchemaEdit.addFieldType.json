@@ -1,4 +1,37 @@
 {
   "type":"object",
-  "additionalProperties": true
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "class": {
+      "type": "string"
+    },
+    "positionIncrementGap": {
+      "type": "number"
+    },
+    "autoGeneratePhraseQueries": {
+      "type": "boolean"
+    },
+    "docValuesFormat": {
+      "type": "string"
+    },
+    "postingsFormat": {
+      "type": "string"
+    },
+    "analyzer": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true,
+  "required": [
+    "name",
+    "class"
+  ]
 }

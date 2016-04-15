@@ -1,11 +1,16 @@
 {
   "type":"object",
-  "documentation":"https://cwiki.apache.org/confluence/display/solr/Schema+API#SchemaAPI-DeleteaField",
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API#SchemaAPI-DeleteaCopyFieldRule",
   "properties":{
-    "name":{
-      "description":"The delete-field command removes a field definition from your schema. If the field does not exist in the schema, or if the field is the source or destination of a copy field rule, an error is thrown",
+    "source": {
       "type":"string"
+    },
+    "dest": {
+      "type": "string"
     }
   },
-  "required": ["type"]
+  "required": [
+    "source",
+    "dest"
+  ]
 }

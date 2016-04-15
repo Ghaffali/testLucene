@@ -1,4 +1,5 @@
 {
+  "documentation" : "https://cwiki.apache.org/confluence/display/solr/Schema+API#SchemaAPI-DeleteaField",
   "type":"object",
   "properties":{
     "name":{

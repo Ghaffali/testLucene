@@ -240,8 +240,31 @@ public class JsonSchemaValidator {
         }
       }
     },
-    NUMBER(o -> o instanceof Number),
-    BOOLEAN(o -> o instanceof Boolean),
+    NUMBER(o -> o instanceof Number) {
+      @Override
+      void valdateData(String key, Object o, Attribute attr, List<String> errs) {
+        if (o instanceof String) {
+          try {
+            Double.parseDouble((String) o);
+          } catch (NumberFormatException e) {
+            errs.add(e.getClass().getName()+" "+ e.getMessage());
+          }
+
+        }
+      }
+    },
+    BOOLEAN(o -> o instanceof Boolean) {
+      @Override
+      void valdateData(String key, Object o, Attribute attr, List<String> errs) {
+        if (o instanceof String) {
+          try {
+            Boolean.parseBoolean((String) o);
+          } catch (Exception e) {
+            errs.add(e.getClass().getName()+" "+ e.getMessage());
+          }
+        }
+      }
+    },
     OBJECT(o -> o instanceof Map),
     UNKNOWN((o -> true));
     final String _name;

@@ -1,4 +1,12 @@
 {
+  "documentation":"https://cwiki.apache.org/confluence/display/solr/Schema+API#SchemaAPI-DeleteaFieldType",
   "type":"object",
-  "additionalProperties":true
+  "properties": {
+    "name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name"
+  ]
 }
