@@ -496,11 +496,7 @@ public class HttpSolrCall {
             writeResponse(solrRsp, responseWriter, reqMethod);
           }
           return RETURN;
-        default: {
-          //TODO NOCOMMIT
-          log.error("NOACTION" + solrReq);
-          return action;
-        }
+        default: return action;
       }
     } catch (Throwable ex) {
       log.error("ERROR" ,ex);

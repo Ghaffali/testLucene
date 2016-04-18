@@ -24,7 +24,7 @@ public interface Predicate<T> {
    * or return a string with a message;
    *
    * @param t test value
-   * @return
+   * @return null if test succeeds or an error description if test fails
    */
   String test(T t);
 

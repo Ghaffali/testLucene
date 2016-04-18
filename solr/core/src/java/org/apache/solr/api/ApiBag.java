@@ -20,6 +20,7 @@ package org.apache.solr.api;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -52,7 +53,7 @@ import static org.apache.solr.common.util.Map2.NOT_NULL;
 import static org.apache.solr.common.util.StrUtils.formatString;
 
 public class ApiBag {
-  private static final Logger log = LoggerFactory.getLogger(ApiBag.class);
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, PathTrie<Api>> apis = new ConcurrentHashMap<>();
 

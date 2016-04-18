@@ -16,6 +16,7 @@
  */
 package org.apache.solr.handler.admin;
 
+import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
@@ -41,7 +42,8 @@ import static org.apache.solr.api.ApiBag.getSpec;
 import static org.apache.solr.common.params.CommonParams.PATH;
 
 public class InfoHandler extends RequestHandlerBase implements ApiSupport {
-  protected static Logger log = LoggerFactory.getLogger(InfoHandler.class);
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
   protected final CoreContainer coreContainer;
 
   /**
