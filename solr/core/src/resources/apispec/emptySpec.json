@@ -1,11 +1,9 @@
 {
-  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
   "methods": [
     "GET",
     "POST"
   ],
   "url": {
-    "path": "$handlerName",
     "paths": [
       "$handlerName"
     ]

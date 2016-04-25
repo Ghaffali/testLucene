@@ -51,6 +51,7 @@ import org.apache.solr.util.PathTrie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.solr.servlet.SolrDispatchFilter.Action.PASSTHROUGH;
 import static org.apache.solr.util.PathTrie.getParts;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.CommonParams.WT;
@@ -131,6 +132,7 @@ public class V2HttpCall extends HttpSolrCall {
       log.error("Error in init()", rte);
       throw rte;
     } finally {
+      if (api == null) action = PASSTHROUGH;
       if (solrReq != null) solrReq.getContext().put(CommonParams.PATH, path);
     }
   }

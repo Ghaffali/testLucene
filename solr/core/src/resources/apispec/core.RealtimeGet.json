@@ -4,11 +4,10 @@
     "GET"
   ],
   "url": {
-    "path": "/get",
     "paths": [
-      "$handlerName",
-      "$handlerName/versions",
-      "$handlerName/updates"
+      "/get",
+      "/get/versions",
+      "/get/updates"
     ],
     "params": {
       "id": {
