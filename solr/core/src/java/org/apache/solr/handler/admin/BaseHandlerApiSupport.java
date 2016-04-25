@@ -100,6 +100,14 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
               rsp.add("error", "No support for : " + method + " at :" + req.getPath());
               return;
             }
+            if (commands.size() > 1) {
+              for (ApiCommand command : commands) {
+                if (command.getName().equals(req.getPath())) {
+                  commands = Collections.singletonList(command);
+                  break;
+                }
+              }
+            }
             wrapParams(req, new CommandOperation("", Collections.EMPTY_MAP), commands.get(0), true);
             invokeUrl(commands.get(0), req, rsp);
           }

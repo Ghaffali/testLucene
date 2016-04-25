@@ -94,7 +94,7 @@ public class ApiBag {
 
   private void validateAndRegister(Api api, Map<String, String> nameSubstitutes) {
     Map2 spec = api.getSpec();
-    Api introspect = getIntrospect(api);
+    Api introspect = new IntrospectApi(api);
     List<String> methods = spec.getList("methods", ENUM_OF, SUPPORTED_METHODS);
     for (String method : methods) {
       PathTrie<Api> registry = apis.get(method);
@@ -128,30 +128,35 @@ public class ApiBag {
     }
   }
 
-  private Api getIntrospect(final Api baseApi) {
-    return new Api(EMPTY_SPEC) {
-      @Override
-      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+  public static class IntrospectApi extends  Api {
+    Api baseApi;
 
-        String cmd = req.getParams().get("command");
-        Map2 result = null;
-        if (cmd == null) {
-          result = baseApi.getSpec();
-        } else {
-          Map2 specCopy = Map2.getDeepCopy(baseApi.getSpec(), 5, true);
-          Map2 commands = specCopy.getMap("commands", null);
-          if (commands != null) {
-            Map2 m = commands.getMap(cmd, null);
-            specCopy.put("commands", Collections.singletonMap(cmd, m));
-          }
-          result = specCopy;
+    protected IntrospectApi( Api base) {
+      super(EMPTY_SPEC);
+      this.baseApi = base;
+    }
+
+    public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+
+      String cmd = req.getParams().get("command");
+      Map2 result = null;
+      if (cmd == null) {
+        result = baseApi.getSpec();
+      } else {
+        Map2 specCopy = Map2.getDeepCopy(baseApi.getSpec(), 5, true);
+        Map2 commands = specCopy.getMap("commands", null);
+        if (commands != null) {
+          Map2 m = commands.getMap(cmd, null);
+          specCopy.put("commands", Collections.singletonMap(cmd, m));
         }
-        List l = (List) rsp.getValues().get("spec");
-        if (l == null) rsp.getValues().add("spec", l = new ArrayList());
-        l.add(result);
+        result = specCopy;
       }
-    };
+      List l = (List) rsp.getValues().get("spec");
+      if (l == null) rsp.getValues().add("spec", l = new ArrayList());
+      l.add(result);
+    }
   }
+
   public static Map<String, JsonSchemaValidator> getParsedSchema(Map2 commands) {
     Map<String,JsonSchemaValidator> validators =  new HashMap<>();
     for (Object o : commands.entrySet()) {

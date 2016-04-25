@@ -5,9 +5,7 @@
   ],
   "url": {
     "paths": [
-      "/cluster",
-      "/cluster/overseer",
-      "/cluster/nodes"
+      "/cluster/command-status/{id}"
     ]
   }
 }

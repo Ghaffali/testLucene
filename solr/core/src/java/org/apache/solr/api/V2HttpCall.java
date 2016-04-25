@@ -179,20 +179,27 @@ public class V2HttpCall extends HttpSolrCall {
       if (containerHandlerLookup && commonPaths4ContainerLevelAndCoreLevel.contains(prefix)) return null;
 
 
-      Map<String, Set<String>> subpaths = new LinkedHashMap<>();
-
-      getSubPaths(path, requestHandlers.getApiBag(), subpaths);
-      if (!containerHandlerLookup) getSubPaths(fullPath, cores.getRequestHandlers().getApiBag(), subpaths);
+      Map<String, Set<String>> subpaths = getSubPaths(requestHandlers, path, cores, fullPath, containerHandlerLookup);
 
       if (subpaths.isEmpty()) {
         throw new SolrException(SolrException.ErrorCode.NOT_FOUND, "No valid handler for path :" + path);
       } else {
-        return getSubPathImpl(subpaths, fullPath);
+        return getSubPathImpl(subpaths, fullPath, true);
       }
     }
-    if (api.getSpec() == Map2.EMPTY)
-      api = mergeIntrospect(requestHandlers, path, method, parts);
+    if (api instanceof ApiBag.IntrospectApi) {
+      api = mergeIntrospect(requestHandlers, path, parts,
+          getSubPathImpl(getSubPaths(requestHandlers, path,cores,fullPath, containerHandlerLookup), path, true ));
+    }
     return api;
+  }
+
+  private static Map<String, Set<String>> getSubPaths(PluginBag<SolrRequestHandler> requestHandlers, String path, CoreContainer cores, String fullPath, boolean containerHandlerLookup) {
+    Map<String, Set<String>> subpaths = new LinkedHashMap<>();
+
+    getSubPaths(path, requestHandlers.getApiBag(), subpaths);
+    if (!containerHandlerLookup) getSubPaths(fullPath, cores.getRequestHandlers().getApiBag(), subpaths);
+    return subpaths;
   }
 
   private static void getSubPaths(String path, ApiBag bag, Map<String, Set<String>> pathsVsMethod) {
@@ -211,7 +218,8 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   private static Api mergeIntrospect(PluginBag<SolrRequestHandler> requestHandlers,
-                                     String path, String method, Map<String, String> parts) {
+                                     String path,Map<String, String> parts,
+                                     Api subPath) {
     Api api;
     final Map<String, Api> apis = new LinkedHashMap<>();
     for (String m : SolrRequest.SUPPORTED_METHODS) {
@@ -224,23 +232,24 @@ public class V2HttpCall extends HttpSolrCall {
         String method = req.getParams().get("method");
         Set<Api> added = new HashSet<>();
         for (Map.Entry<String, Api> e : apis.entrySet()) {
-          if (method == null || e.getKey().equals(req.getHttpMethod())) {
+          if (method == null || e.getKey().equals(method)) {
             if (!added.contains(e.getValue())) {
               e.getValue().call(req, rsp);
               added.add(e.getValue());
             }
           }
         }
+        subPath.call(req, rsp);
       }
     };
     return api;
   }
 
-  private static Api getSubPathImpl(final Map<String, Set<String>> subpaths, String path) {
+  private static Api getSubPathImpl(final Map<String, Set<String>> subpaths, String path,  boolean addMsg) {
     return new Api(() -> Map2.EMPTY) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
-        rsp.add("msg", "Invalid path, try the following");
+        if(addMsg) rsp.add("msg", "Invalid path, try the following");
         LinkedHashMap<String, Set<String>> result = new LinkedHashMap<>(subpaths.size());
         for (Map.Entry<String, Set<String>> e : subpaths.entrySet()) {
           if (e.getKey().endsWith(ApiBag.INTROSPECT)) continue;

@@ -69,6 +69,9 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
   enum Cmd implements ApiCommand<CollectionHandlerApi> {
     GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
+    GET_CLUSTER(EndPoint.CLUSTER, GET, LIST_OP, "/cluster", null),
+    GET_CLUSTER_OVERSEER(EndPoint.CLUSTER, GET, OVERSEERSTATUS_OP, "/cluster/overseer", null),
+    GET_CLUSTER_CMD(EndPoint.CLUSTER_CMD, GET, REQUESTSTATUS_OP),
     GET_A_COLLECTION(EndPoint.COLLECTION_STATE, GET, CLUSTERSTATUS_OP),
     CREATE_COLLECTION(EndPoint.COLLECTIONS_COMMANDS,
         POST,
@@ -255,6 +258,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
   enum EndPoint implements V2EndPoint {
     CLUSTER("cluster"),
+    CLUSTER_CMD("cluster.commandstatus"),
     COLLECTIONS_COMMANDS("collections.Commands"),
     COLLECTIONS("collections"),
     COLLECTION_STATE("collection"),
