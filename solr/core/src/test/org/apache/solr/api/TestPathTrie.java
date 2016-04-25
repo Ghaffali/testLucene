@@ -19,6 +19,8 @@ package org.apache.solr.api;
 
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.SolrTestCaseJ4;
@@ -48,6 +50,9 @@ public class TestPathTrie extends SolrTestCaseJ4 {
     assertEquals("b", pathTrie.lookup("/aa/bb/hello/world", parts, null));
     assertEquals("hello", parts.get("cc"));
     assertEquals("world", parts.get("xx"));
+    Set<String> subPaths =  new HashSet<>();
+    pathTrie.lookup("/aa",parts, subPaths);
+    assertEquals(3, subPaths.size());
 
 
   }

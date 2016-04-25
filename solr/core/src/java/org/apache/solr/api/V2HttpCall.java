@@ -188,8 +188,9 @@ public class V2HttpCall extends HttpSolrCall {
       }
     }
     if (api instanceof ApiBag.IntrospectApi) {
+      String newPath = path.substring(0, path.length() - ApiBag.INTROSPECT.length());
       api = mergeIntrospect(requestHandlers, path, parts,
-          getSubPathImpl(getSubPaths(requestHandlers, path,cores,fullPath, containerHandlerLookup), path, true ));
+          getSubPathImpl(getSubPaths(requestHandlers, newPath, cores, fullPath, containerHandlerLookup), newPath, false));
     }
     return api;
   }
