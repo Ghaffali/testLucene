@@ -45,6 +45,7 @@ import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.ZooKeeperException;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.UpdateParams;
+import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.CoreDescriptor;
 import org.apache.solr.core.DirectoryFactory.DirContext;
@@ -61,17 +62,38 @@ import org.apache.solr.update.UpdateLog;
 import org.apache.solr.update.UpdateLog.RecoveryInfo;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
 import org.apache.solr.util.RefCounted;
+import org.apache.solr.util.SolrPluginUtils;
+import org.apache.solr.util.plugin.NamedListInitializedPlugin;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class RecoveryStrategy extends Thread implements Closeable {
 
+  public static class Builder implements NamedListInitializedPlugin {
+    private NamedList args;
+    @Override
+    public void init(NamedList args) {
+      this.args = args;
+    }
+    // this should only be used from SolrCoreState
+    public RecoveryStrategy create(CoreContainer cc, CoreDescriptor cd,
+        RecoveryStrategy.RecoveryListener recoveryListener) {
+      final RecoveryStrategy recoveryStrategy = newRecoveryStrategy(cc, cd, recoveryListener);
+      SolrPluginUtils.invokeSetters(recoveryStrategy, args);
+      return recoveryStrategy;
+    }
+    protected RecoveryStrategy newRecoveryStrategy(CoreContainer cc, CoreDescriptor cd,
+        RecoveryStrategy.RecoveryListener recoveryListener) {
+      return new RecoveryStrategy(cc, cd, recoveryListener);
+    }
+  }
+
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private static final int WAIT_FOR_UPDATES_WITH_STALE_STATE_PAUSE = Integer.getInteger("solr.cloud.wait-for-updates-with-stale-state-pause", 7000);
-  private static final int MAX_RETRIES = 500;
-  private static final int STARTING_RECOVERY_DELAY = 5000;
+  private int waitForUpdatesWithStaleStatePauseMilliSeconds = Integer.getInteger("solr.cloud.wait-for-updates-with-stale-state-pause", 7000);
+  private int maxRetries = 500;
+  private int startingRecoveryDelayMilliSeconds = 5000;
 
   public static interface RecoveryListener {
     public void recovered();
@@ -91,8 +113,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
   private CoreContainer cc;
   private volatile HttpUriRequest prevSendPreRecoveryHttpUriRequest;
   
-  // this should only be used from SolrCoreState
-  public RecoveryStrategy(CoreContainer cc, CoreDescriptor cd, RecoveryListener recoveryListener) {
+  protected RecoveryStrategy(CoreContainer cc, CoreDescriptor cd, RecoveryListener recoveryListener) {
     this.cc = cc;
     this.coreName = cd.getName();
     this.recoveryListener = recoveryListener;
@@ -101,6 +122,34 @@ public class RecoveryStrategy extends Thread implements Closeable {
     zkStateReader = zkController.getZkStateReader();
     baseUrl = zkController.getBaseUrl();
     coreZkNodeName = cd.getCloudDescriptor().getCoreNodeName();
+  }
+
+  public int getWaitForUpdatesWithStaleStatePauseMilliSeconds() {
+    return waitForUpdatesWithStaleStatePauseMilliSeconds;
+  }
+
+  public void setWaitForUpdatesWithStaleStatePauseMilliSeconds(int waitForUpdatesWithStaleStatePauseMilliSeconds) {
+    this.waitForUpdatesWithStaleStatePauseMilliSeconds = waitForUpdatesWithStaleStatePauseMilliSeconds;
+  }
+
+  public int getMaxRetries() {
+    return maxRetries;
+  }
+
+  public void setMaxRetries(int maxRetries) {
+    this.maxRetries = maxRetries;
+  }
+
+  public int getStartingRecoveryDelayMilliSeconds() {
+    return startingRecoveryDelayMilliSeconds;
+  }
+
+  public void setStartingRecoveryDelayMilliSeconds(int startingRecoveryDelayMilliSeconds) {
+    this.startingRecoveryDelayMilliSeconds = startingRecoveryDelayMilliSeconds;
+  }
+
+  public boolean getRecoveringAfterStartup() {
+    return recoveringAfterStartup;
   }
 
   public void setRecoveringAfterStartup(boolean recoveringAfterStartup) {
@@ -129,11 +178,14 @@ public class RecoveryStrategy extends Thread implements Closeable {
     }
   }
   
+  protected String getReplicateLeaderUrl(ZkNodeProps leaderprops) {
+    return new ZkCoreNodeProps(leaderprops).getCoreUrl();
+  }
+
   private void replicate(String nodeName, SolrCore core, ZkNodeProps leaderprops)
       throws SolrServerException, IOException {
 
-    ZkCoreNodeProps leaderCNodeProps = new ZkCoreNodeProps(leaderprops);
-    String leaderUrl = leaderCNodeProps.getCoreUrl();
+    final String leaderUrl = getReplicateLeaderUrl(leaderprops);
     
     LOG.info("Attempting to replicate from [{}].", leaderUrl);
     
@@ -359,7 +411,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
         // are sure to have finished (see SOLR-7141 for
         // discussion around current value)
         try {
-          Thread.sleep(WAIT_FOR_UPDATES_WITH_STALE_STATE_PAUSE);
+          Thread.sleep(waitForUpdatesWithStaleStatePauseMilliSeconds);
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
         }
@@ -478,7 +530,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
           LOG.error("Recovery failed - trying again... (" + retries + ")");
           
           retries++;
-          if (retries >= MAX_RETRIES) {
+          if (retries >= maxRetries) {
             SolrException.log(LOG, "Recovery failed - max retries exceeded (" + retries + ").");
             try {
               recoveryFailed(core, zkController, baseUrl, coreZkNodeName, core.getCoreDescriptor());
@@ -503,7 +555,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
               LOG.info("RecoveryStrategy has been closed");
               break; // check if someone closed us
             }
-            Thread.sleep(STARTING_RECOVERY_DELAY);
+            Thread.sleep(startingRecoveryDelayMilliSeconds);
           }
         } catch (InterruptedException e) {
           Thread.currentThread().interrupt();
