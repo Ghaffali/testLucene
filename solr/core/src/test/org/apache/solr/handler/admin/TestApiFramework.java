@@ -72,6 +72,14 @@ public class TestApiFramework extends SolrTestCaseJ4 {
         "/commands/create", NOT_NULL));
     assertEquals("hello", parts.get("collection"));
 
+    parts = new HashMap<>();
+    api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards", "POST",
+        mockCC, "collections", null, parts);
+    assertConditions(api.getSpec(), Utils.makeMap(
+        "/methods[0]", "POST",
+        "/commands/split", NOT_NULL,
+        "/commands/add-replica", NOT_NULL
+    ));
 
 
     parts = new HashMap<>();
@@ -79,8 +87,6 @@ public class TestApiFramework extends SolrTestCaseJ4 {
         mockCC, "collections", null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
-        "/commands/split", NOT_NULL,
-        "/commands/add-replica", NOT_NULL,
         "/commands/force-leader", NOT_NULL
     ));
     assertEquals("hello", parts.get("collection"));
@@ -92,7 +98,7 @@ public class TestApiFramework extends SolrTestCaseJ4 {
         mockCC, "collections", null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
-        "/commands/set", NOT_NULL
+        "/commands/set-property", NOT_NULL
     ));
     assertEquals("hello", parts.get("collection"));
     assertEquals("shard1", parts.get("shard"));

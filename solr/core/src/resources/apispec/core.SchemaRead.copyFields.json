@@ -1,21 +1,21 @@
 {
-  "core.SchemaRead.copyFields": {
-    "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
-    "methods": [
-      "GET"
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Schema+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "schema/copyfields",
+      "schema/copyfields/{name}"
     ],
-    "url": {
-      "paths": [
-        "schema/copyfields",
-        "schema/copyfields/{name}"
-      ],
-      "params": {
-        "source.fl" :{
-          "type":"string",
-          "description":"Comma- or space-separated list of one or more copyField source fields to include in the response - copyField directives with all other source fields will be excluded from the response. If not specified, all copyField-s will be included in the response"},
-        "dest.fl" :{
-          "type":"string",
-          "description":"Comma- or space-separated list of one or more copyField dest fields to include in the response - copyField directives with all other dest fields will be excluded. If not specified, all copyField-s will be included in the response."}
+    "params": {
+      "source.fl": {
+        "type": "string",
+        "description": "Comma or space-separated list of one or more copyField source fields to include in the response - copyField directives with all other source fields will be excluded from the response. If not specified, all copyField-s will be included in the response"
+      },
+      "dest.fl": {
+        "type": "string",
+        "description": "Comma or space-separated list of one or more copyField dest fields to include in the response - copyField directives with all other dest fields will be excluded. If not specified, all copyField-s will be included in the response."
       }
     }
   }

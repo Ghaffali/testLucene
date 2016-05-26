@@ -39,7 +39,7 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static com.google.common.base.Strings.isNullOrEmpty;
-import com.google.common.collect.ImmutableList;
+
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
@@ -92,7 +92,6 @@ import static org.apache.solr.core.SolrConfig.PluginOpts.REQUIRE_CLASS;
 import static org.apache.solr.core.SolrConfig.PluginOpts.REQUIRE_NAME;
 import static org.apache.solr.core.SolrConfig.PluginOpts.REQUIRE_NAME_IN_OVERLAY;
 import static org.apache.solr.schema.FieldType.CLASS_NAME;
-import static org.apache.solr.api.ApiBag.wrapRequestHandler;
 
 public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAware, PermissionNameProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -833,12 +832,10 @@ public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAwa
 
   @Override
   public Collection<Api> getApis() {
-    return ImmutableList.of(
-        wrapRequestHandler(this, ApiBag.getSpec("core.config")),
-        wrapRequestHandler(this, ApiBag.getSpec("core.config.Commands")),
-        wrapRequestHandler(this, ApiBag.getSpec("core.config.Params")),
-        wrapRequestHandler(this, ApiBag.getSpec("core.config.Params.Commands"))
-
-    );
+    return ApiBag.wrapRequestHandlers(this,
+        "core.config",
+        "core.config.Commands",
+        "core.config.Params",
+        "core.config.Params.Commands");
   }
 }

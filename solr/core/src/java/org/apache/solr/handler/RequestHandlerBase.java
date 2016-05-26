@@ -45,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.core.RequestParams.USEPARAM;
-import static org.apache.solr.api.ApiBag.wrapRequestHandler;
 
 /**
  *
@@ -284,9 +283,7 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
 
   @Override
   public Collection<Api> getApis() {
-    return ImmutableList.of(
-        wrapRequestHandler(this, ApiBag.constructSpec(pluginInfo))
-    );
+    return ImmutableList.of(new ApiBag.ReqHandlerToApi(this, ApiBag.constructSpec(pluginInfo)));
   }
 }
 

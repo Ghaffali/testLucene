@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.google.common.collect.ImmutableList;
+import org.apache.solr.api.ApiBag.ReqHandlerToApi;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader.ConfigData;
 import org.apache.solr.common.params.CommonParams;
@@ -196,8 +197,8 @@ public class SecurityConfHandler extends RequestHandlerBase implements Permissio
           Collection<Api> apis = new ArrayList<>();
           final SpecProvider authcCommands = ApiBag.getSpec("cluster.security.authentication.Commands");
           final SpecProvider authzCommands = ApiBag.getSpec("cluster.security.authorization.Commands");
-          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authentication")));
-          apis.add(ApiBag.wrapRequestHandler(this, ApiBag.getSpec("cluster.security.authorization")));
+          apis.add(new ReqHandlerToApi(this, ApiBag.getSpec("cluster.security.authentication")));
+          apis.add(new ReqHandlerToApi(this, ApiBag.getSpec("cluster.security.authorization")));
           SpecProvider authcSpecProvider = () -> {
             AuthenticationPlugin authcPlugin = cores.getAuthenticationPlugin();
             return authcPlugin != null && authcPlugin instanceof SpecProvider ?

@@ -16,18 +16,15 @@
  */
 package org.apache.solr.handler;
 
-import com.google.common.collect.ImmutableList;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.handler.component.*;
 
-import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-import static org.apache.solr.api.ApiBag.wrapRequestHandler;
 
 public class RealTimeGetHandler extends SearchHandler {
   @Override
@@ -52,9 +49,7 @@ public class RealTimeGetHandler extends SearchHandler {
 
   @Override
   public Collection<Api> getApis() {
-    return ImmutableList.of(
-        wrapRequestHandler(this,  ApiBag.getSpec("core.RealtimeGet"))
-    );
+    return ApiBag.wrapRequestHandlers(this, "core.RealtimeGet");
   }
 }
 

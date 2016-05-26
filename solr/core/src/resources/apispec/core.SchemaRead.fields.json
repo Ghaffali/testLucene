@@ -5,12 +5,12 @@
   ],
   "url": {
     "paths": [
-      "/$handlerName/fields",
-      "/$handlerName/fields/{name}",
-      "/$handlerName/dynamicfields",
-      "/$handlerName/dynamicfields/{name}",
-      "/$handlerName/fieldtypes/",
-      "/$handlerName/fieldtypes/{name}"
+      "/schema/fields",
+      "/schema/fields/{name}",
+      "/schema/dynamicfields",
+      "/schema/dynamicfields/{name}",
+      "/schema/fieldtypes/",
+      "/schema/fieldtypes/{name}"
     ],
     "params": {
       "includeDynamic": {

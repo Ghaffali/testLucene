@@ -30,9 +30,11 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.request.SolrQueryRequest;
@@ -82,7 +84,7 @@ public class ApiBag {
     try {
       validateAndRegister(api, nameSubstitutes);
     } catch (Exception e) {
-      log.error("Unable to register plugin:" + api.getClass().getName() + "with spec :" + api.getSpec(), e);
+      log.error("Unable to register plugin:" + api.getClass().getName() + "with spec :" + Utils.toJSONString(api.getSpec()), e);
       if (e instanceof RuntimeException) {
         throw (RuntimeException) e;
       } else {
@@ -257,8 +259,10 @@ public class ApiBag {
     }
   }
 
-  public static Api wrapRequestHandler(final SolrRequestHandler rh, SpecProvider specProvider) {
-    return new ReqHandlerToApi(rh, specProvider);
+  public static List<Api> wrapRequestHandlers(final SolrRequestHandler rh, String... specs){
+    ImmutableList.Builder<Api> b = ImmutableList.builder();
+    for (String spec : specs) b.add(new ReqHandlerToApi(rh, ApiBag.getSpec(spec)));
+    return b.build();
   }
 
   public static final String APISPEC_LOCATION = "apispec/";
@@ -348,7 +352,7 @@ public class ApiBag {
     @Override
     public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
       if (!holder.isLoaded()) {
-        delegate = wrapRequestHandler(holder.get(), ApiBag.EMPTY_SPEC);
+        delegate = new ReqHandlerToApi(holder.get(), ApiBag.EMPTY_SPEC);
       }
       delegate.call(req, rsp);
     }

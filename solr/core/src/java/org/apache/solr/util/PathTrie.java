@@ -18,6 +18,7 @@ package org.apache.solr.util;
  */
 
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -64,12 +65,14 @@ public class PathTrie<T> {
 
   public static List<String> getParts(String path) {
     if (path == null || path.isEmpty()) return emptyList();
-    List<String> parts = StrUtils.splitSmart(path, '/');
-    while(true) {
-      if(parts.isEmpty()) break;
-      if ("".equals(parts.get(0))) parts.remove(0);
-      else break;
-    }
+    List<String> parts = new ArrayList<String>() {
+      @Override
+      public boolean add(String s) {
+        if (s == null || s.isEmpty()) return false;
+        return super.add(s);
+      }
+    };
+    StrUtils.splitSmart(path, '/', parts);
     return parts;
   }
 
