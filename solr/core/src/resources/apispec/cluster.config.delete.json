@@ -1,0 +1,11 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
+  "methods": [
+    "DELETE"
+  ],
+  "url": {
+    "paths": [
+      "/cluster/configs/{name}"
+    ]
+  }
+}

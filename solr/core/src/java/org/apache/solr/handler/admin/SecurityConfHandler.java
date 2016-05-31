@@ -241,5 +241,9 @@ public class SecurityConfHandler extends RequestHandlerBase implements Permissio
     return this.apis;
   }
 
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
+  }
 }
 

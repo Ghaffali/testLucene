@@ -1,0 +1,11 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Blob+Store+API",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "paths": [
+      "/blob/{name}"
+    ]
+  }
+}

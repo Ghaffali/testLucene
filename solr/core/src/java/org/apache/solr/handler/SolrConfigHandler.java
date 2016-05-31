@@ -838,4 +838,9 @@ public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAwa
         "core.config.Params",
         "core.config.Params.Commands");
   }
+
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
+  }
 }

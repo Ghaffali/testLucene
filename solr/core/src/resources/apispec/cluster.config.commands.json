@@ -1,0 +1,33 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/ConfigSets+API",
+  "methods": [
+    "POST"
+  ],
+  "url": {
+    "paths": [
+      "/cluster/configs"]
+  },
+  "commands": {
+    "create": {
+      "type" :"object",
+      "properties": {
+        "name" :{
+          "type" :"string",
+          "description" : "ConfigSet to be created"
+        },
+        "baseConfigSet":{
+          "type" : "string",
+          "description" :"ConfigSet to copy as a base"
+        },
+        "properties" : {
+          "type":"object",
+          "additionalProperties" : true
+        }
+      },
+      "required" : ["name", "baseConfigSet"]
+    },
+    "delete" : {
+      "type":"string"
+    }
+  }
+}

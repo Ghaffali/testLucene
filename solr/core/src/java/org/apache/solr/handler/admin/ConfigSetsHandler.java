@@ -18,13 +18,14 @@ package org.apache.solr.handler.admin;
 
 import java.lang.invoke.MethodHandles;
 
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.solr.api.Api;
 import org.apache.solr.client.solrj.SolrResponse;
-import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.OverseerSolrResponse;
 import org.apache.solr.cloud.OverseerTaskQueue.QueueEvent;
 import org.apache.solr.common.SolrException;
@@ -62,6 +63,7 @@ public class ConfigSetsHandler extends RequestHandlerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
   public static long DEFAULT_ZK_TIMEOUT = 300*1000;
+  private final ConfigSetsHandlerApi configSetsHandlerApi = new ConfigSetsHandlerApi(this);
 
   /**
    * Overloaded ctor to inject CoreContainer into the handler.
@@ -162,7 +164,7 @@ public class ConfigSetsHandler extends RequestHandlerBase {
     return "Manage SolrCloud ConfigSets";
   }
 
-  enum ConfigSetOperation {
+  public enum ConfigSetOperation {
     CREATE_OP(CREATE) {
       @Override
       Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, ConfigSetsHandler h) throws Exception {
@@ -204,5 +206,15 @@ public class ConfigSetsHandler extends RequestHandlerBase {
       }
       throw new SolrException(ErrorCode.SERVER_ERROR, "No such action" + action);
     }
+  }
+
+  @Override
+  public Collection<Api> getApis() {
+    return configSetsHandlerApi.getApis();
+  }
+
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
   }
 }

@@ -33,11 +33,16 @@ public interface ApiCommand<T> {
   V2EndPoint getEndPoint();
 
 
-  void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, T handler) throws Exception;
+ /* void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, T handler) throws Exception;
 
   void GET(SolrQueryRequest req, SolrQueryResponse rsp, T handler) throws Exception;
+*/
+  default Collection<String> getParamNames(CommandOperation op) {
+    return BaseHandlerApiSupport.getParamNames(op, this);
+  }
 
-  Collection<String> getParamNames(CommandOperation op);
 
-  String getParamSubstitute(String name);
+  default String getParamSubstitute(String name) {
+    return name;
+  }
 }

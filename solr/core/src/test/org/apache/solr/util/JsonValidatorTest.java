@@ -31,7 +31,7 @@ import static org.apache.solr.common.util.Utils.toJSONString;
 
 public class JsonValidatorTest extends SolrTestCaseJ4 {
 
-  public void testSchema(){
+  public void testSchema() {
     checkSchema("collections.commands");
     checkSchema("collections.collection.commands");
     checkSchema("collections.collection.shards.Commands");
@@ -44,8 +44,8 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
     checkSchema("cluster.security.RuleBasedAuthorization");
     checkSchema("core.config.Commands");
     checkSchema("core.SchemaEdit");
+    checkSchema("cluster.config.commands");
   }
-
 
 
   public void testSchemaValidation() {
@@ -63,7 +63,7 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
     assertFalse(toJSONString(errs), errs.isEmpty());
     assertTrue(toJSONString(errs), errs.get(0).contains("Expected type"));
     errs = validator.validateJson(Utils.fromJSONString("{x:y, collections: [ c1 , c2]}"));
-    assertEquals(toJSONString(errs),2, errs.size());
+    assertEquals(toJSONString(errs), 2, errs.size());
     assertTrue(toJSONString(errs), StrUtils.join(errs, '|').contains("Missing field"));
     assertTrue(toJSONString(errs), StrUtils.join(errs, '|').contains("Unknown"));
     errs = validator.validateJson(Utils.fromJSONString("{name : x, collections: [ 1 , 2]}"));
@@ -83,7 +83,7 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
 
     errs = validator.validateJson(Utils.fromJSONString("{name:x, age:'x21', adult:'true'}"));
     assertEquals(1, errs.size());
-    
+
 
   }
 
@@ -95,7 +95,7 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
       try {
         JsonSchemaValidator validator = new JsonSchemaValidator((Map) cmd.getValue());
       } catch (Exception e) {
-        throw new RuntimeException("Error in command  "+ cmd.getKey() +" in schema "+name, e);
+        throw new RuntimeException("Error in command  " + cmd.getKey() + " in schema " + name, e);
       }
     }
   }

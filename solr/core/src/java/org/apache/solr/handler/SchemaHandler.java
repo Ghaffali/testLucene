@@ -258,5 +258,8 @@ public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, 
 
   }
 
-
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
+  }
 }

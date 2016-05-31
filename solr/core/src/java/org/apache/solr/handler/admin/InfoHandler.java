@@ -41,7 +41,7 @@ import static java.util.Collections.singletonList;
 import static org.apache.solr.api.ApiBag.getSpec;
 import static org.apache.solr.common.params.CommonParams.PATH;
 
-public class InfoHandler extends RequestHandlerBase implements ApiSupport {
+public class InfoHandler extends RequestHandlerBase  {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   protected final CoreContainer coreContainer;
@@ -152,4 +152,8 @@ public class InfoHandler extends RequestHandlerBase implements ApiSupport {
     return singletonList(new ReqHandlerToApi(this, getSpec("node.Info")));
   }
 
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
+  }
 }

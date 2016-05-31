@@ -23,4 +23,13 @@ public interface ApiSupport {
 
   Collection<Api> getApis();
 
+  default Boolean registerV1() {
+    return Boolean.TRUE;
+  }
+
+  default Boolean registerV2() {
+    return Boolean.FALSE;
+  }
+
+
 }

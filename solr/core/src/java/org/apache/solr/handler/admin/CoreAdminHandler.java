@@ -113,6 +113,11 @@ public class CoreAdminHandler extends RequestHandlerBase  {
                     "it is a special Handler configured directly by the RequestDispatcher");
   }
 
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
+  }
+
   /**
    * The instance of CoreContainer this handler handles. This should be the CoreContainer instance that created this
    * handler.

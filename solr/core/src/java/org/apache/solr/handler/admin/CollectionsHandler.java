@@ -1029,4 +1029,8 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
     return v2Handler.getApis();
   }
 
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
+  }
 }

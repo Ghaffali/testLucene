@@ -51,6 +51,11 @@ public class RealTimeGetHandler extends SearchHandler {
   public Collection<Api> getApis() {
     return ApiBag.wrapRequestHandlers(this, "core.RealtimeGet");
   }
+
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
+  }
 }
 
 

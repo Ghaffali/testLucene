@@ -1,0 +1,19 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Blob+Store+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/blob",
+      "/blob/{name}",
+      "/blob/{name}/{version}"
+    ]
+  },
+  "params": {
+    "wt": {
+      "type":"string",
+      "description": "use the value 'filestream' to get the file content. Use other response writers to fetch the metadata"
+    }
+  }
+}

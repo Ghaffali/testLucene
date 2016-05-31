@@ -24,6 +24,7 @@ import java.time.Instant;
 import java.util.Locale;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.solr.api.Api;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
@@ -327,5 +328,10 @@ public class PingRequestHandler extends RequestHandlerBase implements SolrCoreAw
   @Override
   public String getDescription() {
     return "Reports application health to a load-balancer";
+  }
+
+  @Override
+  public Boolean registerV2() {
+    return Boolean.TRUE;
   }
 }

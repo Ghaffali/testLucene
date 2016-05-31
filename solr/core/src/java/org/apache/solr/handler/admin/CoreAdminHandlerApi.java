@@ -19,7 +19,6 @@ package org.apache.solr.handler.admin;
 
 
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -108,23 +107,6 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     }
 
     @Override
-    public void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, CoreAdminHandlerApi handler) throws Exception {
-      target.call(new CoreAdminHandler.CallInfo(handler.handler,req,rsp,target ));
-
-    }
-
-    @Override
-    public void GET(SolrQueryRequest req, SolrQueryResponse rsp, CoreAdminHandlerApi handler) throws Exception {
-      target.call(new CoreAdminHandler.CallInfo(handler.handler,req,rsp,target ));
-
-    }
-
-    @Override
-    public Collection<String> getParamNames(CommandOperation op) {
-      return BaseHandlerApiSupport.getParamNames(op, this);
-    }
-
-    @Override
     public String getParamSubstitute(String param) {
       return paramstoAttr.containsKey(param) ? paramstoAttr.get(param) : param;
     }
@@ -156,12 +138,12 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
   @Override
   protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command,
                                CommandOperation c) throws Exception {
-    ((Cmd) command).command(req,rsp, c, this);
+    ((Cmd) command).target.call(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
   }
 
   @Override
   protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    command.GET(req,rsp, this);
+    ((Cmd) command).target.call(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
   }
 
   @Override

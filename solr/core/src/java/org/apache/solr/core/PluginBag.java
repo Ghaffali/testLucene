@@ -174,27 +174,20 @@ public class PluginBag<T> implements AutoCloseable {
   /**
    * register a plugin by a name
    */
-  public T put(String name, T plugin , boolean registerAPI) {
+  public T put(String name, T plugin) {
     if (plugin == null) return null;
     PluginHolder<T> pluginHolder = new PluginHolder<>(null, plugin);
-    pluginHolder.registerAPI = registerAPI;
+    pluginHolder.registerAPI = false;
     PluginHolder<T> old = put(name, pluginHolder);
     return old == null ? null : old.get();
   }
 
-  public T put(String name, T plugin){
-    return put(name, plugin, false);
-  }
-
   PluginHolder<T> put(String name, PluginHolder<T> plugin) {
-    boolean registerApi = false;
-    boolean disableHandler = false;
+    Boolean registerApi = null;
+    Boolean disableHandler = null;
     if (plugin.pluginInfo != null) {
       String registerAt = plugin.pluginInfo.attributes.get("registerPath");
-      if(registerAt == null){
-        registerApi = false;
-        disableHandler = false;
-      } else {
+      if (registerAt != null) {
         List<String> strs = StrUtils.splitSmart(registerAt, ',');
         disableHandler = !strs.contains("/");
         registerApi = strs.contains("/v2");
@@ -204,20 +197,28 @@ public class PluginBag<T> implements AutoCloseable {
     if (apiBag != null) {
       if (plugin.isLoaded()) {
         T inst = plugin.get();
-        if (inst instanceof ApiSupport && (registerApi || plugin.registerAPI)) {
+        if (inst instanceof ApiSupport) {
           ApiSupport apiSupport = (ApiSupport) inst;
-          Collection<Api> apis = apiSupport.getApis();
-          if (apis != null) {
-            Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
-            for (Api api : apis) {
-              apiBag.register(api, nameSubstitutes);
+          if (registerApi == null) registerApi = apiSupport.registerV2();
+          if (disableHandler == null) disableHandler = !apiSupport.registerV1();
+
+          if(registerApi) {
+            Collection<Api> apis = apiSupport.getApis();
+            if (apis != null) {
+              Map<String, String> nameSubstitutes = singletonMap(HANDLER_NAME, name);
+              for (Api api : apis) {
+                apiBag.register(api, nameSubstitutes);
+              }
             }
           }
+
         }
       } else {
-        if (registerApi) apiBag.registerLazy((PluginHolder<SolrRequestHandler>) plugin, plugin.pluginInfo);
+        if (registerApi != null && registerApi)
+          apiBag.registerLazy((PluginHolder<SolrRequestHandler>) plugin, plugin.pluginInfo);
       }
     }
+    if(disableHandler == null) disableHandler = Boolean.FALSE;
     PluginHolder<T> old = null;
     if(!disableHandler) old = registry.put(name, plugin);
     if (plugin.pluginInfo != null && plugin.pluginInfo.isDefault()) setDefault(name);

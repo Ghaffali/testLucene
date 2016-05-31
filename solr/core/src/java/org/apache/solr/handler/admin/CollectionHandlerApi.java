@@ -53,12 +53,12 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
   @Override
   protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c) throws Exception {
-    ((Cmd) command).command(req, rsp,c, this);
+    handler.invokeAction(req, rsp, handler.coreContainer, ((Cmd) command).target.action, ((Cmd) command).target);
   }
 
   @Override
   protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    ((Cmd) command).GET(req,rsp, this);
+    handler.invokeAction(req, rsp, handler.coreContainer, ((Cmd) command).target.action, ((Cmd) command).target);
   }
 
   @Override
@@ -212,16 +212,6 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
       return endPoint;
     }
 
-
-    @Override
-    public void command(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation c, CollectionHandlerApi handler) throws Exception {
-      handler.handler.invokeAction(req, rsp, handler.handler.coreContainer, target.action,target);
-    }
-
-    @Override
-    public void GET(SolrQueryRequest req, SolrQueryResponse rsp, CollectionHandlerApi handler) throws Exception {
-      handler.handler.invokeAction(req, rsp, handler.handler.coreContainer, target.action,target);
-    }
 
     @Override
     public Collection<String> getParamNames(CommandOperation op) {
