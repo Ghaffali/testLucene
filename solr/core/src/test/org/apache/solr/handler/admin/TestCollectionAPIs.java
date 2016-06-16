@@ -132,7 +132,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
   ZkNodeProps compareOutput(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
                             final String payload, final CoreContainer cc, String expectedOutputMapJson) throws Exception {
     Pair<SolrQueryRequest, SolrQueryResponse> ctx = makeCall(apiBag, path, method, payload, cc);
-    ZkNodeProps output = (ZkNodeProps) ctx.getKey().getContext().get(ZkNodeProps.class.getName());
+    ZkNodeProps output = (ZkNodeProps) ctx.first().getContext().get(ZkNodeProps.class.getName());
     Map expected = (Map) fromJSONString(expectedOutputMapJson);
     assertMapEqual(expected, output);
     return output;

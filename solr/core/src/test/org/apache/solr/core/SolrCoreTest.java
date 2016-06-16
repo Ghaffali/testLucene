@@ -108,6 +108,7 @@ public class SolrCoreTest extends SolrTestCaseJ4 {
       ++ihCount; assertEquals(pathToClassMap.get("/update/csv"), "solr.UpdateRequestHandler");
       ++ihCount; assertEquals(pathToClassMap.get("/update/json"), "solr.UpdateRequestHandler");
       ++ihCount; assertEquals(pathToClassMap.get("/update/json/docs"), "solr.UpdateRequestHandler");
+      ++ihCount; assertEquals(pathToClassMap.get("update"), "solr.UpdateRequestHandlerApi");
     }
     assertEquals("wrong number of implicit handlers", ihCount, implicitHandlers.size());
   }

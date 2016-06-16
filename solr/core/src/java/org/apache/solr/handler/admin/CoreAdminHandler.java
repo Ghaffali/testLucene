@@ -63,7 +63,7 @@ import static org.apache.solr.security.PermissionNameProvider.Name.CORE_READ_PER
  *
  * @since solr 1.3
  */
-public class CoreAdminHandler extends RequestHandlerBase  {
+public class CoreAdminHandler extends RequestHandlerBase implements PermissionNameProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
   protected final Map<String, Map<String, TaskObject>> requestStatusMap;

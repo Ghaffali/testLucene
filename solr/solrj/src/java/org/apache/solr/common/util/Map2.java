@@ -46,25 +46,25 @@ public class Map2<K, V> implements Map<K, V> {
     return null;
   };
   public static final Predicate<Pair> NOT_NULL_OF_TYPE = pair -> {
-    if (pair.getKey() == null) return " Must not be NULL";
-    if (pair.getValue() instanceof Class) {
-      return ((Class) pair.getValue()).isAssignableFrom(pair.getKey().getClass()) ?
+    if (pair.first() == null) return " Must not be NULL";
+    if (pair.second() instanceof Class) {
+      return ((Class) pair.first()).isAssignableFrom(pair.first().getClass()) ?
           null :
-          " Must be of type " + ((Class) pair.getValue()).getName();
+          " Must be of type " + ((Class) pair.second()).getName();
     }
     return " Unknown Type";
   };
   public static final Predicate<Pair> ENUM_OF = pair -> {
-    if (pair.getValue() instanceof Set) {
-      Set set = (Set) pair.getValue();
-      if (pair.getKey() instanceof Collection) {
-        for (Object o : (Collection) pair.getKey()) {
+    if (pair.second() instanceof Set) {
+      Set set = (Set) pair.second();
+      if (pair.first() instanceof Collection) {
+        for (Object o : (Collection) pair.first()) {
           if (!set.contains(o)) {
-            return " Must be one of " + pair.getValue();
+            return " Must be one of " + pair.second();
           }
         }
       } else {
-        if (!set.contains(pair.getKey())) return " Must be one of " + pair.getValue() + ", got " + pair.getKey();
+        if (!set.contains(pair.first())) return " Must be one of " + pair.second() + ", got " + pair.first();
       }
       return null;
     } else {
