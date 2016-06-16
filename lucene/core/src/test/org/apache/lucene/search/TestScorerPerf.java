@@ -29,9 +29,7 @@ import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.BitDocIdSet;
 import org.apache.lucene.util.BitSetIterator;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LuceneTestCase;
 
@@ -165,16 +163,14 @@ public class TestScorerPerf extends LuceneTestCase {
     }
     
     @Override
-    public boolean equals(Object obj) {
-      if (super.equals(obj) == false) {
-        return false;
-      }
-      return docs == ((BitSetQuery) obj).docs;
+    public boolean equals(Object other) {
+      return sameClassAs(other) &&
+             docs.equals(((BitSetQuery) other).docs);
     }
 
     @Override
     public int hashCode() {
-      return 31 * super.hashCode() + System.identityHashCode(docs);
+      return 31 * classHash() + docs.hashCode();
     }
   }
 

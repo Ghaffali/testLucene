@@ -28,7 +28,6 @@ import java.util.concurrent.TimeUnit;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
@@ -128,7 +127,7 @@ public class DeleteInactiveReplicaTest extends AbstractFullDistribZkTestBase{
 
       Map m = Utils.makeMap("qt", "/admin/cores", "action", "status");
 
-      try (SolrClient queryClient = new HttpSolrClient(replica1.getStr(ZkStateReader.BASE_URL_PROP))) {
+      try (SolrClient queryClient = getHttpSolrClient(replica1.getStr(ZkStateReader.BASE_URL_PROP))) {
         NamedList<Object> resp = queryClient.request(new QueryRequest(new MapSolrParams(m)));
         assertNull("The core is up and running again",
             ((NamedList) resp.get("status")).get(replica1.getStr("core")));

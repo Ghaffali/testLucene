@@ -20,9 +20,6 @@ import java.util.Arrays;
 
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.search.Query;
-import org.apache.lucene.spatial.geopoint.document.GeoPointField;
-import org.apache.lucene.spatial.geopoint.document.GeoPointField.TermEncoding;
-import org.apache.lucene.spatial.util.GeoEncodingUtils;
 import org.apache.lucene.geo.Rectangle;
 import org.apache.lucene.geo.Polygon;
 
@@ -33,8 +30,7 @@ import org.apache.lucene.geo.Polygon;
  * of the min and max lat/lon pairs. Terms passing this initial filter are passed
  * to a secondary filter that verifies whether the decoded lat/lon point falls within
  * (or on the boundary) of the bounding box query. Finally, the remaining candidate
- * term is passed to the final point in polygon check. All value comparisons are subject
- * to the same precision tolerance defined in {@value GeoEncodingUtils#TOLERANCE}
+ * term is passed to the final point in polygon check.
  *
  * @see Polygon
  * @lucene.experimental
@@ -48,47 +44,19 @@ public final class GeoPointInPolygonQuery extends GeoPointInBBoxQuery {
    * that fall within or on the boundary of the polygons defined by the input parameters. 
    */
   public GeoPointInPolygonQuery(String field, Polygon... polygons) {
-    this(field, TermEncoding.PREFIX, polygons);
-  }
-
-  /**
-   * Constructs a new GeoPolygonQuery that will match encoded {@link org.apache.lucene.spatial.geopoint.document.GeoPointField} terms
-   * that fall within or on the boundary of the polygon defined by the input parameters.
-   * @deprecated Use {@link #GeoPointInPolygonQuery(String, Polygon[])}.
-   */
-  @Deprecated
-  public GeoPointInPolygonQuery(final String field, final double[] polyLats, final double[] polyLons) {
-    this(field, TermEncoding.PREFIX, polyLats, polyLons);
-  }
-
-  /**
-   * Constructs a new GeoPolygonQuery that will match encoded {@link org.apache.lucene.spatial.geopoint.document.GeoPointField} terms
-   * that fall within or on the boundary of the polygon defined by the input parameters.
-   * @deprecated Use {@link #GeoPointInPolygonQuery(String, GeoPointField.TermEncoding, Polygon[])} instead.
-   */
-  @Deprecated
-  public GeoPointInPolygonQuery(final String field, final TermEncoding termEncoding, final double[] polyLats, final double[] polyLons) {
-    this(field, termEncoding, new Polygon(polyLats, polyLons));
-  }
-
-  /** 
-   * Constructs a new GeoPolygonQuery that will match encoded {@link org.apache.lucene.spatial.geopoint.document.GeoPointField} terms
-   * that fall within or on the boundary of the polygons defined by the input parameters. 
-   */
-  public GeoPointInPolygonQuery(String field, TermEncoding termEncoding, Polygon... polygons) {
-    this(field, termEncoding, Rectangle.fromPolygon(polygons), polygons);
+    this(field, Rectangle.fromPolygon(polygons), polygons);
   }
   
   // internal constructor
-  private GeoPointInPolygonQuery(String field, TermEncoding termEncoding, Rectangle boundingBox, Polygon... polygons) {
-    super(field, termEncoding, boundingBox.minLat, boundingBox.maxLat, boundingBox.minLon, boundingBox.maxLon);
+  private GeoPointInPolygonQuery(String field, Rectangle boundingBox, Polygon... polygons) {
+    super(field, boundingBox.minLat, boundingBox.maxLat, boundingBox.minLon, boundingBox.maxLon);
     this.polygons = polygons.clone();
   }
 
   /** throw exception if trying to change rewrite method */
   @Override
   public Query rewrite(IndexReader reader) {
-    return new GeoPointInPolygonQueryImpl(field, termEncoding, this, this.minLat, this.maxLat, this.minLon, this.maxLon);
+    return new GeoPointInPolygonQueryImpl(field, this, this.minLat, this.maxLat, this.minLon, this.maxLon);
   }
 
   @Override

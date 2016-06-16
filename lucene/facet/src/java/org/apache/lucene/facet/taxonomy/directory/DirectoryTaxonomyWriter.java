@@ -581,14 +581,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
   }
   
   @Override
-  public synchronized void commit() throws IOException {
+  public synchronized long commit() throws IOException {
     ensureOpen();
     // LUCENE-4972: if we always call setCommitData, we create empty commits
     String epochStr = indexWriter.getCommitData().get(INDEX_EPOCH);
     if (epochStr == null || Long.parseLong(epochStr, 16) != indexEpoch) {
       indexWriter.setCommitData(combinedCommitData(indexWriter.getCommitData()));
     }
-    indexWriter.commit();
+    return indexWriter.commit();
   }
 
   /** Combine original user data with the taxonomy epoch. */
@@ -616,14 +616,14 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
    * See {@link IndexWriter#prepareCommit}.
    */
   @Override
-  public synchronized void prepareCommit() throws IOException {
+  public synchronized long prepareCommit() throws IOException {
     ensureOpen();
     // LUCENE-4972: if we always call setCommitData, we create empty commits
     String epochStr = indexWriter.getCommitData().get(INDEX_EPOCH);
     if (epochStr == null || Long.parseLong(epochStr, 16) != indexEpoch) {
       indexWriter.setCommitData(combinedCommitData(indexWriter.getCommitData()));
     }
-    indexWriter.prepareCommit();
+    return indexWriter.prepareCommit();
   }
   
   @Override
@@ -902,18 +902,18 @@ public class DirectoryTaxonomyWriter implements TaxonomyWriter {
         return map;
       }
       addDone(); // in case this wasn't previously called
-      DataInputStream in = new DataInputStream(new BufferedInputStream(
-          Files.newInputStream(tmpfile)));
-      map = new int[in.readInt()];
-      // NOTE: The current code assumes here that the map is complete,
-      // i.e., every ordinal gets one and exactly one value. Otherwise,
-      // we may run into an EOF here, or vice versa, not read everything.
-      for (int i=0; i<map.length; i++) {
-        int origordinal = in.readInt();
-        int newordinal = in.readInt();
-        map[origordinal] = newordinal;
+      try (DataInputStream in = new DataInputStream(new BufferedInputStream(
+          Files.newInputStream(tmpfile)))) {
+        map = new int[in.readInt()];
+        // NOTE: The current code assumes here that the map is complete,
+        // i.e., every ordinal gets one and exactly one value. Otherwise,
+        // we may run into an EOF here, or vice versa, not read everything.
+        for (int i=0; i<map.length; i++) {
+          int origordinal = in.readInt();
+          int newordinal = in.readInt();
+          map[origordinal] = newordinal;
+        }
       }
-      in.close();
 
       // Delete the temporary file, which is no longer needed.
       Files.delete(tmpfile);

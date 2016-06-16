@@ -30,6 +30,7 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.Field.Store;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.index.PointValues;
@@ -393,11 +394,11 @@ public class TestPointValues extends LuceneTestCase {
     dir.close();
   }
 
-  // Write point values, one segment with Lucene60, another with SimpleText, then forceMerge with SimpleText
+  // Write point values, one segment with Lucene62, another with SimpleText, then forceMerge with SimpleText
   public void testDifferentCodecs1() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    iwc.setCodec(Codec.forName("Lucene60"));
+    iwc.setCodec(Codec.forName("Lucene62"));
     IndexWriter w = new IndexWriter(dir, iwc);
     Document doc = new Document();
     doc.add(new IntPoint("int", 1));
@@ -416,7 +417,7 @@ public class TestPointValues extends LuceneTestCase {
     dir.close();
   }
 
-  // Write point values, one segment with Lucene60, another with SimpleText, then forceMerge with Lucene60
+  // Write point values, one segment with Lucene62, another with SimpleText, then forceMerge with Lucene60
   public void testDifferentCodecs2() throws Exception {
     Directory dir = newDirectory();
     IndexWriterConfig iwc = new IndexWriterConfig(new MockAnalyzer(random()));
@@ -428,7 +429,7 @@ public class TestPointValues extends LuceneTestCase {
     w.close();
     
     iwc = new IndexWriterConfig(new MockAnalyzer(random()));
-    iwc.setCodec(Codec.forName("Lucene60"));
+    iwc.setCodec(Codec.forName("Lucene62"));
     w = new IndexWriter(dir, iwc);
     doc = new Document();
     doc.add(new IntPoint("int", 1));
@@ -650,6 +651,55 @@ public class TestPointValues extends LuceneTestCase {
     // Make sure CheckIndex in fact declares that it is testing points!
     assertTrue(output.toString(IOUtils.UTF_8).contains("test: points..."));
     dir.close();
+  }
+
+  public void testMergedStatsEmptyReader() throws IOException {
+    IndexReader reader = new MultiReader();
+    assertNull(PointValues.getMinPackedValue(reader, "field"));
+    assertNull(PointValues.getMaxPackedValue(reader, "field"));
+    assertEquals(0, PointValues.getDocCount(reader, "field"));
+    assertEquals(0, PointValues.size(reader, "field"));
+  }
+
+  public void testMergedStatsOneSegmentWithoutPoints() throws IOException {
+    Directory dir = new RAMDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null).setMergePolicy(NoMergePolicy.INSTANCE));
+    w.addDocument(new Document());
+    DirectoryReader.open(w).close();
+    Document doc = new Document();
+    doc.add(new IntPoint("field", Integer.MIN_VALUE));
+    w.addDocument(doc);
+    IndexReader reader = DirectoryReader.open(w);
+
+    assertArrayEquals(new byte[4], PointValues.getMinPackedValue(reader, "field"));
+    assertArrayEquals(new byte[4], PointValues.getMaxPackedValue(reader, "field"));
+    assertEquals(1, PointValues.getDocCount(reader, "field"));
+    assertEquals(1, PointValues.size(reader, "field"));
+
+    assertNull(PointValues.getMinPackedValue(reader, "field2"));
+    assertNull(PointValues.getMaxPackedValue(reader, "field2"));
+    assertEquals(0, PointValues.getDocCount(reader, "field2"));
+    assertEquals(0, PointValues.size(reader, "field2"));
+  }
+
+  public void testMergedStatsAllPointsDeleted() throws IOException {
+    Directory dir = new RAMDirectory();
+    IndexWriter w = new IndexWriter(dir, new IndexWriterConfig(null));
+    w.addDocument(new Document());
+    Document doc = new Document();
+    doc.add(new IntPoint("field", Integer.MIN_VALUE));
+    doc.add(new StringField("delete", "yes", Store.NO));
+    w.addDocument(doc);
+    w.forceMerge(1);
+    w.deleteDocuments(new Term("delete", "yes"));
+    w.addDocument(new Document());
+    w.forceMerge(1);
+    IndexReader reader = DirectoryReader.open(w);
+
+    assertNull(PointValues.getMinPackedValue(reader, "field"));
+    assertNull(PointValues.getMaxPackedValue(reader, "field"));
+    assertEquals(0, PointValues.getDocCount(reader, "field"));
+    assertEquals(0, PointValues.size(reader, "field"));
   }
 
   public void testMergedStats() throws IOException {

@@ -32,14 +32,11 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
+import org.apache.lucene.spatial.geopoint.document.GeoPointField;
 import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.DocIdSetBuilder;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.SparseFixedBitSet;
-
-import static org.apache.lucene.spatial.util.GeoEncodingUtils.mortonUnhashLat;
-import static org.apache.lucene.spatial.util.GeoEncodingUtils.mortonUnhashLon;
-
 
 /**
  * Custom ConstantScoreWrapper for {@code GeoPointMultiTermQuery} that cuts over to DocValues
@@ -67,17 +64,14 @@ final class GeoPointTermQueryConstantScoreWrapper <Q extends GeoPointMultiTermQu
   }
 
   @Override
-  public final boolean equals(final Object o) {
-    if (super.equals(o) == false) {
-      return false;
-    }
-    final GeoPointTermQueryConstantScoreWrapper<?> that = (GeoPointTermQueryConstantScoreWrapper<?>) o;
-    return this.query.equals(that.query);
+  public final boolean equals(final Object other) {
+    return sameClassAs(other) &&
+           query.equals(((GeoPointTermQueryConstantScoreWrapper<?>) other).query);
   }
 
   @Override
   public final int hashCode() {
-    return 31 * super.hashCode() + query.hashCode();
+    return 31 * classHash() + query.hashCode();
   }
 
   @Override
@@ -96,7 +90,7 @@ final class GeoPointTermQueryConstantScoreWrapper <Q extends GeoPointMultiTermQu
 
         LeafReader reader = context.reader();
         // approximation (postfiltering has not yet been applied)
-        DocIdSetBuilder builder = new DocIdSetBuilder(reader.maxDoc());
+        DocIdSetBuilder builder = new DocIdSetBuilder(reader.maxDoc(), terms);
         // subset of documents that need no postfiltering, this is purely an optimization
         final BitSet preApproved;
         // dumb heuristic: if the field is really sparse, use a sparse impl
@@ -113,9 +107,11 @@ final class GeoPointTermQueryConstantScoreWrapper <Q extends GeoPointMultiTermQu
           if (termsEnum.boundaryTerm()) {
             builder.add(docs);
           } else {
-            int docId;
-            while ((docId = docs.nextDoc()) != DocIdSetIterator.NO_MORE_DOCS) {
-              builder.add(docId);
+            int numDocs = termsEnum.docFreq();
+            DocIdSetBuilder.BulkAdder adder = builder.grow(numDocs);
+            for (int i = 0; i < numDocs; ++i) {
+              int docId = docs.nextDoc();
+              adder.add(docId);
               preApproved.set(docId);
             }
           }
@@ -140,7 +136,7 @@ final class GeoPointTermQueryConstantScoreWrapper <Q extends GeoPointMultiTermQu
               int count = sdv.count();
               for (int i = 0; i < count; i++) {
                 long hash = sdv.valueAt(i);
-                if (termsEnum.postFilter(mortonUnhashLat(hash), mortonUnhashLon(hash))) {
+                if (termsEnum.postFilter(GeoPointField.decodeLatitude(hash), GeoPointField.decodeLongitude(hash))) {
                   return true;
                 }
               }

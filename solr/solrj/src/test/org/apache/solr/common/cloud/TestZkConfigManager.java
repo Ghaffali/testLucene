@@ -54,6 +54,12 @@ public class TestZkConfigManager extends SolrTestCaseJ4 {
   }
 
   @Test
+  public void testConstants() throws Exception {
+    assertEquals("/configs", ZkConfigManager.CONFIGS_ZKNODE);
+    assertEquals("^\\..*$", ZkConfigManager.UPLOAD_FILENAME_EXCLUDE_REGEX);
+  }
+
+  @Test
   public void testUploadConfig() throws IOException {
 
     zkServer.ensurePathExists("/solr");

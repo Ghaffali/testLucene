@@ -45,7 +45,6 @@ import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.util.TimeOut;
 import org.apache.zookeeper.KeeperException;
-import org.junit.Ignore;
 import org.junit.Test;
 
 import static org.apache.solr.cloud.ReplicaPropertiesBase.verifyUniqueAcrossCollection;
@@ -257,7 +256,7 @@ public class CollectionsAPISolrJTest extends AbstractFullDistribZkTestBase {
 
     Replica replica1 = testCollection.getReplica("core_node1");
 
-    try (HttpSolrClient client = new HttpSolrClient(replica1.getStr("base_url"))) {
+    try (HttpSolrClient client = getHttpSolrClient(replica1.getStr("base_url"))) {
       CoreAdminResponse status = CoreAdminRequest.getStatus(replica1.getStr("core"), client);
       NamedList<Object> coreStatus = status.getCoreStatus(replica1.getStr("core"));
       String dataDirStr = (String) coreStatus.get("dataDir");
@@ -276,7 +275,7 @@ public class CollectionsAPISolrJTest extends AbstractFullDistribZkTestBase {
 
     cloudClient.setDefaultCollection(collectionName);
 
-    String newReplicaName = Assign.assignNode(collectionName, cloudClient.getZkStateReader().getClusterState());
+    String newReplicaName = Assign.assignNode(cloudClient.getZkStateReader().getClusterState().getCollection(collectionName));
     ArrayList<String> nodeList = new ArrayList<>(cloudClient.getZkStateReader().getClusterState().getLiveNodes());
     Collections.shuffle(nodeList, random());
     CollectionAdminRequest.AddReplica addReplica = new CollectionAdminRequest.AddReplica()
@@ -336,7 +335,7 @@ public class CollectionsAPISolrJTest extends AbstractFullDistribZkTestBase {
     while(! timeout.hasTimedOut()){
       Thread.sleep(10);
       changed = Objects.equals("false",
-          cloudClient.getZkStateReader().getClusterProps().get(ZkStateReader.LEGACY_CLOUD));
+          cloudClient.getZkStateReader().getClusterProperty(ZkStateReader.LEGACY_CLOUD, "none"));
       if(changed) break;
     }
     assertTrue("The Cluster property wasn't set", changed);
@@ -351,7 +350,7 @@ public class CollectionsAPISolrJTest extends AbstractFullDistribZkTestBase {
     changed = false;
     while(! timeout.hasTimedOut()) {
       Thread.sleep(10);
-      changed = (cloudClient.getZkStateReader().getClusterProps().get(ZkStateReader.LEGACY_CLOUD) == null);
+      changed = (cloudClient.getZkStateReader().getClusterProperty(ZkStateReader.LEGACY_CLOUD, (String) null) == null);
       if(changed)  
         break;
     }

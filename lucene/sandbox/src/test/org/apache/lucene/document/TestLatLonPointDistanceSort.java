@@ -35,7 +35,12 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.SloppyMath;
 import org.apache.lucene.util.TestUtil;
 
-/** Simple tests for {@link LatLonPoint#newDistanceSort} */
+import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
+
+/** Simple tests for {@link LatLonDocValuesField#newDistanceSort} */
 public class TestLatLonPointDistanceSort extends LuceneTestCase {
 
   /** Add three points and sort by distance */
@@ -45,26 +50,26 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
     
     // add some docs
     Document doc = new Document();
-    doc.add(new LatLonPoint("location", 40.759011, -73.9844722));
+    doc.add(new LatLonDocValuesField("location", 40.759011, -73.9844722));
     iw.addDocument(doc);
     
     doc = new Document();
-    doc.add(new LatLonPoint("location", 40.718266, -74.007819));
+    doc.add(new LatLonDocValuesField("location", 40.718266, -74.007819));
     iw.addDocument(doc);
     
     doc = new Document();
-    doc.add(new LatLonPoint("location", 40.7051157, -74.0088305));
+    doc.add(new LatLonDocValuesField("location", 40.7051157, -74.0088305));
     iw.addDocument(doc);
     
     IndexReader reader = iw.getReader();
     IndexSearcher searcher = newSearcher(reader);
     iw.close();
 
-    Sort sort = new Sort(LatLonPoint.newDistanceSort("location", 40.7143528, -74.0059731));
+    Sort sort = new Sort(LatLonDocValuesField.newDistanceSort("location", 40.7143528, -74.0059731));
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
     
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
-    assertEquals(462.1028401330432, (Double)d.fields[0], 0.0D);
+    assertEquals(462.1028401330431, (Double)d.fields[0], 0.0D);
     
     d = (FieldDoc) td.scoreDocs[1];
     assertEquals(1054.9842850974826, (Double)d.fields[0], 0.0D);
@@ -86,22 +91,22 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
     iw.addDocument(doc);
     
     doc = new Document();
-    doc.add(new LatLonPoint("location", 40.718266, -74.007819));
+    doc.add(new LatLonDocValuesField("location", 40.718266, -74.007819));
     iw.addDocument(doc);
     
     doc = new Document();
-    doc.add(new LatLonPoint("location", 40.7051157, -74.0088305));
+    doc.add(new LatLonDocValuesField("location", 40.7051157, -74.0088305));
     iw.addDocument(doc);
     
     IndexReader reader = iw.getReader();
     IndexSearcher searcher = newSearcher(reader);
     iw.close();
 
-    Sort sort = new Sort(LatLonPoint.newDistanceSort("location", 40.7143528, -74.0059731));
+    Sort sort = new Sort(LatLonDocValuesField.newDistanceSort("location", 40.7143528, -74.0059731));
     TopDocs td = searcher.search(new MatchAllDocsQuery(), 3, sort);
     
     FieldDoc d = (FieldDoc) td.scoreDocs[0];
-    assertEquals(462.1028401330432D, (Double)d.fields[0], 0.0D);
+    assertEquals(462.1028401330431D, (Double)d.fields[0], 0.0D);
     
     d = (FieldDoc) td.scoreDocs[1];
     assertEquals(1054.9842850974826, (Double)d.fields[0], 0.0D);
@@ -191,10 +196,10 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
         double latRaw = GeoTestUtil.nextLatitude();
         double lonRaw = GeoTestUtil.nextLongitude();
         // pre-normalize up front, so we can just use quantized value for testing and do simple exact comparisons
-        double lat = LatLonPoint.decodeLatitude(LatLonPoint.encodeLatitude(latRaw));
-        double lon = LatLonPoint.decodeLongitude(LatLonPoint.encodeLongitude(lonRaw));
+        double lat = decodeLatitude(encodeLatitude(latRaw));
+        double lon = decodeLongitude(encodeLongitude(lonRaw));
 
-        doc.add(new LatLonPoint("field", lat, lon));
+        doc.add(new LatLonDocValuesField("field", lat, lon));
         doc.add(new StoredField("lat", lat));
         doc.add(new StoredField("lon", lon));
       } // otherwise "missing"
@@ -229,7 +234,7 @@ public class TestLatLonPointDistanceSort extends LuceneTestCase {
       // randomize the topN a bit
       int topN = TestUtil.nextInt(random(), 1, reader.maxDoc());
       // sort by distance, then ID
-      SortField distanceSort = LatLonPoint.newDistanceSort("field", lat, lon);
+      SortField distanceSort = LatLonDocValuesField.newDistanceSort("field", lat, lon);
       distanceSort.setMissingValue(missingValue);
       Sort sort = new Sort(distanceSort, 
                            new SortField("id", SortField.Type.INT));

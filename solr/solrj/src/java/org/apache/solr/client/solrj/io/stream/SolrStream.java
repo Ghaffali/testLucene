@@ -19,15 +19,20 @@ package org.apache.solr.client.solrj.io.stream;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.io.SolrClientCache;
 import org.apache.solr.client.solrj.io.Tuple;
 import org.apache.solr.client.solrj.io.comp.StreamComparator;
+import org.apache.solr.client.solrj.io.stream.expr.Explanation;
+import org.apache.solr.client.solrj.io.stream.expr.Explanation.ExpressionType;
+import org.apache.solr.client.solrj.io.stream.expr.StreamExplanation;
+import org.apache.solr.client.solrj.io.stream.expr.StreamFactory;
+import org.apache.solr.common.params.MapSolrParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.slf4j.Logger;
@@ -44,7 +49,7 @@ public class SolrStream extends TupleStream {
   private static final long serialVersionUID = 1;
 
   private String baseUrl;
-  private Map params;
+  private SolrParams params;
   private int numWorkers;
   private int workerID;
   private boolean trace;
@@ -55,7 +60,25 @@ public class SolrStream extends TupleStream {
   private String slice;
   private long checkpoint = -1;
 
+  /**
+   * @param baseUrl Base URL of the stream.
+   * @param params  Map&lt;String, String&gt; of parameters
+   * @deprecated, use the form that thakes SolrParams. Existing code can use
+   * new ModifiableSolrParams(SolrParams.toMultiMap(new NamedList(params)))
+   * for existing calls that use Map&lt;String, String&gt;
+   */
+  @Deprecated
   public SolrStream(String baseUrl, Map params) {
+    this.baseUrl = baseUrl;
+    this.params = new ModifiableSolrParams(new MapSolrParams(params));
+  }
+
+  /**
+   * @param baseUrl Base URL of the stream.
+   * @param params  Map&lt;String, String&gt; of parameters
+   */
+
+  public SolrStream(String baseUrl, SolrParams params) {
     this.baseUrl = baseUrl;
     this.params = params;
   }
@@ -86,7 +109,7 @@ public class SolrStream extends TupleStream {
 
 
     if(cache == null) {
-      client = new HttpSolrClient(baseUrl);
+      client = new HttpSolrClient.Builder(baseUrl).build();
     } else {
       client = cache.getHttpSolrClient(baseUrl);
     }
@@ -114,9 +137,9 @@ public class SolrStream extends TupleStream {
     this.checkpoint = checkpoint;
   }
 
-  private SolrParams loadParams(Map params) throws IOException {
-    ModifiableSolrParams solrParams = new ModifiableSolrParams();
-    if(params.containsKey("partitionKeys")) {
+  private SolrParams loadParams(SolrParams paramsIn) throws IOException {
+    ModifiableSolrParams solrParams = new ModifiableSolrParams(paramsIn);
+    if (params.get("partitionKeys") != null) {
       if(!params.get("partitionKeys").equals("none")) {
         String partitionFilter = getPartitionFilter();
         solrParams.add("fq", partitionFilter);
@@ -131,12 +154,6 @@ public class SolrStream extends TupleStream {
       solrParams.add("fq", "{!frange cost=100 incl=false l="+checkpoint+"}_version_");
     }
 
-    Iterator<Map.Entry> it = params.entrySet().iterator();
-    while(it.hasNext()) {
-      Map.Entry entry = it.next();
-      solrParams.add((String)entry.getKey(), entry.getValue().toString());
-    }
-
     return solrParams;
   }
 
@@ -149,6 +166,16 @@ public class SolrStream extends TupleStream {
     return buf.toString();
   }
 
+  @Override
+  public Explanation toExplanation(StreamFactory factory) throws IOException {
+
+    return new StreamExplanation(getStreamNodeId().toString())
+      .withFunctionName("non-expressible")
+      .withImplementingClass(this.getClass().getName())
+      .withExpressionType(ExpressionType.STREAM_SOURCE)
+      .withExpression("non-expressible");
+  }
+  
   /**
   *  Closes the Stream to a single Solr Instance
   * */
@@ -201,7 +228,7 @@ public class SolrStream extends TupleStream {
       throw new IOException("--> "+this.baseUrl+":"+e.getMessage());
     } catch (Exception e) {
       //The Stream source did not provide an exception in a format that the SolrStream could propagate.
-      throw new IOException("--> "+this.baseUrl+": An exception has occurred on the server, refer to server log for details.");
+      throw new IOException("--> "+this.baseUrl+": An exception has occurred on the server, refer to server log for details.", e);
     }
   }
 

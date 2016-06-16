@@ -18,32 +18,29 @@ package org.apache.lucene.document;
 
 import java.io.IOException;
 
+import org.apache.lucene.geo.GeoUtils;
 import org.apache.lucene.geo.Rectangle;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
-import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
-import org.apache.lucene.geo.GeoUtils;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.SloppyMath;
-import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.StringHelper;
+
+import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
 /**
  * Distance query for {@link LatLonPoint}.
@@ -81,32 +78,25 @@ final class LatLonPointDistanceQuery extends Query {
     // second set of longitude ranges to check (for cross-dateline case)
     final byte minLon2[] = new byte[Integer.BYTES];
 
-    NumericUtils.intToSortableBytes(LatLonPoint.encodeLatitude(box.minLat), minLat, 0);
-    NumericUtils.intToSortableBytes(LatLonPoint.encodeLatitude(box.maxLat), maxLat, 0);
+    NumericUtils.intToSortableBytes(encodeLatitude(box.minLat), minLat, 0);
+    NumericUtils.intToSortableBytes(encodeLatitude(box.maxLat), maxLat, 0);
 
     // crosses dateline: split
     if (box.crossesDateline()) {
       // box1
       NumericUtils.intToSortableBytes(Integer.MIN_VALUE, minLon, 0);
-      NumericUtils.intToSortableBytes(LatLonPoint.encodeLongitude(box.maxLon), maxLon, 0);
+      NumericUtils.intToSortableBytes(encodeLongitude(box.maxLon), maxLon, 0);
       // box2
-      NumericUtils.intToSortableBytes(LatLonPoint.encodeLongitude(box.minLon), minLon2, 0);
+      NumericUtils.intToSortableBytes(encodeLongitude(box.minLon), minLon2, 0);
     } else {
-      NumericUtils.intToSortableBytes(LatLonPoint.encodeLongitude(box.minLon), minLon, 0);
-      NumericUtils.intToSortableBytes(LatLonPoint.encodeLongitude(box.maxLon), maxLon, 0);
+      NumericUtils.intToSortableBytes(encodeLongitude(box.minLon), minLon, 0);
+      NumericUtils.intToSortableBytes(encodeLongitude(box.maxLon), maxLon, 0);
       // disable box2
       NumericUtils.intToSortableBytes(Integer.MAX_VALUE, minLon2, 0);
     }
 
-    // compute a maximum partial haversin: unless our box is crazy, we can use this bound
-    // to reject edge cases faster in matches()
-    final double maxPartialDistance;
-    if (box.maxLon - longitude < 90 && longitude - box.minLon < 90) {
-      maxPartialDistance = Math.max(SloppyMath.haversinSortKey(latitude, longitude, latitude, box.maxLon),
-                                    SloppyMath.haversinSortKey(latitude, longitude, box.maxLat, longitude));
-    } else {
-      maxPartialDistance = Double.POSITIVE_INFINITY;
-    }
+    // compute exact sort key: avoid any asin() computations
+    final double sortKey = sortKey(radiusMeters);
 
     final double axisLat = Rectangle.axisLat(latitude, radiusMeters);
 
@@ -127,34 +117,27 @@ final class LatLonPointDistanceQuery extends Query {
         }
         LatLonPoint.checkCompatible(fieldInfo);
         
-        // approximation (postfiltering has not yet been applied)
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc());
-        // subset of documents that need no postfiltering, this is purely an optimization
-        final BitSet preApproved;
-        // dumb heuristic: if the field is really sparse, use a sparse impl
-        if (values.getDocCount(field) * 100L < reader.maxDoc()) {
-          preApproved = new SparseFixedBitSet(reader.maxDoc());
-        } else {
-          preApproved = new FixedBitSet(reader.maxDoc());
-        }
+        // matching docids
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+
         values.intersect(field,
                          new IntersectVisitor() {
+
+                           DocIdSetBuilder.BulkAdder adder;
+
                            @Override
                            public void grow(int count) {
-                             result.grow(count);
+                             adder = result.grow(count);
                            }
 
                            @Override
                            public void visit(int docID) {
-                             result.add(docID);
-                             preApproved.set(docID);
+                             adder.add(docID);
                            }
 
                            @Override
                            public void visit(int docID, byte[] packedValue) {
-                             // we bounds check individual values, as subtrees may cross, but we are being sent the values anyway:
-                             // this reduces the amount of docvalues fetches (improves approximation)
-
+                             // bounding box check
                              if (StringHelper.compare(Integer.BYTES, packedValue, 0, maxLat, 0) > 0 ||
                                  StringHelper.compare(Integer.BYTES, packedValue, 0, minLat, 0) < 0) {
                                // latitude out of bounding box range
@@ -168,13 +151,19 @@ final class LatLonPointDistanceQuery extends Query {
                                return;
                              }
 
-                             result.add(docID);
+                             double docLatitude = decodeLatitude(packedValue, 0);
+                             double docLongitude = decodeLongitude(packedValue, Integer.BYTES);
+
+                             // its a match only if its sortKey <= our sortKey
+                             if (SloppyMath.haversinSortKey(latitude, longitude, docLatitude, docLongitude) <= sortKey) {
+                               adder.add(docID);
+                             }
                            }
                            
                            // algorithm: we create a bounding box (two bounding boxes if we cross the dateline).
                            // 1. check our bounding box(es) first. if the subtree is entirely outside of those, bail.
                            // 2. check if the subtree is disjoint. it may cross the bounding box but not intersect with circle
-                           // 3. see if the subtree is fully contained. if the subtree is enormous along the x axis, wrapping half way around the world, etc: then this can't work, just go to step 3.
+                           // 3. see if the subtree is fully contained. if the subtree is enormous along the x axis, wrapping half way around the world, etc: then this can't work, just go to step 4.
                            // 4. recurse naively (subtrees crossing over circle edge)
                            @Override
                            public Relation compare(byte[] minPackedValue, byte[] maxPackedValue) {
@@ -191,27 +180,27 @@ final class LatLonPointDistanceQuery extends Query {
                                return Relation.CELL_OUTSIDE_QUERY;
                              }
 
-                             double latMin = LatLonPoint.decodeLatitude(minPackedValue, 0);
-                             double lonMin = LatLonPoint.decodeLongitude(minPackedValue, Integer.BYTES);
-                             double latMax = LatLonPoint.decodeLatitude(maxPackedValue, 0);
-                             double lonMax = LatLonPoint.decodeLongitude(maxPackedValue, Integer.BYTES);
+                             double latMin = decodeLatitude(minPackedValue, 0);
+                             double lonMin = decodeLongitude(minPackedValue, Integer.BYTES);
+                             double latMax = decodeLatitude(maxPackedValue, 0);
+                             double lonMax = decodeLongitude(maxPackedValue, Integer.BYTES);
 
                              if ((longitude < lonMin || longitude > lonMax) && (axisLat+ Rectangle.AXISLAT_ERROR < latMin || axisLat- Rectangle.AXISLAT_ERROR > latMax)) {
                                // circle not fully inside / crossing axis
-                               if (SloppyMath.haversinMeters(latitude, longitude, latMin, lonMin) > radiusMeters &&
-                                   SloppyMath.haversinMeters(latitude, longitude, latMin, lonMax) > radiusMeters &&
-                                   SloppyMath.haversinMeters(latitude, longitude, latMax, lonMin) > radiusMeters &&
-                                   SloppyMath.haversinMeters(latitude, longitude, latMax, lonMax) > radiusMeters) {
+                               if (SloppyMath.haversinSortKey(latitude, longitude, latMin, lonMin) > sortKey &&
+                                   SloppyMath.haversinSortKey(latitude, longitude, latMin, lonMax) > sortKey &&
+                                   SloppyMath.haversinSortKey(latitude, longitude, latMax, lonMin) > sortKey &&
+                                   SloppyMath.haversinSortKey(latitude, longitude, latMax, lonMax) > sortKey) {
                                  // no points inside
                                  return Relation.CELL_OUTSIDE_QUERY;
                                }
                              }
 
                              if (lonMax - longitude < 90 && longitude - lonMin < 90 &&
-                                 SloppyMath.haversinMeters(latitude, longitude, latMin, lonMin) <= radiusMeters &&
-                                 SloppyMath.haversinMeters(latitude, longitude, latMin, lonMax) <= radiusMeters &&
-                                 SloppyMath.haversinMeters(latitude, longitude, latMax, lonMin) <= radiusMeters &&
-                                 SloppyMath.haversinMeters(latitude, longitude, latMax, lonMax) <= radiusMeters) {
+                                 SloppyMath.haversinSortKey(latitude, longitude, latMin, lonMin) <= sortKey &&
+                                 SloppyMath.haversinSortKey(latitude, longitude, latMin, lonMax) <= sortKey &&
+                                 SloppyMath.haversinSortKey(latitude, longitude, latMax, lonMin) <= sortKey &&
+                                 SloppyMath.haversinSortKey(latitude, longitude, latMax, lonMax) <= sortKey) {
                                // we are fully enclosed, collect everything within this subtree
                                return Relation.CELL_INSIDE_QUERY;
                              } else {
@@ -221,51 +210,42 @@ final class LatLonPointDistanceQuery extends Query {
                            }
                          });
 
-        DocIdSet set = result.build();
-        final DocIdSetIterator disi = set.iterator();
-        if (disi == null) {
-          return null;
-        }
-
-        // return two-phase iterator using docvalues to postfilter candidates
-        SortedNumericDocValues docValues = DocValues.getSortedNumeric(reader, field);
-        TwoPhaseIterator iterator = new TwoPhaseIterator(disi) {
-          @Override
-          public boolean matches() throws IOException {
-            int docId = disi.docID();
-            if (preApproved.get(docId)) {
-              return true;
-            } else {
-              docValues.setDocument(docId);
-              int count = docValues.count();
-              for (int i = 0; i < count; i++) {
-                long encoded = docValues.valueAt(i);
-                double docLatitude = LatLonPoint.decodeLatitude((int)(encoded >> 32));
-                double docLongitude = LatLonPoint.decodeLongitude((int)(encoded & 0xFFFFFFFF));
-
-                // first check the partial distance, if its more than that, it can't be <= radiusMeters
-                double h1 = SloppyMath.haversinSortKey(latitude, longitude, docLatitude, docLongitude);
-                if (h1 > maxPartialDistance) {
-                  continue;
-                }
-
-                // fully confirm with part 2:
-                if (SloppyMath.haversinMeters(h1) <= radiusMeters) {
-                  return true;
-                }
-              }
-              return false;
-            }
-          }
-
-          @Override
-          public float matchCost() {
-            return 20; // TODO: make this fancier
-          }
-        };
-        return new ConstantScoreScorer(this, score(), iterator);
+        return new ConstantScoreScorer(this, score(), result.build().iterator());
       }
     };
+  }
+
+  /**
+   * binary search to find the exact sortKey needed to match the specified radius
+   * any sort key <= this is a query match.
+   */
+  static double sortKey(double radius) {
+    // effectively infinite
+    if (radius >= SloppyMath.haversinMeters(Double.MAX_VALUE)) {
+      return SloppyMath.haversinMeters(Double.MAX_VALUE);
+    }
+
+    // this is a search through non-negative long space only
+    long lo = 0;
+    long hi = Double.doubleToRawLongBits(Double.MAX_VALUE);
+    while (lo <= hi) {
+      long mid = (lo + hi) >>> 1;
+      double sortKey = Double.longBitsToDouble(mid);
+      double midRadius = SloppyMath.haversinMeters(sortKey);
+      if (midRadius == radius) {
+        return sortKey;
+      } else if (midRadius > radius) {
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
+    }
+
+    // not found: this is because a user can supply an arbitrary radius, one that we will never
+    // calculate exactly via our haversin method.
+    double ceil = Double.longBitsToDouble(lo);
+    assert SloppyMath.haversinMeters(ceil) > radius;
+    return ceil;
   }
 
   public String getField() {
@@ -287,7 +267,7 @@ final class LatLonPointDistanceQuery extends Query {
   @Override
   public int hashCode() {
     final int prime = 31;
-    int result = super.hashCode();
+    int result = classHash();
     result = prime * result + field.hashCode();
     long temp;
     temp = Double.doubleToLongBits(latitude);
@@ -300,16 +280,16 @@ final class LatLonPointDistanceQuery extends Query {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (!super.equals(obj)) return false;
-    if (getClass() != obj.getClass()) return false;
-    LatLonPointDistanceQuery other = (LatLonPointDistanceQuery) obj;
-    if (field.equals(other.field) == false) return false;
-    if (Double.doubleToLongBits(latitude) != Double.doubleToLongBits(other.latitude)) return false;
-    if (Double.doubleToLongBits(longitude) != Double.doubleToLongBits(other.longitude)) return false;
-    if (Double.doubleToLongBits(radiusMeters) != Double.doubleToLongBits(other.radiusMeters)) return false;
-    return true;
+  public boolean equals(Object other) {
+    return sameClassAs(other) &&
+           equalsTo(getClass().cast(other));
+  }
+
+  private boolean equalsTo(LatLonPointDistanceQuery other) {
+    return field.equals(other.field) &&
+           Double.doubleToLongBits(latitude) == Double.doubleToLongBits(other.latitude) &&
+           Double.doubleToLongBits(longitude) == Double.doubleToLongBits(other.longitude) &&
+           Double.doubleToLongBits(radiusMeters) == Double.doubleToLongBits(other.radiusMeters);
   }
 
   @Override

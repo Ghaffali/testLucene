@@ -32,6 +32,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.cloud.ZkSolrResourceLoader;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.core.SolrCore;
@@ -50,7 +51,12 @@ import org.apache.solr.util.plugin.SolrCoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.util.Collections.singletonMap;
 import static org.apache.solr.common.params.CommonParams.JSON;
+import static org.apache.solr.schema.IndexSchema.SchemaProps.Handler.COPY_FIELDS;
+import static org.apache.solr.schema.IndexSchema.SchemaProps.Handler.DYNAMIC_FIELDS;
+import static org.apache.solr.schema.IndexSchema.SchemaProps.Handler.FIELDS;
+import static org.apache.solr.schema.IndexSchema.SchemaProps.Handler.FIELD_TYPES;
 
 public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, PermissionNameProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -59,18 +65,14 @@ public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, 
   private static final Map<String, String> level2;
 
   static {
-    Set<String> s = ImmutableSet.of(
-        IndexSchema.FIELD_TYPES,
-        IndexSchema.FIELDS,
-        IndexSchema.DYNAMIC_FIELDS,
-        IndexSchema.COPY_FIELDS
+    Map s = Utils.makeMap(
+        FIELD_TYPES.nameLower, null,
+        FIELDS.nameLower, "fl",
+        DYNAMIC_FIELDS.nameLower, "fl",
+        COPY_FIELDS.nameLower, null
     );
-    Map<String, String> m = new HashMap<>();
-    for (String s1 : s) {
-      m.put(s1, s1);
-      m.put(s1.toLowerCase(Locale.ROOT), s1);
-    }
-    level2 = ImmutableMap.copyOf(m);
+
+    level2 = Collections.unmodifiableMap(s);
   }
 
 
@@ -183,9 +185,15 @@ public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, 
           List<String> parts = StrUtils.splitSmart(path, '/');
           if (parts.get(0).isEmpty()) parts.remove(0);
           if (parts.size() > 1 && level2.containsKey(parts.get(1))) {
-            String realName = level2.get(parts.get(1));
-            SimpleOrderedMap<Object> propertyValues = req.getSchema().getNamedPropertyValues(req.getParams());
-            Object o = propertyValues.get(realName);
+            String realName = parts.get(1);
+            String fieldName = IndexSchema.SchemaProps.nameMapping.get(realName);
+
+            String pathParam = level2.get(realName);
+            if (parts.size() > 2) {
+              req.setParams(SolrParams.wrapDefaults(new MapSolrParams(singletonMap(pathParam, parts.get(2))), req.getParams()));
+            }
+            Map propertyValues = req.getSchema().getNamedPropertyValues(realName, req.getParams());
+            Object o = propertyValues.get(fieldName);
             if(parts.size()> 2) {
               String name = parts.get(2);
               if (o instanceof List) {
@@ -194,7 +202,7 @@ public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, 
                   if (obj instanceof SimpleOrderedMap) {
                     SimpleOrderedMap simpleOrderedMap = (SimpleOrderedMap) obj;
                     if(name.equals(simpleOrderedMap.get("name"))) {
-                      rsp.add(realName.substring(0, realName.length() - 1), simpleOrderedMap);
+                      rsp.add(fieldName.substring(0, realName.length() - 1), simpleOrderedMap);
                       return;
                     }
                   }
@@ -202,7 +210,7 @@ public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, 
               }
               throw new SolrException(SolrException.ErrorCode.NOT_FOUND, "No such path " + path);
             } else {
-              rsp.add(realName, o);
+              rsp.add(fieldName, o);
             }
             return;
           }

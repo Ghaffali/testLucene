@@ -45,6 +45,8 @@ import org.apache.solr.core.CoreDescriptor;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.security.AuthorizationContext;
+import org.apache.solr.security.PermissionNameProvider;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiSupport;
@@ -54,6 +56,8 @@ import org.slf4j.MDC;
 
 import static org.apache.solr.common.params.CoreAdminParams.ACTION;
 import static org.apache.solr.common.params.CoreAdminParams.CoreAdminAction.STATUS;
+import static org.apache.solr.security.PermissionNameProvider.Name.CORE_EDIT_PERM;
+import static org.apache.solr.security.PermissionNameProvider.Name.CORE_READ_PERM;
 
 /**
  *
@@ -82,9 +86,9 @@ public class CoreAdminHandler extends RequestHandlerBase  {
     // should happen in the constructor...  
     this.coreContainer = null;
     HashMap<String, Map<String, TaskObject>> map = new HashMap<>(3, 1.0f);
-    map.put(RUNNING, Collections.synchronizedMap(new LinkedHashMap<>()));
-    map.put(COMPLETED, Collections.synchronizedMap(new LinkedHashMap<>()));
-    map.put(FAILED, Collections.synchronizedMap(new LinkedHashMap<>()));
+    map.put(RUNNING, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
+    map.put(COMPLETED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
+    map.put(FAILED, Collections.synchronizedMap(new LinkedHashMap<String, TaskObject>()));
     requestStatusMap = Collections.unmodifiableMap(map);
     coreAdminHandlerApi = new CoreAdminHandlerApi(this);
   }
@@ -270,6 +274,17 @@ public class CoreAdminHandler extends RequestHandlerBase  {
   @Override
   public String getDescription() {
     return "Manage Multiple Solr Cores";
+  }
+
+  @Override
+  public Name getPermissionName(AuthorizationContext ctx) {
+    String action = ctx.getParams().get(CoreAdminParams.ACTION);
+    if (action == null) return CORE_READ_PERM;
+    CoreAdminParams.CoreAdminAction coreAction = CoreAdminParams.CoreAdminAction.get(action);
+    if (coreAction == null) return CORE_READ_PERM;
+    return coreAction.isRead ?
+        CORE_READ_PERM :
+        CORE_EDIT_PERM;
   }
 
   /**

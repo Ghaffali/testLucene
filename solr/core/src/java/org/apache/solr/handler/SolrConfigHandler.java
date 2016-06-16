@@ -786,7 +786,7 @@ public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAwa
     public Boolean call() throws Exception {
       final RTimer timer = new RTimer();
       int attempts = 0;
-      try (HttpSolrClient solr = new HttpSolrClient(coreUrl)) {
+      try (HttpSolrClient solr = new HttpSolrClient.Builder(coreUrl).build()) {
         // eventually, this loop will get killed by the ExecutorService's timeout
         while (true) {
           try {

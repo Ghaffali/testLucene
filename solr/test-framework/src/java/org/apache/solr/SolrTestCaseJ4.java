@@ -31,6 +31,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.invoke.MethodHandles;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -56,6 +57,7 @@ import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import com.carrotsearch.randomizedtesting.rules.SystemPropertiesRestoreRule;
 import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.FileUtils;
+import org.apache.http.client.HttpClient;
 import org.apache.lucene.analysis.MockAnalyzer;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.index.IndexWriterConfig;
@@ -66,7 +68,13 @@ import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.QuickPatchThreadsFilter;
 import org.apache.lucene.util.TestUtil;
 import org.apache.solr.client.solrj.embedded.JettyConfig;
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrClient;
 import org.apache.solr.client.solrj.impl.HttpClientUtil;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.impl.HttpSolrClient.Builder;
+import org.apache.solr.client.solrj.impl.LBHttpSolrClient;
+import org.apache.solr.client.solrj.ResponseParser;
 import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.cloud.IpTables;
 import org.apache.solr.common.SolrDocument;
@@ -96,6 +104,8 @@ import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.servlet.DirectSolrConnection;
 import org.apache.solr.util.AbstractSolrTestCase;
+import org.apache.solr.util.RandomizeSSL;
+import org.apache.solr.util.RandomizeSSL.SSLRandomizer;
 import org.apache.solr.util.RefCounted;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
 import org.apache.solr.util.SSLTestConfig;
@@ -129,6 +139,7 @@ import static com.google.common.base.Preconditions.checkNotNull;
 })
 @SuppressSysoutChecks(bugUrl = "Solr dumps tons of logs to console.")
 @SuppressFileSystems("ExtrasFS") // might be ok, the failures with e.g. nightly runs might be "normal"
+@RandomizeSSL()
 public abstract class SolrTestCaseJ4 extends LuceneTestCase {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -207,9 +218,8 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   public TestRule solrTestRules = 
     RuleChain.outerRule(new SystemPropertiesRestoreRule());
 
-  @BeforeClass 
-  @SuppressWarnings("unused")
-  private static void beforeClass() {
+  @BeforeClass
+  public static void setupTestCases() {
     initCoreDataDir = createTempDir("init-core-data").toFile();
 
     System.err.println("Creating dataDir: " + initCoreDataDir.getAbsolutePath());
@@ -224,8 +234,8 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     newRandomConfig();
     
     sslConfig = buildSSLConfig();
-    //will use ssl specific or default depending on sslConfig
-    HttpClientUtil.setHttpClientBuilder(sslConfig.getHttpClientBuilder());
+    // based on randomized SSL config, set SchemaRegistryProvider appropriately
+    HttpClientUtil.setSchemaRegistryProvider(sslConfig.buildClientSchemaRegistryProvider());
     if(isSSLMode()) {
       // SolrCloud tests should usually clear this
       System.setProperty("urlScheme", "https");
@@ -233,8 +243,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   }
 
   @AfterClass
-  @SuppressWarnings("unused")
-  private static void afterClass() throws Exception {
+  public static void teardownTestCases() throws Exception {
     try {
       deleteCore();
       resetExceptionIgnores();
@@ -309,22 +318,21 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   }
 
   private static SSLTestConfig buildSSLConfig() {
-    // test has been disabled
-    if (RandomizedContext.current().getTargetClass().isAnnotationPresent(SuppressSSL.class)) {
-      return new SSLTestConfig();
-    }
+
+    SSLRandomizer sslRandomizer =
+      SSLRandomizer.getSSLRandomizerForClass(RandomizedContext.current().getTargetClass());
     
-    // we don't choose ssl that often because of SOLR-5776
-    final boolean trySsl = random().nextInt(10) < 2;
-    boolean trySslClientAuth = random().nextInt(10) < 2;
     if (Constants.MAC_OS_X) {
-      trySslClientAuth = false;
+      // see SOLR-9039
+      // If a solution is found to remove this, please make sure to also update
+      // TestMiniSolrCloudClusterSSL.testSslAndClientAuth as well.
+      sslRandomizer = new SSLRandomizer(sslRandomizer.ssl, 0.0D, (sslRandomizer.debug + " w/ MAC_OS_X supressed clientAuth"));
     }
-    
-    log.info("Randomized ssl ({}) and clientAuth ({})", trySsl,
-        trySslClientAuth);
-    
-    return new SSLTestConfig(trySsl, trySslClientAuth);
+
+    SSLTestConfig result = sslRandomizer.createSSLTestConfig();
+    log.info("Randomized ssl ({}) and clientAuth ({}) via: {}",
+             result.isSSLMode(), result.isClientAuthMode(), sslRandomizer.debug);
+    return result;
   }
 
   protected static JettyConfig buildJettyConfig(String context) {
@@ -2036,6 +2044,140 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
    */
   public static Object skewed(Object likely, Object unlikely) {
     return (0 == TestUtil.nextInt(random(), 0, 9)) ? unlikely : likely;
+  }
+  
+  public static CloudSolrClient getCloudSolrClient(String zkHost) {
+    if (random().nextBoolean()) {
+      return new CloudSolrClient(zkHost);
+    }
+    return new CloudSolrClient.Builder()
+        .withZkHost(zkHost)
+        .build();
+  }
+  
+  public static CloudSolrClient getCloudSolrClient(String zkHost, HttpClient httpClient) {
+    if (random().nextBoolean()) {
+      return new CloudSolrClient(zkHost, httpClient);
+    }
+    return new CloudSolrClient.Builder()
+        .withZkHost(zkHost)
+        .withHttpClient(httpClient)
+        .build();
+  }
+  
+  public static CloudSolrClient getCloudSolrClient(String zkHost, boolean shardLeadersOnly) {
+    if (random().nextBoolean()) {
+      return new CloudSolrClient(zkHost, shardLeadersOnly);
+    }
+    
+    if (shardLeadersOnly) {
+      return new CloudSolrClient.Builder()
+          .withZkHost(zkHost)
+          .sendUpdatesOnlyToShardLeaders()
+          .build();
+    }
+    return new CloudSolrClient.Builder()
+        .withZkHost(zkHost)
+        .sendUpdatesToAllReplicasInShard()
+        .build();
+  }
+  
+  public static CloudSolrClient getCloudSolrClient(String zkHost, boolean shardLeadersOnly, HttpClient httpClient) {
+    if (random().nextBoolean()) {
+      return new CloudSolrClient(zkHost, shardLeadersOnly, httpClient);
+    }
+    
+    if (shardLeadersOnly) {
+      return new CloudSolrClient.Builder()
+          .withZkHost(zkHost)
+          .withHttpClient(httpClient)
+          .sendUpdatesOnlyToShardLeaders()
+          .build();
+    }
+    return new CloudSolrClient.Builder()
+        .withZkHost(zkHost)
+        .withHttpClient(httpClient)
+        .sendUpdatesToAllReplicasInShard()
+        .build();
+  }
+  
+  public static ConcurrentUpdateSolrClient getConcurrentUpdateSolrClient(String baseSolrUrl, int queueSize, int threadCount) {
+    if (random().nextBoolean()) {
+      return new ConcurrentUpdateSolrClient(baseSolrUrl, queueSize, threadCount);
+    }
+    return new ConcurrentUpdateSolrClient.Builder(baseSolrUrl)
+        .withQueueSize(queueSize)
+        .withThreadCount(threadCount)
+        .build();
+  }
+  
+  public static ConcurrentUpdateSolrClient getConcurrentUpdateSolrClient(String baseSolrUrl, HttpClient httpClient, int queueSize, int threadCount) {
+    if (random().nextBoolean()) {
+      return new ConcurrentUpdateSolrClient(baseSolrUrl, httpClient, queueSize, threadCount);
+    }
+    return new ConcurrentUpdateSolrClient.Builder(baseSolrUrl)
+        .withHttpClient(httpClient)
+        .withQueueSize(queueSize)
+        .withThreadCount(threadCount)
+        .build();
+  }
+  
+  public static LBHttpSolrClient getLBHttpSolrClient(HttpClient client, String... solrUrls) {
+    if (random().nextBoolean()) {
+      return new LBHttpSolrClient(client, solrUrls);
+    }
+    
+    return new LBHttpSolrClient.Builder()
+        .withHttpClient(client)
+        .withBaseSolrUrls(solrUrls)
+        .build();
+  }
+  
+  public static LBHttpSolrClient getLBHttpSolrClient(String... solrUrls) throws MalformedURLException {
+    if (random().nextBoolean()) {
+      return new LBHttpSolrClient(solrUrls);
+    }
+    return new LBHttpSolrClient.Builder()
+        .withBaseSolrUrls(solrUrls)
+        .build();
+  }
+  
+  public static HttpSolrClient getHttpSolrClient(String url, HttpClient httpClient, ResponseParser responseParser, boolean compression) {
+    if(random().nextBoolean()) {
+      return new HttpSolrClient(url, httpClient, responseParser, compression);
+    }
+    return new Builder(url)
+        .withHttpClient(httpClient)
+        .withResponseParser(responseParser)
+        .allowCompression(compression)
+        .build();
+  }
+  
+  public static HttpSolrClient getHttpSolrClient(String url, HttpClient httpClient, ResponseParser responseParser) {
+    if(random().nextBoolean()) {
+      return new HttpSolrClient(url, httpClient, responseParser);
+    }
+    return new Builder(url)
+        .withHttpClient(httpClient)
+        .withResponseParser(responseParser)
+        .build();
+  }
+  
+  public static HttpSolrClient getHttpSolrClient(String url, HttpClient httpClient) {
+    if(random().nextBoolean()) {
+      return new HttpSolrClient(url, httpClient);
+    }
+    return new Builder(url)
+        .withHttpClient(httpClient)
+        .build();
+  }
+
+  public static HttpSolrClient getHttpSolrClient(String url) {
+    if(random().nextBoolean()) {
+      return new HttpSolrClient(url);
+    }
+    return new Builder(url)
+        .build();
   }
 
   /** 

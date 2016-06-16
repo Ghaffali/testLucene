@@ -28,14 +28,18 @@ import java.util.Map.Entry;
 import org.apache.solr.client.solrj.io.SolrClientCache;
 import org.apache.solr.client.solrj.io.Tuple;
 import org.apache.solr.client.solrj.io.comp.StreamComparator;
+import org.apache.solr.client.solrj.io.graph.GatherNodesStream;
 import org.apache.solr.client.solrj.io.graph.ShortestPathStream;
 import org.apache.solr.client.solrj.io.ops.ConcatOperation;
 import org.apache.solr.client.solrj.io.ops.DistinctOperation;
 import org.apache.solr.client.solrj.io.ops.GroupOperation;
 import org.apache.solr.client.solrj.io.ops.ReplaceOperation;
 import org.apache.solr.client.solrj.io.stream.*;
+import org.apache.solr.client.solrj.io.stream.expr.Explanation;
 import org.apache.solr.client.solrj.io.stream.expr.Expressible;
+import org.apache.solr.client.solrj.io.stream.expr.StreamExplanation;
 import org.apache.solr.client.solrj.io.stream.expr.StreamFactory;
+import org.apache.solr.client.solrj.io.stream.expr.Explanation.ExpressionType;
 import org.apache.solr.client.solrj.io.stream.metrics.CountMetric;
 import org.apache.solr.client.solrj.io.stream.metrics.MaxMetric;
 import org.apache.solr.client.solrj.io.stream.metrics.MeanMetric;
@@ -95,8 +99,14 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
     }
 
      streamFactory
-       // streams
+       // source streams
       .withFunctionName("search", CloudSolrStream.class)
+      .withFunctionName("facet", FacetStream.class)
+      .withFunctionName("update", UpdateStream.class)
+      .withFunctionName("jdbc", JDBCStream.class)
+      .withFunctionName("topic", TopicStream.class)
+      
+      // decorator streams
       .withFunctionName("merge", MergeStream.class)
       .withFunctionName("unique", UniqueStream.class)
       .withFunctionName("top", RankStream.class)
@@ -109,17 +119,15 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
       .withFunctionName("leftOuterJoin", LeftOuterJoinStream.class) 
       .withFunctionName("hashJoin", HashJoinStream.class)
       .withFunctionName("outerHashJoin", OuterHashJoinStream.class)
-      .withFunctionName("facet", FacetStream.class)
-      .withFunctionName("update", UpdateStream.class)
-      .withFunctionName("jdbc", JDBCStream.class)
       .withFunctionName("intersect", IntersectStream.class)
       .withFunctionName("complement", ComplementStream.class)
-         .withFunctionName("daemon", DaemonStream.class)
-         .withFunctionName("topic", TopicStream.class)
-         .withFunctionName("shortestPath", ShortestPathStream.class)
+      .withFunctionName("sort", SortStream.class)
+      .withFunctionName("daemon", DaemonStream.class)
+      .withFunctionName("shortestPath", ShortestPathStream.class)
+      .withFunctionName("gatherNodes", GatherNodesStream.class)
+      .withFunctionName("select", SelectStream.class)
 
-
-    // metrics
+      // metrics
       .withFunctionName("min", MinMetric.class)
       .withFunctionName("max", MaxMetric.class)
       .withFunctionName("avg", MeanMetric.class)
@@ -187,6 +195,12 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
     context.setSolrClientCache(clientCache);
     context.put("core", this.coreName);
     tupleStream.setStreamContext(context);
+    
+    // if asking for explanation then go get it
+    if(params.getBool("explain", false)){
+      rsp.add("explanation", tupleStream.toExplanation(this.streamFactory));
+    }
+    
     if(tupleStream instanceof DaemonStream) {
       DaemonStream daemonStream = (DaemonStream)tupleStream;
       if(daemons.containsKey(daemonStream.getId())) {
@@ -267,9 +281,27 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
     public List<TupleStream> children() {
       return null;
     }
+    
+    @Override
+    public Explanation toExplanation(StreamFactory factory) throws IOException {
+
+      return new StreamExplanation(getStreamNodeId().toString())
+        .withFunctionName("error")
+        .withImplementingClass(this.getClass().getName())
+        .withExpressionType(ExpressionType.STREAM_DECORATOR)
+        .withExpression("--non-expressible--");
+    }
 
     public Tuple read() {
       String msg = e.getMessage();
+
+      Throwable t = e.getCause();
+      while(t != null) {
+        msg = t.getMessage();
+        t = t.getCause();
+      }
+
+
       Map m = new HashMap();
       m.put("EOF", true);
       m.put("EXCEPTION", msg);
@@ -300,6 +332,16 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
       return null;
     }
 
+    @Override
+    public Explanation toExplanation(StreamFactory factory) throws IOException {
+
+      return new StreamExplanation(getStreamNodeId().toString())
+        .withFunctionName("daemon-collection")
+        .withImplementingClass(this.getClass().getName())
+        .withExpressionType(ExpressionType.STREAM_DECORATOR)
+        .withExpression("--non-expressible--");
+    }
+    
     public Tuple read() {
       if(it.hasNext()) {
         return it.next().getInfo();
@@ -333,6 +375,16 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
 
     public List<TupleStream> children() {
       return null;
+    }
+
+    @Override
+    public Explanation toExplanation(StreamFactory factory) throws IOException {
+
+      return new StreamExplanation(getStreamNodeId().toString())
+        .withFunctionName("daemon-response")
+        .withImplementingClass(this.getClass().getName())
+        .withExpressionType(ExpressionType.STREAM_DECORATOR)
+        .withExpression("--non-expressible--");
     }
 
     public Tuple read() {
@@ -377,6 +429,16 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
 
     public List<TupleStream> children() {
       return this.tupleStream.children();
+    }
+
+    @Override
+    public Explanation toExplanation(StreamFactory factory) throws IOException {
+
+      return new StreamExplanation(getStreamNodeId().toString())
+        .withFunctionName("timer")
+        .withImplementingClass(this.getClass().getName())
+        .withExpressionType(ExpressionType.STREAM_DECORATOR)
+        .withExpression("--non-expressible--");
     }
 
     public Tuple read() throws IOException {

@@ -31,7 +31,6 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.core.RequestParams;
 import org.apache.solr.core.TestSolrConfigHandler;
-import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestHarness;
 import org.junit.Test;
 
@@ -43,12 +42,7 @@ public class TestReqParamsAPI extends AbstractFullDistribZkTestBase {
 
   private void setupHarnesses() {
     for (final SolrClient client : clients) {
-      RestTestHarness harness = new RestTestHarness(new RESTfulServerProvider() {
-        @Override
-        public String getBaseURL() {
-          return ((HttpSolrClient) client).getBaseURL();
-        }
-      });
+      RestTestHarness harness = new RestTestHarness(() -> ((HttpSolrClient) client).getBaseURL());
       restTestHarnesses.add(harness);
     }
   }

@@ -16,19 +16,13 @@
  */
 package org.apache.solr.cloud;
 
-import java.io.File;
 import java.lang.invoke.MethodHandles;
 import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
 import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
@@ -47,7 +41,6 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.SimpleOrderedMap;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -155,17 +148,17 @@ public class TestCloudDeleteByQuery extends SolrCloudTestCase {
       assertNotNull("could not find URL for " + shardName + " replica", passiveUrl);
 
       if (shardName.equals("shard1")) {
-        S_ONE_LEADER_CLIENT = new HttpSolrClient(leaderUrl + "/" + COLLECTION_NAME + "/");
-        S_ONE_NON_LEADER_CLIENT = new HttpSolrClient(passiveUrl + "/" + COLLECTION_NAME + "/");
+        S_ONE_LEADER_CLIENT = getHttpSolrClient(leaderUrl + "/" + COLLECTION_NAME + "/");
+        S_ONE_NON_LEADER_CLIENT = getHttpSolrClient(passiveUrl + "/" + COLLECTION_NAME + "/");
       } else if (shardName.equals("shard2")) {
-        S_TWO_LEADER_CLIENT = new HttpSolrClient(leaderUrl + "/" + COLLECTION_NAME + "/");
-        S_TWO_NON_LEADER_CLIENT = new HttpSolrClient(passiveUrl + "/" + COLLECTION_NAME + "/");
+        S_TWO_LEADER_CLIENT = getHttpSolrClient(leaderUrl + "/" + COLLECTION_NAME + "/");
+        S_TWO_NON_LEADER_CLIENT = getHttpSolrClient(passiveUrl + "/" + COLLECTION_NAME + "/");
       } else {
         fail("unexpected shard: " + shardName);
       }
     }
     assertEquals("Should be exactly one server left (nost hosting either shard)", 1, urlMap.size());
-    NO_COLLECTION_CLIENT = new HttpSolrClient(urlMap.values().iterator().next() +
+    NO_COLLECTION_CLIENT = getHttpSolrClient(urlMap.values().iterator().next() +
                                               "/" + COLLECTION_NAME + "/");
     
     assertNotNull(S_ONE_LEADER_CLIENT);

@@ -16,11 +16,6 @@
  */
 package org.apache.solr.cloud;
 
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.NUM_SLICES;
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARDS_PROP;
-import static org.apache.solr.common.util.Utils.makeMap;
-
 import java.io.File;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -51,9 +46,11 @@ import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
+import org.apache.solr.client.solrj.request.CoreAdminRequest;
 import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.client.solrj.response.CollectionAdminResponse;
+import org.apache.solr.client.solrj.response.CoreAdminResponse;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.common.SolrDocument;
@@ -89,6 +86,11 @@ import org.noggit.CharArr;
 import org.noggit.JSONWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET;
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.NUM_SLICES;
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SHARDS_PROP;
+import static org.apache.solr.common.util.Utils.makeMap;
 
 /**
  * TODO: we should still test this works as a custom update chain as well as
@@ -272,7 +274,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
   }
   
   protected CloudSolrClient createCloudClient(String defaultCollection) {
-    CloudSolrClient client = new CloudSolrClient(zkServer.getZkAddress(), random().nextBoolean());
+    CloudSolrClient client = getCloudSolrClient(zkServer.getZkAddress(), random().nextBoolean());
     client.setParallelUpdates(random().nextBoolean());
     if (defaultCollection != null) client.setDefaultCollection(defaultCollection);
     client.getLbClient().setConnectionTimeout(30000);
@@ -336,7 +338,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
 
   }
 
-  protected void waitForCollection(ZkStateReader reader, String collection, int slices) throws Exception {
+  protected static void waitForCollection(ZkStateReader reader, String collection, int slices) throws Exception {
     // wait until shards have started registering...
     int cnt = 30;
     while (!reader.getClusterState().hasCollection(collection)) {
@@ -735,8 +737,12 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
     }
   }
 
-  @SuppressWarnings("rawtypes")
   protected int sendDocsWithRetry(List<SolrInputDocument> batch, int minRf, int maxRetries, int waitBeforeRetry) throws Exception {
+    return sendDocsWithRetry(cloudClient, cloudClient.getDefaultCollection(), batch, minRf, maxRetries, waitBeforeRetry);
+  }
+
+  @SuppressWarnings("rawtypes")
+  protected static int sendDocsWithRetry(CloudSolrClient cloudClient, String collection, List<SolrInputDocument> batch, int minRf, int maxRetries, int waitBeforeRetry) throws Exception {
     UpdateRequest up = new UpdateRequest();
     up.setParam(UpdateRequest.MIN_REPFACT, String.valueOf(minRf));
     up.add(batch);
@@ -744,7 +750,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
     int numRetries = 0;
     while(true) {
       try {
-        resp = cloudClient.request(up);
+        resp = cloudClient.request(up, collection);
         return cloudClient.getMinAchievedReplicationFactor(cloudClient.getDefaultCollection(), resp);
       } catch (Exception exc) {
         Throwable rootCause = SolrException.getRootCause(exc);
@@ -1351,7 +1357,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
 
     if (slices == null) {
       throw new RuntimeException("Could not find collection "
-          + DEFAULT_COLLECTION + " in " + clusterState.getCollections());
+          + DEFAULT_COLLECTION + " in " + clusterState.getCollectionsMap().keySet());
     }
 
     for (CloudJettyRunner cjetty : cloudJettys) {
@@ -1626,7 +1632,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
       // setup the server...
       String baseUrl = buildUrl(port);
       String url = baseUrl + (baseUrl.endsWith("/") ? "" : "/") + DEFAULT_COLLECTION;
-      HttpSolrClient client = new HttpSolrClient(url);
+      HttpSolrClient client = getHttpSolrClient(url);
       client.setConnectionTimeout(DEFAULT_CONNECTION_TIMEOUT);
       client.setSoTimeout(60000);
       return client;
@@ -1638,7 +1644,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
   protected SolrClient createNewSolrClient(String collection, String baseUrl) {
     try {
       // setup the server...
-      HttpSolrClient client = new HttpSolrClient(baseUrl + "/" + collection);
+      HttpSolrClient client = getHttpSolrClient(baseUrl + "/" + collection);
       client.setConnectionTimeout(DEFAULT_CONNECTION_TIMEOUT);
       return client;
     }
@@ -1722,7 +1728,7 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
       if (commonCloudSolrClient == null) {
         boolean updatesToLeaders = random().nextBoolean();
         boolean parallelUpdates = random().nextBoolean();
-        commonCloudSolrClient = new CloudSolrClient(zkServer.getZkAddress(),
+        commonCloudSolrClient = getCloudSolrClient(zkServer.getZkAddress(),
                 updatesToLeaders);
         commonCloudSolrClient.getLbClient().setConnectionTimeout(5000);
         commonCloudSolrClient.getLbClient().setSoTimeout(120000);
@@ -1804,6 +1810,43 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
     createCollection(collectionInfos, collName, props, client);
   }
 
+  protected void createCollectionRetry(String testCollectionName, int numShards, int replicationFactor, int maxShardsPerNode)
+      throws SolrServerException, IOException {
+    CollectionAdminResponse resp = createCollection(testCollectionName, numShards, replicationFactor, maxShardsPerNode);
+    if (resp.getResponse().get("failure") != null) {
+      CollectionAdminRequest.Delete req = new CollectionAdminRequest.Delete();
+      req.setCollectionName(testCollectionName);
+      req.process(cloudClient);
+
+      resp = createCollection(testCollectionName, numShards, replicationFactor, maxShardsPerNode);
+
+      if (resp.getResponse().get("failure") != null) {
+        fail("Could not create " + testCollectionName);
+      }
+    }
+  }
+
+  protected Replica getShardLeader(String testCollectionName, String shardId, int timeoutSecs) throws Exception {
+    Replica leader = null;
+    long timeout = System.nanoTime() + TimeUnit.NANOSECONDS.convert(timeoutSecs, TimeUnit.SECONDS);
+    while (System.nanoTime() < timeout) {
+      Replica tmp = null;
+      try {
+        tmp = cloudClient.getZkStateReader().getLeaderRetry(testCollectionName, shardId);
+      } catch (Exception exc) {}
+      if (tmp != null && "active".equals(tmp.getStr(ZkStateReader.STATE_PROP))) {
+        leader = tmp;
+        break;
+      }
+      Thread.sleep(1000);
+    }
+    assertNotNull("Could not find active leader for " + shardId + " of " +
+        testCollectionName + " after "+timeoutSecs+" secs; clusterState: " +
+        printClusterStateInfo(testCollectionName), leader);
+
+    return leader;
+  }
+
   protected List<Replica> ensureAllReplicasAreActive(String testCollectionName, String shardId, int shards, int rf, int maxWaitSecs) throws Exception {
     final RTimer timer = new RTimer();
 
@@ -1877,14 +1920,48 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
     if (collection != null) {
       cs = clusterState.getCollection(collection).toString();
     } else {
-      Map<String,DocCollection> map = new HashMap<>();
-      for (String coll : clusterState.getCollections())
-        map.put(coll, clusterState.getCollection(coll));
+      Map<String,DocCollection> map = clusterState.getCollectionsMap();
       CharArr out = new CharArr();
       new JSONWriter(out, 2).write(map);
       cs = out.toString();
     }
     return cs;
+  }
+
+  protected boolean reloadCollection(Replica replica, String testCollectionName) throws Exception {
+    ZkCoreNodeProps coreProps = new ZkCoreNodeProps(replica);
+    String coreName = coreProps.getCoreName();
+    boolean reloadedOk = false;
+    try (HttpSolrClient client = getHttpSolrClient(coreProps.getBaseUrl())) {
+      CoreAdminResponse statusResp = CoreAdminRequest.getStatus(coreName, client);
+      long leaderCoreStartTime = statusResp.getStartTime(coreName).getTime();
+
+      Thread.sleep(1000);
+
+      // send reload command for the collection
+      log.info("Sending RELOAD command for "+testCollectionName);
+      ModifiableSolrParams params = new ModifiableSolrParams();
+      params.set("action", CollectionParams.CollectionAction.RELOAD.toString());
+      params.set("name", testCollectionName);
+      QueryRequest request = new QueryRequest(params);
+      request.setPath("/admin/collections");
+      client.request(request);
+      Thread.sleep(2000); // reload can take a short while
+
+      // verify reload is done, waiting up to 30 seconds for slow test environments
+      long timeout = System.nanoTime() + TimeUnit.NANOSECONDS.convert(30, TimeUnit.SECONDS);
+      while (System.nanoTime() < timeout) {
+        statusResp = CoreAdminRequest.getStatus(coreName, client);
+        long startTimeAfterReload = statusResp.getStartTime(coreName).getTime();
+        if (startTimeAfterReload > leaderCoreStartTime) {
+          reloadedOk = true;
+          break;
+        }
+        // else ... still waiting to see the reloaded core report a later start time
+        Thread.sleep(1000);
+      }
+    }
+    return reloadedOk;
   }
 
   static RequestStatusState getRequestStateAfterCompletion(String requestId, int waitForSeconds, SolrClient client)
@@ -1911,12 +1988,16 @@ public abstract class AbstractFullDistribZkTestBase extends AbstractDistribZkTes
   }
 
   static RequestStatusState getRequestState(String requestId, SolrClient client) throws IOException, SolrServerException {
-    CollectionAdminRequest.RequestStatus requestStatusRequest = new CollectionAdminRequest.RequestStatus();
-    requestStatusRequest.setRequestId(requestId);
-    CollectionAdminResponse response = requestStatusRequest.process(client);
+    CollectionAdminResponse response = getStatusResponse(requestId, client);
 
     NamedList innerResponse = (NamedList) response.getResponse().get("status");
     return RequestStatusState.fromKey((String) innerResponse.get("state"));
+  }
+
+  static CollectionAdminResponse getStatusResponse(String requestId, SolrClient client) throws SolrServerException, IOException {
+    CollectionAdminRequest.RequestStatus requestStatusRequest = new CollectionAdminRequest.RequestStatus();
+    requestStatusRequest.setRequestId(requestId);
+    return requestStatusRequest.process(client);
   }
 
 }

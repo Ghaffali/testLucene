@@ -55,6 +55,7 @@ import org.apache.solr.cloud.CloudDescriptor;
 import org.apache.solr.cloud.ZkSolrResourceLoader;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
+import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.params.CommonParams;
@@ -71,7 +72,6 @@ import org.apache.solr.core.DirectoryFactory.DirContext;
 import org.apache.solr.handler.IndexFetcher;
 import org.apache.solr.handler.ReplicationHandler;
 import org.apache.solr.handler.RequestHandlerBase;
-import org.apache.solr.handler.admin.ShowFileRequestHandler;
 import org.apache.solr.handler.component.HighlightComponent;
 import org.apache.solr.handler.component.SearchComponent;
 import org.apache.solr.logging.MDCLoggingContext;
@@ -834,8 +834,8 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
       // ZK pre-register would have already happened so we read slice properties now
       final ClusterState clusterState = cc.getZkController().getClusterState();
-      final Slice slice = clusterState.getSlice(coreDescriptor.getCloudDescriptor().getCollectionName(), 
-          coreDescriptor.getCloudDescriptor().getShardId());
+      final DocCollection collection = clusterState.getCollection(coreDescriptor.getCloudDescriptor().getCollectionName());
+      final Slice slice = collection.getSlice(coreDescriptor.getCloudDescriptor().getShardId());
       if (slice.getState() == Slice.State.CONSTRUCTION) {
         // set update log to buffer before publishing the core
         getUpdateHandler().getUpdateLog().bufferUpdates();
@@ -1409,6 +1409,18 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   private RefCounted<SolrIndexSearcher> realtimeSearcher;
   private Callable<DirectoryReader> newReaderCreator;
 
+  // For testing
+  boolean areAllSearcherReferencesEmpty() {
+    boolean isEmpty;
+    synchronized (searcherLock) {
+      isEmpty = _searchers.isEmpty();
+      isEmpty = isEmpty && _realtimeSearchers.isEmpty();
+      isEmpty = isEmpty && (_searcher == null);
+      isEmpty = isEmpty && (realtimeSearcher == null);
+    }
+    return isEmpty;
+  }
+
   /**
   * Return a registered {@link RefCounted}&lt;{@link SolrIndexSearcher}&gt; with
   * the reference count incremented.  It <b>must</b> be decremented when no longer needed.
@@ -1608,6 +1620,14 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       newSearcher.incref();
 
       synchronized (searcherLock) {
+        // Check if the core is closed again inside the lock in case this method is racing with a close. If the core is
+        // closed, clean up the new searcher and bail.
+        if (isClosed()) {
+          newSearcher.decref(); // once for caller since we're not returning it
+          newSearcher.decref(); // once for ourselves since it won't be "replaced"
+          throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "openNewSearcher called on closed core");
+        }
+
         if (realtimeSearcher != null) {
           realtimeSearcher.decref();
         }
@@ -1822,25 +1842,22 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       final RefCounted<SolrIndexSearcher> currSearcherHolderF = currSearcherHolder;
       if (!alreadyRegistered) {
         future = searcherExecutor.submit(
-            new Callable() {
-              @Override
-              public Object call() throws Exception {
-                try {
-                  // registerSearcher will decrement onDeckSearchers and
-                  // do a notify, even if it fails.
-                  registerSearcher(newSearchHolder);
-                } catch (Throwable e) {
-                  SolrException.log(log, e);
-                  if (e instanceof Error) {
-                    throw (Error) e;
-                  }
-                } finally {
-                  // we are all done with the old searcher we used
-                  // for warming...
-                  if (currSearcherHolderF!=null) currSearcherHolderF.decref();
+            () -> {
+              try {
+                // registerSearcher will decrement onDeckSearchers and
+                // do a notify, even if it fails.
+                registerSearcher(newSearchHolder);
+              } catch (Throwable e) {
+                SolrException.log(log, e);
+                if (e instanceof Error) {
+                  throw (Error) e;
                 }
-                return null;
+              } finally {
+                // we are all done with the old searcher we used
+                // for warming...
+                if (currSearcherHolderF!=null) currSearcherHolderF.decref();
               }
+              return null;
             }
         );
       }
@@ -2113,6 +2130,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     m.put("standard", m.get("xml"));
     m.put(CommonParams.JSON, new JSONResponseWriter());
     m.put("geojson", new GeoJSONResponseWriter());
+    m.put("graphml", new GraphMLResponseWriter());
     m.put("python", new PythonResponseWriter());
     m.put("php", new PHPResponseWriter());
     m.put("phps", new PHPSerializedResponseWriter());
@@ -2571,6 +2589,38 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       implicits.add(new PluginInfo(SolrRequestHandler.TYPE, info));
     }
     return implicits;
+  }
+
+  /**
+   * Convenience method to load a blob. This method minimizes the degree to which component and other code needs 
+   * to depend on the structure of solr's object graph and ensures that a proper close hook is registered. This method 
+   * should normally be called in {@link SolrCoreAware#inform(SolrCore)}, and should never be called during request
+   * processing. The Decoder will only run on the first invocations, subsequent invocations will return the 
+   * cached object. 
+   * 
+   * @param key A key in the format of name/version for a blob stored in the .system blob store via the Blob Store API
+   * @param decoder a decoder with which to convert the blob into a Java Object representation (first time only)
+   * @return a reference to the blob that has already cached the decoded version.
+   */
+  public BlobRepository.BlobContentRef loadDecodeAndCacheBlob(String key, BlobRepository.Decoder<Object> decoder) {
+    // make sure component authors don't give us oddball keys with no version...
+    if (!BlobRepository.BLOB_KEY_PATTERN_CHECKER.matcher(key).matches()) {
+      throw new IllegalArgumentException("invalid key format, must end in /N where N is the version number");
+    }
+    CoreContainer coreContainer = getCoreDescriptor().getCoreContainer();
+    // define the blob
+    BlobRepository.BlobContentRef blobRef = coreContainer.getBlobRepository().getBlobIncRef(key, decoder);
+    addCloseHook(new CloseHook() {
+      @Override
+      public void preClose(SolrCore core) {
+      }
+
+      @Override
+      public void postClose(SolrCore core) {
+        core.getCoreDescriptor().getCoreContainer().getBlobRepository().decrementBlobRefCount(blobRef);
+      }
+    });
+    return blobRef;
   }
 }
 

@@ -35,6 +35,7 @@ import java.util.concurrent.TimeoutException;
 import com.google.common.base.Strings;
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.impl.HttpSolrClient.Builder;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.WaitForState;
 import org.apache.solr.cloud.overseer.OverseerAction;
 import org.apache.solr.cloud.overseer.SliceMutator;
@@ -150,7 +151,7 @@ public final class ZkController {
   private final int localHostPort;      // example: 54065
   private final String hostName;           // example: 127.0.0.1
   private final String nodeName;           // example: 127.0.0.1:54065_solr
-  private final String baseURL;            // example: http://127.0.0.1:54065/solr
+  private String baseURL;            // example: http://127.0.0.1:54065/solr
 
   private final CloudConfig cloudConfig;
 
@@ -182,7 +183,8 @@ public final class ZkController {
   private boolean zkRunOnly = Boolean.getBoolean("zkRunOnly"); // expert
 
   // keeps track of a list of objects that need to know a new ZooKeeper session was created after expiration occurred
-  private List<OnReconnect> reconnectListeners = new ArrayList<OnReconnect>();
+  // ref is held as a HashSet since we clone the set before notifying to avoid synchronizing too long
+  private HashSet<OnReconnect> reconnectListeners = new HashSet<OnReconnect>();
 
   private class RegisterCoreAsync implements Callable {
 
@@ -200,6 +202,22 @@ public final class ZkController {
       log.info("Registering core {} afterExpiration? {}", descriptor.getName(), afterExpiration);
       register(descriptor.getName(), descriptor, recoverReloadedCores, afterExpiration);
       return descriptor;
+    }
+  }
+
+  // notifies registered listeners after the ZK reconnect in the background
+  private class OnReconnectNotifyAsync implements Callable {
+
+    private final OnReconnect listener;
+
+    OnReconnectNotifyAsync(OnReconnect listener) {
+      this.listener = listener;
+    }
+
+    @Override
+    public Object call() throws Exception {
+      listener.command();
+      return null;
     }
   }
 
@@ -290,8 +308,8 @@ public final class ZkController {
 
               List<CoreDescriptor> descriptors = registerOnReconnect.getCurrentDescriptors();
               // re register all descriptors
+              ExecutorService executorService = (cc != null) ? cc.getCoreZkRegisterExecutorService() : null;
               if (descriptors != null) {
-                ExecutorService executorService = (cc != null) ? cc.getCoreZkRegisterExecutorService() : null;
                 for (CoreDescriptor descriptor : descriptors) {
                   // TODO: we need to think carefully about what happens when it
                   // was
@@ -314,17 +332,23 @@ public final class ZkController {
               }
 
               // notify any other objects that need to know when the session was re-connected
+              HashSet<OnReconnect> clonedListeners;
               synchronized (reconnectListeners) {
-                for (OnReconnect listener : reconnectListeners) {
-                  try {
+                clonedListeners = (HashSet<OnReconnect>)reconnectListeners.clone();
+              }
+              // the OnReconnect operation can be expensive per listener, so do that async in the background
+              for (OnReconnect listener : clonedListeners) {
+                try {
+                  if (executorService != null) {
+                    executorService.submit(new OnReconnectNotifyAsync(listener));
+                  } else {
                     listener.command();
-                  } catch (Exception exc) {
-                    // not much we can do here other than warn in the log
-                    log.warn("Error when notifying OnReconnect listener " + listener + " after session re-connected.", exc);
                   }
+                } catch (Exception exc) {
+                  // not much we can do here other than warn in the log
+                  log.warn("Error when notifying OnReconnect listener " + listener + " after session re-connected.", exc);
                 }
               }
-
             } catch (InterruptedException e) {
               // Restore the interrupted status
               Thread.currentThread().interrupt();
@@ -361,8 +385,6 @@ public final class ZkController {
     zkStateReader = new ZkStateReader(zkClient, () -> {
       if (cc != null) cc.securityNodeChanged();
     });
-
-    this.baseURL = zkStateReader.getBaseUrlForNodeName(this.nodeName);
 
     init(registerOnReconnect);
   }
@@ -618,6 +640,7 @@ public final class ZkController {
     try {
       createClusterZkNodes(zkClient);
       zkStateReader.createClusterStateWatchersAndUpdate();
+      this.baseURL = zkStateReader.getBaseUrlForNodeName(this.nodeName);
 
       // start the overseer first as following code may need it's processing
       if (!zkRunOnly) {
@@ -659,20 +682,17 @@ public final class ZkController {
       InterruptedException {
 
     publishNodeAsDown(getNodeName());
-
     
     // now wait till the updates are in our state
     long now = System.nanoTime();
     long timeout = now + TimeUnit.NANOSECONDS.convert(WAIT_DOWN_STATES_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-    boolean foundStates = true;
-    ClusterState clusterState = zkStateReader.getClusterState();
-    Set<String> collections = clusterState.getCollections();
-    
+
     while (System.nanoTime() < timeout) {
-      clusterState = zkStateReader.getClusterState();
-      collections = clusterState.getCollections();
-      for (String collectionName : collections) {
-        DocCollection collection = clusterState.getCollection(collectionName);
+      boolean foundStates = true;
+      ClusterState clusterState = zkStateReader.getClusterState();
+      Map<String, DocCollection> collections = clusterState.getCollectionsMap();
+      for (Map.Entry<String, DocCollection> entry : collections.entrySet()) {
+        DocCollection collection = entry.getValue();
         Collection<Slice> slices = collection.getSlices();
         for (Slice slice : slices) {
           Collection<Replica> replicas = slice.getReplicas();
@@ -684,16 +704,13 @@ public final class ZkController {
         }
       }
 
-      if (foundStates) {
-        Thread.sleep(1000);
-        break;
-      }
       Thread.sleep(1000);
-    }
-    if (!foundStates) {
-      log.warn("Timed out waiting to see all nodes published as DOWN in our cluster state.");
+      if (foundStates) {
+        return;
+      }
     }
 
+    log.warn("Timed out waiting to see all nodes published as DOWN in our cluster state.");
   }
 
   /**
@@ -1141,9 +1158,8 @@ public final class ZkController {
       if (coreNodeName != null) {
         props.put(ZkStateReader.CORE_NODE_NAME_PROP, coreNodeName);
       }
-      
-      if (ClusterStateUtil.isAutoAddReplicas(getZkStateReader(), collection)) {
-        try (SolrCore core = cc.getCore(cd.getName())) {
+      try (SolrCore core = cc.getCore(cd.getName())) {
+        if (core != null && core.getDirectoryFactory().isSharedStorage()) {
           if (core != null && core.getDirectoryFactory().isSharedStorage()) {
             props.put("dataDir", core.getDataDir());
             UpdateLog ulog = core.getUpdateHandler().getUpdateLog();
@@ -1194,23 +1210,10 @@ public final class ZkController {
     if (context != null) {
       context.cancelElection();
     }
-    
-    final Collection<SolrCore> cores = cc.getCores();
-    
-    // if there is no SolrCore which is a member of this collection, remove the watch
+
     CloudDescriptor cloudDescriptor = cd.getCloudDescriptor();
-    boolean removeWatch = true;
-    for (SolrCore solrCore : cores) {
-      final CloudDescriptor cloudDesc = solrCore.getCoreDescriptor().getCloudDescriptor();
-      if (cloudDesc != null && cloudDescriptor.getCollectionName().equals(cloudDesc.getCollectionName())) {
-        removeWatch = false;
-        break;
-      }
-    }
-    
-    if (removeWatch) {
-      zkStateReader.removeZKWatch(collection);
-    }
+    zkStateReader.unregisterCore(cloudDescriptor.getCollectionName());
+
     ZkNodeProps m = new ZkNodeProps(Overseer.QUEUE_OPERATION,
         OverseerAction.DELETECORE.toLower(), ZkStateReader.CORE_NAME_PROP, coreName,
         ZkStateReader.NODE_NAME_PROP, getNodeName(),
@@ -1454,11 +1457,13 @@ public final class ZkController {
       }
 
       publish(cd, Replica.State.DOWN, false, true);
-      DocCollection collection = zkStateReader.getClusterState().getCollectionOrNull(cd.getCloudDescriptor().getCollectionName());
-      if (collection != null) {
-        log.info("Registering watch for collection {}", cd.getCloudDescriptor().getCollectionName());
-        zkStateReader.addCollectionWatch(cd.getCloudDescriptor().getCollectionName());
-      }
+      String collectionName = cd.getCloudDescriptor().getCollectionName();
+      DocCollection collection = zkStateReader.getClusterState().getCollectionOrNull(collectionName);
+      log.info(collection == null ?
+              "Collection {} not visible yet, but flagging it so a watch is registered when it becomes visible" :
+              "Registering watch for collection {}",
+          collectionName);
+      zkStateReader.registerCore(collectionName);
     } catch (KeeperException e) {
       log.error("", e);
       throw new ZooKeeperException(SolrException.ErrorCode.SERVER_ERROR, "", e);
@@ -1478,7 +1483,7 @@ public final class ZkController {
   }
 
   private void checkStateInZk(CoreDescriptor cd) throws InterruptedException {
-    if (!Overseer.isLegacy(zkStateReader.getClusterProps())) {
+    if (!Overseer.isLegacy(zkStateReader)) {
       CloudDescriptor cloudDesc = cd.getCloudDescriptor();
       String coreNodeName = cloudDesc.getCoreNodeName();
       assert coreNodeName != null : "SolrCore: " + cd.getName() + " has no coreNodeName";
@@ -1574,7 +1579,7 @@ public final class ZkController {
         log.info("Replica " + myCoreNodeName +
             " NOT in leader-initiated recovery, need to wait for leader to see down state.");
 
-        try (HttpSolrClient client = new HttpSolrClient(leaderBaseUrl)) {
+        try (HttpSolrClient client = new Builder(leaderBaseUrl).build()) {
           client.setConnectionTimeout(15000);
           client.setSoTimeout(120000);
           WaitForState prepCmd = new WaitForState();
@@ -2169,8 +2174,35 @@ public final class ZkController {
     if (listener != null) {
       synchronized (reconnectListeners) {
         reconnectListeners.add(listener);
+        log.info("Added new OnReconnect listener "+listener);
       }
     }
+  }
+
+  /**
+   * Removed a previously registered OnReconnect listener, such as when a core is removed or reloaded.
+   */
+  public void removeOnReconnectListener(OnReconnect listener) {
+    if (listener != null) {
+      boolean wasRemoved;
+      synchronized (reconnectListeners) {
+        wasRemoved = reconnectListeners.remove(listener);
+      }
+      if (wasRemoved) {
+        log.info("Removed OnReconnect listener "+listener);
+      } else {
+        log.warn("Was asked to remove OnReconnect listener "+listener+
+            ", but remove operation did not find it in the list of registered listeners.");
+      }
+    }
+  }
+
+  Set<OnReconnect> getCurrentOnReconnectListeners() {
+    HashSet<OnReconnect> clonedListeners;
+    synchronized (reconnectListeners) {
+      clonedListeners = (HashSet<OnReconnect>)reconnectListeners.clone();
+    }
+    return clonedListeners;
   }
 
   /**

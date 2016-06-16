@@ -35,10 +35,10 @@ public class GeoBBoxTest {
     GeoConvexPolygon cp;
     int relationship;
     List<GeoPoint> points = new ArrayList<GeoPoint>();
-    points.add(new GeoPoint(PlanetModel.SPHERE, 24 * DEGREES_TO_RADIANS, -30 * DEGREES_TO_RADIANS));
-    points.add(new GeoPoint(PlanetModel.SPHERE, -11 * DEGREES_TO_RADIANS, 101 * DEGREES_TO_RADIANS));
     points.add(new GeoPoint(PlanetModel.SPHERE, -49 * DEGREES_TO_RADIANS, -176 * DEGREES_TO_RADIANS));
-    GeoMembershipShape shape = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points, 0);
+    points.add(new GeoPoint(PlanetModel.SPHERE, -11 * DEGREES_TO_RADIANS, 101 * DEGREES_TO_RADIANS));
+    points.add(new GeoPoint(PlanetModel.SPHERE, 24 * DEGREES_TO_RADIANS, -30 * DEGREES_TO_RADIANS));
+    GeoMembershipShape shape = GeoPolygonFactory.makeGeoPolygon(PlanetModel.SPHERE, points);
     box = GeoBBoxFactory.makeGeoBBox(PlanetModel.SPHERE, -64 * DEGREES_TO_RADIANS, -64 * DEGREES_TO_RADIANS, -180 * DEGREES_TO_RADIANS, 180 * DEGREES_TO_RADIANS);
     relationship = box.getRelationship(shape);
     assertEquals(GeoArea.CONTAINS, relationship);
@@ -360,5 +360,16 @@ public class GeoBBoxTest {
     //assertEquals(Math.PI,b.getRightLongitude(),0.000001);
 
   }
-
+  
+  @Test
+  public void testFailureCase1() {
+    final GeoPoint point = new GeoPoint(-0.017413370801260174, -2.132522881412925E-18, 0.9976113450663769);
+    final GeoBBox box = new GeoNorthRectangle(PlanetModel.WGS84, 0.35451471030934045, 9.908337057950734E-15, 2.891004593509811E-11);
+    final XYZBounds bounds = new XYZBounds();
+    box.getBounds(bounds);
+    final XYZSolid solid = XYZSolidFactory.makeXYZSolid(PlanetModel.WGS84, bounds.getMinimumX(), bounds.getMaximumX(), bounds.getMinimumY(), bounds.getMaximumY(), bounds.getMinimumZ(), bounds.getMaximumZ());
+    
+    assertTrue(box.isWithin(point)?solid.isWithin(point):true);
+  }
+  
 }

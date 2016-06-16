@@ -36,7 +36,6 @@ import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrClient;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient.RemoteSolrException;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest.Create;
 import org.apache.solr.client.solrj.response.ConfigSetAdminResponse;
@@ -99,8 +98,8 @@ public class TestConfigSetsAPIZkFailure extends SolrTestCaseJ4 {
 
   @Test
   public void testCreateZkFailure() throws Exception {
-    final SolrClient solrClient =
-        new HttpSolrClient(solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString());
+    final String baseUrl = solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString();
+    final SolrClient solrClient = getHttpSolrClient(baseUrl);
 
     final Map<String, String> oldProps = ImmutableMap.of("immutable", "true");
     setupBaseConfigSet(BASE_CONFIGSET_NAME, oldProps);

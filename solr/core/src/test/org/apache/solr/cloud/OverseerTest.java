@@ -524,7 +524,7 @@ public class OverseerTest extends SolrTestCaseJ4 {
     int maxIterations = 100;
     while (0 < maxIterations--) {
       final ClusterState state = stateReader.getClusterState();
-      Set<String> availableCollections = state.getCollections();
+      Set<String> availableCollections = state.getCollectionsMap().keySet();
       int availableCount = 0;
       for(String requiredCollection: collections) {
         if(availableCollections.contains(requiredCollection)) {
@@ -687,7 +687,7 @@ public class OverseerTest extends SolrTestCaseJ4 {
       while (version == getClusterStateVersion(zkClient));
       Thread.sleep(500);
       assertTrue(collection+" should remain after removal of the last core", // as of SOLR-5209 core removal does not cascade to remove the slice and collection
-          reader.getClusterState().getCollections().contains(collection));
+          reader.getClusterState().hasCollection(collection));
       assertTrue(core_node+" should be gone after publishing the null state",
           null == reader.getClusterState().getCollection(collection).getReplica(core_node));
     } finally {
@@ -910,8 +910,9 @@ public class OverseerTest extends SolrTestCaseJ4 {
       ClusterState state = reader.getClusterState();
       
       int numFound = 0;
-      for (String  c : state.getCollections()) {
-        DocCollection collection = state.getCollection(c);
+      Map<String, DocCollection> collectionsMap = state.getCollectionsMap();
+      for (Map.Entry<String, DocCollection> entry : collectionsMap.entrySet()) {
+        DocCollection collection = entry.getValue();
         for (Slice slice : collection.getSlices()) {
           if (slice.getReplicasMap().get("core_node1") != null) {
             numFound++;

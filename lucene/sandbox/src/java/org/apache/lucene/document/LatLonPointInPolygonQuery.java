@@ -24,26 +24,24 @@ import org.apache.lucene.index.PointValues.IntersectVisitor;
 import org.apache.lucene.index.PointValues.Relation;
 import org.apache.lucene.search.ConstantScoreScorer;
 import org.apache.lucene.search.ConstantScoreWeight;
-import org.apache.lucene.search.DocIdSet;
-import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.Scorer;
-import org.apache.lucene.search.TwoPhaseIterator;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.index.PointValues;
-import org.apache.lucene.index.SortedNumericDocValues;
-import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.util.BitSet;
 import org.apache.lucene.util.DocIdSetBuilder;
-import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.NumericUtils;
-import org.apache.lucene.util.SparseFixedBitSet;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.geo.Polygon;
+import org.apache.lucene.geo.Polygon2D;
+
+import static org.apache.lucene.geo.GeoEncodingUtils.decodeLatitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.decodeLongitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.encodeLatitude;
+import static org.apache.lucene.geo.GeoEncodingUtils.encodeLongitude;
 
 /** Finds all previously indexed points that fall within the specified polygons.
  *
@@ -88,22 +86,12 @@ final class LatLonPointInPolygonQuery extends Query {
     final byte maxLat[] = new byte[Integer.BYTES];
     final byte minLon[] = new byte[Integer.BYTES];
     final byte maxLon[] = new byte[Integer.BYTES];
-    NumericUtils.intToSortableBytes(LatLonPoint.encodeLatitude(box.minLat), minLat, 0);
-    NumericUtils.intToSortableBytes(LatLonPoint.encodeLatitude(box.maxLat), maxLat, 0);
-    NumericUtils.intToSortableBytes(LatLonPoint.encodeLongitude(box.minLon), minLon, 0);
-    NumericUtils.intToSortableBytes(LatLonPoint.encodeLongitude(box.maxLon), maxLon, 0);
+    NumericUtils.intToSortableBytes(encodeLatitude(box.minLat), minLat, 0);
+    NumericUtils.intToSortableBytes(encodeLatitude(box.maxLat), maxLat, 0);
+    NumericUtils.intToSortableBytes(encodeLongitude(box.minLon), minLon, 0);
+    NumericUtils.intToSortableBytes(encodeLongitude(box.maxLon), maxLon, 0);
 
-    // TODO: make this fancier, but currently linear with number of vertices
-    float cumulativeCost = 0;
-    for (Polygon polygon : polygons) {
-      cumulativeCost += 20 * (polygon.getPolyLats().length + polygon.getHoles().length);
-    }
-    final float matchCost = cumulativeCost;
-
-    final LatLonGrid grid = new LatLonGrid(LatLonPoint.encodeLatitude(box.minLat), 
-                                           LatLonPoint.encodeLatitude(box.maxLat),
-                                           LatLonPoint.encodeLongitude(box.minLon),
-                                           LatLonPoint.encodeLongitude(box.maxLon), polygons);
+    final Polygon2D tree = Polygon2D.create(polygons);
 
     return new ConstantScoreWeight(this) {
 
@@ -122,36 +110,30 @@ final class LatLonPointInPolygonQuery extends Query {
         }
         LatLonPoint.checkCompatible(fieldInfo);
 
-        // approximation (postfiltering has not yet been applied)
-        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc());
-        // subset of documents that need no postfiltering, this is purely an optimization
-        final BitSet preApproved;
-        // dumb heuristic: if the field is really sparse, use a sparse impl
-        if (values.getDocCount(field) * 100L < reader.maxDoc()) {
-          preApproved = new SparseFixedBitSet(reader.maxDoc());
-        } else {
-          preApproved = new FixedBitSet(reader.maxDoc());
-        }
+        // matching docids
+        DocIdSetBuilder result = new DocIdSetBuilder(reader.maxDoc(), values, field);
+
         values.intersect(field, 
                          new IntersectVisitor() {
+
+                           DocIdSetBuilder.BulkAdder adder;
+
+                           @Override
+                           public void grow(int count) {
+                             adder = result.grow(count);
+                           }
+
                            @Override
                            public void visit(int docID) {
-                             result.add(docID);
-                             preApproved.set(docID);
+                             adder.add(docID);
                            }
 
                            @Override
                            public void visit(int docID, byte[] packedValue) {
-                             // we bounds check individual values, as subtrees may cross, but we are being sent the values anyway:
-                             // this reduces the amount of docvalues fetches (improves approximation)
-                             if (StringHelper.compare(Integer.BYTES, packedValue, 0, maxLat, 0) > 0 ||
-                                 StringHelper.compare(Integer.BYTES, packedValue, 0, minLat, 0) < 0 ||
-                                 StringHelper.compare(Integer.BYTES, packedValue, Integer.BYTES, maxLon, 0) > 0 ||
-                                 StringHelper.compare(Integer.BYTES, packedValue, Integer.BYTES, minLon, 0) < 0) {
-                               // outside of global bounding box range
-                               return;
+                             if (tree.contains(decodeLatitude(packedValue, 0), 
+                                               decodeLongitude(packedValue, Integer.BYTES))) {
+                               adder.add(docID);
                              }
-                             result.add(docID);
                            }
 
                            @Override
@@ -164,51 +146,16 @@ final class LatLonPointInPolygonQuery extends Query {
                                return Relation.CELL_OUTSIDE_QUERY;
                              }
                              
-                             double cellMinLat = LatLonPoint.decodeLatitude(minPackedValue, 0);
-                             double cellMinLon = LatLonPoint.decodeLongitude(minPackedValue, Integer.BYTES);
-                             double cellMaxLat = LatLonPoint.decodeLatitude(maxPackedValue, 0);
-                             double cellMaxLon = LatLonPoint.decodeLongitude(maxPackedValue, Integer.BYTES);
+                             double cellMinLat = decodeLatitude(minPackedValue, 0);
+                             double cellMinLon = decodeLongitude(minPackedValue, Integer.BYTES);
+                             double cellMaxLat = decodeLatitude(maxPackedValue, 0);
+                             double cellMaxLon = decodeLongitude(maxPackedValue, Integer.BYTES);
 
-                             return Polygon.relate(polygons, cellMinLat, cellMaxLat, cellMinLon, cellMaxLon);
+                             return tree.relate(cellMinLat, cellMaxLat, cellMinLon, cellMaxLon);
                            }
                          });
 
-        DocIdSet set = result.build();
-        final DocIdSetIterator disi = set.iterator();
-        if (disi == null) {
-          return null;
-        }
-
-        // return two-phase iterator using docvalues to postfilter candidates
-        SortedNumericDocValues docValues = DocValues.getSortedNumeric(reader, field);
-
-        TwoPhaseIterator iterator = new TwoPhaseIterator(disi) {
-          @Override
-          public boolean matches() throws IOException {
-            int docId = disi.docID();
-            if (preApproved.get(docId)) {
-              return true;
-            } else {
-              docValues.setDocument(docId);
-              int count = docValues.count();
-              for (int i = 0; i < count; i++) {
-                long encoded = docValues.valueAt(i);
-                int latitudeBits = (int)(encoded >> 32);
-                int longitudeBits = (int)(encoded & 0xFFFFFFFF);
-                if (grid.contains(latitudeBits, longitudeBits)) {
-                  return true;
-                }
-              }
-              return false;
-            }
-          }
-
-          @Override
-          public float matchCost() {
-            return matchCost;
-          }
-        };
-        return new ConstantScoreScorer(this, score(), iterator);
+        return new ConstantScoreScorer(this, score(), result.build().iterator());
       }
     };
   }
@@ -226,21 +173,21 @@ final class LatLonPointInPolygonQuery extends Query {
   @Override
   public int hashCode() {
     final int prime = 31;
-    int result = super.hashCode();
+    int result = classHash();
     result = prime * result + field.hashCode();
     result = prime * result + Arrays.hashCode(polygons);
     return result;
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (this == obj) return true;
-    if (!super.equals(obj)) return false;
-    if (getClass() != obj.getClass()) return false;
-    LatLonPointInPolygonQuery other = (LatLonPointInPolygonQuery) obj;
-    if (!field.equals(other.field)) return false;
-    if (!Arrays.equals(polygons, other.polygons)) return false;
-    return true;
+  public boolean equals(Object other) {
+    return sameClassAs(other) &&
+           equalsTo(getClass().cast(other));
+  }
+
+  private boolean equalsTo(LatLonPointInPolygonQuery other) {
+    return field.equals(other.field) &&
+           Arrays.equals(polygons, other.polygons);
   }
 
   @Override

@@ -46,13 +46,15 @@ class GeoConcavePolygon extends GeoBasePolygon {
   protected GeoPoint[][] notableEdgePoints = null;
   /** A point which is on the boundary of the polygon */
   protected GeoPoint[] edgePoints = null;
-  /** Tracking the maximum distance we go at any one time, so to be sure it's legal */
-  protected double fullDistance = 0.0;
   /** Set to true when the polygon is complete */
   protected boolean isDone = false;
   /** A bounds object for each sided plane */
   protected Map<SidedPlane, Membership> eitherBounds = null;
-  
+  /** Edge plane for one side of intersection */
+  protected Map<SidedPlane, Plane> edgePlanes = null;
+  /** Intersection bounds */
+  protected Map<SidedPlane, Membership> intersectionBounds = null;
+
   /**
    * Create a concave polygon from a list of points.  The first point must be on the
    * external edge.
@@ -189,39 +191,103 @@ class GeoConcavePolygon extends GeoBasePolygon {
     for (int i = 0; i < points.size(); i++) {
       final GeoPoint start = points.get(i);
       final GeoPoint end = points.get(legalIndex(i + 1));
-      final double distance = start.arcDistance(end);
-      if (distance > fullDistance)
-        fullDistance = distance;
-      final GeoPoint check = points.get(legalIndex(i + 2));
-      // Here note the flip of the sense of the sided plane!!
-      final SidedPlane sp = new SidedPlane(check, false, start, end);
-      //System.out.println("Created edge "+sp+" using start="+start+" end="+end+" check="+check);
-      edges[i] = sp;
-      invertedEdges[i] = new SidedPlane(sp);
-      notableEdgePoints[i] = new GeoPoint[]{start, end};
-    }
-    // In order to naively confirm that the polygon is concave, I would need to
-    // check every edge, and verify that every point (other than the edge endpoints)
-    // is within the edge's sided plane.  This is an order n^2 operation.  That's still
-    // not wrong, though, because everything else about polygons has a similar cost.
-    for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
-      final SidedPlane edge = edges[edgeIndex];
-      for (int pointIndex = 0; pointIndex < points.size(); pointIndex++) {
-        if (pointIndex != edgeIndex && pointIndex != legalIndex(edgeIndex + 1)) {
-          if (edge.isWithin(points.get(pointIndex)))
-            throw new IllegalArgumentException("Polygon is not concave: Point " + points.get(pointIndex) + " Edge " + edge);
+      // We have to find the next point that is not on the plane between start and end.
+      // If there is no such point, it's an error.
+      final Plane planeToFind = new Plane(start, end);
+      int endPointIndex = -1;
+      for (int j = 0; j < points.size(); j++) {
+        final int index = legalIndex(j + i + 2);
+        if (!planeToFind.evaluateIsZero(points.get(index))) {
+          endPointIndex = index;
+          break;
         }
       }
+      if (endPointIndex == -1) {
+        throw new IllegalArgumentException("Polygon points are all coplanar");
+      }
+      final GeoPoint check = points.get(endPointIndex);
+      //System.out.println("Created edge "+sp+" using start="+start+" end="+end+" check="+check);
+      edges[i] = new SidedPlane(check, false, start, end);
+      invertedEdges[i] = new SidedPlane(edges[i]);
+      notableEdgePoints[i] = new GeoPoint[]{start, end};
     }
     
     // For each edge, create a bounds object.
     eitherBounds = new HashMap<>(edges.length);
+    intersectionBounds = new HashMap<>(edges.length);
+    edgePlanes = new HashMap<>(edges.length);
     for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
-      eitherBounds.put(edges[edgeIndex], new EitherBound(invertedEdges[edgeIndex]));
+      final SidedPlane edge = edges[edgeIndex];
+      final SidedPlane invertedEdge = invertedEdges[edgeIndex];
+      int bound1Index = legalIndex(edgeIndex+1);
+      while (invertedEdges[legalIndex(bound1Index)].isNumericallyIdentical(invertedEdge)) {
+        bound1Index++;
+      }
+      int bound2Index = legalIndex(edgeIndex-1);
+      int otherIndex = bound2Index;
+      final SidedPlane otherEdge;
+      final SidedPlane otherInvertedEdge;
+      if (invertedEdges[legalIndex(otherIndex)].isNumericallyIdentical(invertedEdge)) {
+        otherInvertedEdge = null;
+        otherEdge = null;
+      } else {
+        otherInvertedEdge = invertedEdges[legalIndex(otherIndex)];
+        otherEdge = edges[legalIndex(otherIndex)];
+      }
+      while (invertedEdges[legalIndex(bound2Index)].isNumericallyIdentical(invertedEdge)) {
+        bound2Index--;
+      }
+      eitherBounds.put(edge, new EitherBound(invertedEdges[legalIndex(bound1Index)], invertedEdges[legalIndex(bound2Index)]));
+      // For intersections, we look at the point at the intersection between the previous edge and this one.  We need to locate the 
+      // Intersection bounds needs to look even further forwards/backwards
+      if (otherInvertedEdge != null) {
+        while (invertedEdges[legalIndex(otherIndex)].isNumericallyIdentical(otherInvertedEdge)) {
+          otherIndex--;
+        }
+        intersectionBounds.put(edge, new EitherBound(invertedEdges[legalIndex(otherIndex)], invertedEdges[legalIndex(bound2Index)]));
+        edgePlanes.put(edge, otherEdge);
+      }
     }
 
-    // Pick an edge point arbitrarily
-    edgePoints = new GeoPoint[]{points.get(0)};
+    // Pick an edge point arbitrarily from the outer polygon.  Glom this together with all edge points from
+    // inner polygons.
+    int edgePointCount = 1;
+    if (holes != null) {
+      for (final GeoPolygon hole : holes) {
+        edgePointCount += hole.getEdgePoints().length;
+      }
+    }
+    edgePoints = new GeoPoint[edgePointCount];
+    edgePointCount = 0;
+    edgePoints[edgePointCount++] = points.get(0);
+    if (holes != null) {
+      for (final GeoPolygon hole : holes) {
+        final GeoPoint[] holeEdgePoints = hole.getEdgePoints();
+        for (final GeoPoint p : holeEdgePoints) {
+          edgePoints[edgePointCount++] = p;
+        }
+      }
+    }
+
+    if (isWithinHoles(points.get(0))) {
+      throw new IllegalArgumentException("Polygon edge intersects a polygon hole; not allowed");
+    }
+
+  }
+
+  /** Check if a point is within the provided holes.
+   *@param point point to check.
+   *@return true if the point is within any of the holes.
+   */
+  protected boolean isWithinHoles(final GeoPoint point) {
+    if (holes != null) {
+      for (final GeoPolygon hole : holes) {
+        if (!hole.isWithin(point)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   /** Compute a legal point index from a possibly illegal one, that may have wrapped.
@@ -231,11 +297,32 @@ class GeoConcavePolygon extends GeoBasePolygon {
   protected int legalIndex(int index) {
     while (index >= points.size())
       index -= points.size();
+    while (index < 0) {
+      index += points.size();
+    }
     return index;
   }
 
   @Override
   public boolean isWithin(final double x, final double y, final double z) {
+    if (!localIsWithin(x, y, z)) {
+      return false;
+    }
+    if (holes != null) {
+      for (final GeoPolygon polygon : holes) {
+        if (!polygon.isWithin(x, y, z)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  protected boolean localIsWithin(final Vector v) {
+    return localIsWithin(v.x, v.y, v.z);
+  }
+
+  protected boolean localIsWithin(final double x, final double y, final double z) {
     // If present within *any* plane, then it is a member, except where there are holes.
     boolean isMember = false;
     for (final SidedPlane edge : edges) {
@@ -244,17 +331,7 @@ class GeoConcavePolygon extends GeoBasePolygon {
         break;
       }
     }
-    if (isMember == false) {
-      return false;
-    }
-    if (holes != null) {
-      for (final GeoPolygon polygon : holes) {
-        if (polygon.isWithin(x, y, z)) {
-          return false;
-        }
-      }
-    }
-    return true;
+    return isMember;
   }
 
   @Override
@@ -268,9 +345,11 @@ class GeoConcavePolygon extends GeoBasePolygon {
     // cannot use them as bounds.  They are independent hemispheres.
     for (int edgeIndex = 0; edgeIndex < edges.length; edgeIndex++) {
       final SidedPlane edge = edges[edgeIndex];
+      final SidedPlane invertedEdge = invertedEdges[edgeIndex];
       final GeoPoint[] points = this.notableEdgePoints[edgeIndex];
       if (!isInternalEdges.get(edgeIndex)) {
-        if (edge.intersects(planetModel, p, notablePoints, points, bounds, eitherBounds.get(edge))) {
+        //System.err.println("Checking concave edge "+edge+" for intersection against plane "+p);
+        if (invertedEdge.intersects(planetModel, p, notablePoints, points, bounds, eitherBounds.get(edge))) {
           //System.err.println(" intersects!");
           return true;
         }
@@ -288,43 +367,57 @@ class GeoConcavePolygon extends GeoBasePolygon {
     return false;
   }
 
-  /** A membership implementation representing polygon edges that all must apply.
+  /** A membership implementation representing polygon edges that must apply.
    */
   protected class EitherBound implements Membership {
     
-    protected final SidedPlane exception;
+    protected final SidedPlane sideBound1;
+    protected final SidedPlane sideBound2;
     
     /** Constructor.
-      * @param exception is the one plane to exclude from the check.
+      * @param sideBound1 is the first side bound.
+      * @param sideBound2 is the second side bound.
       */
-    public EitherBound(final SidedPlane exception) {
-      this.exception = exception;
+    public EitherBound(final SidedPlane sideBound1, final SidedPlane sideBound2) {
+      this.sideBound1 = sideBound1;
+      this.sideBound2 = sideBound2;
     }
 
     @Override
     public boolean isWithin(final Vector v) {
-      for (final SidedPlane edge : invertedEdges) {
-        if (edge != exception && !edge.isWithin(v)) {
-          return false;
-        }
-      }
-      return true;
+      return sideBound1.isWithin(v) && sideBound2.isWithin(v);
     }
 
     @Override
     public boolean isWithin(final double x, final double y, final double z) {
-      for (final SidedPlane edge : invertedEdges) {
-        if (edge != exception && !edge.isWithin(x, y, z)) {
-          return false;
-        }
-      }
-      return true;
+      return sideBound1.isWithin(x,y,z) && sideBound2.isWithin(x,y,z);
     }
   }
 
   @Override
   public void getBounds(Bounds bounds) {
-    super.getBounds(bounds);
+    // Because of holes, we don't want to use superclass method
+    if (localIsWithin(planetModel.NORTH_POLE)) {
+      bounds.noTopLatitudeBound().noLongitudeBound()
+        .addPoint(planetModel.NORTH_POLE);
+    }
+    if (localIsWithin(planetModel.SOUTH_POLE)) {
+      bounds.noBottomLatitudeBound().noLongitudeBound()
+        .addPoint(planetModel.SOUTH_POLE);
+    }
+    if (localIsWithin(planetModel.MIN_X_POLE)) {
+      bounds.addPoint(planetModel.MIN_X_POLE);
+    }
+    if (localIsWithin(planetModel.MAX_X_POLE)) {
+      bounds.addPoint(planetModel.MAX_X_POLE);
+    }
+    if (localIsWithin(planetModel.MIN_Y_POLE)) {
+      bounds.addPoint(planetModel.MIN_Y_POLE);
+    }
+    if (localIsWithin(planetModel.MAX_Y_POLE)) {
+      bounds.addPoint(planetModel.MAX_Y_POLE);
+    }
+
     bounds.isWide();
 
     // Add all the points
@@ -335,12 +428,17 @@ class GeoConcavePolygon extends GeoBasePolygon {
     // Add planes with membership.
     for (final SidedPlane edge : edges) {
       bounds.addPlane(planetModel, edge, eitherBounds.get(edge));
+      final Membership m = intersectionBounds.get(edge);
+      if (m != null) {
+        bounds.addIntersection(planetModel, edgePlanes.get(edge), edge, m);
+      }
     }
+    
   }
 
   @Override
   protected double outsideDistance(final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-    double minimumDistance = Double.MAX_VALUE;
+    double minimumDistance = Double.POSITIVE_INFINITY;
     for (final GeoPoint edgePoint : points) {
       final double newDist = distanceStyle.computeDistance(edgePoint, x,y,z);
       if (newDist < minimumDistance) {
@@ -351,6 +449,14 @@ class GeoConcavePolygon extends GeoBasePolygon {
       final double newDist = distanceStyle.computeDistance(planetModel, edgePlane, x, y, z, eitherBounds.get(edgePlane));
       if (newDist < minimumDistance) {
         minimumDistance = newDist;
+      }
+    }
+    if (holes != null) {
+      for (final GeoPolygon hole : holes) {
+        double holeDistance = hole.computeOutsideDistance(distanceStyle, x, y, z);
+        if (holeDistance != 0.0 && holeDistance < minimumDistance) {
+          minimumDistance = holeDistance;
+        }
       }
     }
     return minimumDistance;

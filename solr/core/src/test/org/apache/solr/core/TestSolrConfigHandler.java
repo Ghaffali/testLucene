@@ -433,6 +433,30 @@ public class TestSolrConfigHandler extends RestTestBase {
         Arrays.asList("config", "searchComponent","myspellcheck", "spellchecker", "class"),
         "solr.DirectSolrSpellChecker",
         10);
+
+    payload = "{\n" +
+        "    'add-requesthandler': {\n" +
+        "        name : '/dump100',\n" +
+        "        class : 'org.apache.solr.handler.DumpRequestHandler'," +
+        "        suggester: [{name: s1,lookupImpl: FuzzyLookupFactory, dictionaryImpl : DocumentDictionaryFactory}," +
+        "                    {name: s2,lookupImpl: FuzzyLookupFactory , dictionaryImpl : DocumentExpressionDictionaryFactory}]" +
+        "    }\n" +
+        "}";
+    runConfigCommand(writeHarness, "/config?wt=json", payload);
+    map = testForResponseElement(writeHarness,
+        testServerBaseUrl,
+        "/config?wt=json",
+        cloudSolrClient,
+        Arrays.asList("config", "requestHandler","/dump100", "class"),
+        "org.apache.solr.handler.DumpRequestHandler",
+        10);
+
+    map = getRespMap("/dump100?wt=json&json.nl=arrmap&initArgs=true", writeHarness);
+    List initArgs = (List) map.get("initArgs");
+    assertEquals(2, initArgs.size());
+    assertTrue(((Map)initArgs.get(0)).containsKey("suggester"));
+    assertTrue(((Map)initArgs.get(1)).containsKey("suggester"));
+    System.out.println(map);
   }
 
   public static Map testForResponseElement(RestTestHarness harness,
@@ -472,8 +496,8 @@ public class TestSolrConfigHandler extends RestTestBase {
       Thread.sleep(100);
 
     }
+    assertTrue(StrUtils.formatString("Could not get expected value  ''{0}'' for path ''{1}'' full output: {2},  from server:  {3}", expected, StrUtils.join(jsonPath, '/'), getAsString(m), testServerBaseUrl), success);
 
-    assertTrue(StrUtils.formatString("Could not get expected value  ''{0}'' for path ''{1}'' full output: {2}", expected, StrUtils.join(jsonPath, '/'), getAsString(m)), success);
     return m;
   }
 

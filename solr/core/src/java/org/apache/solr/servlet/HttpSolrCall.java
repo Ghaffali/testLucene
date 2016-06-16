@@ -16,10 +16,9 @@
  */
 package org.apache.solr.servlet;
 
-import javax.servlet.ServletInputStream;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -68,6 +67,7 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.cloud.Aliases;
 import org.apache.solr.common.cloud.ClusterState;
+import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
@@ -499,8 +499,6 @@ public class HttpSolrCall {
         default: return action;
       }
     } catch (Throwable ex) {
-      log.error("ERROR" ,ex);
-
       sendError(ex);
       // walk the the entire cause chain to search for an Error
       Throwable t = ex;
@@ -562,7 +560,8 @@ public class HttpSolrCall {
       } else if (isPostOrPutRequest) {
         HttpEntityEnclosingRequestBase entityRequest =
             "POST".equals(req.getMethod()) ? new HttpPost(urlstr) : new HttpPut(urlstr);
-        HttpEntity entity = new InputStreamEntity(req.getInputStream(), req.getContentLength());
+        InputStream in = new CloseShieldInputStream(req.getInputStream()); // Prevent close of container streams
+        HttpEntity entity = new InputStreamEntity(in, req.getContentLength());
         entityRequest.setEntity(entity);
         method = entityRequest;
       } else if ("DELETE".equals(req.getMethod())) {
@@ -646,7 +645,7 @@ public class HttpSolrCall {
         solrReq = new SolrQueryRequestBase(core, solrParams) {
         };
       }
-      QueryResponseWriter writer = getResponseWriter()/* core.getQueryResponseWriter(solrReq)*/;
+      QueryResponseWriter writer = core.getQueryResponseWriter(solrReq);
       writeResponse(solrResp, writer, Method.GET);
     } catch (Exception e) { // This error really does not matter
       exp = e;
@@ -763,7 +762,8 @@ public class HttpSolrCall {
       }
 
       if (Method.HEAD != reqMethod) {
-        QueryResponseWriterUtil.writeQueryResponse(response.getOutputStream(), responseWriter, solrReq, solrRsp, ct);
+        OutputStream out = new CloseShieldOutputStream(response.getOutputStream()); // Prevent close of container streams, see SOLR-8933
+        QueryResponseWriterUtil.writeQueryResponse(out, responseWriter, solrReq, solrRsp, ct);
       }
       //else http HEAD request, nothing to write out, waited this long just to get ContentType
     } catch (EOFException e) {
@@ -791,11 +791,15 @@ public class HttpSolrCall {
     return result;
   }
 
-  protected SolrCore getCoreByCollection(String collection) {
+  private SolrCore getCoreByCollection(String collectionName) {
     ZkStateReader zkStateReader = cores.getZkController().getZkStateReader();
 
     ClusterState clusterState = zkStateReader.getClusterState();
-    Map<String, Slice> slices = clusterState.getActiveSlicesMap(collection);
+    DocCollection collection = clusterState.getCollectionOrNull(collectionName);
+    if (collection == null) {
+      return null;
+    }
+    Map<String, Slice> slices = collection.getActiveSlicesMap();
     if (slices == null) {
       return null;
     }
@@ -808,7 +812,7 @@ public class HttpSolrCall {
     //For queries it doesn't matter and hence we don't distinguish here.
     for (Map.Entry<String, Slice> entry : entries) {
       // first see if we have the leader
-      Replica leaderProps = clusterState.getLeader(collection, entry.getKey());
+      Replica leaderProps = collection.getLeader(entry.getKey());
       if (leaderProps != null && liveNodes.contains(leaderProps.getNodeName()) && leaderProps.getState() == Replica.State.ACTIVE) {
         core = checkProps(leaderProps);
         if (core != null) {
@@ -845,15 +849,15 @@ public class HttpSolrCall {
   private void getSlicesForCollections(ClusterState clusterState,
                                        Collection<Slice> slices, boolean activeSlices) {
     if (activeSlices) {
-      for (String collection : clusterState.getCollections()) {
-        final Collection<Slice> activeCollectionSlices = clusterState.getActiveSlices(collection);
+      for (Map.Entry<String, DocCollection> entry : clusterState.getCollectionsMap().entrySet()) {
+        final Collection<Slice> activeCollectionSlices = entry.getValue().getActiveSlices();
         if (activeCollectionSlices != null) {
           slices.addAll(activeCollectionSlices);
         }
       }
     } else {
-      for (String collection : clusterState.getCollections()) {
-        final Collection<Slice> collectionSlices = clusterState.getSlices(collection);
+      for (Map.Entry<String, DocCollection> entry : clusterState.getCollectionsMap().entrySet()) {
+        final Collection<Slice> collectionSlices = entry.getValue().getSlices();
         if (collectionSlices != null) {
           slices.addAll(collectionSlices);
         }
@@ -1031,7 +1035,7 @@ public class HttpSolrCall {
 
       @Override
       public Object getHandler() {
-        return _getHandler();
+        return handler;
       }
 
       @Override

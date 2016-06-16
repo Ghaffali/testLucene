@@ -201,7 +201,7 @@ class GeoStandardPath extends GeoBasePath {
     double currentDistance = 0.0;
     for (PathSegment segment : segments) {
       double distance = segment.pathDistance(planetModel, distanceStyle, x,y,z);
-      if (distance != Double.MAX_VALUE)
+      if (distance != Double.POSITIVE_INFINITY)
         return currentDistance + distance;
       currentDistance += segment.fullPathDistance(distanceStyle);
     }
@@ -210,18 +210,24 @@ class GeoStandardPath extends GeoBasePath {
     currentDistance = 0.0;
     for (SegmentEndpoint endpoint : endPoints) {
       double distance = endpoint.pathDistance(distanceStyle, x, y, z);
-      if (distance != Double.MAX_VALUE)
+      if (distance != Double.POSITIVE_INFINITY)
         return currentDistance + distance;
       if (segmentIndex < segments.size())
         currentDistance += segments.get(segmentIndex++).fullPathDistance(distanceStyle);
     }
 
-    return Double.MAX_VALUE;
+    return Double.POSITIVE_INFINITY;
+  }
+
+  @Override
+  protected void distanceBounds(final Bounds bounds, final DistanceStyle distanceStyle, final double distanceValue) {
+    // TBD: Compute actual bounds based on distance
+    getBounds(bounds);
   }
 
   @Override
   protected double outsideDistance(final DistanceStyle distanceStyle, final double x, final double y, final double z) {
-    double minDistance = Double.MAX_VALUE;
+    double minDistance = Double.POSITIVE_INFINITY;
     for (final SegmentEndpoint endpoint : endPoints) {
       final double newDistance = endpoint.outsideDistance(distanceStyle, x,y,z);
       if (newDistance < minDistance)
@@ -330,7 +336,7 @@ class GeoStandardPath extends GeoBasePath {
    *    we generate no circle at all.  If there is one intersection only, then we generate a plane that includes that intersection, as well as the remaining
    *    cutoff plane/edge plane points.
    */
-  public static class SegmentEndpoint {
+  private static class SegmentEndpoint {
     /** The center point of the endpoint */
     public final GeoPoint point;
     /** A plane describing the circle */
@@ -512,7 +518,7 @@ class GeoStandardPath extends GeoBasePath {
      */
     public double pathDistance(final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       if (!isWithin(x,y,z))
-        return Double.MAX_VALUE;
+        return Double.POSITIVE_INFINITY;
       return distanceStyle.computeDistance(this.point, x, y, z);
     }
 
@@ -574,7 +580,7 @@ class GeoStandardPath extends GeoBasePath {
   /**
    * This is the pre-calculated data for a path segment.
    */
-  public static class PathSegment {
+  private static class PathSegment {
     /** Starting point of the segment */
     public final GeoPoint start;
     /** End point of the segment */
@@ -707,7 +713,7 @@ class GeoStandardPath extends GeoBasePath {
      */
     public double pathDistance(final PlanetModel planetModel, final DistanceStyle distanceStyle, final double x, final double y, final double z) {
       if (!isWithin(x,y,z))
-        return Double.MAX_VALUE;
+        return Double.POSITIVE_INFINITY;
 
       // (1) Compute normalizedPerpPlane.  If degenerate, then return point distance from start to point.
       // Want no allocations or expensive operations!  so we do this the hard way

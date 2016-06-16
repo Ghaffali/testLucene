@@ -121,7 +121,7 @@ public class GeoPoint extends Vector {
    * @param v is the second point.
    * @return the angle, in radians, between the two points.
    */
-  public double arcDistance(final GeoPoint v) {
+  public double arcDistance(final Vector v) {
     return Tools.safeAcos(dotProduct(v)/(magnitude() * v.magnitude()));
   }
 
@@ -188,6 +188,6 @@ public class GeoPoint extends Vector {
     if (this.longitude == Double.NEGATIVE_INFINITY) {
       return super.toString();
     }
-    return "[lat="+getLatitude()+", lon="+getLongitude()+"]";
+    return "[lat="+getLatitude()+", lon="+getLongitude()+"("+super.toString()+")]";
   }
 }

@@ -30,18 +30,25 @@ import java.util.ArrayList;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 import org.apache.solr.client.solrj.io.eq.MultipleFieldEqualitor;
 import org.apache.solr.client.solrj.io.stream.*;
 import org.apache.solr.client.solrj.io.Tuple;
 import org.apache.solr.client.solrj.io.comp.StreamComparator;
 import org.apache.solr.client.solrj.io.eq.FieldEqualitor;
+import org.apache.solr.client.solrj.io.stream.expr.Explanation;
 import org.apache.solr.client.solrj.io.stream.expr.Expressible;
+import org.apache.solr.client.solrj.io.stream.expr.StreamExplanation;
 import org.apache.solr.client.solrj.io.stream.expr.StreamExpression;
 import org.apache.solr.client.solrj.io.stream.expr.StreamExpressionNamedParameter;
 import org.apache.solr.client.solrj.io.stream.expr.StreamExpressionParameter;
 import org.apache.solr.client.solrj.io.stream.expr.StreamExpressionValue;
 import org.apache.solr.client.solrj.io.stream.expr.StreamFactory;
+import org.apache.solr.client.solrj.io.stream.expr.Explanation.ExpressionType;
+import org.apache.solr.common.params.MapSolrParams;
+import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.SolrjNamedThreadFactory;
 
@@ -61,8 +68,9 @@ public class ShortestPathStream extends TupleStream implements Expressible {
   private boolean found;
   private StreamContext streamContext;
   private int threads;
-  private Map queryParams;
+  private SolrParams queryParams;
 
+  @Deprecated
   public ShortestPathStream(String zkHost,
                             String collection,
                             String fromNode,
@@ -70,6 +78,29 @@ public class ShortestPathStream extends TupleStream implements Expressible {
                             String fromField,
                             String toField,
                             Map queryParams,
+                            int joinBatchSize,
+                            int threads,
+                            int maxDepth) {
+
+    init(zkHost,
+        collection,
+        fromNode,
+        toNode,
+        fromField,
+        toField,
+        new MapSolrParams(queryParams),
+        joinBatchSize,
+        threads,
+        maxDepth);
+  }
+
+  public ShortestPathStream(String zkHost,
+                            String collection,
+                            String fromNode,
+                            String toNode,
+                            String fromField,
+                            String toField,
+                            SolrParams queryParams,
                             int joinBatchSize,
                             int threads,
                             int maxDepth) {
@@ -158,7 +189,7 @@ public class ShortestPathStream extends TupleStream implements Expressible {
       maxDepth = Integer.parseInt(((StreamExpressionValue) depthExpression.getParameter()).getValue());
     }
 
-    Map<String,String> params = new HashMap<String,String>();
+    ModifiableSolrParams params = new ModifiableSolrParams();
     for(StreamExpressionNamedParameter namedParam : namedParams){
       if(!namedParam.getName().equals("zkHost") &&
           !namedParam.getName().equals("to") &&
@@ -168,7 +199,7 @@ public class ShortestPathStream extends TupleStream implements Expressible {
           !namedParam.getName().equals("threads") &&
           !namedParam.getName().equals("partitionSize"))
       {
-        params.put(namedParam.getName(), namedParam.getParameter().toString().trim());
+        params.set(namedParam.getName(), namedParam.getParameter().toString().trim());
       }
     }
 
@@ -197,7 +228,7 @@ public class ShortestPathStream extends TupleStream implements Expressible {
                     String toNode,
                     String fromField,
                     String toField,
-                    Map queryParams,
+                    SolrParams queryParams,
                     int joinBatchSize,
                     int threads,
                     int maxDepth) {
@@ -221,10 +252,10 @@ public class ShortestPathStream extends TupleStream implements Expressible {
     // collection
     expression.addParameter(collection);
 
-    Set<Map.Entry> entries =  queryParams.entrySet();
     // parameters
-    for(Map.Entry param : entries){
-      String value = param.getValue().toString();
+    ModifiableSolrParams mParams = new ModifiableSolrParams(queryParams);
+    for(Map.Entry<String, String[]> param : mParams.getMap().entrySet()){
+      String value = String.join(",", param.getValue());
 
       // SOLR-8409: This is a special case where the params contain a " character
       // Do note that in any other BASE streams with parameters where a " might come into play
@@ -242,6 +273,28 @@ public class ShortestPathStream extends TupleStream implements Expressible {
     expression.addParameter(new StreamExpressionNamedParameter("to", toNode));
     expression.addParameter(new StreamExpressionNamedParameter("edge", fromField+"="+toField));
     return expression;
+  }
+  
+  @Override
+  public Explanation toExplanation(StreamFactory factory) throws IOException {
+
+    StreamExplanation explanation = new StreamExplanation(getStreamNodeId().toString());
+    
+    explanation.setFunctionName(factory.getFunctionName(this.getClass()));
+    explanation.setImplementingClass(this.getClass().getName());
+    explanation.setExpressionType(ExpressionType.GRAPH_SOURCE);
+    explanation.setExpression(toExpression(factory).toString());
+    
+    // child is a datastore so add it at this point
+    StreamExplanation child = new StreamExplanation(getStreamNodeId() + "-datastore");
+    child.setFunctionName("solr (graph)");
+    child.setImplementingClass("Solr/Lucene");
+    child.setExpressionType(ExpressionType.DATASTORE);
+    ModifiableSolrParams mParams = new ModifiableSolrParams(queryParams);
+    child.setExpression(mParams.getMap().entrySet().stream().map(e -> String.format(Locale.ROOT, "%s=%s", e.getKey(), e.getValue())).collect(Collectors.joining(",")));
+    explanation.addChild(child);
+    
+    return explanation;
   }
 
   public void setStreamContext(StreamContext context) {
@@ -392,13 +445,12 @@ public class ShortestPathStream extends TupleStream implements Expressible {
 
     public List<Edge> call() {
 
-      Map joinParams = new HashMap();
+      ModifiableSolrParams joinParams = new ModifiableSolrParams(queryParams);
       String fl = fromField + "," + toField;
 
-      joinParams.putAll(queryParams);
-      joinParams.put("fl", fl);
-      joinParams.put("qt", "/export");
-      joinParams.put("sort", toField + " asc,"+fromField +" asc");
+      joinParams.set("fl", fl);
+      joinParams.set("qt", "/export");
+      joinParams.set("sort", toField + " asc,"+fromField +" asc");
 
       StringBuffer nodeQuery = new StringBuffer();
 
@@ -408,7 +460,7 @@ public class ShortestPathStream extends TupleStream implements Expressible {
 
       String q = fromField + ":(" + nodeQuery.toString().trim() + ")";
 
-      joinParams.put("q", q);
+      joinParams.set("q", q);
       TupleStream stream = null;
       try {
         stream = new UniqueStream(new CloudSolrStream(zkHost, collection, joinParams), new MultipleFieldEqualitor(new FieldEqualitor(toField), new FieldEqualitor(fromField)));

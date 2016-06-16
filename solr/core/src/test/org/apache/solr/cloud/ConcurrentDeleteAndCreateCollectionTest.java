@@ -25,7 +25,6 @@ import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.response.CollectionAdminResponse;
 import org.apache.solr.util.TimeOut;
@@ -60,7 +59,8 @@ public class ConcurrentDeleteAndCreateCollectionTest extends SolrTestCaseJ4 {
     for (int i = 0; i < threads.length; i++) {
       final String collectionName = "collection" + i;
       uploadConfig(configDir, collectionName);
-      final SolrClient solrClient = new HttpSolrClient(solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString());
+      final String baseUrl = solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString();
+      final SolrClient solrClient = getHttpSolrClient(baseUrl);
       threads[i] = new CreateDeleteSearchCollectionThread("create-delete-search-" + i, collectionName, collectionName, 
           timeToRunSec, solrClient, failure);
     }
@@ -75,7 +75,8 @@ public class ConcurrentDeleteAndCreateCollectionTest extends SolrTestCaseJ4 {
     final String configName = "testconfig";
     final File configDir = getFile("solr").toPath().resolve("configsets/configset-2/conf").toFile();
     uploadConfig(configDir, configName); // upload config once, to be used by all collections
-    final SolrClient solrClient = new HttpSolrClient(solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString());
+    final String baseUrl = solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString();
+    final SolrClient solrClient = getHttpSolrClient(baseUrl);
     final AtomicReference<Exception> failure = new AtomicReference<>();
     final int timeToRunSec = 30;
     final Thread[] threads = new Thread[2];
