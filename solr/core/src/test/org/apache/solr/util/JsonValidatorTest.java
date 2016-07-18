@@ -32,7 +32,7 @@ import static org.apache.solr.common.util.Utils.toJSONString;
 public class JsonValidatorTest extends SolrTestCaseJ4 {
 
   public void testSchema() {
-    checkSchema("collections.commands");
+    checkSchema("collections.Commands");
     checkSchema("collections.collection.commands");
     checkSchema("collections.collection.shards.Commands");
     checkSchema("collections.collection.shards.shard.Commands");
