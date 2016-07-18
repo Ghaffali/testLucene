@@ -1294,6 +1294,11 @@ public class ZkStateReader implements Closeable {
       this.version = version;
 
     }
+
+    @Override
+    public String toString() {
+      return Utils.toJSONString(data);
+    }
   }
 
   private void notifyStateWatchers(Set<String> liveNodes, String collection, DocCollection collectionState) {

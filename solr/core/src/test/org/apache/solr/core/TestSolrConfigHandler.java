@@ -436,10 +436,12 @@ public class TestSolrConfigHandler extends RestTestBase {
 
     payload = "{\n" +
         "    'add-requesthandler': {\n" +
-        "        name : '/dump100',\n" +
+        "        name : '/dump100', " +
         "        class : 'org.apache.solr.handler.DumpRequestHandler'," +
         "        suggester: [{name: s1,lookupImpl: FuzzyLookupFactory, dictionaryImpl : DocumentDictionaryFactory}," +
-        "                    {name: s2,lookupImpl: FuzzyLookupFactory , dictionaryImpl : DocumentExpressionDictionaryFactory}]" +
+        "                    {name: s2,lookupImpl: FuzzyLookupFactory , dictionaryImpl : DocumentExpressionDictionaryFactory}], " +
+        "        registerPath :'/,/v2'\n" +
+
         "    }\n" +
         "}";
     runConfigCommand(writeHarness, "/config?wt=json", payload);
@@ -453,7 +455,7 @@ public class TestSolrConfigHandler extends RestTestBase {
 
     map = getRespMap("/dump100?wt=json&json.nl=arrmap&initArgs=true", writeHarness);
     List initArgs = (List) map.get("initArgs");
-    assertEquals(2, initArgs.size());
+    assertTrue(initArgs.size() >= 2);
     assertTrue(((Map)initArgs.get(0)).containsKey("suggester"));
     assertTrue(((Map)initArgs.get(1)).containsKey("suggester"));
     System.out.println(map);

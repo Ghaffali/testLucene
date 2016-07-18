@@ -1037,7 +1037,7 @@ public class HttpSolrCall {
 
       @Override
       public Object getHandler() {
-        return handler;
+        return _getHandler();
       }
 
       @Override

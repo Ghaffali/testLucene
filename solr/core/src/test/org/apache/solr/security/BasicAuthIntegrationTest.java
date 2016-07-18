@@ -115,8 +115,8 @@ public class BasicAuthIntegrationTest extends TestMiniSolrCloudClusterBase {
     GenericSolrRequest genericReq = new GenericSolrRequest(SolrRequest.METHOD.POST, authcPrefix, new ModifiableSolrParams());
     genericReq.setContentStreams(Collections.singletonList(new ContentStreamBase.ByteArrayStream(command.getBytes(UTF_8), "")));
     try {
-      cloudSolrClient.request(genericReq);
-      fail("Should have failed with a 401");
+      rsp = cloudSolrClient.request(genericReq);
+      fail("Should have failed with a 401,  got :" + rsp);
     } catch (HttpSolrClient.RemoteSolrException e) {
     }
     command = "{\n" +
