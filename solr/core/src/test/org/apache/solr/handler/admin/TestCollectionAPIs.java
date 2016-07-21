@@ -202,7 +202,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     @Override
     void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CoreContainer cores, CollectionParams.CollectionAction action,
                       CollectionOperation operation) throws Exception {
-      Map<String, Object> result = operation.call(req, rsp, this);
+      Map<String, Object> result = operation.execute(req, rsp, this);
       if (result != null) {
         result.put(QUEUE_OPERATION, operation.action.toLower());
         req.getContext().put(ZkNodeProps.class.getName(),new ZkNodeProps(result) );
