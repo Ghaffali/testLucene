@@ -1,5 +1,3 @@
-package org.apache.solr.handler;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,17 +15,16 @@ package org.apache.solr.handler;
  * limitations under the License.
  */
 
+package org.apache.solr.handler;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.solr.api.SpecProvider;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 

@@ -44,10 +44,6 @@ import org.apache.solr.api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.invoke.MethodHandles;
-import java.net.URL;
-import java.util.concurrent.atomic.AtomicLong;
-
 import static org.apache.solr.core.RequestParams.USEPARAM;
 
 /**

@@ -1,5 +1,3 @@
-package org.apache.solr.handler.admin;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,6 +15,8 @@ package org.apache.solr.handler.admin;
  * limitations under the License.
  */
 
+package org.apache.solr.handler.admin;
+
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -24,7 +24,6 @@ import java.util.Map;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.MapSolrParams;
 import org.apache.solr.common.util.Predicate;
 import org.apache.solr.common.util.StrUtils;
@@ -42,7 +41,6 @@ import org.apache.solr.api.V2HttpCall;
 import org.apache.solr.util.CommandOperation;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
-import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CONFIGSETS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CORES_HANDLER_PATH;

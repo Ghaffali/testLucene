@@ -24,7 +24,6 @@ import java.time.Instant;
 import java.util.Locale;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.solr.api.Api;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.ModifiableSolrParams;

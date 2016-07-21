@@ -37,7 +37,6 @@ import org.apache.solr.common.util.Predicate;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.TestBlobHandler;
-import org.apache.solr.handler.TestSolrConfigHandlerCloud;
 import org.apache.solr.handler.TestSolrConfigHandlerConcurrent;
 import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestBase;

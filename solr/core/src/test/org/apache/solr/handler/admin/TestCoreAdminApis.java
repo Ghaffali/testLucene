@@ -1,5 +1,3 @@
-package org.apache.solr.handler.admin;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,6 +15,7 @@ package org.apache.solr.handler.admin;
  * limitations under the License.
  */
 
+package org.apache.solr.handler.admin;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -27,14 +26,10 @@ import java.util.Properties;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
-import org.apache.solr.core.PluginBag;
-import org.apache.solr.core.SolrCore;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 
 import static org.apache.solr.common.util.Utils.fromJSONString;
 import static org.easymock.EasyMock.anyBoolean;
