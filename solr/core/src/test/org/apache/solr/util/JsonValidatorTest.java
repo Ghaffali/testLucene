@@ -33,7 +33,7 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
 
   public void testSchema() {
     checkSchema("collections.Commands");
-    checkSchema("collections.collection.commands");
+    checkSchema("collections.collection.Commands");
     checkSchema("collections.collection.shards.Commands");
     checkSchema("collections.collection.shards.shard.Commands");
     checkSchema("collections.collection.shards.shard.replica.Commands");
@@ -44,12 +44,12 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
     checkSchema("cluster.security.RuleBasedAuthorization");
     checkSchema("core.config.Commands");
     checkSchema("core.SchemaEdit");
-    checkSchema("cluster.config.commands");
+    checkSchema("cluster.config.Commands");
   }
 
 
   public void testSchemaValidation() {
-    Map2 spec = ApiBag.getSpec("collections.commands").getSpec();
+    Map2 spec = ApiBag.getSpec("collections.Commands").getSpec();
     Map createSchema = spec.getMap("commands", NOT_NULL).getMap("create-alias", NOT_NULL);
     JsonSchemaValidator validator = new JsonSchemaValidator(createSchema);
     List<String> errs = validator.validateJson(Utils.fromJSONString("{name : x, collections: [ c1 , c2]}"));

@@ -100,7 +100,7 @@ public class ConfigSetsHandlerApi extends BaseHandlerApiSupport {
   }
   enum EndPoint implements V2EndPoint {
     LIST_CONFIG("cluster.config"),
-    CONFIG_COMMANDS("cluster.config.commands"),
+    CONFIG_COMMANDS("cluster.config.Commands"),
     CONFIG_DEL("cluster.config.delete");
 
     public final String spec;
