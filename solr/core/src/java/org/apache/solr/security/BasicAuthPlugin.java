@@ -101,7 +101,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
   }
 
   @Override
-  public void doAuthenticate(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws Exception {
+  public boolean doAuthenticate(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws Exception {
 
     HttpServletRequest request = (HttpServletRequest) servletRequest;
     HttpServletResponse response = (HttpServletResponse) servletResponse;
@@ -129,6 +129,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
                   }
                 };
                 filterChain.doFilter(wrapper, response);
+                return true;
               }
 
             } else {
@@ -145,8 +146,10 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
       } else {
         request.setAttribute(AuthenticationPlugin.class.getName(), zkAuthentication.getPromptHeaders());
         filterChain.doFilter(request, response);
+        return true;
       }
     }
+    return false;
   }
 
   @Override

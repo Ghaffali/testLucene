@@ -372,7 +372,7 @@ public class CoreAdminHandler extends RequestHandlerBase implements PermissionNa
     }
 
     void call() throws Exception {
-      op.call(this);
+      op.execute(this);
     }
 
   }
@@ -389,7 +389,10 @@ public class CoreAdminHandler extends RequestHandlerBase implements PermissionNa
   /**
    * used by the INVOKE action of core admin handler
    */
-  public static interface Invocable {
-    public Map<String, Object> invoke(SolrQueryRequest req);
+  public interface Invocable {
+    Map<String, Object> invoke(SolrQueryRequest req);
+  }
+  interface CoreAdminOp {
+    void execute(CallInfo it) throws Exception;
   }
 }

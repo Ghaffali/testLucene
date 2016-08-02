@@ -38,6 +38,9 @@ API Changes
 
 New Features
 
+* LUCENE-7381: Add point based DoubleRangeField and RangeFieldQuery for
+  indexing and querying on Ranges up to 4 dimensions (Nick Knize)
+
 * LUCENE-7302: IndexWriter methods that change the index now return a
   long "sequence number" indicating the effective equivalent
   single-threaded execution order (Mike McCandless)
@@ -62,6 +65,9 @@ New Features
   Polygon instances from a standard GeoJSON string (Robert Muir, Mike
   McCandless)
 
+* SOLR-9279: Queries module: new ComparisonBoolFunction base class
+  (Doug Turnbull via David Smiley)
+
 Bug Fixes
 
 * LUCENE-6662: Fixed potential resource leaks. (Rishabh Patel via Adrien Grand)
@@ -72,6 +78,12 @@ Bug Fixes
 * LUCENE-7382: Fix bug introduced by LUCENE-7355 that used the
   wrong default AttributeFactory for new Tokenizers.
   (Terry Smith, Uwe Schindler)
+
+* LUCENE-7389: Fix FieldType.setDimensions(...) validation for the dimensionNumBytes
+  parameter. (Martijn van Groningen)
+
+* LUCENE-7391: Fix performance regression in MemoryIndex's fields() introduced
+  in Lucene 6. (Steve Mason via David Smiley)
 
 Improvements
 
@@ -126,6 +138,10 @@ Improvements
 
 * LUCENE-7385: Improve/fix assert messages in SpanScorer. (David Smiley)
 
+* LUCENE-7393: Add ICUTokenizer option to parse Myanmar text as syllables instead of words,
+  because the ICU word-breaking algorithm has some issues. This allows for the previous 
+  tokenization used before Lucene 5. (AM, Robert Muir)
+
 Optimizations
 
 * LUCENE-7330, LUCENE-7339: Speed up conjunction queries. (Adrien Grand)
@@ -139,6 +155,8 @@ Optimizations
 
 * LUCENE-7311: Cached term queries do not seek the terms dictionary anymore.
   (Adrien Grand)
+
+* LUCENE-7396: Faster flush of points. (Adrien Grand, Mike McCandless)
 
 Other
 

@@ -137,12 +137,12 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
   @Override
   protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command,
                                CommandOperation c) throws Exception {
-    ((Cmd) command).target.call(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
+    ((Cmd) command).target.execute(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
   }
 
   @Override
   protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    ((Cmd) command).target.call(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
+    ((Cmd) command).target.execute(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
   }
 
   @Override
