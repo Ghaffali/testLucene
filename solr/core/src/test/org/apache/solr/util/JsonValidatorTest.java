@@ -31,6 +31,7 @@ import static org.apache.solr.common.util.Utils.toJSONString;
 
 public class JsonValidatorTest extends SolrTestCaseJ4 {
 
+
   public void testSchema() {
     checkSchema("collections.Commands");
     checkSchema("collections.collection.Commands");
@@ -83,8 +84,45 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
 
     errs = validator.validateJson(Utils.fromJSONString("{name:x, age:'x21', adult:'true'}"));
     assertEquals(1, errs.size());
+    schema = (Map) Utils.fromJSONString("{" +
+        "  type:object," +
+        "  properties: {" +
+        "   age : {type: int}," +
+        "   adult : {type: Boolean}," +
+        "   name: {type: string}}}");
+    try {
+      validator = new JsonSchemaValidator(schema);
+      fail("should have failed");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("Unknown type"));
+    }
 
+    schema = (Map) Utils.fromJSONString("{" +
+        "  type:object," +
+        "   x : y,"+
+        "  properties: {" +
+        "   age : {type: number}," +
+        "   adult : {type: boolean}," +
+        "   name: {type: string}}}");
+    try {
+      validator = new JsonSchemaValidator(schema);
+      fail("should have failed");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("Unknown key"));
+    }
 
+    schema = (Map) Utils.fromJSONString("{" +
+        "  type:object," +
+        "  propertes: {" +
+        "   age : {type: number}," +
+        "   adult : {type: boolean}," +
+        "   name: {type: string}}}");
+    try {
+      validator = new JsonSchemaValidator(schema);
+      fail("should have failed");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("'properties' tag is missing"));
+    }
   }
 
   private void checkSchema(String name) {

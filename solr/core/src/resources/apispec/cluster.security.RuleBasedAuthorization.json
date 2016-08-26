@@ -38,16 +38,15 @@
           "description":"A request handler name, such as /update or /select. A wild card is supported, to allow for all paths as appropriate (such as, /update/*)."
         },
         "index": {
-          "type": "int",
+          "type": "integer",
           "description": "The index of the permission you wish to overwrite"
         },
         "before":{
-          "type": "int",
+          "type": "integer",
           "description":"This property allows ordering of permissions. The value for this property is the name of the permission that this new permission should be placed before in security.json."
         },
         "params":{
           "type":"object",
-          "properties":{},
           "additionalProperties":true,
           "description":"The names and values of request parameters. This property can be omitted if all request parameters are allowed, but will restrict access only to the values provided if defined."
         }
@@ -82,11 +81,11 @@
           "description": "A request handler name, such as /update or /select. A wild card is supported, to allow for all paths as appropriate (such as, /update/*)."
         },
         "index": {
-          "type": "int",
+          "type": "integer",
           "description": "The index of the permission you wish to overwrite"
         },
         "before": {
-          "type": "int",
+          "type": "integer",
           "description": "This property allows ordering of permissions. The value for this property is the name of the permission that this new permission should be placed before in security.json."
         },
         "params": {
@@ -101,9 +100,8 @@
       ]
     },
     "delete-permission":{
-      "type":"object",
       "description":"delete a permission by it's index",
-      "type":"int"
+      "type":"integer"
     },
     "set-user-role": {
       "type":"object",

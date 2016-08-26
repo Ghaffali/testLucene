@@ -1,9 +1,7 @@
 {
   "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
-  "Description": "The add-field command adds a new field definition to your schema.",
   "methods": [
-    "POST",
-    "GET"
+    "POST"
   ],
   "url": {
     "paths": [

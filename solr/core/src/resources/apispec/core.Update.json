@@ -4,7 +4,6 @@
     "POST"
   ],
   "url": {
-    "path": "/update",
     "paths": [
       "/update",
       "/update/xml",

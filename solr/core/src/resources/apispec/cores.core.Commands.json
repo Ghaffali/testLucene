@@ -4,7 +4,6 @@
     "POST"
   ],
   "url": {
-    "path": "/cores/{core}",
     "paths": [
       "/cores/{core}"
     ]
