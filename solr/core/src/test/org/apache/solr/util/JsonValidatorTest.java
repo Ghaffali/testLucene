@@ -26,14 +26,14 @@ import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 
-import static org.apache.solr.common.util.ValidatingJsonMap.NOT_NULL;
+import static org.apache.solr.common.util.Map2.NOT_NULL;
 import static org.apache.solr.common.util.Utils.toJSONString;
 
 public class JsonValidatorTest extends SolrTestCaseJ4 {
 
   public void testSchema() {
     checkSchema("collections.Commands");
-    checkSchema("collections.collection.commands");
+    checkSchema("collections.collection.Commands");
     checkSchema("collections.collection.shards.Commands");
     checkSchema("collections.collection.shards.shard.Commands");
     checkSchema("collections.collection.shards.shard.replica.Commands");
@@ -44,12 +44,12 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
     checkSchema("cluster.security.RuleBasedAuthorization");
     checkSchema("core.config.Commands");
     checkSchema("core.SchemaEdit");
-    checkSchema("cluster.config.commands");
+    checkSchema("cluster.config.Commands");
   }
 
 
   public void testSchemaValidation() {
-    ValidatingJsonMap spec = ApiBag.getSpec("collections.commands").getSpec();
+    Map2 spec = ApiBag.getSpec("collections.Commands").getSpec();
     Map createSchema = spec.getMap("commands", NOT_NULL).getMap("create-alias", NOT_NULL);
     JsonSchemaValidator validator = new JsonSchemaValidator(createSchema);
     List<String> errs = validator.validateJson(Utils.fromJSONString("{name : x, collections: [ c1 , c2]}"));
@@ -83,8 +83,45 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
 
     errs = validator.validateJson(Utils.fromJSONString("{name:x, age:'x21', adult:'true'}"));
     assertEquals(1, errs.size());
+    schema = (Map) Utils.fromJSONString("{" +
+        "  type:object," +
+        "  properties: {" +
+        "   age : {type: int}," +
+        "   adult : {type: Boolean}," +
+        "   name: {type: string}}}");
+    try {
+      validator = new JsonSchemaValidator(schema);
+      fail("should have failed");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("Unknown type"));
+    }
 
+    schema = (Map) Utils.fromJSONString("{" +
+        "  type:object," +
+        "   x : y,"+
+        "  properties: {" +
+        "   age : {type: number}," +
+        "   adult : {type: boolean}," +
+        "   name: {type: string}}}");
+    try {
+      validator = new JsonSchemaValidator(schema);
+      fail("should have failed");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("Unknown key"));
+    }
 
+    schema = (Map) Utils.fromJSONString("{" +
+        "  type:object," +
+        "  propertes: {" +
+        "   age : {type: number}," +
+        "   adult : {type: boolean}," +
+        "   name: {type: string}}}");
+    try {
+      validator = new JsonSchemaValidator(schema);
+      fail("should have failed");
+    } catch (Exception e) {
+      assertTrue(e.getMessage().contains("'properties' tag is missing"));
+    }
   }
 
   private void checkSchema(String name) {

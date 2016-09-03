@@ -19,7 +19,7 @@ package org.apache.solr.handler;
 import java.lang.invoke.MethodHandles;
 import java.net.URL;
 import java.util.Collection;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.solr.common.SolrException;
@@ -27,8 +27,8 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.SuppressForbidden;
-import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.PluginBag;
+import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
@@ -44,10 +44,6 @@ import org.apache.solr.api.ApiSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.invoke.MethodHandles;
-import java.net.URL;
-import java.util.concurrent.atomic.AtomicLong;
-
 import static org.apache.solr.core.RequestParams.USEPARAM;
 
 /**
@@ -62,10 +58,10 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
   protected boolean httpCaching = true;
 
   // Statistics
-  private final AtomicLong numRequests = new AtomicLong();
-  private final AtomicLong numServerErrors = new AtomicLong();
-  private final AtomicLong numClientErrors = new AtomicLong();
-  private final AtomicLong numTimeouts = new AtomicLong();
+  private final LongAdder numRequests = new LongAdder();
+  private final LongAdder numServerErrors = new LongAdder();
+  private final LongAdder numClientErrors = new LongAdder();
+  private final LongAdder numTimeouts = new LongAdder();
   private final Timer requestTimes = new Timer();
 
   private final long handlerStart;
@@ -153,7 +149,7 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
 
   @Override
   public void handleRequest(SolrQueryRequest req, SolrQueryResponse rsp) {
-    numRequests.incrementAndGet();
+    numRequests.increment();
     TimerContext timer = requestTimes.time();
     try {
       if(pluginInfo != null && pluginInfo.attributes.containsKey(USEPARAM)) req.getContext().put(USEPARAM,pluginInfo.attributes.get(USEPARAM));
@@ -167,7 +163,7 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
         Object partialResults = header.get(SolrQueryResponse.RESPONSE_HEADER_PARTIAL_RESULTS_KEY);
         boolean timedOut = partialResults == null ? false : (Boolean)partialResults;
         if( timedOut ) {
-          numTimeouts.incrementAndGet();
+          numTimeouts.increment();
           rsp.setHttpCaching(false);
         }
       }
@@ -194,9 +190,9 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
         SolrException.log(log, e);
 
         if (isServerError) {
-          numServerErrors.incrementAndGet();
+          numServerErrors.increment();
         } else {
-          numClientErrors.incrementAndGet();
+          numClientErrors.increment();
         }
       }
     }

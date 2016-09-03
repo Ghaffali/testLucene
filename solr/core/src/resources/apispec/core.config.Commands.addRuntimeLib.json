@@ -8,7 +8,7 @@
       "type": "string"
     },
     "version": {
-      "type": "int",
+      "type": "integer",
       "description": "The version of the blob in .system colection"
     },
     "sig": {

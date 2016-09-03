@@ -4,7 +4,6 @@
     "GET"
   ],
   "url": {
-    "path": "/cores",
     "paths": [
       "/cores",
       "/cores/{core}/status"

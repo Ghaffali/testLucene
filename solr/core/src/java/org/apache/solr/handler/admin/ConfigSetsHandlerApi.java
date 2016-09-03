@@ -1,5 +1,3 @@
-package org.apache.solr.handler.admin;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,6 +15,7 @@ package org.apache.solr.handler.admin;
  * limitations under the License.
  */
 
+package org.apache.solr.handler.admin;
 
 import java.util.Arrays;
 import java.util.List;
@@ -101,7 +100,7 @@ public class ConfigSetsHandlerApi extends BaseHandlerApiSupport {
   }
   enum EndPoint implements V2EndPoint {
     LIST_CONFIG("cluster.config"),
-    CONFIG_COMMANDS("cluster.config.commands"),
+    CONFIG_COMMANDS("cluster.config.Commands"),
     CONFIG_DEL("cluster.config.delete");
 
     public final String spec;

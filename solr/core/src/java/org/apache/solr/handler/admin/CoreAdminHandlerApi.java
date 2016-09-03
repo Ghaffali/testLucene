@@ -1,5 +1,3 @@
-package org.apache.solr.handler.admin;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -17,6 +15,7 @@ package org.apache.solr.handler.admin;
  * limitations under the License.
  */
 
+package org.apache.solr.handler.admin;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -138,12 +137,12 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
   @Override
   protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command,
                                CommandOperation c) throws Exception {
-    ((Cmd) command).target.call(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
+    ((Cmd) command).target.execute(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
   }
 
   @Override
   protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    ((Cmd) command).target.call(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
+    ((Cmd) command).target.execute(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
   }
 
   @Override

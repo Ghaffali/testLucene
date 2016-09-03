@@ -14,7 +14,7 @@
       "description": "A field or an array of fields to which the source field will be copied."
     },
     "maxChars": {
-      "type": "int",
+      "type": "integer",
       "description": "The upper limit for the number of characters to be copied. The section Copying Fields has more details."
     }
   },
