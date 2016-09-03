@@ -21,7 +21,7 @@ package org.apache.solr.api;
 import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.JsonSchemaValidator;
@@ -38,7 +38,7 @@ public abstract class Api implements SpecProvider {
     if (commandSchema == null) {
       synchronized (this) {
         if(commandSchema == null) {
-          Map2 commands = getSpec().getMap("commands", null);
+          ValidatingJsonMap commands = getSpec().getMap("commands", null);
           commandSchema = commands != null ?
               ImmutableMap.copyOf(ApiBag.getParsedSchema(commands)) :
               ImmutableMap.of();
@@ -51,7 +51,7 @@ public abstract class Api implements SpecProvider {
   public abstract void call(SolrQueryRequest req , SolrQueryResponse rsp);
 
   @Override
-  public Map2 getSpec() {
+  public ValidatingJsonMap getSpec() {
     return spec.getSpec();
   }
 

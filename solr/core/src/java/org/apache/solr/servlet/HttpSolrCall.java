@@ -22,10 +22,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.lang.invoke.MethodHandles;
 import java.security.Principal;
@@ -37,12 +34,10 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.io.output.CloseShieldOutputStream;
@@ -61,7 +56,6 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.methods.HttpRequestBase;
 import org.apache.http.entity.InputStreamEntity;
-import org.apache.http.util.EntityUtils;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpClientUtil;
@@ -79,7 +73,7 @@ import org.apache.solr.common.params.MapSolrParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStream;
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.StrUtils;
@@ -96,7 +90,6 @@ import org.apache.solr.request.SolrRequestInfo;
 import org.apache.solr.response.QueryResponseWriter;
 import org.apache.solr.response.QueryResponseWriterUtil;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.AuthorizationContext;
 import org.apache.solr.security.AuthorizationContext.CollectionRequest;
@@ -114,7 +107,6 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.solr.common.cloud.ZkStateReader.BASE_URL_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.COLLECTION_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.CORE_NAME_PROP;
@@ -1090,7 +1082,7 @@ public class HttpSolrCall {
     }
     return CommandOperation.clone(parsedCommands);
   }
-  protected Map2 getSpec() {
+  protected ValidatingJsonMap getSpec() {
     return null;
   }
 

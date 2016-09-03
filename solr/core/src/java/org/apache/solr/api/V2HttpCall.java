@@ -33,7 +33,7 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.SolrCore;
@@ -52,7 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.PASSTHROUGH;
-import static org.apache.solr.util.PathTrie.getParts;
+import static org.apache.solr.util.PathTrie.getTemplateVariables;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.CommonParams.WT;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.ADMIN;
@@ -77,7 +77,7 @@ public class V2HttpCall extends HttpSolrCall {
     String path = this.path;
     String fullPath = path = path.substring(3);//strip off '/v2'
     try {
-      pieces = getParts(path);
+      pieces = getTemplateVariables(path);
       if (pieces.size() == 0) {
         prefix = "c";
         path = "/c";
@@ -175,7 +175,7 @@ public class V2HttpCall extends HttpSolrCall {
     }
 
     if (api == null) {
-      // this is to return the user with all the subpaths for  a given 4044 request
+      // this is to return the user with all the subpaths for  a given 404 request
       // the request  begins with /collections , /cores or a /c and the current lookup is on container level handlers
       // So the subsequent per core lookup would find a path
       if (containerHandlerLookup && commonPaths4ContainerLevelAndCoreLevel.contains(prefix)) return null;
@@ -249,7 +249,7 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   private static Api getSubPathImpl(final Map<String, Set<String>> subpaths, String path,  boolean addMsg) {
-    return new Api(() -> Map2.EMPTY) {
+    return new Api(() -> ValidatingJsonMap.EMPTY) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
         if(addMsg) rsp.add("msg", "Invalid path, try the following");
@@ -273,8 +273,6 @@ public class V2HttpCall extends HttpSolrCall {
     try {
       api.call(solrReq, rsp);
     } catch (RuntimeException e) {
-      //todo remove. for debugging only
-      log.error("error execute()", e);
       throw e;
     }
   }
@@ -296,7 +294,7 @@ public class V2HttpCall extends HttpSolrCall {
   }
 
   @Override
-  protected Map2 getSpec() {
+  protected ValidatingJsonMap getSpec() {
     return api == null ? null : api.getSpec();
   }
 

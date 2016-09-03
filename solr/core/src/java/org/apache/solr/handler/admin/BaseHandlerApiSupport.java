@@ -28,11 +28,9 @@ import java.util.Map;
 import java.util.Objects;
 
 import com.google.common.collect.ImmutableList;
-import org.apache.solr.api.SpecProvider;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.Map2;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
@@ -126,7 +124,7 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
   }
 
   private static void wrapParams(final SolrQueryRequest req, final CommandOperation co, final ApiCommand cmd, final boolean useRequestParams) {
-    final Map<String, String> pathValues = req.getPathValues();
+    final Map<String, String> pathValues = req.getPathTemplateValues();
     final Map<String, Object> map = co == null || !(co.getCommandData() instanceof Map) ?
         Collections.singletonMap("", co.getCommandData()) : co.getDataMap();
     final SolrParams origParams = req.getParams();

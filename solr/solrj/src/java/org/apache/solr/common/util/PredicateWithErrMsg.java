@@ -17,10 +17,10 @@ package org.apache.solr.common.util;
  * limitations under the License.
  */
 
-public interface Predicate<T> {
+public interface PredicateWithErrMsg<T> {
 
   /**
-   * Test the object abd return null if the predicate is true
+   * Test the object and return null if the predicate is true
    * or return a string with a message;
    *
    * @param t test value

@@ -41,17 +41,20 @@ public class TestPathTrie extends SolrTestCaseJ4 {
     pathTrie.insert("/aa/bb/{cc}/{xx}", emptyMap(), "b");
     pathTrie.insert("/aa/bb", emptyMap(), "c");
 
-    HashMap parts = new HashMap<>();
-    assertEquals("R", pathTrie.lookup("/", parts, null));
-    assertEquals("d", pathTrie.lookup("/aa", parts, null));
-    assertEquals("a", pathTrie.lookup("/aa/bb/hello/dd", parts, null));
-    assertEquals("test", pathTrie.lookup("/test/hello/dd", parts, null));
-    assertEquals("hello", parts.get("cc"));
-    assertEquals("b", pathTrie.lookup("/aa/bb/hello/world", parts, null));
-    assertEquals("hello", parts.get("cc"));
-    assertEquals("world", parts.get("xx"));
+    HashMap templateValues = new HashMap<>();
+    assertEquals("R", pathTrie.lookup("/", templateValues, null));
+    assertEquals("d", pathTrie.lookup("/aa", templateValues, null));
+    assertEquals("a", pathTrie.lookup("/aa/bb/hello/dd", templateValues, null));
+    templateValues.clear();
+    assertEquals("test", pathTrie.lookup("/test/hello/dd", templateValues, null));
+    assertEquals("hello", templateValues.get("cc"));
+    templateValues.clear();
+    assertEquals("b", pathTrie.lookup("/aa/bb/hello/world", templateValues, null));
+    assertEquals("hello", templateValues.get("cc"));
+    assertEquals("world", templateValues.get("xx"));
     Set<String> subPaths =  new HashSet<>();
-    pathTrie.lookup("/aa",parts, subPaths);
+    templateValues.clear();
+    pathTrie.lookup("/aa",templateValues, subPaths);
     assertEquals(3, subPaths.size());
 
 

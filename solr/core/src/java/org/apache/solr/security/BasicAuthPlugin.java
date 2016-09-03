@@ -37,7 +37,7 @@ import org.apache.http.Header;
 import org.apache.http.auth.BasicUserPrincipal;
 import org.apache.http.message.BasicHeader;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.SpecProvider;
 import org.slf4j.Logger;
@@ -168,7 +168,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
   }
 
   @Override
-  public Map2 getSpec() {
+  public ValidatingJsonMap getSpec() {
     return zkAuthentication.getSpec();
   }
   public boolean getBlockUnknown(){

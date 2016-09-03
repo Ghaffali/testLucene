@@ -106,7 +106,7 @@ public interface SolrQueryRequest extends AutoCloseable {
     return (String) getContext().get("path");
   }
 
-  default Map<String, String> getPathValues() {
+  default Map<String, String> getPathTemplateValues() {
     return Collections.emptyMap();
   }
 

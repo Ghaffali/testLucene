@@ -42,7 +42,7 @@ public class PathTrie<T> {
 
 
   public void insert(String path, Map<String, String> replacements, T o) {
-    List<String> parts = getParts(path);
+    List<String> parts = getTemplateVariables(path);
     if (parts.isEmpty()) {
       root.obj = o;
       return;
@@ -63,7 +63,7 @@ public class PathTrie<T> {
     root.insert(parts, o);
   }
 
-  public static List<String> getParts(String path) {
+  public static List<String> getTemplateVariables(String path) {
     if (path == null || path.isEmpty()) return emptyList();
     List<String> parts = new ArrayList<String>() {
       @Override
@@ -78,11 +78,11 @@ public class PathTrie<T> {
 
 
   public T lookup(String uri, Map<String, String> parts) {
-    return root.lookup(getParts(uri), 0, parts);
+    return root.lookup(getTemplateVariables(uri), 0, parts);
   }
 
   public T lookup(String path, Map<String, String> parts, Set<String> paths) {
-    return root.lookup(getParts(path), 0, parts, paths);
+    return root.lookup(getTemplateVariables(path), 0, parts, paths);
   }
 
   public static String wildCardName(String part) {
@@ -137,7 +137,7 @@ public class PathTrie<T> {
     }
 
 
-    void findValidChildren(String path, Set<String> availableSubPaths) {
+    void findAvailableChildren(String path, Set<String> availableSubPaths) {
       if (availableSubPaths == null) return;
       if (children != null) {
         for (Node node : children.values()) {
@@ -148,29 +148,36 @@ public class PathTrie<T> {
         }
 
         for (Node node : children.values()) {
-          node.findValidChildren(path + "/" + node.name, availableSubPaths);
+          node.findAvailableChildren(path + "/" + node.name, availableSubPaths);
         }
       }
     }
 
 
-    public T lookup(List<String> pieces, int i, Map<String, String> parts) {
-      return lookup(pieces, i, parts, null);
+    public T lookup(List<String> pieces, int i, Map<String, String> templateValues) {
+      return lookup(pieces, i, templateValues, null);
 
     }
 
-    public T lookup(List<String> pieces, int i, Map<String, String> parts, Set<String> availableSubPaths) {
-      if (varName != null) parts.put(varName, pieces.get(i - 1));
-      if (pieces.size() < i + 1) {
-        findValidChildren("", availableSubPaths);
+    /**
+     *
+     * @param pieces pieces in the url /a/b/c has pieces as 'a' , 'b' , 'c'
+     * @param index current index of the pieces that we are looking at in /a/b/c 0='a' and 1='b'
+     * @param templateVariables The mapping of template variable to its value
+     * @param availableSubPaths If not null , available sub paths will be returned in this set
+     */
+    public T lookup(List<String> pieces, int index, Map<String, String> templateVariables, Set<String> availableSubPaths) {
+      if (varName != null) templateVariables.put(varName, pieces.get(index - 1));
+      if (pieces.size() < index + 1) {
+        findAvailableChildren("", availableSubPaths);
         return obj;
       }
-      String piece = pieces.get(i);
+      String piece = pieces.get(index);
       if (children == null) return null;
       Node n = children.get(piece);
       if (n == null && !reserved.contains(piece)) n = children.get("");
       if (n == null) return null;
-      return n.lookup(pieces, i + 1, parts, availableSubPaths);
+      return n.lookup(pieces, index + 1, templateVariables, availableSubPaths);
     }
   }
 

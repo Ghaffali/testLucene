@@ -33,11 +33,10 @@ import com.google.common.collect.ImmutableList;
 import org.apache.commons.io.FileUtils;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.common.util.Predicate;
+import org.apache.solr.common.util.PredicateWithErrMsg;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.TestBlobHandler;
-import org.apache.solr.handler.TestSolrConfigHandlerCloud;
 import org.apache.solr.handler.TestSolrConfigHandlerConcurrent;
 import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestBase;
@@ -482,8 +481,8 @@ public class TestSolrConfigHandler extends RestTestBase {
       }
       Object actual = Utils.getObjectByPath(m, false, jsonPath);
 
-      if (expected instanceof Predicate) {
-        Predicate predicate = (Predicate) expected;
+      if (expected instanceof PredicateWithErrMsg) {
+        PredicateWithErrMsg predicate = (PredicateWithErrMsg) expected;
         if (predicate.test(actual) == null) {
           success = true;
           break;
@@ -752,7 +751,7 @@ public class TestSolrConfigHandler extends RestTestBase {
         "/something/part1_Value/fixed/part2_Value?urlPart=part1&urlPart=part2",
         null,
         Arrays.asList("urlPart"),
-        (Predicate) new Predicate() {
+        (PredicateWithErrMsg) new PredicateWithErrMsg() {
           @Override
           public String test(Object o) {
             if (o instanceof Map) {

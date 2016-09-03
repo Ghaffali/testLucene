@@ -17,12 +17,10 @@
 package org.apache.solr.request;
 
 import org.apache.solr.api.ApiBag;
-import org.apache.solr.api.V2HttpCall;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.common.util.SuppressForbidden;
 import org.apache.solr.search.SolrIndexSearcher;
-import org.apache.solr.servlet.HttpSolrCall;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.JsonSchemaValidator;
 import org.apache.solr.util.RTimerTree;
@@ -213,7 +211,7 @@ public abstract class SolrQueryRequestBase implements SolrQueryRequest, Closeabl
 
   }
 
-  protected Map2 getSpec() {
+  protected ValidatingJsonMap getSpec() {
     return null;
   }
 

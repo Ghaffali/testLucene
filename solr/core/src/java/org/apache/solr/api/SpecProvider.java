@@ -17,8 +17,8 @@ package org.apache.solr.api;
  * limitations under the License.
  */
 
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.ValidatingJsonMap;
 
 public interface SpecProvider {
-  Map2 getSpec();
+  ValidatingJsonMap getSpec();
 }

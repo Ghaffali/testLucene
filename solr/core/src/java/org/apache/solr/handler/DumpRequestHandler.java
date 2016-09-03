@@ -46,7 +46,7 @@ public class DumpRequestHandler extends RequestHandlerBase
       Map map = new LinkedHashMap<>();
       rsp.getValues().add("urlPart", map);
       for (String part : parts) {
-        map.put(part, req.getPathValues().get(part));
+        map.put(part, req.getPathTemplateValues().get(part));
       }
     }
 

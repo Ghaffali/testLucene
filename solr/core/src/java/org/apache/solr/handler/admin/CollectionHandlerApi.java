@@ -71,7 +71,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
     GET_CLUSTER(EndPoint.CLUSTER, GET, LIST_OP, "/cluster", null),
     GET_CLUSTER_OVERSEER(EndPoint.CLUSTER, GET, OVERSEERSTATUS_OP, "/cluster/overseer", null),
-    GET_CLUSTER_CMD(EndPoint.CLUSTER_CMD, GET, REQUESTSTATUS_OP),
+    GET_CLUSTER_CMD(EndPoint.CLUSTER_CMD_STATUS, GET, REQUESTSTATUS_OP),
     GET_A_COLLECTION(EndPoint.COLLECTION_STATE, GET, CLUSTERSTATUS_OP),
     CREATE_COLLECTION(EndPoint.COLLECTIONS_COMMANDS,
         POST,
@@ -163,13 +163,22 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         POST,
         DELETEREPLICAPROP_OP,
         "delete-property",
-        ImmutableMap.of("property", ""));
+        ImmutableMap.of("property", "")),
+    ADDROLE(EndPoint.CLUSTER_CMD,
+        POST,
+        ADDROLE_OP,
+        "add-role",null),
+    REMOVEROLE(EndPoint.CLUSTER_CMD,
+        POST,
+        REMOVEROLE_OP,
+        "remove-role",null),
+    ;
     public final String commandName;
     public final EndPoint endPoint;
     public final SolrRequest.METHOD method;
     public final CollectionOperation target;
     public final Map<String, String> paramstoAttr;
-    public final Map<String, String> prefixSubStitutes;
+    public final Map<String, String> prefixSubstitutes;
 
     public SolrRequest.METHOD getMethod() {
       return method;
@@ -187,13 +196,13 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     }
 
     Cmd(EndPoint endPoint, SolrRequest.METHOD method, CollectionOperation target,
-        String commandName, Map<String, String> paramstoAttr, Map<String, String> prefixSubStitutes) {
+        String commandName, Map<String, String> paramstoAttr, Map<String, String> prefixSubstitutes) {
       this.commandName = commandName;
       this.endPoint = endPoint;
       this.method = method;
       this.target = target;
       this.paramstoAttr = paramstoAttr == null ? Collections.EMPTY_MAP : paramstoAttr;
-      this.prefixSubStitutes = prefixSubStitutes;
+      this.prefixSubstitutes = prefixSubstitutes;
 
     }
 
@@ -216,9 +225,9 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     @Override
     public Collection<String> getParamNames(CommandOperation op) {
       Collection<String> paramNames = BaseHandlerApiSupport.getParamNames(op, this);
-      if (!prefixSubStitutes.isEmpty()) {
+      if (!prefixSubstitutes.isEmpty()) {
         Collection<String> result = new ArrayList<>(paramNames.size());
-        for (Map.Entry<String, String> e : prefixSubStitutes.entrySet()) {
+        for (Map.Entry<String, String> e : prefixSubstitutes.entrySet()) {
           for (String paramName : paramNames) {
             if (paramName.startsWith(e.getKey())) {
               result.add(paramName.replace(e.getKey(), e.getValue()));
@@ -236,8 +245,8 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     @Override
     public String getParamSubstitute(String param) {
       String s = paramstoAttr.containsKey(param) ? paramstoAttr.get(param) : param;
-      if (prefixSubStitutes != null) {
-        for (Map.Entry<String, String> e : prefixSubStitutes.entrySet()) {
+      if (prefixSubstitutes != null) {
+        for (Map.Entry<String, String> e : prefixSubstitutes.entrySet()) {
           if (s.startsWith(e.getValue())) return s.replace(e.getValue(), e.getKey());
         }
       }
@@ -248,7 +257,8 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
 
   enum EndPoint implements V2EndPoint {
     CLUSTER("cluster"),
-    CLUSTER_CMD("cluster.commandstatus"),
+    CLUSTER_CMD("cluster.Commands"),
+    CLUSTER_CMD_STATUS("cluster.commandstatus"),
     COLLECTIONS_COMMANDS("collections.Commands"),
     COLLECTIONS("collections"),
     COLLECTION_STATE("collection"),

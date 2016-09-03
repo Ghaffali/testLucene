@@ -24,9 +24,8 @@ import java.util.Map;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.MapSolrParams;
-import org.apache.solr.common.util.Predicate;
+import org.apache.solr.common.util.PredicateWithErrMsg;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
@@ -42,11 +41,10 @@ import org.apache.solr.api.V2HttpCall;
 import org.apache.solr.util.CommandOperation;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
-import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CONFIGSETS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CORES_HANDLER_PATH;
-import static org.apache.solr.common.util.Map2.NOT_NULL;
+import static org.apache.solr.common.util.ValidatingJsonMap.NOT_NULL;
 
 public class TestApiFramework extends SolrTestCaseJ4 {
 
@@ -176,8 +174,8 @@ public class TestApiFramework extends SolrTestCaseJ4 {
       List<String> parts = StrUtils.splitSmart(path, path.charAt(0) == '/' ?  '/':' ');
       if (parts.get(0).isEmpty()) parts.remove(0);
       Object val = Utils.getObjectByPath(root, false, parts);
-      if (e.getValue() instanceof Predicate) {
-        Predicate value = (Predicate) e.getValue();
+      if (e.getValue() instanceof PredicateWithErrMsg) {
+        PredicateWithErrMsg value = (PredicateWithErrMsg) e.getValue();
         String err = value.test(val);
         if(err != null){
           assertEquals(err + " for " + e.getKey() + " in :" + Utils.toJSONString(root), e.getValue(), val);

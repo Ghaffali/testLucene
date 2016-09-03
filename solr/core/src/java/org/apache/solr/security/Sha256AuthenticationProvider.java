@@ -30,8 +30,7 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.solr.api.SpecProvider;
-import org.apache.solr.common.util.Map2;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.ApiBag;
 import org.slf4j.Logger;
@@ -156,7 +155,7 @@ public class Sha256AuthenticationProvider implements ConfigEditablePlugin,  Basi
   }
 
   @Override
-  public Map2 getSpec() {
+  public ValidatingJsonMap getSpec() {
     return ApiBag.getSpec("cluster.security.BasicAuth.Commands").getSpec();
   }
 

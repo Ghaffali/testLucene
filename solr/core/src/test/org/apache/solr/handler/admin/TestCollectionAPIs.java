@@ -123,6 +123,15 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{modify : {rule : 'replica:*,cores:<5', autoAddReplicas : false} }", null,
         "{collection: collName, operation : modifycollection , autoAddReplicas : 'false', rule : [{replica: '*', cores : '<5' }]}"
     );
+    compareOutput(apiBag, "/cluster", POST,
+        "{add-role : {role : overseer, node : 'localhost_8978'} }", null,
+        "{operation : addrole ,role : overseer, node : 'localhost_8978'}"
+    );
+
+    compareOutput(apiBag, "/cluster", POST,
+        "{remove-role : {role : overseer, node : 'localhost_8978'} }", null,
+        "{operation : removerole ,role : overseer, node : 'localhost_8978'}"
+    );
 
 
     System.out.println();
@@ -159,7 +168,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
       }
 
       @Override
-      public Map<String, String> getPathValues() {
+      public Map<String, String> getPathTemplateValues() {
         return parts;
       }
 

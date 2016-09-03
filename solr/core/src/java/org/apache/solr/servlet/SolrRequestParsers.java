@@ -241,7 +241,7 @@ public class SolrRequestParsers
       }
 
       @Override
-      public Map<String, String> getPathValues() {
+      public Map<String, String> getPathTemplateValues() {
         if (httpSolrCall != null && httpSolrCall instanceof V2HttpCall) {
           return ((V2HttpCall) httpSolrCall).getUrlParts();
         }
