@@ -29,6 +29,10 @@
         "coreProperties":{
           "type":"object",
           "additionalProperties":true
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
       }
     },
@@ -46,6 +50,10 @@
         "coreProperties": {
           "type": "object",
           "additionalProperties": true
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
       }
     },
@@ -76,6 +84,10 @@
         "coreProperties": {
           "type": "object",
           "additionalProperties": true
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
       }
     }

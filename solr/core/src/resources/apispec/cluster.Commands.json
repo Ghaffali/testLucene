@@ -25,7 +25,11 @@
           "description": "The name of the node. It is possible to assign a role even before that node is started"
 
         }
-      }
+      },
+      "required": [
+        "role",
+        "node"
+      ]
     },
     "remove-role":{
       "type":"object",
@@ -41,8 +45,30 @@
           "type": "string",
           "description": "The name of the node. It is possible to assign a role even before that node is started"
         }
-      }
+      },
+      "required": [
+        "role",
+        "node"
+      ]
+    },
+    "set-property": {
+      "type": "object",
+      "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api11",
+      "description": "Add, edit or delete a cluster-wide property.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the property"
+        },
+        "val": {
+          "type": "string",
+          "description": "The value of the property. If the value is empty or null, the property is unset."
+        }
+      },
+      "required": [
+        "name",
+        "val"
+      ]
     }
-
   }
 }

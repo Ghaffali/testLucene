@@ -146,7 +146,8 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
 
   }
 
-  public static Pair<SolrQueryRequest, SolrQueryResponse> makeCall(final ApiBag apiBag, String path, final SolrRequest.METHOD method,
+  public static Pair<SolrQueryRequest, SolrQueryResponse> makeCall(final ApiBag apiBag, String path,
+                                                                   final SolrRequest.METHOD method,
                                     final String payload, final CoreContainer cc) throws Exception {
     SolrParams queryParams = new MultiMapSolrParams(Collections.EMPTY_MAP);
     if (path.indexOf('?') > 0) {

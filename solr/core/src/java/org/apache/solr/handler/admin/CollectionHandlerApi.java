@@ -67,7 +67,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
   }
 
 
-  enum Cmd implements ApiCommand<CollectionHandlerApi> {
+  enum Cmd implements ApiCommand {
     GET_COLLECTIONS(EndPoint.COLLECTIONS, GET, LIST_OP),
     GET_CLUSTER(EndPoint.CLUSTER, GET, LIST_OP, "/cluster", null),
     GET_CLUSTER_OVERSEER(EndPoint.CLUSTER, GET, OVERSEERSTATUS_OP, "/cluster/overseer", null),
@@ -172,6 +172,23 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         POST,
         REMOVEROLE_OP,
         "remove-role",null),
+
+    CLUSTERPROP(EndPoint.CLUSTER_CMD,
+        POST,
+        CLUSTERPROP_OP,
+        "set-property",null),
+
+    BACKUP(EndPoint.COLLECTIONS_COMMANDS,
+        POST,
+        BACKUP_OP,
+        "backup-collection", null
+        ),
+    RESTORE(EndPoint.COLLECTIONS_COMMANDS,
+        POST,
+        RESTORE_OP,
+        "restore-collection",
+        null
+        )
     ;
     public final String commandName;
     public final EndPoint endPoint;

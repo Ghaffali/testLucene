@@ -101,6 +101,59 @@
         "type": "string"
       },
       "description":""
+    },
+    
+    "backup-collection": {
+      "type": "object",
+      "properties": {
+        "collection": {
+          "type": "string",
+          "description": "Name of the collection"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the backup"
+        },
+        "location": {
+          "type": "string",
+          "description": "The location on the shared drive for the backup command to write to. Alternately it can be set as a cluster property"
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
+        }
+      },
+      "required": [
+        "collection",
+        "name",
+        "location"
+      ]
+    },
+    "restore-collection": {
+      "type": "object",
+      "properties": {
+        "collection": {
+          "type": "string",
+          "description": "Name of the collection"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the backup"
+        },
+        "location": {
+          "type": "string",
+          "description": "The location on the shared drive for the backup command to write to. Alternately it can be set as a cluster property"
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
+        }
+      },
+      "required": [
+        "collection",
+        "name",
+        "location"
+      ]
     }
   }
 }

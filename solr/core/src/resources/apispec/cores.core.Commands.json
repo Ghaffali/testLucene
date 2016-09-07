@@ -57,7 +57,26 @@
 
     "merge-indexes": {
       "type":"object",
-      "additionalProperties":true
+      "properties": {
+        "indexDir": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Multi-valued, directories that would be merged"
+        },
+        "srcCore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Multi-valued, source cores that would be merged."
+        }
+      },
+      "async": {
+        "type": "string",
+        "description": "Request ID to track this action which will be processed asynchronously"
+      }
     },
     "request-recovery": {
       "type":"object",
@@ -67,6 +86,10 @@
       "type": "object",
       "additionalProperties": true
     },
-    "split": "cores.core.Commands.split"
+    "split": "cores.core.Commands.split",
+    "preprecovery": {
+      "type": "object",
+      "additionalProperties": true
+    }
   }
 }

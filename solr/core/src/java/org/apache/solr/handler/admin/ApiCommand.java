@@ -22,7 +22,7 @@ import java.util.Collection;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.util.CommandOperation;
 
-public interface ApiCommand<T> {
+public interface ApiCommand {
   String getName();
 
   SolrRequest.METHOD getHttpMethod();

@@ -21,6 +21,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.handler.admin.ConfigSetsHandler.ConfigSetOperation;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.CommandOperation;
@@ -62,21 +63,21 @@ public class ConfigSetsHandlerApi extends BaseHandlerApiSupport {
     return Arrays.asList(EndPoint.values());
   }
 
-  enum Cmd implements ApiCommand<ConfigSetsHandler> {
+  enum Cmd implements ApiCommand {
     LIST(EndPoint.LIST_CONFIG, LIST_OP, GET),
     CREATE(EndPoint.CONFIG_COMMANDS, CREATE_OP, POST, "create"),
     DEL(EndPoint.CONFIG_DEL, DELETE_OP, DELETE)
     ;
     private final EndPoint endPoint;
-    private final ConfigSetsHandler.ConfigSetOperation op;
+    private final ConfigSetOperation op;
     private final SolrRequest.METHOD method;
     private final String cmdName;
 
-    Cmd(EndPoint endPoint, ConfigSetsHandler.ConfigSetOperation op, SolrRequest.METHOD method) {
+    Cmd(EndPoint endPoint, ConfigSetOperation op, SolrRequest.METHOD method) {
       this(endPoint, op, method, null);
     }
 
-    Cmd(EndPoint endPoint, ConfigSetsHandler.ConfigSetOperation op, SolrRequest.METHOD method, String cmdName) {
+    Cmd(EndPoint endPoint, ConfigSetOperation op, SolrRequest.METHOD method, String cmdName) {
       this.cmdName = cmdName;
       this.endPoint = endPoint;
       this.op = op;

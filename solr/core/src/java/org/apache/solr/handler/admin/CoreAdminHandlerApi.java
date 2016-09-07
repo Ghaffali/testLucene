@@ -44,14 +44,14 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     this.handler = handler;
   }
 
-  enum Cmd implements ApiCommand<CoreAdminHandlerApi> {
+  enum Cmd implements ApiCommand {
     CREATE(CORES_COMMANDS, POST, CREATE_OP, null, ImmutableMap.of("config", "configSet")),
     UNLOAD(PER_CORE_COMMANDS, POST, UNLOAD_OP, null, null),
     RELOAD(PER_CORE_COMMANDS, POST, RELOAD_OP, null, null),
     STATUS(CORES_STATUS, GET, STATUS_OP),
     SWAP(PER_CORE_COMMANDS, POST, SWAP_OP, null, ImmutableMap.of("other", "with")),
     RENAME(PER_CORE_COMMANDS, POST, RENAME_OP, null, null),
-    MERGEINDEXES(PER_CORE_COMMANDS, POST, MERGEINDEXES_OP, null, null),
+    MERGEINDEXES(PER_CORE_COMMANDS, POST, MERGEINDEXES_OP, "merge-indexes", null),
     SPLIT(PER_CORE_COMMANDS, POST, SPLIT_OP, null, ImmutableMap.of("split.key", "splitKey")),
     PREPRECOVERY(PER_CORE_COMMANDS, POST, PREPRECOVERY_OP, null, null),
     REQUESTRECOVERY(PER_CORE_COMMANDS, POST, REQUESTRECOVERY_OP, null, null),
