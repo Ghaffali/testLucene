@@ -16,7 +16,6 @@
  */
 package org.apache.solr.cloud;
 
-import org.apache.lucene.util.Constants;
 import org.junit.BeforeClass;
 
 /**
@@ -25,13 +24,20 @@ import org.junit.BeforeClass;
  * such file-system would be exposed via local file-system API.
  */
 public class TestLocalFSCloudBackupRestore extends AbstractCloudBackupRestoreTestCase {
+  private static String backupLocation;
 
   @BeforeClass
   public static void setupClass() throws Exception {
-    assumeFalse("Backup/Restore is currently buggy on Windows. Tracking the fix on SOLR-9242", Constants.WINDOWS);
     configureCluster(NUM_SHARDS)// nodes
         .addConfig("conf1", TEST_PATH().resolve("configsets").resolve("cloud-minimal").resolve("conf"))
         .configure();
+
+    boolean whitespacesInPath = random().nextBoolean();
+    if (whitespacesInPath) {
+      backupLocation = createTempDir("my backup").toAbsolutePath().toString();
+    } else {
+      backupLocation = createTempDir("mybackup").toAbsolutePath().toString();
+    }
   }
 
   @Override
@@ -46,6 +52,6 @@ public class TestLocalFSCloudBackupRestore extends AbstractCloudBackupRestoreTes
 
   @Override
   public String getBackupLocation() {
-    return createTempDir().toFile().getAbsolutePath();
+    return backupLocation;
   }
 }

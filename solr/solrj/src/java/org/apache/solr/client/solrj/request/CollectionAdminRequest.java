@@ -43,6 +43,8 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.NamedList;
 
+import static org.apache.solr.common.params.CollectionAdminParams.COUNT_PROP;
+
 /**
  * This class is experimental and subject to change.
  *
@@ -112,7 +114,7 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
      * @deprecated Use {@link #processAsync(String, SolrClient)} or {@link #processAsync(SolrClient)}
      */
     @Deprecated
-    public abstract AsyncCollectionAdminRequest setAsyncId(String id);
+    public  AsyncCollectionAdminRequest setAsyncId(String id){return this;};
 
     /**
      * Process this request asynchronously, generating and returning a request id
@@ -489,6 +491,56 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
       this.asyncId = id;
       return this;
     }
+  }
+
+  public static class DeleteNode extends AsyncCollectionAdminRequest {
+    String node;
+
+    /**
+     * @param node The node to be deleted
+     */
+    public DeleteNode(String node) {
+      super(CollectionAction.DELETENODE);
+      this.node = node;
+    }
+    @Override
+    public SolrParams getParams() {
+      ModifiableSolrParams params = (ModifiableSolrParams) super.getParams();
+      params.set("node", node);
+      return params;
+    }
+
+
+  }
+
+  public static class ReplaceNode extends AsyncCollectionAdminRequest {
+    String source, target;
+    Boolean parallel;
+
+    /**
+     * @param source node to be cleaned up
+     * @param target node where the new replicas are to be created
+     */
+    public ReplaceNode(String source, String target) {
+      super(CollectionAction.REPLACENODE);
+      this.source = source;
+      this.target = target;
+    }
+
+    public ReplaceNode setParallel(Boolean flag) {
+      this.parallel = flag;
+      return this;
+    }
+
+    @Override
+    public SolrParams getParams() {
+      ModifiableSolrParams params = (ModifiableSolrParams) super.getParams();
+      params.set("source", source);
+      params.set("target", target);
+      if (parallel != null) params.set("parallel", parallel.toString());
+      return params;
+    }
+
   }
 
   /*
@@ -1481,6 +1533,7 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
     protected Boolean onlyIfDown;
     private Boolean deleteDataDir;
     private Boolean deleteInstanceDir;
+    private Integer count;
     private Boolean deleteIndexDir;
 
     /**
@@ -1529,10 +1582,8 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
       return this;
     }
 
-    @Override
-    @Deprecated
-    public DeleteReplica setAsyncId(String id) {
-      this.asyncId = id;
+    public DeleteReplica setCount(Integer count) {
+      this.count = count;
       return this;
     }
 
@@ -1552,6 +1603,9 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
       }
       if (deleteIndexDir != null) {
         params.set(CoreAdminParams.DELETE_INDEX, deleteIndexDir);
+      }
+      if (count != null) {
+        params.set(COUNT_PROP, deleteIndexDir);
       }
       return params;
     }

@@ -50,6 +50,95 @@ Optimizations
   check on every request and move connection lifecycle management towards the client.
   (Ryan Zezeski, Mark Miller, Shawn Heisey, Steve Davids)
 
+==================  6.3.0 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.12.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.6
+Jetty 9.3.8.v20160314
+
+Detailed Change List
+----------------------
+
+Upgrade Notes
+----------------------
+
+* If you use the JSON Facet API (json.facet) with method=stream, you must now set sort='index asc' to get the streaming
+behavior; otherwise it won't stream.  Reminder: "method" is a hint that doesn't change defaults of other parameters.
+
+* If you use the JSON Facet API (json.facet) to facet on a numeric field and if you use mincount=0 or if you set the
+prefix, then you will now get an error as these options are incompatible with numeric faceting.
+
+New Features
+----------------------
+* SOLR-5725: facet.method=enum can bypass exact counts calculation with facet.exists=true, it just returns 1 for 
+  terms which exists in result docset. (Alexey Kozhemiakin, Sebastian Koziel, Radoslaw Zielinski via Mikhail Khludnev)
+
+* SOLR-9127: Excel workbook (.xlsx) response writer. use 'wt=xlsx' (Tony Moriarty, noble)
+
+Bug Fixes
+----------------------
+
+* SOLR-9310: PeerSync fails on a node restart due to IndexFingerPrint mismatch (Pushkar Raste, noble)
+
+* SOLR-9389: HDFS Transaction logs stay open for writes which leaks Xceivers. (Tim Owen via Mark Miller)
+
+* SOLR-6744: fl renaming / alias of uniqueKey field generates null pointer exception in SolrCloud configuration
+  (Mike Drob via Tomás Fernández Löbbe)
+
+* SOLR-9445: Admin requests are retried by CloudSolrClient and LBHttpSolrClient on failure. (shalin)
+
+* SOLR-9439: Shard split clean up logic for older failed splits is faulty. The delete shard API
+  has also been made more resilient against failures resulting from non-existent cores. (shalin)
+
+* SOLR-9430: Fix locale lookup in DIH <propertyWriter/> to use BCP47 language tags
+  to be consistent with other places in Solr. Language names still work for backwards
+  compatibility. (Uwe Schindler, Boris Steiner)
+
+* SOLR-9188: blockUnknown property makes inter-node communication impossible (noble)
+
+* SOLR-9455: Deleting a sub-shard in recovery state can mark parent shard as inactive. (shalin)
+
+* SOLR-9461: DELETENODE, REPLACENODE should pass down the 'async' param to subcommands (shalin, noble)
+
+* SOLR-9319: DELETEREPLICA can accept a 'count' and remove appropriate replicas (Nitin Sharma, noble )
+
+* SOLR-9444: Fix path usage for cloud backup/restore.  (Hrishikesh Gadre, Uwe Schindler, Varun Thacker)
+
+* SOLR-9381: Snitch for freedisk uses '/' instead of 'coreRootDirectory' (Tim Owen, noble)
+
+
+Optimizations
+----------------------
+
+* SOLR-9374: Speed up Jmx MBean retrieval for FieldCache. (Tim Owen via shalin)
+
+* SOLR-9449: Example schemas do not index _version_ field anymore because the field
+  has DocValues enabled already. (shalin)
+
+* SOLR-9447: Do not clone SolrInputDocument if update processor chain does not contain custom processors.
+  (shalin)
+
+* SOLR-9452: JsonRecordReader should not deep copy document before handler.handle(). (noble, shalin)
+
+* SOLR-9142: JSON Facet API: new method=dvhash can be chosen for fields with high cardinality. (David Smiley)
+
+Other Changes
+----------------------
+
+* SOLR-7362: Fix TestReqParamsAPI test failures (noble, Varun Thacker)
+
+* SOLR-9412: Add failOnMissingParams option to MacroExpander, add TestMacroExpander class.
+  (Jon Dorando, Christine Poerschke)
+
+* SOLR-9406: SolrSuggester should selectively register close hook (Gethin James, Joel Bernstein)
+
 ==================  6.2.0 ==================
 
 Versions of Major Components
@@ -110,6 +199,19 @@ New Features
 
 * SOLR-9279: New boolean comparison function queries comparing numeric arguments: gt, gte, lt, lte, eq
   (Doug Turnbull, David Smiley)
+
+* SOLR-9324: Support Secure Impersonation / Proxy User for solr authentication
+  (Gregory Chanan)
+
+* SOLR-9252: Feature selection and logistic regression on text (Cao Manh Dat, Joel Bernstein)
+
+* SOLR-6465: CDCR: fall back to whole-index replication when tlogs are insufficient.
+  (Noble Paul, Renaud Delbru, shalin)
+
+* SOLR-9320: A REPLACENODE command to decommission an existing node with another new node
+   (noble, Nitin Sharma, Varun Thacker)
+
+* SOLR-9318: A DELETENODE command to delete all replicas in that node (noble, Nitin Sharma, Varun Thacker)
 
 Bug Fixes
 ----------------------
@@ -182,6 +284,32 @@ Bug Fixes
 
 * SOLR-8379: UI Cloud->Tree view now shows .txt files correctly (Alexandre Rafalovitch via janhoy)
 
+* SOLR-9003: New Admin UI's Dataimport screen now correctly displays DIH Debug output (Alexandre Rafalovitch)
+
+* SOLR-9308: Fix distributed RTG to forward request params, fixes fq and non-default fl params (hossman)
+
+* SOLR-9179: NPE in IndexSchema using IBM JDK (noble, Colvin Cowie)
+
+* SOLR-9397: Config API does not support adding caches (noble)
+
+* SOLR-9405: ConcurrentModificationException in ZkStateReader.getStateWatchers.
+  (Alan Woodward, Edward Ribeiro, shalin)
+
+* SOLR-9232: Admin UI now fully implements Swap Cores interface (Alexandre Rafalovitch)
+
+* SOLR-8715: Admin UI's Schema screen now works for fields with stored=false and some content indexed (Alexandre Rafalovitch)
+
+* SOLR-8911: In Admin UI, enable scrolling for overflowing Versions and JVM property values (Alexandre Rafalovitch)
+
+* SOLR-9002: Admin UI now correctly displays json and text files in the collection/Files screen (Upayavira, Alexandre Rafalovitch)
+
+* SOLR-8993: Admin UI now correctly supports multiple DIH handler end-points (Upayavira, Alexandre Rafalovitch)
+
+* SOLR-9032: Admin UI now correctly implements Create Alias command (Upayavira, Alexandre Rafalovitch)
+
+* SOLR-9391: LBHttpSolrClient.request now correctly returns Rsp.server when
+  previously skipped servers were successfully tried. (Christine Poerschke)
+
 Optimizations
 ----------------------
 
@@ -192,6 +320,10 @@ Optimizations
 
 * SOLR-9335: Solr cache/search/update stats counters now use LongAdder which are supposed to have higher throughput
   under high contention. (Varun Thacker)
+
+* SOLR-9350: JSON Facets: method="stream" will no longer always uses & populates the filter cache, likely
+  flushing it.  'cacheDf' can be configured to set a doc frequency threshold, now defaulting to 1/16th doc count.
+  Using -1 Disables use of the cache. (David Smiley, yonik)
 
 Other Changes
 ----------------------
@@ -220,6 +352,33 @@ Other Changes
   make debugging easier (Varun Thacker)
 
 * SOLR-9358: [AngularUI] In Cloud->Tree file view area, collapse metadata by default (janhoy)
+
+* SOLR-9256: asserting hasNext() contract in JdbcDataSource in DataImportHandler (Kristine Jetzke via Mikhai Khludnev)
+
+* SOLR-9209: extracting JdbcDataSource.createResultSetIterator() for extension (Kristine Jetzke via Mikhai Khludnev)
+
+* SOLR-9353: Factor out ReRankQParserPlugin.ReRankQueryRescorer private class. (Christine Poerschke)
+
+* SOLR-9392: Fixed CDCR Test failures which were due to leaked resources. (shalin)
+
+* SOLR-9385: Add QParser.getParser(String,SolrQueryRequest) variant. (Christine Poerschke)
+
+* SOLR-9367: Improved TestInjection's randomization logic to use LuceneTestCase.random() (hossman)
+
+* SOLR-9331: Remove ReRankQuery's length constructor argument and member. (Christine Poerschke)
+
+* SOLR-9092: For the delete replica command we attempt to send the core admin delete request only
+  if that node is actually up. (Jessica Cheng Mallet, Varun Thacker)
+
+* SOLR-9410: Make ReRankQParserPlugin's private ReRankWeight a public class of its own. (Christine Poerschke)
+
+* SOLR-9404: Refactor move/renames in JSON FacetProcessor and FacetFieldProcessor. (David Smiley)
+
+* SOLR-9421: Refactored out OverseerCollectionMessageHandler to smaller classes (noble)
+
+* SOLR-8643: BlockJoinFacetComponent is substituted by BlockJoinFacetDocSetComponent. It doesn't need to change solrconfig.xml (Mikhail Khludnev)
+
+* SOLR-8644: Test asserts that block join facets work with parent level fq exclusions. (Dr. Oleg Savrasov via Mikhail Khludnev) 
 
 ==================  6.1.0 ==================
 

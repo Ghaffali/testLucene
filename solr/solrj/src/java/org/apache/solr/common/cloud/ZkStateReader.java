@@ -147,7 +147,7 @@ public class ZkStateReader implements Closeable {
   private class CollectionWatch {
 
     int coreRefCount = 0;
-    Set<CollectionStateWatcher> stateWatchers = new HashSet<>();
+    Set<CollectionStateWatcher> stateWatchers = ConcurrentHashMap.newKeySet();
 
     public boolean canBeRemoved() {
       return coreRefCount + stateWatchers.size() == 0;
@@ -192,10 +192,8 @@ public class ZkStateReader implements Closeable {
       } else {
         throw new ZooKeeperException(ErrorCode.INVALID_STATE, "No config data found at path: " + path);
       }
-    } catch (KeeperException e) {
-      throw new SolrException(ErrorCode.SERVER_ERROR, "Error loading config name for collection " + collection, e);
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
+    } catch (KeeperException| InterruptedException e) {
+      SolrZkClient.checkInterrupted(e);
       throw new SolrException(ErrorCode.SERVER_ERROR, "Error loading config name for collection " + collection, e);
     }
 
@@ -866,14 +864,6 @@ public class ZkStateReader implements Closeable {
     loadClusterProperties();
   };
 
-  /**
-   * We should try keeping this to a minimum. Only in scenarios where the value being read is a user facing property
-   * should we force update to make sure we are reading the latest value.
-   */
-  public void forceUpdateClusterProperties() {
-    loadClusterProperties();
-  }
-
   @SuppressWarnings("unchecked")
   private void loadClusterProperties() {
     try {
@@ -1281,10 +1271,14 @@ public class ZkStateReader implements Closeable {
 
   /* package-private for testing */
   Set<CollectionStateWatcher> getStateWatchers(String collection) {
-    CollectionWatch watch = collectionWatches.get(collection);
-    if (watch == null)
-      return null;
-    return new HashSet<>(watch.stateWatchers);
+    final Set<CollectionStateWatcher> watchers = new HashSet<>();
+    collectionWatches.compute(collection, (k, v) -> {
+      if (v != null) {
+        watchers.addAll(v.stateWatchers);
+      }
+      return v;
+    });
+    return watchers;
   }
 
   // returns true if the state has changed
