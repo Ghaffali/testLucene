@@ -118,8 +118,7 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     SolrQueryResponse rsp = invoke(containerHandlers, "/collections/_introspect", GET, mockCC);
 
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
-        "/spec[0]/methods[0]", "POST",
-        "/spec[0]/methods[1]", "GET"));
+        "/spec[0]/methods[0]", "POST"));
 
     rsp = invoke(coreHandlers, "/collections/hello/schema/_introspect", GET, mockCC);
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(

@@ -26,7 +26,7 @@ import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 
-import static org.apache.solr.common.util.Map2.NOT_NULL;
+import static org.apache.solr.common.util.ValidatingJsonMap.NOT_NULL;
 import static org.apache.solr.common.util.Utils.toJSONString;
 
 public class JsonValidatorTest extends SolrTestCaseJ4 {
@@ -49,7 +49,7 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
 
 
   public void testSchemaValidation() {
-    Map2 spec = ApiBag.getSpec("collections.Commands").getSpec();
+    ValidatingJsonMap spec = ApiBag.getSpec("collections.Commands").getSpec();
     Map createSchema = spec.getMap("commands", NOT_NULL).getMap("create-alias", NOT_NULL);
     JsonSchemaValidator validator = new JsonSchemaValidator(createSchema);
     List<String> errs = validator.validateJson(Utils.fromJSONString("{name : x, collections: [ c1 , c2]}"));
