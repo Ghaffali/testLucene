@@ -71,11 +71,11 @@
             "type": "string"
           },
           "description": "Multi-valued, source cores that would be merged."
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
-      },
-      "async": {
-        "type": "string",
-        "description": "Request ID to track this action which will be processed asynchronously"
       }
     },
     "request-recovery": {

@@ -18,6 +18,7 @@
 package org.apache.solr.util;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -39,6 +40,10 @@ import static java.util.stream.Collectors.toMap;
 
 public class JsonSchemaValidator {
   private final SchemaNode root;
+
+  public JsonSchemaValidator(String jsonString) {
+    this((Map) Utils.fromJSONString(jsonString));
+  }
   public JsonSchemaValidator(Map jsonSchema) {
     root = new SchemaNode(null);
     root.isRequired = true;
@@ -52,8 +57,9 @@ public class JsonSchemaValidator {
   private static class SchemaNode {
     final SchemaNode parent;
     Type type;
-    Type arrayElementType;
+    Type elementType;
     boolean isRequired = false;
+    Object validationInfo;
     Boolean additionalProperties;
     Map<String, SchemaNode> children;
 
@@ -62,15 +68,22 @@ public class JsonSchemaValidator {
     }
 
     private void validateSchema(Map jsonSchema, List<String> errs) {
-      for (SchemaAttribute attr : SchemaAttribute.values()) {
-        attr.validate(jsonSchema, this, errs);
+      Object typeStr = jsonSchema.get("type");
+      if (typeStr == null) {
+        errs.add("'type' is missing ");
+      }
+      Type type = Type.get(typeStr);
+      if (type == null) throw new RuntimeException("Unknown type " + typeStr);
+      this.type = type;
+
+      for (SchemaAttribute schemaAttribute : SchemaAttribute.values()) {
+        schemaAttribute.validateSchema(jsonSchema, this, errs);
       }
       jsonSchema.keySet().forEach(o -> {
         if (!knownAttributes.containsKey(o)) errs.add("Unknown key : " + o);
       });
       if (!errs.isEmpty()) return;
-      Type type = Type.get(jsonSchema.get("type"));
-      if (type == null) throw new RuntimeException("Unknown type " + jsonSchema.get("type"));
+
       if (type == Type.OBJECT) {
         Map m = (Map) jsonSchema.get("properties");
         if (m != null) {
@@ -129,18 +142,12 @@ public class JsonSchemaValidator {
   }
 
   enum SchemaAttribute {
-    type(true, Type.STRING) {
-      @Override
-      public void validate(Map attrSchema, SchemaNode attr, List<String> errors) {
-        super.validate(attrSchema, attr, errors);
-        attr.type = Type.get(attrSchema.get(key));
-      }
-    },
+    type(true, Type.STRING),
     properties(false, Type.OBJECT) {
       @Override
-      public void validate(Map attrSchema, SchemaNode attr, List<String> errors) {
-        super.validate(attrSchema, attr, errors);
-        if (attr.type != Type.OBJECT) return;
+      public void validateSchema(Map attrSchema, SchemaNode schemaNode, List<String> errors) {
+        super.validateSchema(attrSchema, schemaNode, errors);
+        if (schemaNode.type != Type.OBJECT) return;
         Object val = attrSchema.get(key);
         if (val == null) {
           Object additional = attrSchema.get(additionalProperties.key);
@@ -153,11 +160,11 @@ public class JsonSchemaValidator {
     additionalProperties(false, Type.BOOLEAN),
     items(false, Type.OBJECT) {
       @Override
-      public void validate(Map attrSchema, SchemaNode attr, List<String> errors) {
-        super.validate(attrSchema, attr, errors);
+      public void validateSchema(Map attrSchema, SchemaNode schemaNode, List<String> errors) {
+        super.validateSchema(attrSchema, schemaNode, errors);
         Object itemsVal = attrSchema.get(key);
         if (itemsVal != null) {
-          if (attr.type != Type.ARRAY) {
+          if (schemaNode.type != Type.ARRAY) {
             errors.add("Only 'array' can have 'items'");
             return;
           } else {
@@ -168,7 +175,7 @@ public class JsonSchemaValidator {
               if (t == null) {
                 errors.add("Unknown array type " + Utils.toJSONString(attrSchema));
               } else {
-                attr.arrayElementType = t;
+                schemaNode.elementType = t;
               }
             }
           }
@@ -179,6 +186,33 @@ public class JsonSchemaValidator {
     description(false, Type.STRING),
     documentation(false, Type.STRING),
     oneOf(false, Type.ARRAY),
+    __enum(false, Type.ARRAY) {
+      @Override
+      void validateSchema(Map attrSchema, SchemaNode schemaNode, List<String> errors) {
+        if (attrSchema.get(Type.ENUM._name) != null) {
+          schemaNode.elementType = schemaNode.type;
+          schemaNode.type = Type.ENUM;
+        }
+      }
+
+      @Override
+      void postValidateSchema(Map attrSchema, SchemaNode schemaNode, List<String> errs) {
+        Object val = attrSchema.get(key);
+        if (val == null) return;
+        if (val instanceof List) {
+          List list = (List) val;
+          for (Object o : list) {
+            if (!schemaNode.elementType.validate(o)) {
+              errs.add("Invalid value : " + o + " Expected type : " + schemaNode.elementType._name);
+            }
+          }
+          if (!errs.isEmpty()) return;
+          schemaNode.validationInfo = new HashSet(list);
+        } else {
+          errs.add("'enum' should have a an array as value in Object " + Utils.toJSONString(attrSchema));
+        }
+      }
+    },
     id(false, Type.STRING),
     _ref(false, Type.STRING),
     _schema(false, Type.STRING),
@@ -205,7 +239,7 @@ public class JsonSchemaValidator {
       return key;
     }
 
-    void validate(Map attrSchema, SchemaNode attr, List<String> errors) {
+    void validateSchema(Map attrSchema, SchemaNode schemaNode, List<String> errors) {
       Object val = attrSchema.get(key);
       if (val == null) {
         if (_required)
@@ -215,7 +249,7 @@ public class JsonSchemaValidator {
       }
     }
 
-    void postValidateSchema(Map attrSchema, SchemaNode attr, List<String> errs) {
+    void postValidateSchema(Map attrSchema, SchemaNode schemaNode, List<String> errs) {
     }
 
     SchemaAttribute(boolean required, Type type) {
@@ -226,23 +260,23 @@ public class JsonSchemaValidator {
   }
 
   interface TypeValidator {
-    void valdateData(String key, Object o, SchemaNode attr, List<String> errs);
+    void valdateData(String key, Object o, SchemaNode schemaNode, List<String> errs);
   }
 
   enum Type {
     STRING(o -> o instanceof String),
-    ARRAY(o -> o instanceof List, (key, o, attr, errs) -> {
+    ARRAY(o -> o instanceof List, (key, o, schemaNode, errs) -> {
       List l = o instanceof List ? (List) o : Collections.singletonList(o);
-      if (attr.arrayElementType != null) {
+      if (schemaNode.elementType != null) {
         for (Object elem : l) {
-          if (!attr.arrayElementType.validate(elem)) {
+          if (!schemaNode.elementType.validate(elem)) {
             errs.add("Expected elements of type : " + key + " but found : " + Utils.toJSONString(o));
             break;
           }
         }
       }
     }),
-    NUMBER(o -> o instanceof Number, (key, o, attr, errs) -> {
+    NUMBER(o -> o instanceof Number, (key, o, schemaNode, errs) -> {
       if (o instanceof String) {
         try {
           Double.parseDouble((String) o);
@@ -253,7 +287,7 @@ public class JsonSchemaValidator {
       }
 
     }),
-    INTEGER(o -> o instanceof Integer, (key, o, attr, errs) -> {
+    INTEGER(o -> o instanceof Integer, (key, o, schemaNode, errs) -> {
       if (o instanceof String) {
         try {
           Integer.parseInt((String) o);
@@ -262,12 +296,20 @@ public class JsonSchemaValidator {
         }
       }
     }),
-    BOOLEAN(o -> o instanceof Boolean, (key, o, attr, errs) -> {
+    BOOLEAN(o -> o instanceof Boolean, (key, o, schemaNode, errs) -> {
       if (o instanceof String) {
         try {
           Boolean.parseBoolean((String) o);
         } catch (Exception e) {
           errs.add(e.getClass().getName() + " " + e.getMessage());
+        }
+      }
+    }),
+    ENUM(o -> o instanceof List, (key, o, schemaNode, errs) -> {
+      if (schemaNode.validationInfo instanceof HashSet) {
+        HashSet enumVals = (HashSet) schemaNode.validationInfo;
+        if (!enumVals.contains(o)) {
+          errs.add("value of enum " + key + " must be one of" + enumVals);
         }
       }
     }),
@@ -298,7 +340,8 @@ public class JsonSchemaValidator {
         validator.valdateData(key, o, attr, errs);
         return;
       }
-      if (!typeValidator.test(o)) errs.add("Expected type : " + _name + " but found : " + Utils.toJSONString(o));
+      if (!typeValidator.test(o))
+        errs.add("Expected type : " + _name + " but found : " + o + "in object : " + Utils.toJSONString(o));
     }
 
     static Type get(Object type) {

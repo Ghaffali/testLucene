@@ -19,6 +19,7 @@
         },
         "method":{
           "type":"string",
+          "enum":["GET", "POST", "DELETE","PUT"],
           "description":"HTTP methods that are allowed for this permission. You could allow only GET requests, or have a role that allows PUT and POST requests. The method values that are allowed for this property are GET, POST, PUT, DELETE and HEAD."
         },
 
@@ -39,7 +40,7 @@
         },
         "index": {
           "type": "integer",
-          "description": "The index of the permission you wish to overwrite"
+          "description": "The index of the permission you wish to overwrite. Skip this if it is a new permission that should be created"
         },
         "before":{
           "type": "integer",
@@ -100,7 +101,7 @@
       ]
     },
     "delete-permission":{
-      "description":"delete a permission by it's index",
+      "description":"delete a permission by its index",
       "type":"integer"
     },
     "set-user-role": {
