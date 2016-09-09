@@ -109,6 +109,16 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     public String getParamSubstitute(String param) {
       return paramstoAttr.containsKey(param) ? paramstoAttr.get(param) : param;
     }
+
+    @Override
+    public void invoke(SolrQueryRequest req, SolrQueryResponse rsp, BaseHandlerApiSupport apiHandler) throws Exception {
+      target.execute(new CoreAdminHandler.CallInfo(((CoreAdminHandlerApi) apiHandler).handler,
+          req,
+          rsp,
+          target));
+
+    }
+
   }
 
 
@@ -133,17 +143,6 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     }
   }
 
-
-  @Override
-  protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command,
-                               CommandOperation c) throws Exception {
-    ((Cmd) command).target.execute(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
-  }
-
-  @Override
-  protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    ((Cmd) command).target.execute(new CoreAdminHandler.CallInfo(handler, req, rsp, ((Cmd) command).target));
-  }
 
   @Override
   protected List<ApiCommand> getCommands() {

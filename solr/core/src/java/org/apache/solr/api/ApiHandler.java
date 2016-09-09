@@ -15,31 +15,12 @@
  * limitations under the License.
  */
 
-package org.apache.solr.handler.admin;
+package org.apache.solr.api;
 
-import java.util.Collection;
 
-import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.util.CommandOperation;
 
-public interface ApiCommand {
-  String getName();
-
-  // the method supported by this command
-  SolrRequest.METHOD getHttpMethod();
-
-  V2EndPoint getEndPoint();
-
-  default Collection<String> getParamNames(CommandOperation op) {
-    return BaseHandlerApiSupport.getParamNames(op, this);
-  }
-
-
-  default String getParamSubstitute(String name) {
-    return name;
-  }
-
-  void invoke(SolrQueryRequest req, SolrQueryResponse rsp, BaseHandlerApiSupport apiHandler) throws Exception;
+interface ApiHandler {
+  void handle(SolrQueryRequest req, SolrQueryResponse rsp);
 }

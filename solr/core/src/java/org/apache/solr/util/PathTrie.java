@@ -41,7 +41,7 @@ public class PathTrie<T> {
 
 
   public void insert(String path, Map<String, String> replacements, T o) {
-    List<String> parts = getTemplateVariables(path);
+    List<String> parts = getPathSegments(path);
     if (parts.isEmpty()) {
       root.obj = o;
       return;
@@ -62,7 +62,8 @@ public class PathTrie<T> {
     root.insert(parts, o);
   }
 
-  public static List<String> getTemplateVariables(String path) {
+  // /a/b/c will be returned as ["a","b","c"]
+  public static List<String> getPathSegments(String path) {
     if (path == null || path.isEmpty()) return emptyList();
     List<String> parts = new ArrayList<String>() {
       @Override
@@ -76,17 +77,17 @@ public class PathTrie<T> {
   }
 
 
-  public T lookup(String uri, Map<String, String> parts) {
-    return root.lookup(getTemplateVariables(uri), 0, parts);
+  public T lookup(String uri, Map<String, String> templateValues) {
+    return root.lookup(getPathSegments(uri), 0, templateValues);
   }
 
-  public T lookup(String path, Map<String, String> parts, Set<String> paths) {
-    return root.lookup(getTemplateVariables(path), 0, parts, paths);
+  public T lookup(String path, Map<String, String> templateValues, Set<String> paths) {
+    return root.lookup(getPathSegments(path), 0, templateValues, paths);
   }
 
-  public static String wildCardName(String part) {
-    return part.startsWith("{") && part.endsWith("}") ?
-        part.substring(1, part.length() - 1) :
+  public static String templateName(String templateStr) {
+    return templateStr.startsWith("{") && templateStr.endsWith("}") ?
+        templateStr.substring(1, templateStr.length() - 1) :
         null;
 
   }
@@ -95,7 +96,7 @@ public class PathTrie<T> {
     String name;
     Map<String, Node> children;
     T obj;
-    String varName;
+    String templateName;
 
     Node(List<String> path, T o) {
       if (path.isEmpty()) {
@@ -103,7 +104,7 @@ public class PathTrie<T> {
         return;
       }
       String part = path.get(0);
-      varName = wildCardName(part);
+      templateName = templateName(part);
       name = part;
       if (path.isEmpty()) obj = o;
     }
@@ -114,7 +115,7 @@ public class PathTrie<T> {
       Node matchedChild = null;
       if (children == null) children = new ConcurrentHashMap<>();
 
-      String varName = wildCardName(part);
+      String varName = templateName(part);
       String key = varName == null ? part : "";
 
       matchedChild = children.get(key);
@@ -122,8 +123,8 @@ public class PathTrie<T> {
         children.put(key, matchedChild = new Node(path, o));
       }
       if (varName != null) {
-        if (!matchedChild.varName.equals(varName)) {
-          throw new RuntimeException("wildcard name must be " + matchedChild.varName);
+        if (!matchedChild.templateName.equals(varName)) {
+          throw new RuntimeException("wildcard name must be " + matchedChild.templateName);
         }
       }
       path.remove(0);
@@ -166,7 +167,7 @@ public class PathTrie<T> {
      * @param availableSubPaths If not null , available sub paths will be returned in this set
      */
     public T lookup(List<String> pieces, int index, Map<String, String> templateVariables, Set<String> availableSubPaths) {
-      if (varName != null) templateVariables.put(varName, pieces.get(index - 1));
+      if (templateName != null) templateVariables.put(templateName, pieces.get(index - 1));
       if (pieces.size() < index + 1) {
         findAvailableChildren("", availableSubPaths);
         return obj;

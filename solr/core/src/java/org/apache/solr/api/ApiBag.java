@@ -183,9 +183,9 @@ public class ApiBag {
   private Set<String> getWildCardNames(List<String> paths) {
     Set<String> wildCardNames = new HashSet<>();
     for (String path : paths) {
-      List<String> p = PathTrie.getTemplateVariables(path);
+      List<String> p = PathTrie.getPathSegments(path);
       for (String s : p) {
-        String wildCard = PathTrie.wildCardName(s);
+        String wildCard = PathTrie.templateName(s);
         if (wildCard != null) wildCardNames.add(wildCard);
       }
     }

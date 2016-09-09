@@ -14,13 +14,7 @@
     "indexed": {
       "type": "boolean"
     },
-    "tokenized": {
-      "type": "boolean"
-    },
     "stored": {
-      "type": "boolean"
-    },
-    "binary": {
       "type": "boolean"
     },
     "omitNorms": {

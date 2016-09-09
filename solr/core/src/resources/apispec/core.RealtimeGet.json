@@ -5,9 +5,7 @@
   ],
   "url": {
     "paths": [
-      "/get",
-      "/get/versions",
-      "/get/updates"
+      "/get"
     ],
     "params": {
       "id": {
@@ -17,6 +15,10 @@
       "ids": {
         "type": "string",
         "description": "one or more ids. Separate by commas if there are more than one"
+      },
+      "fq":{
+        "type": "string",
+        "description": "Filter query"
       }
     }
   }

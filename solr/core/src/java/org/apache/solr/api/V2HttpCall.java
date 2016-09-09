@@ -52,7 +52,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.PASSTHROUGH;
-import static org.apache.solr.util.PathTrie.getTemplateVariables;
+import static org.apache.solr.util.PathTrie.getPathSegments;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.CommonParams.WT;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.ADMIN;
@@ -77,7 +77,7 @@ public class V2HttpCall extends HttpSolrCall {
     String path = this.path;
     String fullPath = path = path.substring(3);//strip off '/v2'
     try {
-      pieces = getTemplateVariables(path);
+      pieces = getPathSegments(path);
       if (pieces.size() == 0) {
         prefix = "c";
         path = "/c";

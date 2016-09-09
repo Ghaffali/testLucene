@@ -41,17 +41,6 @@ public class ConfigSetsHandlerApi extends BaseHandlerApiSupport {
     this.configSetHandler = configSetHandler;
   }
 
-  @Override
-  protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c)
-      throws Exception {
-    ((Cmd) command).op.call(req, rsp, this.configSetHandler);
-
-  }
-
-  @Override
-  protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    ((Cmd)command).op.call(req, rsp,configSetHandler);
-  }
 
   @Override
   protected List<ApiCommand> getCommands() {
@@ -98,6 +87,14 @@ public class ConfigSetsHandlerApi extends BaseHandlerApiSupport {
     public V2EndPoint getEndPoint() {
       return endPoint;
     }
+
+    @Override
+    public void invoke(SolrQueryRequest req, SolrQueryResponse rsp, BaseHandlerApiSupport apiHandler) throws Exception {
+          op.call(req, rsp,
+              ((ConfigSetsHandlerApi)apiHandler).configSetHandler);
+
+    }
+
   }
   enum EndPoint implements V2EndPoint {
     LIST_CONFIG("cluster.config"),

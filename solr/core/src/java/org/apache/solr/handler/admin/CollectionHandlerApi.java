@@ -52,16 +52,6 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
   }
 
   @Override
-  protected void invokeCommand(SolrQueryRequest req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c) throws Exception {
-    handler.invokeAction(req, rsp, handler.coreContainer, ((Cmd) command).target.action, ((Cmd) command).target);
-  }
-
-  @Override
-  protected void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    handler.invokeAction(req, rsp, handler.coreContainer, ((Cmd) command).target.action, ((Cmd) command).target);
-  }
-
-  @Override
   protected List<V2EndPoint> getEndPoints() {
     return Arrays.asList(EndPoint.values());
   }
@@ -188,7 +178,14 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         RESTORE_OP,
         "restore-collection",
         null
-        )
+    ),
+    GET_NODES(EndPoint.CLUSTER_NODES, GET, null) {
+      @Override
+      public void invoke(SolrQueryRequest req, SolrQueryResponse rsp, BaseHandlerApiSupport apiHandler) throws Exception {
+        rsp.add("nodes", ((CollectionHandlerApi) apiHandler).handler.coreContainer.getZkController().getClusterState().getLiveNodes());
+        ;
+      }
+    }
     ;
     public final String commandName;
     public final EndPoint endPoint;
@@ -270,11 +267,17 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
       return s;
     }
 
+    public void invoke(SolrQueryRequest req, SolrQueryResponse rsp, BaseHandlerApiSupport apiHandler)
+        throws Exception {
+      ((CollectionHandlerApi) apiHandler).handler.invokeAction(req, rsp, ((CollectionHandlerApi) apiHandler).handler.coreContainer, target.action, target);
+    }
+
   }
 
   enum EndPoint implements V2EndPoint {
     CLUSTER("cluster"),
     CLUSTER_CMD("cluster.Commands"),
+    CLUSTER_NODES("cluster.nodes"),
     CLUSTER_CMD_STATUS("cluster.commandstatus"),
     COLLECTIONS_COMMANDS("collections.Commands"),
     COLLECTIONS("collections"),

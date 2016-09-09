@@ -9,6 +9,7 @@
       "/update/xml",
       "/update/csv",
       "/update/json",
+      "/update/bin",
       "/update/json/commands"
     ]
 

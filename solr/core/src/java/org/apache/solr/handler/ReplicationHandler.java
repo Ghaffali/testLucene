@@ -1664,9 +1664,6 @@ public class ReplicationHandler extends RequestHandlerBase implements SolrCoreAw
     }
   }
 
-
-  private static final String LOCATION = "location";
-
   private static final String SUCCESS = "success";
 
   private static final String FAILED = "failed";

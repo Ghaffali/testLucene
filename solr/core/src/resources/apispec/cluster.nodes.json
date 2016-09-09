@@ -1,0 +1,11 @@
+{
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
+  "methods": [
+    "GET"
+  ],
+  "url": {
+    "paths": [
+      "/cluster/nodes"
+    ]
+  }
+}

@@ -65,6 +65,7 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
 
 
   private Api getApi(final V2EndPoint op) {
+    final BaseHandlerApiSupport apiHandler = this;
     return new Api(ApiBag.getSpec(op.getSpecName())) {
       @Override
       public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
@@ -90,7 +91,8 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
               throw new SolrException(BAD_REQUEST, " no such command " + c);
             }
             wrapParams(req, c, command, false);
-            invokeCommand(req, rsp,command, c);
+            command.invoke(req,rsp, apiHandler);
+//            invokeCommand(req, rsp, command, c);
 
           } else {
             if (commands == null || commands.isEmpty()) {
@@ -106,7 +108,8 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
               }
             }
             wrapParams(req, new CommandOperation("", Collections.EMPTY_MAP), commands.get(0), true);
-            invokeUrl(commands.get(0), req, rsp);
+            commands.get(0).invoke(req,rsp, apiHandler);
+//            invokeUrl(commands.get(0), req, rsp);
           }
 
         } catch (SolrException e) {
@@ -195,10 +198,13 @@ public abstract class BaseHandlerApiSupport implements ApiSupport {
       }
     }
   }
+/*
 
-  protected abstract void invokeCommand(SolrQueryRequest  req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c) throws Exception;
+  protected abstract void invokeCommand(SolrQueryRequest  req, SolrQueryResponse rsp, ApiCommand command, CommandOperation c)
+      throws Exception;
 
   protected abstract void invokeUrl(ApiCommand command, SolrQueryRequest req, SolrQueryResponse rsp) throws Exception;
+*/
 
   protected abstract List<ApiCommand> getCommands();
 
