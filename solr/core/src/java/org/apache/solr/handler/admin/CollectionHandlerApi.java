@@ -35,6 +35,7 @@ import org.apache.solr.util.CommandOperation;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.DELETE;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.COLL_CONF;
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation.*;
 
@@ -68,7 +69,9 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         CREATE_OP,
         CREATE_OP.action.toLower(),
         ImmutableMap.of(
-            OverseerCollectionMessageHandler.COLL_CONF, "config"),
+            COLL_CONF, "config",
+            "createNodeSet.shuffle","shuffleNodes"
+        ),
         ImmutableMap.of("properties.", "property.")),
 
     DELETE_COLL(EndPoint.PER_COLLECTION_DELETE,
@@ -109,7 +112,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         POST,
         DELETEALIAS_OP,
         "delete-alias",
-        ImmutableMap.of(NAME, "")),
+        null),
     CREATE_SHARD(EndPoint.PER_COLLECTION_SHARDS_COMMANDS,
         POST,
         CREATESHARD_OP,
@@ -144,16 +147,16 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         SYNCSHARD_OP,
         "synch-shard",
         null),
-    ADDREPLICAPROP(EndPoint.PER_COLLECTION_PER_SHARD_PER_REPLICA_COMMANDS,
+    ADDREPLICAPROP(EndPoint.PER_COLLECTION,
         POST,
         ADDREPLICAPROP_OP,
-        "set-property",
+        "add-replica-property",
         ImmutableMap.of("property", "name", "property.value", "value")),
-    DELETEREPLICAPROP(EndPoint.PER_COLLECTION_PER_SHARD_PER_REPLICA_COMMANDS,
+    DELETEREPLICAPROP(EndPoint.PER_COLLECTION,
         POST,
         DELETEREPLICAPROP_OP,
-        "delete-property",
-        ImmutableMap.of("property", "")),
+        "delete-replica-property",
+        null),
     ADDROLE(EndPoint.CLUSTER_CMD,
         POST,
         ADDROLE_OP,
@@ -288,7 +291,6 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     PER_COLLECTION_SHARDS_COMMANDS("collections.collection.shards.Commands"),
     PER_COLLECTION_PER_SHARD_COMMANDS("collections.collection.shards.shard.Commands"),
     PER_COLLECTION_PER_SHARD_DELETE("collections.collection.shards.shard.delete"),
-    PER_COLLECTION_PER_SHARD_PER_REPLICA_COMMANDS("collections.collection.shards.shard.replica.Commands"),
     PER_COLLECTION_PER_SHARD_PER_REPLICA_DELETE("collections.collection.shards.shard.replica.delete");
     final String specName;
 

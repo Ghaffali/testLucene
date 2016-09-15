@@ -42,6 +42,56 @@
           "description":"This is the timeout value when waiting for leaders to be reassigned"
         }
       }
+    },
+    "add-replica-property": {
+      "description": "Assign an arbitrary property to a particular replica and give it the value specified. If the property already exists, it will be overwritten with the new value",
+      "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-AddReplicaProp",
+      "type": "object",
+      "properties": {
+        "shard": {
+          "type": "string",
+          "description": "The shard name"
+        },
+        "replica": {
+          "type": "string",
+          "description": "The replica name"
+        },
+        "name": {
+          "type": "string",
+          "description": "The property name"
+        },
+        "value": {
+          "type": "string",
+          "description": "he value to assign to the property"
+        },
+        "shardUnique": {
+          "type": "boolean",
+          "description": "If true, then setting this property in one replica will remove the property from all other replicas in that shard"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ]
+    },
+    "delete-replica-property": {
+      "description": "Deletes an arbitrary property from a particular replica",
+      "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-DeleteReplicaProp",
+      "type": "object",
+      "properties": {
+        "shard": {
+          "type": "string",
+          "description": "The shard name"
+        },
+        "replica": {
+          "type": "string",
+          "description": "The replica name"
+        },
+        "property": {
+          "type": "string",
+          "description": "The property name"
+        }
+      }
     }
   }
 }

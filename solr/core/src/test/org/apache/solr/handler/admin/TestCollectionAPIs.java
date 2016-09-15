@@ -74,7 +74,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{create-alias:{name: aliasName , collections:[c1,c2] }}", null, "{operation : createalias, name: aliasName, collections:[c1,c2] }");
 
     compareOutput(apiBag, "/collections", POST,
-        "{delete-alias:aliasName}", null, "{operation : deletealias, name: aliasName}");
+        "{delete-alias:{ name: aliasName}}", null, "{operation : deletealias, name: aliasName}");
 
     compareOutput(apiBag, "/collections/collName", POST,
         "{reload:{}}", null,
@@ -107,13 +107,13 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{collection: collName , split.key : id12345 , operation : splitshard, property.prop1:prop1Val, property.prop2: prop2Val}"
     );
 
-    compareOutput(apiBag, "/collections/collName/shards/shard1/replica1", POST,
-        "{set-property : {name:propA , value: VALA}}", null,
+    compareOutput(apiBag, "/collections/collName", POST,
+        "{add-replica-property : {name:propA , value: VALA, shard: shard1, replica:replica1}}", null,
         "{collection: collName, shard: shard1, replica : replica1 , property : propA , operation : addreplicaprop, property.value : 'VALA'}"
     );
 
-    compareOutput(apiBag, "/collections/collName/shards/shard1/replica1", POST,
-        "{delete-property : propA }", null,
+    compareOutput(apiBag, "/collections/collName", POST,
+        "{delete-replica-property : {property: propA , shard: shard1, replica:replica1} }", null,
         "{collection: collName, shard: shard1, replica : replica1 , property : propA , operation : deletereplicaprop}"
     );
 
@@ -135,9 +135,6 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{balanceshardunique : {property: preferredLeader} }", null,
         "{operation : balanceshardunique ,collection : coll1, property : preferredLeader}"
     );
-
-
-    System.out.println();
 
   }
 

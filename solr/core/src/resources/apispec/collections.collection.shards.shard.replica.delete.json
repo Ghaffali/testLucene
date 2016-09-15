@@ -28,6 +28,10 @@
         "type": "boolean",
         "default": false,
         "description": "By default Solr will delete the entire instanceDir of the replica that is deleted. Set this to false to prevent the instance directory from being deleted"
+      },
+      "async":{
+        "type":"string",
+        "description":"Request ID to track this action which will be processed asynchronously."
       }
     }
   }
