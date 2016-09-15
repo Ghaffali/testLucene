@@ -8,11 +8,15 @@
     ]
   },
   "commands": {
-    "overseerop": {
+    "overseer-op": {
       "type": "object",
       "additionalProperties": true
     },
-    "rejoinleaderelection": {
+    "rejoin-leader-election": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "invoke":{
       "type": "object",
       "additionalProperties": true
     }

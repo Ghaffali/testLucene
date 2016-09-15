@@ -130,6 +130,8 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
     errs = validator.validateJson(Utils.fromJSONString("{name: 'Joe Average' , sex:m}"));
     assertEquals(1, errs.size());
     assertTrue(errs.get(0).contains("value of enum"));
+
+
   }
 
   private void checkSchema(String name) {

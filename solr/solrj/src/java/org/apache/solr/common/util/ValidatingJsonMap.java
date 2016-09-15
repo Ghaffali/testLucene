@@ -168,6 +168,9 @@ public class ValidatingJsonMap implements Map<String, Object> {
       throw new RuntimeException("value of " + key + "must be an integer");
     }
   }
+  public ValidatingJsonMap getMap(String key){
+    return getMap(key,null,null);
+  }
   public ValidatingJsonMap getMap(String key, PredicateWithErrMsg predicate) {
     return getMap(key, predicate, null);
 
