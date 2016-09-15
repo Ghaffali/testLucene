@@ -131,6 +131,11 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{operation : removerole ,role : overseer, node : 'localhost_8978'}"
     );
 
+    compareOutput(apiBag, "/collections/coll1", POST,
+        "{balanceshardunique : {property: preferredLeader} }", null,
+        "{operation : balanceshardunique ,collection : coll1, property : preferredLeader}"
+    );
+
 
     System.out.println();
 

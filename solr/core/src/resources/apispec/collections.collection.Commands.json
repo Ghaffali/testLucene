@@ -12,6 +12,24 @@
   "commands": {
     "modify": "collections.collection.Commands.modify",
     "reload": "collections.collection.Commands.reload",
+    "balanceshardunique":{
+      "type":"object",
+      "properties":{
+        "onlyactivenodes":{
+          "type":"boolean",
+          "description":"Defaults to true. Normally, the property is instantiated on active nodes only. If this parameter is specified as 'false', then inactive nodes are also included for distribution."
+
+        },
+        "shardUnique":{
+          "type":"boolean",
+          "description":"Something of a safety valve. There is one pre-defined property (preferredLeader) that defaults this value to 'true'. For all other properties that are balanced, this must be set to 'true' or an error message is returned."
+        },
+        "property":{
+          "type":"string",
+          "description": "the actual property"
+        }
+      }
+    },
     "rebalance-leaders" :{
       "type":"object",
       "properties":{

@@ -183,9 +183,10 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
       @Override
       public void invoke(SolrQueryRequest req, SolrQueryResponse rsp, BaseHandlerApiSupport apiHandler) throws Exception {
         rsp.add("nodes", ((CollectionHandlerApi) apiHandler).handler.coreContainer.getZkController().getClusterState().getLiveNodes());
-        ;
       }
-    }
+    },
+    BALANCESHARDUNIQUE(EndPoint.PER_COLLECTION, POST, BALANCESHARDUNIQUE_OP, "balanceshardunique",null)
+
     ;
     public final String commandName;
     public final EndPoint endPoint;
