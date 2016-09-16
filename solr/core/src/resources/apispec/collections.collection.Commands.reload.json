@@ -2,9 +2,9 @@
   "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api2",
   "type" : "object",
   "properties":{
-    "async" : {
-      "type" : "string"
-
+    "async": {
+      "type": "string",
+      "description": "Request ID to track this action which will be processed asynchronously"
     }
   }
 }

@@ -63,11 +63,14 @@
         "numShards": {
           "type":"number",
           "description":"NO:of shards"
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
       },
       "required": [
-        "name",
-        "configset"
+        "name"
       ]
     }
   }

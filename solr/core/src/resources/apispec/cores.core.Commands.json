@@ -1,5 +1,5 @@
 {
-  "documentation": "https://cwiki.apache.org",
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/CoreAdmin+API",
   "methods": [
     "POST"
   ],
@@ -19,6 +19,10 @@
         "with": {
           "type": "string",
           "description": "The other core name"
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
       },
       "required": [
@@ -51,6 +55,10 @@
         "deleteInstanceDir": {
           "type": "boolean",
           "description": ""
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
       }
     },
@@ -80,16 +88,30 @@
     },
     "request-recovery": {
       "type":"object",
-      "additionalProperties":true
+      "additionalProperties": true,
+      "description": "Internal API"
+
     },
     "forceprepareforleadership": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "description": "Internal API"
     },
     "split": "cores.core.Commands.split",
     "preprecovery": {
       "type": "object",
-      "additionalProperties": true
+      "additionalProperties": true,
+      "description": "Internal API"
+    },
+    "requestapplyupdates": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Internal API"
+    },
+    "requestbufferupdates": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Internal API"
     }
   }
 }

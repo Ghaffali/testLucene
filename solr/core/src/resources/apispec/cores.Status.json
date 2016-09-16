@@ -12,7 +12,7 @@
       "indexInfo": {
         "type": "boolean",
         "description": "return index info",
-        "default": false
+        "default": true
       }
     }
   }
