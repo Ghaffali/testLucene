@@ -214,19 +214,19 @@ public class ApiBag {
       ValidatingJsonMap result = map;
       ValidatingJsonMap cmds = result.getMap("commands", null);
       if (cmds != null) {
-        Map  comands2BReplaced = new ValidatingJsonMap();
+        Map  commands2BReplaced = new ValidatingJsonMap();
         for (Object o : cmds.keySet()) {
           Object val = cmds.get(o);
           if (val instanceof String) {
             String s = (String) val;
             ValidatingJsonMap cmdSpec = getResource(APISPEC_LOCATION + s + ".json");
-            comands2BReplaced.put(o.toString(), cmdSpec);
+            commands2BReplaced.put(o.toString(), cmdSpec);
           }
         }
 
-        if (!comands2BReplaced.isEmpty()) {
+        if (!commands2BReplaced.isEmpty()) {
           ValidatingJsonMap mapCopy = ValidatingJsonMap.getDeepCopy(result, 4, true);
-          mapCopy.getMap("commands", NOT_NULL).putAll(comands2BReplaced);
+          mapCopy.getMap("commands", NOT_NULL).putAll(commands2BReplaced);
           result = ValidatingJsonMap.getDeepCopy(mapCopy, 4, false);
         }
       }

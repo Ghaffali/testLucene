@@ -95,15 +95,14 @@ public class TestApiFramework extends SolrTestCaseJ4 {
 
 
     parts = new HashMap<>();
-    api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1/replica1", "POST",
+    api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello", "POST",
         mockCC, "collections", null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
-        "/commands/set-property", NOT_NULL
+        "/commands/add-replica-property", NOT_NULL,
+        "/commands/delete-replica-property", NOT_NULL
     ));
     assertEquals("hello", parts.get("collection"));
-    assertEquals("shard1", parts.get("shard"));
-    assertEquals("replica1", parts.get("replica"));
 
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1/replica1", "DELETE",
         mockCC, "collections", null, parts);
