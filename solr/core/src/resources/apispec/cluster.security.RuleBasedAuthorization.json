@@ -87,7 +87,7 @@
         },
         "before": {
           "type": "integer",
-          "description": "This property allows ordering of permissions. The value for this property is the name of the permission that this new permission should be placed before in security.json."
+          "description": "This property allows ordering of permissions. The value for this property is the index of the permission that this new permission should be placed before in security.json."
         },
         "params": {
           "type": "object",
