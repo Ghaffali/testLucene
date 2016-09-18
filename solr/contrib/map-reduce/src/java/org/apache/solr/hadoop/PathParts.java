@@ -23,7 +23,7 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.hdfs.server.namenode.NameNode;
+import static org.apache.hadoop.hdfs.client.HdfsClientConfigKeys.DFS_NAMENODE_RPC_PORT_DEFAULT;
 
 /**
  * Extracts various components of an HDFS Path
@@ -94,7 +94,7 @@ public final class PathParts {
     if (port == -1) {
       port = fs.getWorkingDirectory().toUri().getPort();
       if (port == -1) {
-        port = NameNode.DEFAULT_PORT;
+        port = DFS_NAMENODE_RPC_PORT_DEFAULT;
       }
     }
     return port;

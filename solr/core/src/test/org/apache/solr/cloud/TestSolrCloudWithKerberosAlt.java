@@ -42,6 +42,7 @@ import org.apache.solr.util.BadZookeeperThreadsFilter;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.RuleChain;
@@ -64,6 +65,7 @@ import com.carrotsearch.randomizedtesting.rules.SystemPropertiesRestoreRule;
 
 @LuceneTestCase.Slow
 @LuceneTestCase.SuppressSysoutChecks(bugUrl = "Solr logs to JUL")
+@Ignore // nocommit
 public class TestSolrCloudWithKerberosAlt extends LuceneTestCase {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -110,6 +112,7 @@ public class TestSolrCloudWithKerberosAlt extends LuceneTestCase {
         .build();
     String solrServerPrincipal = "HTTP/127.0.0.1";
     kerberosTestServices.start();
+    
     kerberosTestServices.getKdc().createPrincipal(keytabFile, solrServerPrincipal, solrClientPrincipal);
 
     String jaas = "SolrClient {\n"
@@ -141,10 +144,10 @@ public class TestSolrCloudWithKerberosAlt extends LuceneTestCase {
         );
 
     // more debugging, if needed
-    /*System.setProperty("sun.security.jgss.debug", "true");
+    System.setProperty("sun.security.jgss.debug", "true");
     System.setProperty("sun.security.krb5.debug", "true");
     System.setProperty("sun.security.jgss.debug", "true");
-    System.setProperty("java.security.debug", "logincontext,policy,scl,gssloginconfig");*/
+    System.setProperty("java.security.debug", "logincontext,policy,scl,gssloginconfig");
   }
   
   @Test

@@ -33,11 +33,17 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.cloud.AbstractZkTestCase;
 import org.apache.solr.hadoop.dedup.NoChangeUpdateConflictResolver;
 import org.apache.solr.hadoop.dedup.RetainMostRecentUpdateConflictResolver;
+import org.apache.solr.util.BadHdfsThreadsFilter;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+
+@ThreadLeakFilters(defaultFilters = true, filters = {
+    BadHdfsThreadsFilter.class // hdfs currently leaks thread(s)
+})
 public class MapReduceIndexerToolArgumentParserTest extends SolrTestCaseJ4 {
   
   private Configuration conf; 
@@ -194,7 +200,6 @@ public class MapReduceIndexerToolArgumentParserTest extends SolrTestCaseJ4 {
     assertEquals(new Integer(0), parser.parseArgs(args, conf, opts));
     String helpText = new String(bout.toByteArray(), StandardCharsets.UTF_8);
     assertTrue(helpText.contains("MapReduce batch job driver that "));
-    assertTrue(helpText.contains("bin/hadoop command"));
     assertEquals(0, berr.toByteArray().length);
   }
   

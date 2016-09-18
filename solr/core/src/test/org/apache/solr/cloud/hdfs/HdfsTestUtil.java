@@ -184,27 +184,31 @@ public class HdfsTestUtil {
     }
     
     SolrTestCaseJ4.resetFactory();
-    System.clearProperty("solr.lock.type");
-    System.clearProperty("test.build.data");
-    System.clearProperty("test.cache.data");
-    System.clearProperty("solr.hdfs.home");
-    System.clearProperty("solr.hdfs.blockcache.global");
-    if (dfsCluster != null) {
-      Timer timer = timers.remove(dfsCluster);
-      if (timer != null) {
-        timer.cancel();
+  
+    try {
+      if (dfsCluster != null) {
+        Timer timer = timers.remove(dfsCluster);
+        if (timer != null) {
+          timer.cancel();
+        }
+        try {
+          dfsCluster.shutdown();
+        } catch (Error e) {
+          // Added in SOLR-7134
+          // Rarely, this can fail to either a NullPointerException
+          // or a class not found exception. The later may fixable
+          // by adding test dependencies.
+          log.warn("Exception shutting down dfsCluster", e);
+        }
       }
-      try {
-        dfsCluster.shutdown();
-      } catch (Error e) {
-        // Added in SOLR-7134
-        // Rarely, this can fail to either a NullPointerException
-        // or a class not found exception. The later may fixable
-        // by adding test dependencies.
-        log.warn("Exception shutting down dfsCluster", e);
-      }
+    } finally {
+      System.clearProperty("solr.lock.type");
+      System.clearProperty("test.build.data");
+      System.clearProperty("test.cache.data");
+      System.clearProperty("solr.hdfs.home");
+      System.clearProperty("solr.hdfs.blockcache.global");
     }
-    
+
     // TODO: we HACK around HADOOP-9643
     if (savedLocale != null) {
       Locale.setDefault(savedLocale);

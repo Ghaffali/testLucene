@@ -27,6 +27,8 @@ public class BadHdfsThreadsFilter implements ThreadFilter {
       return true;
     } else if (name.startsWith("org.apache.hadoop.hdfs.PeerCache")) { // SOLR-7288
       return true;
+    } else if (name.endsWith("StatisticsDataReferenceCleaner")) { // nocommit
+      return true;
     } else if (name.startsWith("LeaseRenewer")) { // SOLR-7287
       return true;
     }

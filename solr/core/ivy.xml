@@ -62,14 +62,13 @@
     <dependency org="com.fasterxml.jackson.core" name="jackson-annotations" rev="${/com.fasterxml.jackson.core/jackson-annotations}" conf="test"/>
     <dependency org="com.fasterxml.jackson.dataformat" name="jackson-dataformat-smile" rev="${/com.fasterxml.jackson.dataformat/jackson-dataformat-smile}" conf="compile"/>
 
-
     <dependency org="org.apache.hadoop" name="hadoop-common" rev="${/org.apache.hadoop/hadoop-common}" conf="compile.hadoop"/>
+    <dependency org="org.apache.hadoop" name="hadoop-hdfs-client" rev="${/org.apache.hadoop/hadoop-hdfs-client}" conf="compile.hadoop"/>
     <!--
-      hadoop-hdfs, hadoop-annotations and hadoop-auth are runtime dependencies,
+      hadoop-annotations and hadoop-auth are runtime dependencies,
       so even though they are not compile-time dependencies, they are included
       here as such so that they are included in the runtime distribution.
      -->
-    <dependency org="org.apache.hadoop" name="hadoop-hdfs" rev="${/org.apache.hadoop/hadoop-hdfs}" conf="compile.hadoop"/>
     <dependency org="org.apache.hadoop" name="hadoop-annotations" rev="${/org.apache.hadoop/hadoop-annotations}" conf="compile.hadoop"/>
     <dependency org="org.apache.hadoop" name="hadoop-auth" rev="${/org.apache.hadoop/hadoop-auth}" conf="compile.hadoop"/>
     <dependency org="commons-configuration" name="commons-configuration" rev="${/commons-configuration/commons-configuration}" conf="compile.hadoop"/>
@@ -78,16 +77,19 @@
     <dependency org="com.google.protobuf" name="protobuf-java" rev="${/com.google.protobuf/protobuf-java}" conf="compile.hadoop"/>
     <dependency org="com.github.ben-manes.caffeine" name="caffeine" rev="${/com.github.ben-manes.caffeine/caffeine}" conf="compile.hadoop"/>
     <dependency org="org.apache.htrace" name="htrace-core" rev="${/org.apache.htrace/htrace-core}" conf="compile.hadoop"/>
+    <dependency org="org.apache.htrace" name="htrace-core4" rev="${/org.apache.htrace/htrace-core4}" conf="compile.hadoop"/>
     
     <!-- Hadoop DfsMiniCluster Dependencies-->
     <dependency org="org.apache.hadoop" name="hadoop-common" rev="${/org.apache.hadoop/hadoop-common}" conf="test.DfsMiniCluster">
       <artifact name="hadoop-common" type="test" ext="jar" maven:classifier="tests" />
     </dependency>
     <dependency org="org.apache.hadoop" name="hadoop-hdfs" rev="${/org.apache.hadoop/hadoop-hdfs}" conf="test.DfsMiniCluster">
+      <artifact name="hadoop-hdfs" ext="jar" />
       <artifact name="hadoop-hdfs" type="test" ext="jar" maven:classifier="tests" />
     </dependency>
     <dependency org="org.mortbay.jetty" name="jetty" rev="${/org.mortbay.jetty/jetty}" conf="test.DfsMiniCluster"/>
     <dependency org="org.mortbay.jetty" name="jetty-util" rev="${/org.mortbay.jetty/jetty-util}" conf="test.DfsMiniCluster"/>
+    <dependency org="org.mortbay.jetty" name="jetty-sslengine" rev="${/org.mortbay.jetty/jetty-sslengine}" conf="test.DfsMiniCluster"/>
     <dependency org="com.sun.jersey" name="jersey-core" rev="${/com.sun.jersey/jersey-core}" conf="test.DfsMiniCluster"/>
     <dependency org="com.sun.jersey" name="jersey-server" rev="${/com.sun.jersey/jersey-server}" conf="test.DfsMiniCluster"/>
     <dependency org="commons-collections" name="commons-collections" rev="${/commons-collections/commons-collections}" conf="test.DfsMiniCluster"/>
@@ -95,6 +97,7 @@
     <dependency org="org.apache.htrace" name="htrace-core" rev="${/org.apache.htrace/htrace-core}" conf="test.DfsMiniCluster"/>
     <dependency org="org.codehaus.jackson" name="jackson-core-asl" rev="${/org.codehaus.jackson/jackson-core-asl}" conf="test.DfsMiniCluster" />
     <dependency org="org.codehaus.jackson" name="jackson-mapper-asl" rev="${/org.codehaus.jackson/jackson-mapper-asl}" conf="test.DfsMiniCluster" />
+    <dependency org="commons-logging" name="commons-logging" rev="${/commons-logging/commons-logging}" conf="test.DfsMiniCluster"/>
  
     <!-- Hadoop MiniKdc Dependencies-->
     <dependency org="org.apache.hadoop" name="hadoop-minikdc" rev="${/org.apache.hadoop/hadoop-minikdc}" conf="test.MiniKdc"/>
@@ -133,7 +136,22 @@
     <dependency org="org.bouncycastle" name="bcprov-jdk15" rev="${/org.bouncycastle/bcprov-jdk15}" conf="test.MiniKdc"/>
     <dependency org="antlr" name="antlr" rev="${/antlr/antlr}" conf="test.MiniKdc"/>
     <dependency org="net.sf.ehcache" name="ehcache-core" rev="${/net.sf.ehcache/ehcache-core}" conf="test.MiniKdc"/>
-
+    <dependency org="org.apache.kerby" name="kerby-config" rev="${/org.apache.kerby/kerby-config}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerby-kerb" rev="${/org.apache.kerby/kerby-kerb}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-client" rev="${/org.apache.kerby/kerb-client}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-common" rev="${/org.apache.kerby/kerb-common}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-core" rev="${/org.apache.kerby/kerb-common}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-crypto" rev="${/org.apache.kerby/kerb-crypto}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-identity" rev="${/org.apache.kerby/kerb-identity}" conf="test.MiniKdc"/> 
+    <dependency org="org.apache.kerby" name="kerb-server" rev="${/org.apache.kerby/kerb-server}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-simplekdc" rev="${/org.apache.kerby/kerb-simplekdc}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-util" rev="${/org.apache.kerby/kerb-util}" conf="test.MiniKdc"/> 
+    <dependency org="org.apache.kerby" name="kerby-asn1" rev="${/org.apache.kerby/kerby-asn1}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerby-pkix" rev="${/org.apache.kerby/kerby-pkix}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerby-util" rev="${/org.apache.kerby/kerby-util}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerb-admin" rev="${/org.apache.kerby/kerb-admin}" conf="test.MiniKdc"/>
+    <dependency org="org.apache.kerby" name="kerby-kdc" rev="${/org.apache.kerby/kerby-kdc}" conf="test.MiniKdc"/>
+    
     <dependency org="org.apache.curator" name="curator-framework" rev="${/org.apache.curator/curator-framework}" conf="compile"/>
     <dependency org="org.apache.curator" name="curator-client" rev="${/org.apache.curator/curator-client}" conf="compile"/>
     <dependency org="org.apache.curator" name="curator-recipes" rev="${/org.apache.curator/curator-recipes}" conf="compile"/>
