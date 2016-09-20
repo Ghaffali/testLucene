@@ -12,12 +12,10 @@
       "/schema/similarity",
       "/schema/solrqueryparser",
       "/schema/zkversion",
-      "/schema/zkversion",
       "/schema/solrqueryparser/defaultoperator",
       "/schema/name",
       "/schema/version",
       "/schema/uniquekey",
-      "/schema/similarity",
       "/schema/similarity"
     ]
   }

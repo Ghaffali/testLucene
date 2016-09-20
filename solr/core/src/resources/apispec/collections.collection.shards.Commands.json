@@ -1,5 +1,5 @@
 {
-  "documentation": "https://cwiki.apache.org",
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API",
   "methods": [
     "POST"
   ],
@@ -39,9 +39,12 @@
     "create": {
       "type":"object",
       "properties": {
-        "createNodeSet": {
-          "description": "Allows defining the nodes to spread the new collection across",
-          "type": "string"
+        "nodeSet": {
+          "description": "list of node names",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
         },
         "shard": {
           "description": "The name of the shard to be created",
@@ -63,7 +66,7 @@
       "properties": {
         "shard": {
           "type": "string",
-          "description": "The name of the shard where "
+          "description": "The name of the shard in which this replica should be created"
         },
         "_route_": {
           "type": "string",

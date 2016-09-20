@@ -36,6 +36,7 @@ import static org.apache.solr.client.solrj.SolrRequest.METHOD.DELETE;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.COLL_CONF;
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET;
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation.*;
 
@@ -70,7 +71,8 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         CREATE_OP.action.toLower(),
         ImmutableMap.of(
             COLL_CONF, "config",
-            "createNodeSet.shuffle","shuffleNodes"
+            "createNodeSet.shuffle", "shuffleNodes",
+            "createNodeSet", "nodeSet"
         ),
         ImmutableMap.of("properties.", "property.")),
 
@@ -117,8 +119,13 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         POST,
         CREATESHARD_OP,
         "create",
-        null,
-        ImmutableMap.of("coreProperties.", "property.")),
+        ImmutableMap.of(CREATE_NODE_SET, "nodeSet"),
+        ImmutableMap.of("coreProperties.", "property.")) {
+      @Override
+      public String getParamSubstitute(String param) {
+        return super.getParamSubstitute(param);
+      }
+    },
 
     SPLIT_SHARD(EndPoint.PER_COLLECTION_SHARDS_COMMANDS,
         POST,
@@ -188,6 +195,8 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
         rsp.add("nodes", ((CollectionHandlerApi) apiHandler).handler.coreContainer.getZkController().getClusterState().getLiveNodes());
       }
     },
+    FORCELEADER(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,POST, FORCELEADER_OP,"force-leader",null),
+    SYNCSHARD(EndPoint.PER_COLLECTION_PER_SHARD_COMMANDS,POST, SYNCSHARD_OP, "sync-shard",null),
     BALANCESHARDUNIQUE(EndPoint.PER_COLLECTION, POST, BALANCESHARDUNIQUE_OP, "balanceshardunique",null)
 
     ;

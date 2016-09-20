@@ -49,9 +49,12 @@
           "type": "number",
           "description": "The number of replicas to be created for each shard."
         },
-        "createNodeSet": {
-          "type": "string",
-          "description": " comma-separated list of node_names, such as localhost:8983_solr, localhost:8984_solr, localhost:8985_solr. "
+        "nodeSet": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "list of node_names"
         },
         "shuffleNodes": {
           "type": "boolean",

@@ -37,6 +37,7 @@ public interface ApiCommand {
   }
 
 
+
   default String getParamSubstitute(String name) {
     return name;
   }

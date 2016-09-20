@@ -166,7 +166,7 @@ public class ApiBag {
       try {
         validators.put((String) cmd.getKey(), new JsonSchemaValidator((Map) cmd.getValue()));
       } catch (Exception e) {
-        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error in spi spec" , e);
+        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error in api spec" , e);
       }
     }
     return validators;

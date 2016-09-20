@@ -151,9 +151,7 @@ public class JsonSchemaValidator {
         Object val = attrSchema.get(key);
         if (val == null) {
           Object additional = attrSchema.get(additionalProperties.key);
-          if (!Boolean.TRUE.equals(additional)) {
-            errors.add("'properties' tag is missing, additionalProperties=true is expected" + Utils.toJSONString(attrSchema));
-          }
+          if (Boolean.TRUE.equals(additional)) schemaNode.additionalProperties =  Boolean.TRUE;
         }
       }
     },

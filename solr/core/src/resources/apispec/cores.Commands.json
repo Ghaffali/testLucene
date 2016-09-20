@@ -22,11 +22,11 @@
         },
         "schema": {
           "type": "string",
-          "description": "The core name"
+          "description": "Name of the schema file to use for the core. Please note that if you are using a 'managed schema' (the default behavior) then any value for this property which does not match the effective managedSchemaResourceName will be read once, backed up, and converted for managed schema use"
         },
         "dataDir": {
           "type": "string",
-          "description": "The core name"
+          "description": "Name of the data directory relative to instanceDir"
         },
         "config": {
           "type": "string",

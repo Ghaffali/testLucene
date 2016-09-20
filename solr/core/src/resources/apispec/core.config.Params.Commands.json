@@ -23,7 +23,7 @@
     },
     "update": {
       "type":"object",
-      "description": "update one or more configsets",
+      "description": "update one or more param sets",
       "additionalProperties": true
     }
   }

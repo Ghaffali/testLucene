@@ -115,7 +115,7 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
           "   name: {type: string}}}");
       fail("should have failed");
     } catch (Exception e) {
-      assertTrue(e.getMessage().contains("'properties' tag is missing"));
+      assertTrue(e.getMessage().contains("Unknown key : propertes"));
     }
 
     validator = new JsonSchemaValidator("{" +
