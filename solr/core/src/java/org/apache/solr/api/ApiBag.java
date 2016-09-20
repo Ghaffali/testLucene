@@ -108,7 +108,6 @@ public class ApiBag {
         for (Object o : params.keySet()) {
           ValidatingJsonMap param = params.getMap(o.toString(), NOT_NULL);
           param.get("type", ENUM_OF, KNOWN_TYPES);
-          param.get("description", NOT_NULL);
         }
       }
       List<String> paths = url.getList("paths", NOT_NULL);

@@ -12,6 +12,28 @@
   "commands": {
     "modify": "collections.collection.Commands.modify",
     "reload": "collections.collection.Commands.reload",
+    "migrate-docs":{
+      "type":"object",
+      "documentation":"https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api12",
+      "properties":{
+        "target":{
+          "type":"string",
+          "description":"The name of the target collection to which documents will be migrated"
+        },
+        "splitKey":{
+          "type":"string",
+          "description":"he routing key prefix. For example, if uniqueKey is a!123, then you would use split.key=a!"
+        },
+        "forwardTimeout":{
+          "type":"integer",
+          "description":"The timeout, in seconds, until which write requests made to the source collection for the given split.key will be forwarded to the target shard. The default is 60 seconds."
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
+        }
+      }
+    },
     "balanceshardunique":{
       "type":"object",
       "properties":{

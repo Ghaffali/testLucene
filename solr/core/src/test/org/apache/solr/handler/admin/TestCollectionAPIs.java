@@ -136,6 +136,11 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
         "{operation : balanceshardunique ,collection : coll1, property : preferredLeader}"
     );
 
+    compareOutput(apiBag, "/collections/coll1", POST,
+        "{migrate-docs : {forwardTimeout: 1800, target: coll2, splitKey: 'a123!'} }", null,
+        "{operation : migrate ,collection : coll1, target.collection:coll2, forward.timeout:1800, split.key:'a123!'}"
+    );
+
   }
 
   ZkNodeProps compareOutput(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
@@ -195,7 +200,7 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
       if (actualVal instanceof String[]) {
         actualVal = Arrays.asList((String[]) actualVal);
       }
-      assertEquals(errorMessage(expected, actual), e.getValue(), actualVal);
+      assertEquals(errorMessage(expected, actual), String.valueOf(e.getValue()),String.valueOf(actualVal));
     }
   }
 

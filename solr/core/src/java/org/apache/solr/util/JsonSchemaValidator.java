@@ -73,7 +73,10 @@ public class JsonSchemaValidator {
         errs.add("'type' is missing ");
       }
       Type type = Type.get(typeStr);
-      if (type == null) throw new RuntimeException("Unknown type " + typeStr);
+      if (type == null) {
+        errs.add ("Unknown type " + typeStr + "in object "+ Utils.toJSONString(jsonSchema));
+        return;
+      }
       this.type = type;
 
       for (SchemaAttribute schemaAttribute : SchemaAttribute.values()) {
