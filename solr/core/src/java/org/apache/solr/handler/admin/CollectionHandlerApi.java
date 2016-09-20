@@ -295,7 +295,7 @@ public class CollectionHandlerApi extends BaseHandlerApiSupport {
     CLUSTER_CMD_STATUS_DELETE("cluster.commandstatus.delete"),
     COLLECTIONS_COMMANDS("collections.Commands"),
     COLLECTIONS("collections"),
-    COLLECTION_STATE("collection"),
+    COLLECTION_STATE("collections.collection"),
     PER_COLLECTION("collections.collection.Commands"),
     PER_COLLECTION_DELETE("collections.collection.delete"),
     PER_COLLECTION_SHARDS_COMMANDS("collections.collection.shards.Commands"),
