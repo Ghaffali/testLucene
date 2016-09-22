@@ -74,10 +74,6 @@ public class ConfigSetsHandler extends RequestHandlerBase {
     this.coreContainer = coreContainer;
   }
 
-  @Override
-  final public void init(NamedList args) {
-
-  }
 
   @Override
   public void handleRequestBody(SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
@@ -99,21 +95,30 @@ public class ConfigSetsHandler extends RequestHandlerBase {
       ConfigSetAction action = ConfigSetAction.get(a);
       if (action == null)
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown action: " + a);
-      ConfigSetOperation operation = ConfigSetOperation.get(action);
-      log.info("Invoked ConfigSet Action :{} with params {} ", action.toLower(), req.getParamString());
-      Map<String, Object> result = operation.call(req, rsp, this);
-      if (result != null) {
-        // We need to differentiate between collection and configsets actions since they currently
-        // use the same underlying queue.
-        result.put(QUEUE_OPERATION, CONFIGSETS_ACTION_PREFIX + operation.action.toLower());
-        ZkNodeProps props = new ZkNodeProps(result);
-        handleResponse(operation.action.toLower(), props, rsp, DEFAULT_ZK_TIMEOUT);
-      }
+      invokeAction(req, rsp, action);
     } else {
       throw new SolrException(ErrorCode.BAD_REQUEST, "action is a required param");
     }
 
     rsp.setHttpCaching(false);
+  }
+
+  void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, ConfigSetAction action) throws Exception {
+    ConfigSetOperation operation = ConfigSetOperation.get(action);
+    log.info("Invoked ConfigSet Action :{} with params {} ", action.toLower(), req.getParamString());
+    Map<String, Object> result = operation.call(req, rsp, this);
+    sendToZk(rsp, operation, result);
+  }
+
+  protected void sendToZk(SolrQueryResponse rsp, ConfigSetOperation operation, Map<String, Object> result)
+      throws KeeperException, InterruptedException {
+    if (result != null) {
+      // We need to differentiate between collection and configsets actions since they currently
+      // use the same underlying queue.
+      result.put(QUEUE_OPERATION, CONFIGSETS_ACTION_PREFIX + operation.action.toLower());
+      ZkNodeProps props = new ZkNodeProps(result);
+      handleResponse(operation.action.toLower(), props, rsp, DEFAULT_ZK_TIMEOUT);
+    }
   }
 
   private void handleResponse(String operation, ZkNodeProps m,

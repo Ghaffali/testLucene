@@ -143,10 +143,10 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
 
   }
 
-  ZkNodeProps compareOutput(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
+  static ZkNodeProps compareOutput(final ApiBag apiBag, final String path, final SolrRequest.METHOD method,
                             final String payload, final CoreContainer cc, String expectedOutputMapJson) throws Exception {
     Pair<SolrQueryRequest, SolrQueryResponse> ctx = makeCall(apiBag, path, method, payload, cc);
-    ZkNodeProps output = (ZkNodeProps) ctx.first().getContext().get(ZkNodeProps.class.getName());
+    ZkNodeProps output = (ZkNodeProps) ctx.second().getValues().get(ZkNodeProps.class.getName());
     Map expected = (Map) fromJSONString(expectedOutputMapJson);
     assertMapEqual(expected, output);
     return output;
@@ -155,10 +155,10 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
 
   public static Pair<SolrQueryRequest, SolrQueryResponse> makeCall(final ApiBag apiBag, String path,
                                                                    final SolrRequest.METHOD method,
-                                    final String payload, final CoreContainer cc) throws Exception {
+                                                                   final String payload, final CoreContainer cc) throws Exception {
     SolrParams queryParams = new MultiMapSolrParams(Collections.EMPTY_MAP);
     if (path.indexOf('?') > 0) {
-      String queryStr = path.substring(path.indexOf('?')+1);
+      String queryStr = path.substring(path.indexOf('?') + 1);
       path = path.substring(0, path.indexOf('?'));
       queryParams = SolrRequestParsers.parseQueryString(queryStr);
     }
@@ -166,11 +166,11 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     Api api = apiBag.lookup(path, method.toString(), parts);
     if (api == null) throw new RuntimeException("No handler at path :" + path);
     SolrQueryResponse rsp = new SolrQueryResponse();
-    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, queryParams){
+    LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, queryParams) {
       @Override
       public List<CommandOperation> getCommands(boolean validateInput) {
         if (payload == null) return Collections.emptyList();
-        return ApiBag.getCommandOperations(new StringReader(payload), api.getCommandSchema(),true);
+        return ApiBag.getCommandOperations(new StringReader(payload), api.getCommandSchema(), true);
       }
 
       @Override
@@ -186,13 +186,13 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
     try {
       api.call(req, rsp);
     } catch (ApiBag.ExceptionWithErrObject e) {
-      throw new RuntimeException(e.getMessage() + Utils.toJSONString(e.getErrs()) , e);
+      throw new RuntimeException(e.getMessage() + Utils.toJSONString(e.getErrs()), e);
 
     }
-    return new Pair<>(req,rsp);
+    return new Pair<>(req, rsp);
   }
 
-  private void assertMapEqual(Map expected, ZkNodeProps actual) {
+  private static void assertMapEqual(Map expected, ZkNodeProps actual) {
     assertEquals(errorMessage(expected, actual), expected.size(), actual.getProperties().size());
     for (Object o : expected.entrySet()) {
       Map.Entry e = (Map.Entry) o;
@@ -200,11 +200,11 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
       if (actualVal instanceof String[]) {
         actualVal = Arrays.asList((String[]) actualVal);
       }
-      assertEquals(errorMessage(expected, actual), String.valueOf(e.getValue()),String.valueOf(actualVal));
+      assertEquals(errorMessage(expected, actual), String.valueOf(e.getValue()), String.valueOf(actualVal));
     }
   }
 
-  private String errorMessage(Map expected, ZkNodeProps actual) {
+  private static String errorMessage(Map expected, ZkNodeProps actual) {
     return "expected: " + Utils.toJSONString(expected) + "\nactual: " + Utils.toJSONString(actual);
 
   }
@@ -212,15 +212,18 @@ public class TestCollectionAPIs extends SolrTestCaseJ4 {
   static class MockCollectionsHandler extends CollectionsHandler {
     LocalSolrQueryRequest req;
 
-    MockCollectionsHandler() { }
+    MockCollectionsHandler() {
+    }
 
     @Override
-    void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp, CoreContainer cores, CollectionParams.CollectionAction action,
+    void invokeAction(SolrQueryRequest req, SolrQueryResponse rsp,
+                      CoreContainer cores,
+                      CollectionParams.CollectionAction action,
                       CollectionOperation operation) throws Exception {
       Map<String, Object> result = operation.execute(req, rsp, this);
       if (result != null) {
         result.put(QUEUE_OPERATION, operation.action.toLower());
-        req.getContext().put(ZkNodeProps.class.getName(),new ZkNodeProps(result) );
+        rsp.add(ZkNodeProps.class.getName(), new ZkNodeProps(result));
       }
     }
   }

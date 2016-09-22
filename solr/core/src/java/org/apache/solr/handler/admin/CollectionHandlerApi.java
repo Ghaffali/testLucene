@@ -26,7 +26,6 @@ import java.util.Map;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.cloud.OverseerCollectionMessageHandler;
 import org.apache.solr.handler.admin.CollectionsHandler.CollectionOperation;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
@@ -42,7 +41,7 @@ import static org.apache.solr.handler.admin.CollectionsHandler.CollectionOperati
 
 
 public class CollectionHandlerApi extends BaseHandlerApiSupport {
-  private final CollectionsHandler handler;
+  final CollectionsHandler handler;
 
   public CollectionHandlerApi(CollectionsHandler handler) {
     this.handler = handler;

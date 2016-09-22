@@ -35,7 +35,7 @@ import static org.apache.solr.handler.admin.ConfigSetsHandler.ConfigSetOperation
 
 public class ConfigSetsHandlerApi extends BaseHandlerApiSupport {
 
-  private final ConfigSetsHandler configSetHandler;
+  final ConfigSetsHandler configSetHandler;
 
   public ConfigSetsHandlerApi(ConfigSetsHandler configSetHandler) {
     this.configSetHandler = configSetHandler;
@@ -90,16 +90,14 @@ public class ConfigSetsHandlerApi extends BaseHandlerApiSupport {
 
     @Override
     public void invoke(SolrQueryRequest req, SolrQueryResponse rsp, BaseHandlerApiSupport apiHandler) throws Exception {
-          op.call(req, rsp,
-              ((ConfigSetsHandlerApi)apiHandler).configSetHandler);
-
+      ((ConfigSetsHandlerApi) apiHandler).configSetHandler.invokeAction(req, rsp, op.action);
     }
 
   }
   enum EndPoint implements V2EndPoint {
-    LIST_CONFIG("cluster.config"),
-    CONFIG_COMMANDS("cluster.config.Commands"),
-    CONFIG_DEL("cluster.config.delete");
+    LIST_CONFIG("cluster.configs"),
+    CONFIG_COMMANDS("cluster.configs.Commands"),
+    CONFIG_DEL("cluster.configs.delete");
 
     public final String spec;
 
