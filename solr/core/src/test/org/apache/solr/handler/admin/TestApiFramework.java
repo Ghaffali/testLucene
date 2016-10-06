@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.SolrTestCaseJ4;
+import org.apache.solr.api.V2HttpCall.CompositeApi;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.params.MapSolrParams;
 import org.apache.solr.common.util.PredicateWithErrMsg;
@@ -66,16 +67,17 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     Map<String, String> parts = new HashMap<>();
     String fullPath = "/collections/hello/shards";
     Api api = V2HttpCall.getApiInfo(containerHandlers, fullPath, "POST",
-        mockCC, "collections", fullPath, parts);
+       fullPath, parts);
     assertNotNull(api);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
         "/commands/create", NOT_NULL));
     assertEquals("hello", parts.get("collection"));
 
+
     parts = new HashMap<>();
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards", "POST",
-        mockCC, "collections", null, parts);
+      null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
         "/commands/split", NOT_NULL,
@@ -85,7 +87,7 @@ public class TestApiFramework extends SolrTestCaseJ4 {
 
     parts = new HashMap<>();
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1", "POST",
-        mockCC, "collections", null, parts);
+        null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
         "/commands/force-leader", NOT_NULL
@@ -96,7 +98,7 @@ public class TestApiFramework extends SolrTestCaseJ4 {
 
     parts = new HashMap<>();
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello", "POST",
-        mockCC, "collections", null, parts);
+       null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "POST",
         "/commands/add-replica-property", NOT_NULL,
@@ -105,7 +107,7 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     assertEquals("hello", parts.get("collection"));
 
     api = V2HttpCall.getApiInfo(containerHandlers, "/collections/hello/shards/shard1/replica1", "DELETE",
-        mockCC, "collections", null, parts);
+       null, parts);
     assertConditions(api.getSpec(), Utils.makeMap(
         "/methods[0]", "DELETE",
         "/url/params/onlyIfDown/type", "boolean"
@@ -114,18 +116,18 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     assertEquals("shard1", parts.get("shard"));
     assertEquals("replica1", parts.get("replica"));
 
-    SolrQueryResponse rsp = invoke(containerHandlers, "/collections/_introspect", GET, mockCC);
+    SolrQueryResponse rsp = invoke(containerHandlers, null, "/collections/_introspect", GET, mockCC);
 
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
         "/spec[0]/methods[0]", "POST"));
 
-    rsp = invoke(coreHandlers, "/collections/hello/schema/_introspect", GET, mockCC);
+    rsp = invoke(coreHandlers, "/schema/_introspect", "/collections/hello/schema/_introspect", GET, mockCC);
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
         "/spec[0]/methods[0]", "POST",
         "/spec[0]/commands", NOT_NULL,
         "/spec[1]/methods[0]", "GET"));
 
-    rsp = invoke(coreHandlers, "/collections/hello", GET, mockCC);
+    rsp = invoke(coreHandlers, "/", "/collections/hello/_introspect", GET, mockCC);
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
         "/availableSubPaths", NOT_NULL,
         "availableSubPaths /collections/hello/config/jmx", NOT_NULL,
@@ -137,20 +139,26 @@ public class TestApiFramework extends SolrTestCaseJ4 {
 
   }
 
-  private SolrQueryResponse invoke(PluginBag<SolrRequestHandler> reqHandlers, String path, SolrRequest.METHOD method,
+  private SolrQueryResponse invoke(PluginBag<SolrRequestHandler> reqHandlers, String path,
+                                   String fullPath, SolrRequest.METHOD method,
                                    CoreContainer mockCC) {
     HashMap<String, String> parts = new HashMap<>();
     boolean containerHandlerLookup = mockCC.getRequestHandlers() == reqHandlers;
-    String fullPath = path;
-    String prefix = null;
-    if (!containerHandlerLookup) {
-      int idx = path.indexOf('/', 1);
-      prefix = path.substring(1, idx);
-      if (idx > 0) idx = path.indexOf('/', idx + 1);
-      path = idx == -1 ? "/" : path.substring(idx);
+    path = path == null ? fullPath : path;
+    Api api = null;
+    if (containerHandlerLookup) {
+      api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", fullPath, parts);
+    } else {
+      api = V2HttpCall.getApiInfo(mockCC.getRequestHandlers(), fullPath, "GET", fullPath, parts);
+      if (api == null) api = new CompositeApi(null);
+      if (api instanceof CompositeApi) {
+        CompositeApi compositeApi = (CompositeApi) api;
+        api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", fullPath, parts);
+        compositeApi.add(api);
+        api = compositeApi;
+      }
     }
 
-    Api api = V2HttpCall.getApiInfo(reqHandlers, path, "GET", mockCC, prefix, fullPath, parts);
     SolrQueryResponse rsp = new SolrQueryResponse();
     LocalSolrQueryRequest req = new LocalSolrQueryRequest(null, new MapSolrParams(new HashMap<>())){
       @Override

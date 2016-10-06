@@ -23,6 +23,7 @@ import java.lang.invoke.MethodHandles;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -51,12 +52,12 @@ import org.apache.solr.util.PathTrie;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.solr.servlet.SolrDispatchFilter.Action.PASSTHROUGH;
-import static org.apache.solr.util.PathTrie.getPathSegments;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.CommonParams.WT;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.ADMIN;
+import static org.apache.solr.servlet.SolrDispatchFilter.Action.PASSTHROUGH;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.PROCESS;
+import static org.apache.solr.util.PathTrie.getPathSegments;
 
 
 public class V2HttpCall extends HttpSolrCall {
@@ -66,7 +67,6 @@ public class V2HttpCall extends HttpSolrCall {
   private String prefix;
   HashMap<String, String> parts = new HashMap<>();
   static final Set<String> knownPrefixes = ImmutableSet.of("cluster", "node", "collections", "cores", "c");
-  static final Set<String> commonPaths4ContainerLevelAndCoreLevel = ImmutableSet.of("collections", "cores", "c");
 
   public V2HttpCall(SolrDispatchFilter solrDispatchFilter, CoreContainer cc,
                     HttpServletRequest request, HttpServletResponse response, boolean retry) {
@@ -85,14 +85,18 @@ public class V2HttpCall extends HttpSolrCall {
         prefix = pieces.get(0);
       }
 
+      boolean isCompositeApi = false;
       if (knownPrefixes.contains(prefix)) {
-        api = getApiInfo(cores.getRequestHandlers(), path, req.getMethod(), cores, prefix, null, parts);
+        api = getApiInfo(cores.getRequestHandlers(), path, req.getMethod(), fullPath, parts);
         if (api != null) {
-          solrReq = SolrRequestParsers.DEFAULT.parse(null, path, req);
-          solrReq.getContext().put(CoreContainer.class.getName(), cores);
-          requestType = AuthorizationContext.RequestType.ADMIN;
-          action = ADMIN;
-          return;
+          isCompositeApi = api instanceof CompositeApi;
+          if (!isCompositeApi) {
+            solrReq = SolrRequestParsers.DEFAULT.parse(null, path, req);
+            solrReq.getContext().put(CoreContainer.class.getName(), cores);
+            requestType = AuthorizationContext.RequestType.ADMIN;
+            action = ADMIN;
+            return;
+          }
         }
       }
 
@@ -118,7 +122,12 @@ public class V2HttpCall extends HttpSolrCall {
 
 
       this.path = path = path.substring(prefix.length() + pieces.get(1).length() + 2);
-      api = getApiInfo(core.getRequestHandlers(), path, req.getMethod(), cores, prefix, fullPath, parts);
+      Api apiInfo = getApiInfo(core.getRequestHandlers(), path, req.getMethod(), fullPath, parts);
+      if (isCompositeApi && apiInfo instanceof CompositeApi) {
+        ((CompositeApi) this.api).add(apiInfo);
+      } else {
+        api = apiInfo;
+      }
       MDCLoggingContext.setCore(core);
       parseRequest();
 
@@ -162,12 +171,10 @@ public class V2HttpCall extends HttpSolrCall {
 
   public static Api getApiInfo(PluginBag<SolrRequestHandler> requestHandlers,
                                String path, String method,
-                               CoreContainer cores, String prefix, String fullPath,
+                               String fullPath,
                                Map<String, String> parts) {
-    if (fullPath == null) fullPath = path;
-    Api api;
-    boolean containerHandlerLookup = cores.getRequestHandlers() == requestHandlers;
-    api = requestHandlers.v2lookup(path, method, parts);
+    fullPath = fullPath == null ? path : fullPath;
+    Api api = requestHandlers.v2lookup(path, method, parts);
     if (api == null && path.endsWith(ApiBag.INTROSPECT)) {
       // the particular http method does not have any ,
       // just try if any other method has this path
@@ -175,34 +182,66 @@ public class V2HttpCall extends HttpSolrCall {
     }
 
     if (api == null) {
-      // this is to return the user with all the subpaths for  a given 404 request
-      // the request  begins with /collections , /cores or a /c and the current lookup is on container level handlers
-      // So the subsequent per core lookup would find a path
-      if (containerHandlerLookup && commonPaths4ContainerLevelAndCoreLevel.contains(prefix)) return null;
-
-
-      Map<String, Set<String>> subpaths = getSubPaths(requestHandlers, path, cores, fullPath, containerHandlerLookup);
-
-      if (subpaths.isEmpty()) {
-        throw new SolrException(SolrException.ErrorCode.NOT_FOUND, "No valid handler for path :" + path);
-      } else {
-        return getSubPathImpl(subpaths, fullPath, true);
-      }
+      return getSubPathApi(requestHandlers, path, fullPath, new CompositeApi(null));
     }
+
     if (api instanceof ApiBag.IntrospectApi) {
-      String newPath = path.substring(0, path.length() - ApiBag.INTROSPECT.length());
-      api = mergeIntrospect(requestHandlers, path, parts,
-          getSubPathImpl(getSubPaths(requestHandlers, newPath, cores, fullPath, containerHandlerLookup), newPath, false));
+      final Map<String, Api> apis = new LinkedHashMap<>();
+      for (String m : SolrRequest.SUPPORTED_METHODS) {
+        Api x = requestHandlers.v2lookup(path, m, parts);
+        if (x != null) apis.put(m, x);
+      }
+      api = new CompositeApi(new Api(ApiBag.EMPTY_SPEC) {
+        @Override
+        public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+          String method = req.getParams().get("method");
+          Set<Api> added = new HashSet<>();
+          for (Map.Entry<String, Api> e : apis.entrySet()) {
+            if (method == null || e.getKey().equals(method)) {
+              if (!added.contains(e.getValue())) {
+                e.getValue().call(req, rsp);
+                added.add(e.getValue());
+              }
+            }
+          }
+        }
+      });
+      getSubPathApi(requestHandlers,path, fullPath, (CompositeApi) api);
     }
+
+
     return api;
   }
 
-  private static Map<String, Set<String>> getSubPaths(PluginBag<SolrRequestHandler> requestHandlers, String path, CoreContainer cores, String fullPath, boolean containerHandlerLookup) {
+  private static CompositeApi getSubPathApi(PluginBag<SolrRequestHandler> requestHandlers, String path, String fullPath, CompositeApi compositeApi) {
+
+    String newPath = path.endsWith(ApiBag.INTROSPECT) ? path.substring(0, path.length() - ApiBag.INTROSPECT.length()) : path;
     Map<String, Set<String>> subpaths = new LinkedHashMap<>();
 
-    getSubPaths(path, requestHandlers.getApiBag(), subpaths);
-    if (!containerHandlerLookup) getSubPaths(fullPath, cores.getRequestHandlers().getApiBag(), subpaths);
-    return subpaths;
+    getSubPaths(newPath, requestHandlers.getApiBag(), subpaths);
+    final Map<String, Set<String>> subPaths = subpaths;
+    if (subPaths.isEmpty()) return null;
+    return compositeApi.add(new Api(() -> ValidatingJsonMap.EMPTY) {
+      @Override
+      public void call(SolrQueryRequest req1, SolrQueryResponse rsp) {
+        String prefix = null;
+        prefix = fullPath.endsWith(ApiBag.INTROSPECT) ?
+            fullPath.substring(0, fullPath.length() - ApiBag.INTROSPECT.length()) :
+            fullPath;
+        LinkedHashMap<String, Set<String>> result = new LinkedHashMap<>(subPaths.size());
+        for (Map.Entry<String, Set<String>> e : subPaths.entrySet()) {
+          if (e.getKey().endsWith(ApiBag.INTROSPECT)) continue;
+          result.put(prefix + e.getKey(), e.getValue());
+        }
+
+        Map m = (Map) rsp.getValues().get("availableSubPaths");
+        if(m != null){
+          m.putAll(result);
+        } else {
+          rsp.add("availableSubPaths", result);
+        }
+      }
+    });
   }
 
   private static void getSubPaths(String path, ApiBag bag, Map<String, Set<String>> pathsVsMethod) {
@@ -220,47 +259,26 @@ public class V2HttpCall extends HttpSolrCall {
     }
   }
 
-  private static Api mergeIntrospect(PluginBag<SolrRequestHandler> requestHandlers,
-                                     String path,Map<String, String> parts,
-                                     Api subPath) {
-    Api api;
-    final Map<String, Api> apis = new LinkedHashMap<>();
-    for (String m : SolrRequest.SUPPORTED_METHODS) {
-      api = requestHandlers.v2lookup(path, m, parts);
-      if (api != null) apis.put(m, api);
-    }
-    api = new Api(ApiBag.EMPTY_SPEC) {
-      @Override
-      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
-        String method = req.getParams().get("method");
-        Set<Api> added = new HashSet<>();
-        for (Map.Entry<String, Api> e : apis.entrySet()) {
-          if (method == null || e.getKey().equals(method)) {
-            if (!added.contains(e.getValue())) {
-              e.getValue().call(req, rsp);
-              added.add(e.getValue());
-            }
-          }
-        }
-        subPath.call(req, rsp);
-      }
-    };
-    return api;
-  }
+  public static class CompositeApi extends Api {
+    private LinkedList<Api> apis = new LinkedList<>();
 
-  private static Api getSubPathImpl(final Map<String, Set<String>> subpaths, String path,  boolean addMsg) {
-    return new Api(() -> ValidatingJsonMap.EMPTY) {
-      @Override
-      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
-        if(addMsg) rsp.add("msg", "Invalid path, try the following");
-        LinkedHashMap<String, Set<String>> result = new LinkedHashMap<>(subpaths.size());
-        for (Map.Entry<String, Set<String>> e : subpaths.entrySet()) {
-          if (e.getKey().endsWith(ApiBag.INTROSPECT)) continue;
-          result.put(path + e.getKey(), e.getValue());
-        }
-        rsp.add("availableSubPaths", result);
+    public CompositeApi(Api api) {
+      super(ApiBag.EMPTY_SPEC);
+      if (api != null) apis.add(api);
+    }
+
+    @Override
+    public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
+      for (Api api : apis) {
+        api.call(req, rsp);
       }
-    };
+
+    }
+
+    public CompositeApi add(Api api) {
+      apis.add(api);
+      return this;
+    }
   }
 
   @Override
