@@ -22,27 +22,67 @@
     },
     "add-requesthandler": {
       "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "class": {
+          "type": "string"
+        },
+        "runtimeLib": {
+          "type": "boolean"
+        },
+        "startup": {
+          "type": "string",
+          "enum": [
+            "lazy"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "class"
+      ],
       "additionalProperties": true
     },
     "update-requesthandler": {
       "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "class": {
+          "type": "string"
+        },
+        "runtimeLib": {
+          "type": "boolean"
+        },
+        "startup": {
+          "type": "string",
+          "enum": [
+            "lazy"
+          ]
+        }
+      },
+      "required": [
+        "name",
+        "class"
+      ],
       "additionalProperties": true
     },
     "delete-requesthandler": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "add-searchcomponent": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "update-searchcomponent": {
-      "type": "object",
-      "additionalProperties": true
-    },
+    "add-searchcomponent": "core.config.Commands.generic",
+    "update-searchcomponent": "core.config.Commands.generic",
     "delete-searchcomponent": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "add-initparams": {
       "type": "object",
@@ -53,80 +93,55 @@
       "additionalProperties": true
     },
     "delete-initparams": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "add-queryresponsewriter": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "update-queryresponsewriter": {
-      "type": "object",
-      "additionalProperties": true
-    },
+    "add-queryresponsewriter": "core.config.Commands.generic",
+    "update-queryresponsewriter": "core.config.Commands.generic",
     "delete-queryresponsewriter": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "add-queryparser": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "update-queryparser": {
-      "type": "object",
-      "additionalProperties": true
-    },
+    "add-queryparser": "core.config.Commands.generic",
+    "update-queryparser": "core.config.Commands.generic",
     "delete-queryparser": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "string"
     },
-    "add-valuesourceparser": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "update-valuesourceparser": {
-      "type": "object",
-      "additionalProperties": true
-    },
+    "add-valuesourceparser": "core.config.Commands.generic",
+    "update-valuesourceparser": "core.config.Commands.generic",
     "delete-valuesourceparser": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "add-transformer": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "update-transformer": {
-      "type": "object",
-      "additionalProperties": true
-    },
+    "add-transformer": "core.config.Commands.generic",
+    "update-transformer": "core.config.Commands.generic",
     "delete-transformer": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "add-updateprocessor": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "update-updateprocessor": {
-      "type": "object",
-      "additionalProperties": true
-    },
+    "add-updateprocessor": "core.config.Commands.generic",
+    "update-updateprocessor": "core.config.Commands.generic",
     "delete-updateprocessor": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
-    "add-queryconverter": {
-      "type": "object",
-      "additionalProperties": true
-    },
-    "update-queryconverter": {
-      "type": "object",
-      "additionalProperties": true
-    },
+    "add-queryconverter": "core.config.Commands.generic",
+    "update-queryconverter": "core.config.Commands.generic",
     "delete-queryconverter": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "add-listener": {
       "type": "object",
@@ -137,8 +152,10 @@
       "additionalProperties": true
     },
     "delete-listener": {
-      "type": "object",
-      "additionalProperties": true
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "add-runtimelib": "core.config.Commands.addRuntimeLib",
     "update-runtimelib": "core.config.Commands.updateRuntimeLib",

@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "name": { "type": "string"},
+    "class": { "type": "string"},
+    "runtimeLib": { "type": "boolean"}
+  },
+  "required": [ "name", "class"],
+  "additionalProperties": true
+}
