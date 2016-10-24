@@ -122,7 +122,7 @@ public class TestLTROnSolrCloud extends TestRerankBase {
     jc = JettyConfig.builder(jc).withServlets(extraServlets).build();
     solrCluster = new MiniSolrCloudCluster(numServers, tmpSolrHome.toPath(), jc);
     File configDir = tmpSolrHome.toPath().resolve("collection1/conf").toFile();
-    solrCluster.uploadConfigDir(configDir, "conf1");
+    solrCluster.uploadConfigSet(configDir.toPath(), "conf1");
 
     solrCluster.getSolrClient().setDefaultCollection(COLLECTION);
 
