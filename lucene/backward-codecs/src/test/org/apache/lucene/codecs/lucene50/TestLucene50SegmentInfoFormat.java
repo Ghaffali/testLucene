@@ -14,28 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs;
+package org.apache.lucene.codecs.lucene50;
 
-import org.apache.lucene.util.BytesRef;
+import org.apache.lucene.codecs.Codec;
+import org.apache.lucene.codecs.lucene60.Lucene60RWCodec;
+import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
+import org.apache.lucene.util.Version;
 
-/** {@link PointsReader} whose order of points can be changed.
- *  This class is useful for codecs to optimize flush.
- *  @lucene.internal */
-public abstract class MutablePointsReader extends PointsReader {
+public class TestLucene50SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
 
-  /** Sole constructor. */
-  protected MutablePointsReader() {}
+  @Override
+  protected Codec getCodec() {
+    return new Lucene60RWCodec();
+  }
 
-  /** Set {@code packedValue} with a reference to the packed bytes of the i-th value. */
-  public abstract void getValue(int i, BytesRef packedValue);
+  @Override
+  protected Version[] getVersions() {
+    return new Version[] { Version.LUCENE_6_0_0 };
+  }
 
-  /** Get the k-th byte of the i-th value. */
-  public abstract byte getByteAt(int i, int k);
-
-  /** Return the doc ID of the i-th value. */
-  public abstract int getDocID(int i);
-
-  /** Swap the i-th and j-th values. */
-  public abstract void swap(int i, int j);
-
+  @Override
+  protected boolean supportsIndexSort() {
+    return false;
+  }
 }

@@ -53,6 +53,10 @@ Optimizations
   check on every request and move connection lifecycle management towards the client.
   (Ryan Zezeski, Mark Miller, Shawn Heisey, Steve Davids)
 
+* SOLR-9579: Make Solr's SchemaField implement Lucene's IndexableFieldType, removing the 
+  creation of a Lucene FieldType every time a field is indexed. (John Call, yonik) 
+
+
 ==================  6.3.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
@@ -81,6 +85,11 @@ prefix, then you will now get an error as these options are incompatible with nu
 * Solr's logging verbosity at the INFO level has been greatly reduced, and
   you may need to update the log configs to use the DEBUG level to get the
   same logging messages as before.
+
+* The create/deleteCollection methods on MiniSolrCloudCluster have been
+  deprecated.  Clients should instead use the CollectionAdminRequest API.  In
+  addition, MiniSolrCloudCluster#uploadConfigSet(File, String) has been
+  deprecated in favour of #uploadConfigSet(Path, String)
 
 New Features
 ----------------------
@@ -118,6 +127,10 @@ New Features
 * SOLR-9520: Kerberos delegation support in SolrJ (Ishan Chattopadhyaya, noble)
 
 * SOLR-9146: Parallel SQL engine should support >, >=, <, <=, <>, != syntax (Timothy Potter, Joel Bernstein, Kevin Risden)
+
+* SOLR-9337: Add fetch Streaming Expression (Joel Bernstein)
+
+* SOLR-9103: Restore ability for users to add custom Streaming Expressions (Cao Manh Dat)
 
 Bug Fixes
 ----------------------
@@ -160,6 +173,11 @@ Bug Fixes
 
 * SOLR-9278: Index replication interactions with IndexWriter can cause deadlock. (Xunlong via Mark Miller)
 
+* SOLR-9604: Pooled SSL connections were not being re-used (Alan Woodward,
+  Mikhail Khludnev, hossman)
+
+* SOLR-9325: solr.log is now written to $SOLR_LOGS_DIR without changing log4j.properties (janhoy)
+
 Optimizations
 ----------------------
 
@@ -182,6 +200,8 @@ Optimizations
   reader rather than ask for a global view.  In extreme cases, this leads to a 100x speedup.
   (Takahiro Ishikawa, yonik)
 
+* SOLR-9566: Don't put replicas into recovery when first creating a Collection
+  (Alan Woodward)
 
 Other Changes
 ----------------------
@@ -255,6 +275,22 @@ Other Changes
 * SOLR-9589: Remove jackson dependency from SolrJ (Ishan Chattopadhyaya, noble)
 
 * SOLR-8385: Narrow StreamFactory.withFunctionName clazz parameter to prevent misconfiguration (Jason Gerlowski, Kevin Risden)
+
+* SOLR-8969: SQLHandler causes NPE in non-cloud mode (Markus Jelsma, Kevin Risden)
+
+* SOLR-9610: New AssertTool in SolrCLI for easier cross platform assertions from command line (janhoy)
+
+* SOLR-9639: Test only fix. Prevent CDCR tests from removing collection during recovery that used to blow up jvm  (Mikhail Khludnev)
+
+* SOLR-9625: Add HelloWorldSolrCloudTestCase class (Christine Poerschke, Alan Woodward, Alexandre Rafalovitch)
+
+* SOLR-9642: Refactor the core level snapshot cleanup mechanism to rely on Lucene (Hrishikesh Gadre via yonik)
+
+* SOLR-9627: Add QParser.getSortSpec, deprecate misleadingly named QParser.getSort (Judith Silverman, Christine Poerschke)
+
+* SOLR-9632: Add MiniSolrCloudCluster#deleteAllCollections() method (Alan Woodward)
+
+* SOLR-9634: Deprecate collection methods on MiniSolrCloudCluster (Alan Woodward)
 
 ==================  6.2.1 ==================
 

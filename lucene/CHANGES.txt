@@ -25,9 +25,14 @@ API Changes
 * LUCENE-7475: Norms now support sparsity, allowing to pay for what is
   actually used. (Adrien Grand)
 
+* LUCENE-7494: Points now have a per-field API, like doc values. (Adrien Grand)
+
 Bug Fixes
 
 Improvements
+
+* LUCENE-7489: Better storage of sparse doc-values fields with the default
+  codec. (Adrien Grand)
 
 Optimizations
 
@@ -53,6 +58,9 @@ New Features
   in postings for fast wildcard (MultiTermQuery) highlighting.
   (David Smiley, Timothy Rodriguez)
 
+* LUCENE-7490: SimpleQueryParser now parses '*' to MatchAllDocsQuery
+  (Lee Hinman via Mike McCandless)
+
 Bug Fixes
 
 * LUCENE-7472: MultiFieldQueryParser.getFieldQuery() drops queries that are
@@ -63,6 +71,23 @@ Bug Fixes
 
 * LUCENE-7468: ASCIIFoldingFilter should not emit duplicated tokens when
   preserve original is on. (David Causse via Adrien Grand)
+
+* LUCENE-7484: FastVectorHighlighter failed to highlight SynonymQuery
+  (Jim Ferenczi via Mike McCandless)
+
+* LUCENE-7476: JapaneseNumberFilter should not invoke incrementToken
+  on its input after it's exhausted (Andy Hind via Mike McCandless)
+
+* LUCENE-7486: DisjunctionMaxQuery does not work correctly with queries that
+  return negative scores.  (Ivan Provalov, Uwe Schindler, Adrien Grand)
+
+* LUCENE-7491: Suddenly turning on dimensional points for some fields
+  that already exist in an index but didn't previously index
+  dimensional points could cause unexpected merge exceptions (Hans
+  Lund, Mike McCandless)
+
+* LUCENE-6914: Fixed DecimalDigitFilter in case of supplementary code points.
+  (Hossman)
 
 Improvements
 

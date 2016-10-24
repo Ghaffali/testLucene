@@ -14,20 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene50;
+package org.apache.solr.client.solrj.impl;
 
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.index.BaseFieldInfoFormatTestCase;
-import org.apache.lucene.util.TestUtil;
+import java.net.URL;
+import java.util.Arrays;
 
-/**
- * Tests Lucene50FieldInfoFormat
- */
-public class TestLucene50FieldInfoFormat extends BaseFieldInfoFormatTestCase {
+import org.apache.solr.util.RandomizeSSL;
+import org.junit.BeforeClass;
 
-  @Override
-  protected Codec getCodec() {
-    return TestUtil.getDefaultCodec();
-  }
+@RandomizeSSL(1.0)
+public class HttpSolrClientSSLAuthConPoolTest extends HttpSolrClientConPoolTest {
+
+    @BeforeClass
+    public static void checkUrls() throws Exception {
+      URL[] urls = new URL[] {
+          jetty.getBaseUrl(), yetty.getBaseUrl() 
+      };
+      for (URL u : urls) {
+        assertEquals("expect https urls ","https", u.getProtocol());
+      }
+      assertFalse("expect different urls "+Arrays.toString(urls),
+              urls[0].equals(urls[1]));
+    }
 }

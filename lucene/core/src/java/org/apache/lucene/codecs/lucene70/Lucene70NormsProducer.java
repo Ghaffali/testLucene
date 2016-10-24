@@ -90,6 +90,7 @@ final class Lucene70NormsProducer extends NormsProducer {
   static class NormsEntry {
     byte bytesPerNorm;
     long docsWithFieldOffset;
+    long docsWithFieldLength;
     int numDocsWithField;
     long normsOffset;
   }
@@ -108,6 +109,7 @@ final class Lucene70NormsProducer extends NormsProducer {
       }
       NormsEntry entry = new NormsEntry();
       entry.docsWithFieldOffset = meta.readLong();
+      entry.docsWithFieldLength = meta.readLong();
       entry.numDocsWithField = meta.readInt();
       entry.bytesPerNorm = meta.readByte();
       switch (entry.bytesPerNorm) {
@@ -166,10 +168,7 @@ final class Lucene70NormsProducer extends NormsProducer {
     } else {
       // sparse
       final LongValues normValues = getNormValues(entry);
-      final SparseDISI disi;
-      synchronized (data) {
-        disi = new SparseDISI(maxDoc, data, entry.docsWithFieldOffset, entry.numDocsWithField);
-      }
+      final IndexedDISI disi = new IndexedDISI(data, entry.docsWithFieldOffset, entry.docsWithFieldLength, entry.numDocsWithField);
       return new NumericDocValues() {
 
         @Override
@@ -209,10 +208,7 @@ final class Lucene70NormsProducer extends NormsProducer {
         }
       };
     } else {
-      RandomAccessInput slice;
-      synchronized (data) {
-        slice = data.randomAccessSlice(entry.normsOffset, entry.numDocsWithField * (long) entry.bytesPerNorm);
-      }
+      final RandomAccessInput slice = data.randomAccessSlice(entry.normsOffset, entry.numDocsWithField * (long) entry.bytesPerNorm);
       switch (entry.bytesPerNorm) {
         case 1:
           return new LongValues() {

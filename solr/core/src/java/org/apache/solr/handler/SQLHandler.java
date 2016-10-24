@@ -78,24 +78,22 @@ import com.facebook.presto.sql.parser.SqlParser;
 
 public class SQLHandler extends RequestHandlerBase implements SolrCoreAware , PermissionNameProvider {
 
-  private static String defaultZkhost = null;
-  private static String defaultWorkerCollection = null;
-  private static List<String> remove;
-
-  static {
-    remove = new ArrayList();
-    remove.add("count(*)");
-  }
-
   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public void inform(SolrCore core) {
+  private static String defaultZkhost = null;
+  private static String defaultWorkerCollection = null;
 
+  static final String sqlNonCloudErrorMsg = "/sql handler only works in Solr Cloud mode";
+
+  private boolean isCloud = false;
+
+  public void inform(SolrCore core) {
     CoreContainer coreContainer = core.getCoreDescriptor().getCoreContainer();
 
     if(coreContainer.isZooKeeperAware()) {
       defaultZkhost = core.getCoreDescriptor().getCoreContainer().getZkController().getZkServerAddress();
       defaultWorkerCollection = core.getCoreDescriptor().getCollectionName();
+      isCloud = true;
     }
   }
 
@@ -111,7 +109,7 @@ public class SQLHandler extends RequestHandlerBase implements SolrCoreAware , Pe
     String sql = params.get("stmt");
     int numWorkers = params.getInt("numWorkers", 1);
     String workerCollection = params.get("workerCollection", defaultWorkerCollection);
-    String workerZkhost = params.get("workerZkhost",defaultZkhost);
+    String workerZkhost = params.get("workerZkhost", defaultZkhost);
     String mode = params.get("aggregationMode", "map_reduce");
     StreamContext context = new StreamContext();
 
@@ -119,6 +117,10 @@ public class SQLHandler extends RequestHandlerBase implements SolrCoreAware , Pe
     boolean includeMetadata = params.getBool("includeMetadata", false);
 
     try {
+
+      if(!isCloud) {
+        throw new IllegalStateException(sqlNonCloudErrorMsg);
+      }
 
       if(sql == null) {
         throw new Exception("stmt parameter cannot be null");
