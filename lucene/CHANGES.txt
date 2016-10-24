@@ -40,6 +40,11 @@ Optimizations
   in the sets of SHOULD and FILTER clauses, or both in MUST/FILTER and MUST_NOT
   clauses. (Spyros Kapnissis via Adrien Grand, Uwe Schindler)
 
+* LUCENE-7506: FastTaxonomyFacetCounts should use CPU in proportion to
+  the size of the intersected set of hits from the query and documents
+  that have a facet value, so sparse faceting works as expected
+  (Adrien Grand via Mike McCandless)
+
 Other
 
 * LUCENE-7328: Remove LegacyNumericEncoding from GeoPointField. (Nick Knize)
@@ -62,6 +67,9 @@ New Features
   (Lee Hinman via Mike McCandless)
 
 Bug Fixes
+
+* LUCENE-7507: Upgrade morfologik-stemming to version 2.1.1 (fixes security
+  manager issue with Polish dictionary lookup). (Dawid Weiss)
 
 * LUCENE-7472: MultiFieldQueryParser.getFieldQuery() drops queries that are
   neither BooleanQuery nor TermQuery.  (Steve Rowe)
@@ -89,14 +97,32 @@ Bug Fixes
 * LUCENE-6914: Fixed DecimalDigitFilter in case of supplementary code points.
   (Hossman)
 
+* LUCENE-7493: FacetCollector.search threw an unexpected exception if
+  you asked for zero hits but wanted facets (Mahesh via Mike McCandless)
+
+* LUCENE-7505: AnalyzingInfixSuggester returned invalid results when
+  allTermsRequired is false and context filters are specified (Mike
+  McCandless)
+
 Improvements
 
 * LUCENE-7439: FuzzyQuery now matches all terms within the specified
   edit distance, even if they are short terms (Mike McCandless)
 
+* LUCENE-7496: Better toString for SweetSpotSimilarity (janhoy)
+
+* LUCENE-7520: Highlighter's WeightedSpanTermExtractor shouldn't attempt to expand a MultiTermQuery
+  when its field doesn't match the field the extraction is scoped to.
+  (Cao Manh Dat via David Smiley)
+
 Optimizations
 
+* LUCENE-7501: BKDReader should not store the split dimension explicitly in the
+  1D case. (Adrien Grand)
+
 Other
+
+* LUCENE-7513: Upgrade randomizedtesting to 2.4.0. (Dawid Weiss)
 
 * LUCENE-7452: Block join query exception suggests how to find a doc, which 
  violates orthogonality requirement. (Mikhail Khludnev)

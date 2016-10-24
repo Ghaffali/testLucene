@@ -375,6 +375,12 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         }
 
         @Override
+        public boolean advanceExact(int target) {
+          doc = target;
+          return true;
+        }
+
+        @Override
         public long cost() {
           return maxDoc;
         }
@@ -389,6 +395,11 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         @Override
         public int advance(int target) throws IOException {
           return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          return disi.advanceExact(target);
         }
 
         @Override
@@ -424,45 +435,36 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
       };
     } else {
       final RandomAccessInput slice = data.randomAccessSlice(entry.valuesOffset, entry.valuesLength);
-      LongValues values = DirectReader.getInstance(slice, entry.bitsPerValue);
-      if (entry.gcd != 1) {
-        values = applyGcd(values, entry.gcd);
-      }
-      if (entry.minValue != 0) {
-        values = applyDelta(values, entry.minValue);
-      }
+      final LongValues values = DirectReader.getInstance(slice, entry.bitsPerValue);
       if (entry.table != null) {
-        values = applyTable(values, entry.table);
+        final long[] table = entry.table;
+        return new LongValues() {
+          @Override
+          public long get(long index) {
+            return table[(int) values.get(index)];
+          }
+        };
+      } else if (entry.gcd != 1) {
+        final long gcd = entry.gcd;
+        final long minValue = entry.minValue;
+        return new LongValues() {
+          @Override
+          public long get(long index) {
+            return values.get(index) * gcd + minValue;
+          }
+        };
+      } else if (entry.minValue != 0) {
+        final long minValue = entry.minValue;
+        return new LongValues() {
+          @Override
+          public long get(long index) {
+            return values.get(index) + minValue;
+          }
+        };
+      } else {
+        return values;
       }
-      return values;
     }
-  }
-
-  private LongValues applyDelta(LongValues values, long delta) {
-    return new LongValues() {
-      @Override
-      public long get(long index) {
-        return delta + values.get(index);
-      }
-    };
-  }
-
-  private LongValues applyGcd(LongValues values, long gcd) {
-    return new LongValues() {
-      @Override
-      public long get(long index) {
-        return values.get(index) * gcd;
-      }
-    };
-  }
-
-  private LongValues applyTable(LongValues values, long[] table) {
-    return new LongValues() {
-      @Override
-      public long get(long index) {
-        return table[(int) values.get(index)];
-      }
-    };
   }
 
   @Override
@@ -530,6 +532,12 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         }
 
         @Override
+        public boolean advanceExact(int target) throws IOException {
+          doc = target;
+          return true;
+        }
+
+        @Override
         public BytesRef binaryValue() throws IOException {
           return bytesRefs.get(doc);
         }
@@ -557,6 +565,11 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         @Override
         public int advance(int target) throws IOException {
           return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          return disi.advanceExact(target);
         }
 
         @Override
@@ -625,6 +638,12 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         }
 
         @Override
+        public boolean advanceExact(int target) {
+          doc = target;
+          return true;
+        }
+
+        @Override
         public int ordValue() {
           return (int) ords.get(doc);
         }
@@ -652,6 +671,11 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         @Override
         public int advance(int target) throws IOException {
           return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          return disi.advanceExact(target);
         }
 
         @Override
@@ -969,6 +993,15 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         }
 
         @Override
+        public boolean advanceExact(int target) throws IOException {
+          start = addresses.get(target);
+          end = addresses.get(target + 1L);
+          count = (int) (end - start);
+          doc = target;
+          return true;
+        }
+
+        @Override
         public long nextValue() throws IOException {
           return values.get(start++);
         }
@@ -1007,6 +1040,12 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         public int advance(int target) throws IOException {
           set = false;
           return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          set = false;
+          return disi.advanceExact(target);
         }
 
         @Override
@@ -1082,6 +1121,14 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         }
 
         @Override
+        public boolean advanceExact(int target) throws IOException {
+          start = addresses.get(target);
+          end = addresses.get(target + 1L);
+          doc = target;
+          return true;
+        }
+
+        @Override
         public long nextOrd() throws IOException {
           if (start == end) {
             return NO_MORE_ORDS;
@@ -1119,6 +1166,12 @@ final class Lucene70DocValuesProducer extends DocValuesProducer implements Close
         public int advance(int target) throws IOException {
           set = false;
           return disi.advance(target);
+        }
+
+        @Override
+        public boolean advanceExact(int target) throws IOException {
+          set = false;
+          return disi.advanceExact(target);
         }
 
         @Override
