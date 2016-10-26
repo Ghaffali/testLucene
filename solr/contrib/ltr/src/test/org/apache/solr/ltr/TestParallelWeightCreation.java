@@ -20,11 +20,11 @@ import org.apache.solr.client.solrj.SolrQuery;
 import org.junit.Test;
 
 public class TestParallelWeightCreation extends TestRerankBase{
-  
+
   @Test
   public void testLTRScoringQueryParallelWeightCreationResultOrder() throws Exception {
     setuptest("solrconfig-ltr_Th10_10.xml", "schema-ltr.xml");
-    
+
     assertU(adoc("id", "1", "title", "w1 w3", "description", "w1", "popularity",
         "1"));
     assertU(adoc("id", "2", "title", "w2", "description", "w2", "popularity",
@@ -36,27 +36,27 @@ public class TestParallelWeightCreation extends TestRerankBase{
     assertU(adoc("id", "5", "title", "w5", "description", "w5", "popularity",
         "5"));
     assertU(commit());
-    
+
     loadFeatures("external_features.json");
     loadModels("external_model.json");
     loadModels("external_model_store.json");
-    
+
     // check to make sure that the order of results will be the same when using parallel weight creation
     final SolrQuery query = new SolrQuery();
     query.setQuery("*:*");
     query.add("fl", "*,score");
     query.add("rows", "4");
-    
+
     query.add("rq", "{!ltr reRankDocs=4 model=externalmodel efi.user_query=w3}");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[0]/id=='1'");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[1]/id=='3'");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[2]/id=='4'");
     aftertest();
   }
-  
+
   @Test
   public void testLTRQParserThreadInitialization() throws Exception {
-    // setting the value of number of threads to -ve should throw an exception 
+    // setting the value of number of threads to -ve should throw an exception
     String msg1 = null;
     try{
       new LTRThreadModule(1,-1);
@@ -64,7 +64,7 @@ public class TestParallelWeightCreation extends TestRerankBase{
       msg1 = iae.getMessage();;
     }
     assertTrue(msg1.equals("numThreadsPerRequest cannot be less than 1"));
-    
+
     // set totalPoolThreads to 1 and numThreadsPerRequest to 2 and verify that an exception is thrown
     String msg2 = null;
     try{

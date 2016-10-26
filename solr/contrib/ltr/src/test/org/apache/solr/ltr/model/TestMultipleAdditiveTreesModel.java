@@ -21,7 +21,6 @@ package org.apache.solr.ltr.model;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.ltr.TestRerankBase;
-import org.apache.solr.ltr.model.ModelException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -52,7 +51,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
     aftertest();
   }
 
-  
+
   @Test
   public void testMultipleAdditiveTreesScoringWithAndWithoutEfiFeatureMatches() throws Exception {
     final SolrQuery query = new SolrQuery();
@@ -124,7 +123,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestNoParams() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("no trees declared for model multipleadditivetreesmodel_no_params");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_params.json",
@@ -139,7 +138,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestEmptyParams() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("no trees declared for model multipleadditivetreesmodel_no_trees");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_trees.json",
@@ -153,7 +152,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestNoWeight() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("MultipleAdditiveTreesModel tree doesn't contain a weight");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_weight.json",
@@ -167,7 +166,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestTreesParamDoesNotContatinTree() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("MultipleAdditiveTreesModel tree doesn't contain a tree");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_tree.json",
@@ -181,7 +180,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestNoFeaturesSpecified() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("no features declared for model multipleadditivetreesmodel_no_features");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_features.json",
@@ -194,7 +193,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestNoRight() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("MultipleAdditiveTreesModel tree node is missing right");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_right.json",
@@ -208,7 +207,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestNoLeft() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("MultipleAdditiveTreesModel tree node is missing left");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_left.json",
@@ -222,7 +221,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestNoThreshold() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("MultipleAdditiveTreesModel tree node is missing threshold");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_threshold.json",
@@ -236,7 +235,7 @@ public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
   @Test
   public void multipleAdditiveTreesTestMissingTreeFeature() throws Exception {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("MultipleAdditiveTreesModel tree node is leaf with left=-100.0 and right=75.0");
     try {
         createModelFromFiles("multipleadditivetreesmodel_no_feature.json",

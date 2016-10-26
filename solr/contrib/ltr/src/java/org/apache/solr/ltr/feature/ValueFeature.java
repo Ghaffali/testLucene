@@ -27,7 +27,7 @@ import org.apache.lucene.search.Query;
 import org.apache.solr.request.SolrQueryRequest;
 /**
  * This feature allows to return a constant given value for the current document.
- * 
+ *
  * Example configuration:
  * <pre>{
    "name" : "userFromMobile",
@@ -42,7 +42,7 @@ import org.apache.solr.request.SolrQueryRequest;
  *In the rerank request you can pass in rq={... efi.userFromMobile=1}, and the above
  *feature will return 1 for all the docs for that request.  If required is set to true,
  *the request will return an error since you failed to pass in the efi, otherwise if will
- *just skip the feature and use a default value of 0 instead. 
+ *just skip the feature and use a default value of 0 instead.
  **/
 public class ValueFeature extends Feature {
   private float configValue = -1f;
@@ -98,9 +98,9 @@ public class ValueFeature extends Feature {
   }
 
   @Override
-  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores, 
+  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores,
       SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi)
-      throws IOException {
+          throws IOException {
     return new ValueFeatureWeight(searcher, request, originalQuery, efi);
   }
 
@@ -108,7 +108,7 @@ public class ValueFeature extends Feature {
 
     final protected Float featureValue;
 
-    public ValueFeatureWeight(IndexSearcher searcher, 
+    public ValueFeatureWeight(IndexSearcher searcher,
         SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi) {
       super(ValueFeature.this, searcher, request, originalQuery, efi);
       if (configValueStr != null) {
@@ -127,15 +127,16 @@ public class ValueFeature extends Feature {
 
     @Override
     public FeatureScorer scorer(LeafReaderContext context) throws IOException {
-      if(featureValue!=null)
+      if(featureValue!=null) {
         return new ValueFeatureScorer(this, featureValue,
             DocIdSetIterator.all(DocIdSetIterator.NO_MORE_DOCS));
-      else
+      } else {
         return null;
+      }
     }
-    
 
-    
+
+
 
 
   }

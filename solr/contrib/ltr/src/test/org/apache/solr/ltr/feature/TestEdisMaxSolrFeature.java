@@ -51,8 +51,8 @@ public class TestEdisMaxSolrFeature extends TestRerankBase {
   @AfterClass
   public static void after() throws Exception {
     aftertest();
-  }  
-  
+  }
+
   @Test
   public void testEdisMaxSolrFeature() throws Exception {
     loadFeature(
@@ -70,7 +70,7 @@ public class TestEdisMaxSolrFeature extends TestRerankBase {
 
     query.add("rq", "{!ltr model=EdisMax-model reRankDocs=4}");
     query.set("debugQuery", "on");
-    final String res = restTestHarness.query("/query" + query.toQueryString());
+    restTestHarness.query("/query" + query.toQueryString());
     assertJQ("/query" + query.toQueryString(), "/response/numFound/==4");
   }
 }

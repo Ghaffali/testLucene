@@ -24,8 +24,8 @@ import java.util.Map;
 
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Explanation;
-import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.core.SolrResourceLoader;
+import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.feature.FeatureException;
 import org.apache.solr.ltr.norm.IdentityNormalizer;
 import org.apache.solr.ltr.norm.Normalizer;
@@ -144,7 +144,7 @@ public abstract class LTRScoringModel {
   public List<Normalizer> getNorms() {
     return Collections.unmodifiableList(norms);
   }
-  
+
   /**
    * @return the name
    */
@@ -238,7 +238,7 @@ public abstract class LTRScoringModel {
   public String getFeatureStoreName() {
     return featureStoreName;
   }
-  
+
   /**
    * Given a list of normalized values for all features a scoring algorithm
    * cares about, calculate and return a score.
@@ -271,7 +271,7 @@ public abstract class LTRScoringModel {
   public String toString() {
     return  getClass().getSimpleName() + "(name="+getName()+")";
   }
-  
+
   /**
    * Goes through all the stored feature values, and calculates the normalized
    * values for all the features that will be used for scoring.
@@ -282,17 +282,17 @@ public abstract class LTRScoringModel {
       throw new FeatureException("Must have normalizer for every feature");
     }
     for(int idx = 0; idx < modelFeatureValuesNormalized.length; ++idx) {
-      modelFeatureValuesNormalized[idx] = 
+      modelFeatureValuesNormalized[idx] =
           norms.get(idx).normalize(modelFeatureValuesNormalized[idx]);
     }
   }
-  
+
   public Explanation getNormalizerExplanation(Explanation e, int idx) {
     Normalizer n = norms.get(idx);
     if (n != IdentityNormalizer.INSTANCE) {
       return n.explain(e);
     }
     return e;
-  } 
+  }
 
 }

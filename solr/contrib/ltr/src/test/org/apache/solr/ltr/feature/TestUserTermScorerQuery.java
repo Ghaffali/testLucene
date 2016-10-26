@@ -51,8 +51,8 @@ public class TestUserTermScorerQuery extends TestRerankBase  {
   @AfterClass
   public static void after() throws Exception {
     aftertest();
-  }  
-  
+  }
+
   @Test
   public void testUserTermScorerQuery() throws Exception {
     // before();

@@ -29,8 +29,6 @@ import org.apache.lucene.search.Rescorer;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
-import org.apache.solr.ltr.LTRScoringQuery.ModelWeight;
-import org.apache.solr.ltr.LTRScoringQuery.ModelWeight.ModelScorer;
 import org.apache.solr.search.SolrIndexSearcher;
 
 
@@ -115,12 +113,12 @@ public class LTRRescorer extends Rescorer {
     topN = Math.min(topN, firstPassTopDocs.totalHits);
     final ScoreDoc[] reranked = new ScoreDoc[topN];
     final List<LeafReaderContext> leaves = searcher.getIndexReader().leaves();
-    final ModelWeight modelWeight = (ModelWeight) searcher
+    final LTRScoringQuery.ModelWeight modelWeight = (LTRScoringQuery.ModelWeight) searcher
         .createNormalizedWeight(scoringQuery, true);
 
     final SolrIndexSearcher solrIndexSearch = (SolrIndexSearcher) searcher;
     scoreFeatures(solrIndexSearch, firstPassTopDocs,topN, modelWeight, hits, leaves, reranked);
-    // Must sort all documents that we reranked, and then select the top 
+    // Must sort all documents that we reranked, and then select the top
     Arrays.sort(reranked, new Comparator<ScoreDoc>() {
       @Override
       public int compare(ScoreDoc a, ScoreDoc b) {
@@ -139,16 +137,16 @@ public class LTRRescorer extends Rescorer {
 
     return new TopDocs(firstPassTopDocs.totalHits, reranked, reranked[0].score);
   }
-  
+
   public void scoreFeatures(SolrIndexSearcher solrIndexSearch, TopDocs firstPassTopDocs,
-      int topN, ModelWeight modelWeight, ScoreDoc[] hits, List<LeafReaderContext> leaves,
+      int topN, LTRScoringQuery.ModelWeight modelWeight, ScoreDoc[] hits, List<LeafReaderContext> leaves,
       ScoreDoc[] reranked) throws IOException {
-    
+
     int readerUpto = -1;
     int endDoc = 0;
     int docBase = 0;
 
-    ModelScorer scorer = null;
+    LTRScoringQuery.ModelWeight.ModelScorer scorer = null;
     int hitUpto = 0;
     final FeatureLogger<?> featureLogger = scoringQuery.getFeatureLogger();
 
@@ -166,11 +164,11 @@ public class LTRRescorer extends Rescorer {
         docBase = readerContext.docBase;
         scorer = modelWeight.scorer(readerContext);
       }
-      // Scorer for a ModelWeight should never be null since we always have to
+      // Scorer for a LTRScoringQuery.ModelWeight should never be null since we always have to
       // call score
       // even if no feature scorers match, since a model might use that info to
       // return a
-      // non-zero score. Same applies for the case of advancing a ModelScorer
+      // non-zero score. Same applies for the case of advancing a LTRScoringQuery.ModelWeight.ModelScorer
       // past the target
       // doc since the model algorithm still needs to compute a potentially
       // non-zero score from blank features.
@@ -226,15 +224,15 @@ public class LTRRescorer extends Rescorer {
     return modelWeight.explain(context, deBasedDoc);
   }
 
-  public static LTRScoringQuery.FeatureInfo[] extractFeaturesInfo(ModelWeight modelWeight,
+  public static LTRScoringQuery.FeatureInfo[] extractFeaturesInfo(LTRScoringQuery.ModelWeight modelWeight,
       int docid,
       Float originalDocScore,
       List<LeafReaderContext> leafContexts)
-      throws IOException {
+          throws IOException {
     final int n = ReaderUtil.subIndex(docid, leafContexts);
     final LeafReaderContext atomicContext = leafContexts.get(n);
     final int deBasedDoc = docid - atomicContext.docBase;
-    final ModelScorer r = modelWeight.scorer(atomicContext);
+    final LTRScoringQuery.ModelWeight.ModelScorer r = modelWeight.scorer(atomicContext);
     if ( (r == null) || (r.iterator().advance(deBasedDoc) != deBasedDoc) ) {
       return new LTRScoringQuery.FeatureInfo[0];
     } else {

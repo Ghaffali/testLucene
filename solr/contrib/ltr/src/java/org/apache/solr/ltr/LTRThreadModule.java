@@ -136,6 +136,10 @@ final public class LTRThreadModule implements NamedListInitializedPlugin {
     this.maxPoolSize = maxPoolSize;
   }
 
+  public void setKeepAliveTimeSeconds(long keepAliveTimeSeconds) {
+    this.keepAliveTimeSeconds = keepAliveTimeSeconds;
+  }
+
   public void setThreadNamePrefix(String threadNamePrefix) {
     this.threadNamePrefix = threadNamePrefix;
   }

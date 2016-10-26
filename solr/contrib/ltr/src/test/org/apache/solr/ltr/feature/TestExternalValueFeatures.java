@@ -84,5 +84,5 @@ public class TestExternalValueFeatures extends TestRerankBase {
     assertJQ("/query" + query.toQueryString(),
         "/response/docs/[0]/score==0.0");
   }
-  
+
 }

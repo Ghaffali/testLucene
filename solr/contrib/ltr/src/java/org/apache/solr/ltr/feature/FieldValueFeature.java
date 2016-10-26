@@ -67,15 +67,15 @@ public class FieldValueFeature extends Feature {
   }
 
   @Override
-  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores, 
+  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores,
       SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi)
-      throws IOException {
+          throws IOException {
     return new FieldValueFeatureWeight(searcher, request, originalQuery, efi);
   }
 
   public class FieldValueFeatureWeight extends FeatureWeight {
 
-    public FieldValueFeatureWeight(IndexSearcher searcher, 
+    public FieldValueFeatureWeight(IndexSearcher searcher,
         SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi) {
       super(FieldValueFeature.this, searcher, request, originalQuery, efi);
     }
@@ -123,8 +123,8 @@ public class FieldValueFeature extends Feature {
         } catch (final IOException e) {
           throw new FeatureException(
               e.toString() + ": " +
-              "Unable to extract feature for "
-              + name, e);
+                  "Unable to extract feature for "
+                  + name, e);
         }
         return getDefaultValue();
       }

@@ -23,12 +23,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.feature.Feature;
-import org.apache.solr.ltr.model.LTRScoringModel;
-import org.apache.solr.ltr.model.ModelException;
-import org.apache.solr.ltr.model.LinearModel;
 import org.apache.solr.ltr.norm.IdentityNormalizer;
 import org.apache.solr.ltr.norm.Normalizer;
 import org.apache.solr.ltr.store.FeatureStore;
@@ -70,7 +66,7 @@ public class TestLinearModel extends TestRerankBase {
     Map<String,Object> params = new HashMap<String,Object>();
     final List<Feature> features = getFeatures(new String[] {
         "constant1", "constant5"});
-    final List<Normalizer> norms = 
+    final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     params.put("weights", weights);
@@ -85,15 +81,15 @@ public class TestLinearModel extends TestRerankBase {
 
   @Test
   public void nullFeatureWeightsTest() {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("Model test2 doesn't contain any weights");
     try {
-      final List<Feature> features = getFeatures(new String[] 
+      final List<Feature> features = getFeatures(new String[]
           {"constant1", "constant5"});
-      final List<Normalizer> norms = 
+      final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
-      final LTRScoringModel ltrScoringModel = createLinearModel("test2",
+      createLinearModel("test2",
           features, norms, "test", fstore.getFeatures(), null);
       fail("unexpectedly got here instead of catching "+expectedException);
     } catch (ModelException actualException) {
@@ -103,13 +99,13 @@ public class TestLinearModel extends TestRerankBase {
 
   @Test
   public void existingNameTest() {
-    final SolrException expectedException = 
-        new SolrException(ErrorCode.BAD_REQUEST,
+    final SolrException expectedException =
+        new SolrException(SolrException.ErrorCode.BAD_REQUEST,
             ModelException.class.getCanonicalName()+": model 'test3' already exists. Please use a different name");
     try {
-      final List<Feature> features = getFeatures(new String[] 
+      final List<Feature> features = getFeatures(new String[]
           {"constant1", "constant5"});
-      final List<Normalizer> norms = 
+      final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
       final Map<String,Object> weights = new HashMap<>();
@@ -133,12 +129,12 @@ public class TestLinearModel extends TestRerankBase {
 
   @Test
   public void duplicateFeatureTest() {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("duplicated feature constant1 in model test4");
     try {
-      final List<Feature> features = getFeatures(new String[] 
+      final List<Feature> features = getFeatures(new String[]
           {"constant1", "constant1"});
-      final List<Normalizer> norms = 
+      final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
       final Map<String,Object> weights = new HashMap<>();
@@ -160,12 +156,12 @@ public class TestLinearModel extends TestRerankBase {
 
   @Test
   public void missingFeatureWeightTest() {
-    final ModelException expectedException = 
+    final ModelException expectedException =
         new ModelException("Model test5 lacks weight(s) for [constant5]");
     try {
-      final List<Feature> features = getFeatures(new String[] 
+      final List<Feature> features = getFeatures(new String[]
           {"constant1", "constant5"});
-      final List<Normalizer> norms = 
+      final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
       final Map<String,Object> weights = new HashMap<>();
@@ -174,7 +170,7 @@ public class TestLinearModel extends TestRerankBase {
 
       Map<String,Object> params = new HashMap<String,Object>();
       params.put("weights", weights);
-      final LTRScoringModel ltrScoringModel = createLinearModel("test5",
+      createLinearModel("test5",
           features, norms, "test", fstore.getFeatures(),
               params);
       fail("unexpectedly got here instead of catching "+expectedException);
@@ -189,7 +185,7 @@ public class TestLinearModel extends TestRerankBase {
         new ModelException("no features declared for model test6");
     try {
       final List<Feature> features = getFeatures(new String[] {});
-      final List<Normalizer> norms = 
+      final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
       final Map<String,Object> weights = new HashMap<>();

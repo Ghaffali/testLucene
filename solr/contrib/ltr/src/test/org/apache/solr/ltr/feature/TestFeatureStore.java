@@ -46,7 +46,7 @@ public class TestFeatureStore extends TestRerankBase {
   }
 
   @Test
-  public void testFeatureStoreAdd() throws FeatureException 
+  public void testFeatureStoreAdd() throws FeatureException
   {
     final FeatureStore fs = fstore.getFeatureStore("fstore-testFeature");
     for (int i = 0; i < 5; i++) {

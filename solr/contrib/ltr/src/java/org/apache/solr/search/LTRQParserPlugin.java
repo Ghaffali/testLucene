@@ -27,23 +27,19 @@ import org.apache.lucene.analysis.util.ResourceLoaderAware;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.ltr.LTRRescorer;
-import org.apache.solr.ltr.LTRThreadModule;
 import org.apache.solr.ltr.LTRScoringQuery;
+import org.apache.solr.ltr.LTRThreadModule;
 import org.apache.solr.ltr.SolrQueryRequestContextUtils;
 import org.apache.solr.ltr.model.LTRScoringModel;
-import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.ltr.store.rest.ManagedFeatureStore;
 import org.apache.solr.ltr.store.rest.ManagedModelStore;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.rest.ManagedResource;
 import org.apache.solr.rest.ManagedResourceObserver;
-import org.apache.solr.search.QParser;
-import org.apache.solr.search.QParserPlugin;
-import org.apache.solr.search.SyntaxError;
 import org.apache.solr.util.SolrPluginUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -60,7 +56,7 @@ public class LTRQParserPlugin extends QParserPlugin implements ResourceLoaderAwa
   private static Query defaultQuery = new MatchAllDocsQuery();
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  
+
   // params for setting custom external info that features can use, like query
   // intent
   static final String EXTERNAL_FEATURE_INFO = "efi.";
@@ -88,13 +84,13 @@ public class LTRQParserPlugin extends QParserPlugin implements ResourceLoaderAwa
     threadManager = LTRThreadModule.getInstance(args);
     SolrPluginUtils.invokeSetters(this, args);
   }
-  
+
   @Override
   public QParser createParser(String qstr, SolrParams localParams,
       SolrParams params, SolrQueryRequest req) {
     return new LTRQParser(qstr, localParams, params, req);
   }
-  
+
   /**
    * Given a set of local SolrParams, extract all of the efi.key=value params into a map
    * @param localParams Local request parameters that might conatin efi params
@@ -114,7 +110,7 @@ public class LTRQParserPlugin extends QParserPlugin implements ResourceLoaderAwa
     }
     return externalFeatureInfo;
   }
-  
+
 
   @Override
   public void inform(ResourceLoader loader) throws IOException {
@@ -126,15 +122,15 @@ public class LTRQParserPlugin extends QParserPlugin implements ResourceLoaderAwa
   @Override
   public void onManagedResourceInitialized(NamedList<?> args, ManagedResource res) throws SolrException {
     if (res instanceof ManagedFeatureStore) {
-        fr = (ManagedFeatureStore)res;
+      fr = (ManagedFeatureStore)res;
     }
     if (res instanceof ManagedModelStore){
-        mr = (ManagedModelStore)res;
+      mr = (ManagedModelStore)res;
     }
     if (mr != null && fr != null){
-        mr.setManagedFeatureStore(fr);
-        // now we can safely load the models
-        mr.loadStoredModels();
+      mr.setManagedFeatureStore(fr);
+      // now we can safely load the models
+      mr.loadStoredModels();
 
     }
   }
@@ -154,10 +150,10 @@ public class LTRQParserPlugin extends QParserPlugin implements ResourceLoaderAwa
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
             "Must provide model in the request");
       }
-     
+
       final LTRScoringModel ltrScoringModel = mr.getModel(modelName);
       if (ltrScoringModel == null) {
-        throw new SolrException(ErrorCode.BAD_REQUEST,
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
             "cannot find " + LTRQParserPlugin.MODEL + " " + modelName);
       }
 
@@ -166,13 +162,13 @@ public class LTRQParserPlugin extends QParserPlugin implements ResourceLoaderAwa
       final String fvStoreName = SolrQueryRequestContextUtils.getFvStoreName(req);
       // Check if features are requested and if the model feature store and feature-transform feature store are the same
       final boolean featuresRequestedFromSameStore = (modelFeatureStoreName.equals(fvStoreName) || fvStoreName == null) ? extractFeatures:false;
-      
-      final LTRScoringQuery scoringQuery = new LTRScoringQuery(ltrScoringModel, 
-          extractEFIParams(localParams), 
+
+      final LTRScoringQuery scoringQuery = new LTRScoringQuery(ltrScoringModel,
+          extractEFIParams(localParams),
           featuresRequestedFromSameStore, threadManager);
 
       // Enable the feature vector caching if we are extracting features, and the features
-      // we requested are the same ones we are reranking with 
+      // we requested are the same ones we are reranking with
       if (featuresRequestedFromSameStore) {
         scoringQuery.setFeatureLogger( SolrQueryRequestContextUtils.getFeatureLogger(req) );
       }

@@ -25,24 +25,20 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.Explanation;
 import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.ltr.FeatureLogger;
 import org.apache.solr.ltr.LTRRescorer;
 import org.apache.solr.ltr.LTRScoringQuery;
-import org.apache.solr.ltr.LTRScoringQuery.ModelWeight;
 import org.apache.solr.ltr.LTRThreadModule;
-import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.SolrQueryRequestContextUtils;
+import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.model.LTRScoringModel;
 import org.apache.solr.ltr.norm.Normalizer;
 import org.apache.solr.ltr.store.FeatureStore;
 import org.apache.solr.ltr.store.rest.ManagedFeatureStore;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.ResultContext;
-import org.apache.solr.response.transform.DocTransformer;
-import org.apache.solr.response.transform.TransformerFactory;
 import org.apache.solr.search.LTRQParserPlugin;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.util.SolrPluginUtils;
@@ -124,7 +120,7 @@ public class LTRFeatureLoggerTransformerFactory extends TransformerFactory {
     private List<LeafReaderContext> leafContexts;
     private SolrIndexSearcher searcher;
     private LTRScoringQuery scoringQuery;
-    private ModelWeight modelWeight;
+    private LTRScoringQuery.ModelWeight modelWeight;
     private FeatureLogger<?> featureLogger;
     private boolean docsWereNotReranked;
 
@@ -158,7 +154,7 @@ public class LTRFeatureLoggerTransformerFactory extends TransformerFactory {
       searcher = context.getSearcher();
       if (searcher == null) {
         throw new SolrException(
-            org.apache.solr.common.SolrException.ErrorCode.BAD_REQUEST,
+            SolrException.ErrorCode.BAD_REQUEST,
             "searcher is null");
       }
       leafContexts = searcher.getTopReaderContext().leaves();
@@ -174,13 +170,13 @@ public class LTRFeatureLoggerTransformerFactory extends TransformerFactory {
 
         final FeatureStore store = fr.getFeatureStore(featureStoreName);
         featureStoreName = store.getName(); // if featureStoreName was null before this gets actual name
-        
+
         try {
           final LoggingModel lm = new LoggingModel(loggingModelName,
               featureStoreName, store.getFeatures());
-          
-          scoringQuery = new LTRScoringQuery(lm, 
-              LTRQParserPlugin.extractEFIParams(params), 
+
+          scoringQuery = new LTRScoringQuery(lm,
+              LTRQParserPlugin.extractEFIParams(params),
               true,
               threadManager); // request feature weights to be created for all features
 
@@ -188,7 +184,7 @@ public class LTRFeatureLoggerTransformerFactory extends TransformerFactory {
           scoringQuery.setOriginalQuery(context.getQuery());
 
         }catch (final Exception e) {
-          throw new SolrException(ErrorCode.BAD_REQUEST,
+          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
               "retrieving the feature store "+featureStoreName, e);
         }
       }
@@ -203,10 +199,10 @@ public class LTRFeatureLoggerTransformerFactory extends TransformerFactory {
       try {
         modelWeight = scoringQuery.createWeight(searcher, true, 1f);
       } catch (final IOException e) {
-        throw new SolrException(ErrorCode.BAD_REQUEST, e.getMessage(), e);
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e.getMessage(), e);
       }
       if (modelWeight == null) {
-        throw new SolrException(ErrorCode.BAD_REQUEST,
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
             "error logging the features, model weight is null");
       }
     }
@@ -236,7 +232,7 @@ public class LTRFeatureLoggerTransformerFactory extends TransformerFactory {
           featureStoreName, allFeatures, Collections.emptyMap());
     }
 
-    protected LoggingModel(String name, List<Feature> features, 
+    protected LoggingModel(String name, List<Feature> features,
         List<Normalizer> norms, String featureStoreName,
         List<Feature> allFeatures, Map<String,Object> params) {
       super(name, features, norms, featureStoreName, allFeatures, params);

@@ -31,22 +31,18 @@ import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BooleanQuery.Builder;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Scorer.ChildScorer;
+import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.core.SolrResourceLoader;
-import org.apache.solr.ltr.LTRRescorer;
-import org.apache.solr.ltr.LTRScoringQuery;
-import org.apache.solr.ltr.LTRScoringQuery.ModelWeight;
-import org.apache.solr.ltr.LTRScoringQuery.ModelWeight.ModelScorer;
 import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.feature.FieldValueFeature;
 import org.apache.solr.ltr.model.LTRScoringModel;
@@ -62,7 +58,7 @@ import org.slf4j.LoggerFactory;
 public class TestLTRReRankingPipeline extends LuceneTestCase {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  
+
   private static final SolrResourceLoader solrResourceLoader = new SolrResourceLoader();
 
   private IndexSearcher getSearcher(IndexReader r) {
@@ -133,9 +129,9 @@ public class TestLTRReRankingPipeline extends LuceneTestCase {
     w.close();
 
     // Do ordinary BooleanQuery:
-    final Builder bqBuilder = new Builder();
-    bqBuilder.add(new TermQuery(new Term("field", "wizard")), Occur.SHOULD);
-    bqBuilder.add(new TermQuery(new Term("field", "oz")), Occur.SHOULD);
+    final BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
+    bqBuilder.add(new TermQuery(new Term("field", "wizard")), BooleanClause.Occur.SHOULD);
+    bqBuilder.add(new TermQuery(new Term("field", "oz")), BooleanClause.Occur.SHOULD);
     final IndexSearcher searcher = getSearcher(r);
     // first run the standard query
     TopDocs hits = searcher.search(bqBuilder.build(), 10);
@@ -145,7 +141,7 @@ public class TestLTRReRankingPipeline extends LuceneTestCase {
 
     final List<Feature> features = makeFieldValueFeatures(new int[] {0, 1, 2},
         "final-score");
-    final List<Normalizer> norms = 
+    final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     final List<Feature> allFeatures = makeFieldValueFeatures(new int[] {0, 1,
@@ -204,9 +200,9 @@ public class TestLTRReRankingPipeline extends LuceneTestCase {
     w.close();
 
     // Do ordinary BooleanQuery:
-    final Builder bqBuilder = new Builder();
-    bqBuilder.add(new TermQuery(new Term("field", "wizard")), Occur.SHOULD);
-    bqBuilder.add(new TermQuery(new Term("field", "oz")), Occur.SHOULD);
+    final BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
+    bqBuilder.add(new TermQuery(new Term("field", "wizard")), BooleanClause.Occur.SHOULD);
+    bqBuilder.add(new TermQuery(new Term("field", "oz")), BooleanClause.Occur.SHOULD);
     final IndexSearcher searcher = getSearcher(r);
 
     // first run the standard query
@@ -221,7 +217,7 @@ public class TestLTRReRankingPipeline extends LuceneTestCase {
 
     final List<Feature> features = makeFieldValueFeatures(new int[] {0, 1, 2},
         "final-score");
-    final List<Normalizer> norms = 
+    final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     final List<Feature> allFeatures = makeFieldValueFeatures(new int[] {0, 1,
@@ -271,7 +267,7 @@ public class TestLTRReRankingPipeline extends LuceneTestCase {
     test.put("fake", 2);
     List<Feature> features = makeFieldValueFeatures(new int[] {0},
         "final-score");
-    List<Normalizer> norms = 
+    List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     List<Feature> allFeatures = makeFieldValueFeatures(new int[] {0},
@@ -279,15 +275,15 @@ public class TestLTRReRankingPipeline extends LuceneTestCase {
     MockModel ltrScoringModel = new MockModel("test",
         features, norms, "test", allFeatures, null);
     LTRScoringQuery query = new LTRScoringQuery(ltrScoringModel);
-    ModelWeight wgt = query.createWeight(null, true, 1f);
-    ModelScorer modelScr = wgt.scorer(null);
+    LTRScoringQuery.ModelWeight wgt = query.createWeight(null, true, 1f);
+    LTRScoringQuery.ModelWeight.ModelScorer modelScr = wgt.scorer(null);
     modelScr.getDocInfo().setOriginalDocScore(new Float(1f));
-    for (final ChildScorer feat : modelScr.getChildren()) {
+    for (final Scorer.ChildScorer feat : modelScr.getChildren()) {
       assertNotNull(((Feature.FeatureWeight.FeatureScorer) feat.child).getDocInfo().getOriginalDocScore());
     }
 
     features = makeFieldValueFeatures(new int[] {0, 1, 2}, "final-score");
-    norms = 
+    norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     allFeatures = makeFieldValueFeatures(new int[] {0, 1, 2, 3, 4, 5, 6, 7, 8,
@@ -298,7 +294,7 @@ public class TestLTRReRankingPipeline extends LuceneTestCase {
     wgt = query.createWeight(null, true, 1f);
     modelScr = wgt.scorer(null);
     modelScr.getDocInfo().setOriginalDocScore(new Float(1f));
-    for (final ChildScorer feat : modelScr.getChildren()) {
+    for (final Scorer.ChildScorer feat : modelScr.getChildren()) {
       assertNotNull(((Feature.FeatureWeight.FeatureScorer) feat.child).getDocInfo().getOriginalDocScore());
     }
   }

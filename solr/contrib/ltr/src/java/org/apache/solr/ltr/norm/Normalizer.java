@@ -51,16 +51,16 @@ public abstract class Normalizer {
     f.validate();
     return f;
   }
-  
+
   /**
    * On construction of a normalizer, this function confirms
    * that the normalizer parameters are validated
-   * 
+   *
    * @throws NormalizerException
    *             Normalizer Exception
    */
   protected void validate() throws NormalizerException {
-    
+
   }
 
 }

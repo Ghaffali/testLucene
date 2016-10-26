@@ -16,8 +16,8 @@
  */
 package org.apache.solr.ltr.store.rest;
 
-import java.util.Map;
 import java.util.ArrayList;
+import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.solr.SolrTestCaseJ4.SuppressSSL;
@@ -80,20 +80,20 @@ public class TestModelManagerPersistence extends TestRerankBase {
         .readFileToString(mstorefile, "UTF-8");
 
     //check feature/model stores on deletion
-    final ArrayList<Object> fStore = (ArrayList<Object>) ((Map<String,Object>) 
+    final ArrayList<Object> fStore = (ArrayList<Object>) ((Map<String,Object>)
         ObjectBuilder.fromJSON(fstorecontent)).get("managedList");
     for (int idx = 0;idx < fStore.size(); ++ idx) {
       String store = (String) ((Map<String,Object>)fStore.get(idx)).get("store");
       assertTrue(store.equals("test") || store.equals("test2") || store.equals("test1"));
     }
 
-    final ArrayList<Object> mStore = (ArrayList<Object>) ((Map<String,Object>) 
+    final ArrayList<Object> mStore = (ArrayList<Object>) ((Map<String,Object>)
         ObjectBuilder.fromJSON(mstorecontent)).get("managedList");
     for (int idx = 0;idx < mStore.size(); ++ idx) {
       String store = (String) ((Map<String,Object>)mStore.get(idx)).get("store");
       assertTrue(store.equals("test") || store.equals("test1"));
     }
-    
+
     assertJDelete(ManagedFeatureStore.REST_END_POINT + "/test2",
         "/responseHeader/status==0");
     assertJDelete(ManagedModelStore.REST_END_POINT + "/test-model2",
@@ -104,7 +104,7 @@ public class TestModelManagerPersistence extends TestRerankBase {
         "/models/[0]/name=='test-model'");
     restTestHarness.reload();
     assertJQ(ManagedFeatureStore.REST_END_POINT + "/test2",
-        "/features/==[]");  
+        "/features/==[]");
     assertJQ(ManagedModelStore.REST_END_POINT + "/test-model2",
         "/models/[0]/name=='test-model'");
 

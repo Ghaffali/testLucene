@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrResourceLoader;
@@ -34,15 +33,14 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.rest.BaseSolrResource;
 import org.apache.solr.rest.ManagedResource;
 import org.apache.solr.rest.ManagedResourceObserver;
-import org.apache.solr.rest.ManagedResourceStorage.StorageIO;
+import org.apache.solr.rest.ManagedResourceStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Managed resource for a storing a feature.
  */
-public class ManagedFeatureStore extends ManagedResource implements
-    ManagedResource.ChildResourceSupport {
+public class ManagedFeatureStore extends ManagedResource implements ManagedResource.ChildResourceSupport {
 
   public static void registerManagedFeatureStore(SolrResourceLoader solrResourceLoader,
       ManagedResourceObserver managedResourceObserver) {
@@ -84,9 +82,9 @@ public class ManagedFeatureStore extends ManagedResource implements
   private static final String FEATURES_JSON_FIELD = "features";
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  
+
   public ManagedFeatureStore(String resourceId, SolrResourceLoader loader,
-      StorageIO storageIO) throws SolrException {
+      ManagedResourceStorage.StorageIO storageIO) throws SolrException {
     super(resourceId, loader, storageIO);
 
   }
@@ -175,7 +173,7 @@ public class ManagedFeatureStore extends ManagedResource implements
     } else {
       final FeatureStore store = getFeatureStore(childId);
       if (store == null) {
-        throw new SolrException(ErrorCode.BAD_REQUEST,
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
             "missing feature store [" + childId + "]");
       }
       response.add(FEATURES_JSON_FIELD,
@@ -200,7 +198,7 @@ public class ManagedFeatureStore extends ManagedResource implements
     o.put(PARAMS_KEY, feat.paramsToMap());
     return o;
   }
-  
+
   private static Feature fromFeatureMap(SolrResourceLoader solrResourceLoader,
       Map<String,Object> featureMap) {
     final String className = (String) featureMap.get(CLASS_KEY);

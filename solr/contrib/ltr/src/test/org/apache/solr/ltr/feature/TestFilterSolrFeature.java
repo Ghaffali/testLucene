@@ -85,7 +85,7 @@ public class TestFilterSolrFeature extends TestRerankBase {
     assertJPut(ManagedFeatureStore.REST_END_POINT, feature,
         "/responseHeader/status==500");
   }
-  
+
   @Test
   public void testFeatureNotEqualWhenNormalizerDifferent() throws Exception {
     loadFeatures("fq_features.json"); // features that use filter query
@@ -94,7 +94,7 @@ public class TestFilterSolrFeature extends TestRerankBase {
     query.setQuery("*:*");
     query.add("fl", "*,score");
     query.add("rows", "4");
-  
+
     query.add("rq", "{!ltr reRankDocs=4 model=fqmodel efi.user_query=w2}");
     query.add("fl", "fv:[fv]");
 

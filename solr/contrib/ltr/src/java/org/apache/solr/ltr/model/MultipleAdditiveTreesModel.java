@@ -316,7 +316,7 @@ public class MultipleAdditiveTreesModel extends LTRScoringModel {
     }
   }
 
- @Override
+  @Override
   public float score(float[] modelFeatureValuesNormalized) {
     float score = 0;
     for (final RegressionTree t : trees) {
@@ -365,7 +365,9 @@ public class MultipleAdditiveTreesModel extends LTRScoringModel {
     sb.append("(name=").append(getName());
     sb.append(",trees=[");
     for (int ii = 0; ii < trees.size(); ++ii) {
-      if (ii>0) sb.append(',');
+      if (ii>0) {
+        sb.append(',');
+      }
       sb.append(trees.get(ii));
     }
     sb.append("])");

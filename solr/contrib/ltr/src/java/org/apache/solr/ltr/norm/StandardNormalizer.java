@@ -69,14 +69,15 @@ public class StandardNormalizer extends Normalizer {
   public float normalize(float value) {
     return (value - avg) / std;
   }
-  
+
   @Override
   protected void validate() throws NormalizerException {
     super.validate();
-    if (std <= 0f)
-      throw 
+    if (std <= 0f) {
+      throw
       new NormalizerException("Standard Normalizer standard deviation must "
-            + "be positive | avg = " + avg + ",std = " + std);
+          + "be positive | avg = " + avg + ",std = " + std);
+    }
   }
 
   @Override

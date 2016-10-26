@@ -64,7 +64,7 @@ public class TestFeatureLogging extends TestRerankBase {
     query.add("debugQuery", "on");
     query.add("rq", "{!ltr reRankDocs=3 model=sum1}");
 
-    String res = restTestHarness.query("/query" + query.toQueryString());
+    restTestHarness.query("/query" + query.toQueryString());
     assertJQ(
         "/query" + query.toQueryString(),
         "/response/docs/[0]/=={'title':'bloomberg bloomberg ', 'description':'bloomberg','id':'7', 'popularity':2,  '[fv]':'c1:1.0;c2:2.0;c3:3.0;pop:2.0;yesmatch:1.0'}");
@@ -74,7 +74,7 @@ public class TestFeatureLogging extends TestRerankBase {
     query.add("rows", "3");
     query.add("rq", "{!ltr reRankDocs=3 model=sum1}");
 
-    res = restTestHarness.query("/query" + query.toQueryString());
+    restTestHarness.query("/query" + query.toQueryString());
     assertJQ("/query" + query.toQueryString(),
         "/response/docs/[0]/=={'[fv]':'c1:1.0;c2:2.0;c3:3.0;pop:2.0;yesmatch:1.0'}");
     query.remove("rq");
@@ -159,14 +159,14 @@ public class TestFeatureLogging extends TestRerankBase {
 
     query.add("rq", "{!ltr reRankDocs=3 model=sumgroup}");
 
-    String res = restTestHarness.query("/query" + query.toQueryString());
+    restTestHarness.query("/query" + query.toQueryString());
     assertJQ(
         "/query" + query.toQueryString(),
         "/grouped/title/groups/[0]/doclist/docs/[0]/=={'fv':'c1:1.0;c2:2.0;c3:3.0;pop:5.0'}");
 
     query.remove("fl");
     query.add("fl", "fv:[fv fvwt=json]");
-    res = restTestHarness.query("/query" + query.toQueryString());
+    restTestHarness.query("/query" + query.toQueryString());
     assertJQ(
         "/query" + query.toQueryString(),
         "/grouped/title/groups/[0]/doclist/docs/[0]/fv/=={'c1':1.0,'c2':2.0,'c3':3.0,'pop':5.0}");
@@ -252,5 +252,5 @@ public class TestFeatureLogging extends TestRerankBase {
         "/query" + query.toQueryString(),
         "/response/docs/[1]/fv/=='match:0.0;c4:1.0'");
   }
-  
+
 }

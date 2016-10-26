@@ -52,8 +52,8 @@ public class TestRankingFeature extends TestRerankBase {
   @AfterClass
   public static void after() throws Exception {
     aftertest();
-  }  
-  
+  }
+
   @Test
   public void testRankingSolrFeature() throws Exception {
     // before();
@@ -112,12 +112,12 @@ public class TestRankingFeature extends TestRerankBase {
     query.remove("rq");
     query.add("rq", "{!ltr model=powdesS-model reRankDocs=4}");
 
-    assertJQ("/query" + query.toQueryString(), 
+    assertJQ("/query" + query.toQueryString(),
         "/error/msg/=='"+FeatureException.class.getCanonicalName()+": " +
         "java.lang.UnsupportedOperationException: " +
         "Unable to extract feature for powdesS'");
     // aftertest();
 
   }
-  
+
 }

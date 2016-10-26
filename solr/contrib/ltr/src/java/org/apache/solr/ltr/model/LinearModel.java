@@ -26,7 +26,7 @@ import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.norm.Normalizer;
 
 /**
- * A scoring model that computes scores using a dot product. 
+ * A scoring model that computes scores using a dot product.
  * Example models are RankSVM and Pranking.
  * <p>
  * Example configuration:
@@ -134,7 +134,9 @@ public class LinearModel extends LTRScoringModel {
     sb.append("(name=").append(getName());
     sb.append(",featureWeights=[");
     for (int ii = 0; ii < features.size(); ++ii) {
-      if (ii>0) sb.append(',');
+      if (ii>0) {
+        sb.append(',');
+      }
       final String key = features.get(ii).getName();
       sb.append(key).append('=').append(featureToWeight[ii]);
     }

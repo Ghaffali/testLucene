@@ -29,7 +29,7 @@ import org.apache.lucene.search.Weight;
 import org.apache.solr.ltr.DocInfo;
 import org.apache.solr.request.SolrQueryRequest;
 /**
- * This feature returns the original score that the document had before performing 
+ * This feature returns the original score that the document had before performing
  * the reranking.
  * Example configuration:
  * <pre>{
@@ -60,19 +60,19 @@ public class OriginalScoreFeature extends Feature {
 
     final Weight w;
 
-    public OriginalScoreWeight(IndexSearcher searcher, 
+    public OriginalScoreWeight(IndexSearcher searcher,
         SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi) throws IOException {
       super(OriginalScoreFeature.this, searcher, request, originalQuery, efi);
       w = searcher.createNormalizedWeight(originalQuery, true);
     };
 
-    
+
     @Override
     public String toString() {
       return "OriginalScoreFeature [query:" + originalQuery.toString() + "]";
     }
 
-    
+
 
     @Override
     public FeatureScorer scorer(LeafReaderContext context) throws IOException {

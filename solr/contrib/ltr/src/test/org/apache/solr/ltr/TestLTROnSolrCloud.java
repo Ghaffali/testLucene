@@ -16,8 +16,8 @@
 package org.apache.solr.ltr;
 
 import java.io.File;
-import java.lang.invoke.MethodHandles;
 import java.util.SortedMap;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.client.solrj.embedded.JettyConfig;
@@ -28,25 +28,20 @@ import org.apache.solr.cloud.AbstractDistribZkTestBase;
 import org.apache.solr.cloud.MiniSolrCloudCluster;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.cloud.ZkStateReader;
-import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.feature.SolrFeature;
 import org.apache.solr.ltr.feature.ValueFeature;
 import org.apache.solr.ltr.model.LinearModel;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.junit.AfterClass;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class TestLTROnSolrCloud extends TestRerankBase {
-
-  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private MiniSolrCloudCluster solrCluster;
   String solrconfig = "solrconfig-ltr.xml";
   String schema = "schema-ltr.xml";
-    
-  SortedMap<ServletHolder,String> extraServlets = null; 
+
+  SortedMap<ServletHolder,String> extraServlets = null;
 
   @Override
   public void setUp() throws Exception {
@@ -138,7 +133,7 @@ public class TestLTROnSolrCloud extends TestRerankBase {
   private void createCollection(String name, String config, int numShards, int numReplicas, int maxShardsPerNode)
       throws Exception {
     CollectionAdminResponse response;
-    CollectionAdminRequest.Create create = 
+    CollectionAdminRequest.Create create =
         CollectionAdminRequest.createCollection(name, config, numShards, numReplicas);
     create.setMaxShardsPerNode(maxShardsPerNode);
     response = create.process(solrCluster.getSolrClient());
@@ -199,14 +194,14 @@ public class TestLTROnSolrCloud extends TestRerankBase {
     );
     reloadCollection(COLLECTION);
   }
-  
+
   private void reloadCollection(String collection) throws Exception {
     CollectionAdminRequest.Reload reloadRequest = CollectionAdminRequest.reloadCollection(collection);
     CollectionAdminResponse response = reloadRequest.process(solrCluster.getSolrClient());
     assertEquals(0, response.getStatus());
     assertTrue(response.isSuccess());
   }
-  
+
   @AfterClass
   public static void after() throws Exception {
     FileUtils.deleteDirectory(tmpSolrHome);

@@ -37,7 +37,6 @@ import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.search.QParser;
 import org.apache.solr.search.SolrIndexSearcher;
-import org.apache.solr.search.SolrIndexSearcher.ProcessedFilter;
 import org.apache.solr.search.SyntaxError;
 /**
  * This feature allows you to reuse any Solr query as a feature. The value
@@ -106,9 +105,9 @@ public class SolrFeature extends Feature {
   }
 
   @Override
-  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores, 
+  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores,
       SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi)
-      throws IOException {
+          throws IOException {
     return new SolrFeatureWeight(searcher, request, originalQuery, efi);
   }
 
@@ -116,9 +115,10 @@ public class SolrFeature extends Feature {
   protected void validate() throws FeatureException {
     super.validate();
     if ((q == null || q.isEmpty()) &&
-         ((fq == null) || fq.isEmpty()))
+        ((fq == null) || fq.isEmpty())) {
       throw new FeatureException(getClass().getSimpleName()+
           ": Q or FQ must be provided");
+    }
   }
   /**
    * Weight for a SolrFeature
@@ -128,7 +128,7 @@ public class SolrFeature extends Feature {
     Query query;
     List<Query> queryAndFilters;
 
-    public SolrFeatureWeight(IndexSearcher searcher, 
+    public SolrFeatureWeight(IndexSearcher searcher,
         SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi) throws IOException {
       super(SolrFeature.this, searcher, request, originalQuery, efi);
       try {
@@ -151,9 +151,7 @@ public class SolrFeature extends Feature {
         }
 
         // Build the filter queries
-        queryAndFilters = new ArrayList<Query>(); // If there are no fqs we
-                                                  // just want an empty
-                                                  // list
+        queryAndFilters = new ArrayList<Query>(); // If there are no fqs we just want an empty list
         if (fqs != null) {
           for (String fq : fqs) {
             if ((fq != null) && (fq.trim().length() != 0)) {
@@ -239,7 +237,7 @@ public class SolrFeature extends Feature {
      */
     public DocIdSetIterator getDocIdSetIteratorFromQueries(List<Query> queries,
         LeafReaderContext context) throws IOException {
-      final ProcessedFilter pf = ((SolrIndexSearcher) searcher)
+      final SolrIndexSearcher.ProcessedFilter pf = ((SolrIndexSearcher) searcher)
           .getProcessedFilter(null, queries);
       final Bits liveDocs = context.reader().getLiveDocs();
 
@@ -273,8 +271,8 @@ public class SolrFeature extends Feature {
         } catch (UnsupportedOperationException e) {
           throw new FeatureException(
               e.toString() + ": " +
-              "Unable to extract feature for "
-              + name, e);
+                  "Unable to extract feature for "
+                  + name, e);
         }
       }
     }

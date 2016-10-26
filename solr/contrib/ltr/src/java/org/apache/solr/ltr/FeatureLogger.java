@@ -21,7 +21,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.solr.ltr.LTRScoringQuery.FeatureInfo;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,11 +38,11 @@ public abstract class FeatureLogger<FV_TYPE> {
 
   protected enum FeatureFormat {DENSE, SPARSE};
   protected final FeatureFormat featureFormat;
-  
+
   protected FeatureLogger(FeatureFormat f) {
     this.featureFormat = f;
   }
-  
+
   /**
    * Log will be called every time that the model generates the feature values
    * for a document and a query.
@@ -51,14 +50,14 @@ public abstract class FeatureLogger<FV_TYPE> {
    * @param docid
    *          Solr document id whose features we are saving
    * @param featuresInfo
-   *          List of all the FeatureInfo objects which contain name and value
+   *          List of all the {@link LTRScoringQuery.FeatureInfo} objects which contain name and value
    *          for all the features triggered by the result set
    * @return true if the logger successfully logged the features, false
    *         otherwise.
    */
 
   public boolean log(int docid, LTRScoringQuery scoringQuery,
-      SolrIndexSearcher searcher, FeatureInfo[] featuresInfo) {
+      SolrIndexSearcher searcher, LTRScoringQuery.FeatureInfo[] featuresInfo) {
     final FV_TYPE featureVector = makeFeatureVector(featuresInfo);
     if (featureVector == null) {
       return false;
@@ -76,7 +75,7 @@ public abstract class FeatureLogger<FV_TYPE> {
    * format will be selected.
    * 'featureFormat' param: 'dense' will write features in dense format,
    * 'sparse' will write the features in sparse format, null or empty will
-   * default to 'sparse'  
+   * default to 'sparse'
    *
    *
    * @return a feature logger for the format specified.
@@ -108,7 +107,7 @@ public abstract class FeatureLogger<FV_TYPE> {
 
   }
 
-  public abstract FV_TYPE makeFeatureVector(FeatureInfo[] featuresInfo);
+  public abstract FV_TYPE makeFeatureVector(LTRScoringQuery.FeatureInfo[] featuresInfo);
 
   private static int fvCacheKey(LTRScoringQuery scoringQuery, int docid) {
     return  scoringQuery.hashCode() + (31 * docid);
@@ -121,7 +120,7 @@ public abstract class FeatureLogger<FV_TYPE> {
    *          Solr document id
    * @return String representation of the list of features calculated for docid
    */
-  
+
   public FV_TYPE getFeatureVector(int docid, LTRScoringQuery scoringQuery,
       SolrIndexSearcher searcher) {
     return (FV_TYPE) searcher.cacheLookup(QUERY_FV_CACHE_NAME, fvCacheKey(scoringQuery, docid));
@@ -133,14 +132,14 @@ public abstract class FeatureLogger<FV_TYPE> {
     public MapFeatureLogger(FeatureFormat f) {
       super(f);
     }
-    
+
     @Override
-    public Map<String,Float> makeFeatureVector(FeatureInfo[] featuresInfo) {
+    public Map<String,Float> makeFeatureVector(LTRScoringQuery.FeatureInfo[] featuresInfo) {
       boolean isDense = featureFormat.equals(FeatureFormat.DENSE);
       Map<String,Float> hashmap = Collections.emptyMap();
       if (featuresInfo.length > 0) {
         hashmap = new HashMap<String,Float>(featuresInfo.length);
-        for (FeatureInfo featInfo:featuresInfo){ 
+        for (LTRScoringQuery.FeatureInfo featInfo:featuresInfo){
           if (featInfo.isUsed() || isDense){
             hashmap.put(featInfo.getName(), featInfo.getValue());
           }
@@ -155,7 +154,7 @@ public abstract class FeatureLogger<FV_TYPE> {
     StringBuilder sb = new StringBuilder(500);
     char keyValueSep = ':';
     char featureSep = ';';
-    
+
     public CSVFeatureLogger(FeatureFormat f) {
       super(f);
     }
@@ -171,14 +170,15 @@ public abstract class FeatureLogger<FV_TYPE> {
     }
 
     @Override
-    public String makeFeatureVector(FeatureInfo[] featuresInfo) {
+    public String makeFeatureVector(LTRScoringQuery.FeatureInfo[] featuresInfo) {
       boolean isDense = featureFormat.equals(FeatureFormat.DENSE);
-      for (FeatureInfo featInfo:featuresInfo) {
-          if (featInfo.isUsed() || isDense){
-             sb.append(featInfo.getName()).append(keyValueSep)
-                 .append(featInfo.getValue());
-             sb.append(featureSep);
-          }
+      for (LTRScoringQuery.FeatureInfo featInfo:featuresInfo) {
+        if (featInfo.isUsed() || isDense){
+          sb.append(featInfo.getName())
+          .append(keyValueSep)
+          .append(featInfo.getValue())
+          .append(featureSep);
+        }
       }
 
       final String features = (sb.length() > 0 ? sb.substring(0,

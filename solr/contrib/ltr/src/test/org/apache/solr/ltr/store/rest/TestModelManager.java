@@ -23,8 +23,6 @@ import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.feature.FieldValueFeature;
 import org.apache.solr.ltr.feature.ValueFeature;
 import org.apache.solr.ltr.model.LinearModel;
-import org.apache.solr.ltr.store.rest.ManagedFeatureStore;
-import org.apache.solr.ltr.store.rest.ManagedModelStore;
 import org.apache.solr.rest.ManagedResource;
 import org.apache.solr.rest.ManagedResourceStorage;
 import org.apache.solr.rest.RestManager;
@@ -109,7 +107,7 @@ public class TestModelManager extends TestRerankBase {
         "/responseHeader/status==0");
 
     final String fieldValueFeatureClassName = FieldValueFeature.class.getCanonicalName();
-    
+
     // Add bad feature (wrong params)_
     final String badfeature = "{\"name\": \"fvalue\", \"class\": \""+fieldValueFeatureClassName+"\", \"params\": {\"value\": 1} }";
     assertJPut(ManagedFeatureStore.REST_END_POINT, badfeature,

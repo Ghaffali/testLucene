@@ -18,7 +18,6 @@ package org.apache.solr.ltr;
 
 import org.apache.solr.SolrTestCaseJ4.SuppressSSL;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.model.LinearModel;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -51,7 +50,7 @@ public class TestLTRQParserExplain extends TestRerankBase {
     query.add("rows", "2");
     query.add("rq", "{!ltr reRankDocs=2 model=linear2}");
     query.add("fl", "*,score");
-    
+
     assertJQ(
         "/query" + query.toQueryString(),
         "/debug/explain/9=='\n13.5 = LinearModel(name=linear2,featureWeights=[constant1=1.5,constant2=3.5,pop=1.0]) model applied to features, sum of:\n  1.5 = prod of:\n    1.5 = weight on feature\n    1.0 = ValueFeature [name=constant1, params={value=1}]\n  7.0 = prod of:\n    3.5 = weight on feature\n    2.0 = ValueFeature [name=constant2, params={value=2}]\n  5.0 = prod of:\n    1.0 = weight on feature\n    5.0 = FieldValueFeature [name=pop, params={field=popularity}]\n'");
@@ -79,7 +78,7 @@ public class TestLTRQParserExplain extends TestRerankBase {
         + "queryIntentPerson=0.1231231,"
         + "queryIntentCompany=0.12121211"
         + "]) model applied to features, sum of:\n  0.0 = prod of:\n    0.0 = weight on feature\n    1.0 = ValueFeature [name=title, params={value=1}]\n  0.2 = prod of:\n    0.1 = weight on feature\n    2.0 = ValueFeature [name=description, params={value=2}]\n  0.4 = prod of:\n    0.2 = weight on feature\n    2.0 = ValueFeature [name=keywords, params={value=2}]\n  0.09 = prod of:\n    0.3 = weight on feature\n    0.3 = "+expectedExplainNormalizer+"\n      3.0 = ValueFeature [name=popularity, params={value=3}]\n  1.6 = prod of:\n    0.4 = weight on feature\n    4.0 = ValueFeature [name=text, params={value=4}]\n  0.6156155 = prod of:\n    0.1231231 = weight on feature\n    5.0 = ValueFeature [name=queryIntentPerson, params={value=5}]\n  0.60606056 = prod of:\n    0.12121211 = weight on feature\n    5.0 = ValueFeature [name=queryIntentCompany, params={value=5}]\n";
-    
+
     assertJQ(
         "/query" + query.toQueryString(),
         "/debug/explain/7=='"+expectedExplain+"'}");

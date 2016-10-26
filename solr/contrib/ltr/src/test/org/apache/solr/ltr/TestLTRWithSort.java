@@ -19,7 +19,6 @@ package org.apache.solr.ltr;
 
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.feature.SolrFeature;
 import org.apache.solr.ltr.model.LinearModel;
 import org.junit.AfterClass;
@@ -50,7 +49,7 @@ public class TestLTRWithSort extends TestRerankBase {
         "D", "popularity", "8"));
     assertU(commit());
   }
-  
+
   @Test
   public void testRankingSolrSort() throws Exception {
     // before();
@@ -71,7 +70,7 @@ public class TestLTRWithSort extends TestRerankBase {
     assertJQ("/query" + query.toQueryString(), "/response/docs/[1]/id=='2'");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[2]/id=='3'");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[3]/id=='4'");
-    
+
     //Add sort
     query.add("sort", "description desc");
     assertJQ("/query" + query.toQueryString(), "/response/numFound/==8");

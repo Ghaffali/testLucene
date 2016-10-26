@@ -32,8 +32,8 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BooleanQuery.Builder;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermQuery;
@@ -43,7 +43,6 @@ import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.core.SolrResourceLoader;
-import org.apache.solr.ltr.LTRScoringQuery.FeatureInfo;
 import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.feature.ValueFeature;
 import org.apache.solr.ltr.model.LTRScoringModel;
@@ -129,7 +128,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
   @Test
   public void testLTRScoringQueryEquality() throws ModelException {
     final List<Feature> features = makeFeatures(new int[] {0, 1, 2});
-    final List<Normalizer> norms = 
+    final List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     final List<Feature> allFeatures = makeFeatures(
@@ -162,8 +161,8 @@ public class TestLTRScoringQuery extends LuceneTestCase {
     // Models with same algorithm, but different efi content should not match
     assertFalse(m1.equals(m0));
     assertFalse(m1.hashCode() == m0.hashCode());
-    
-    
+
+
     final LTRScoringModel algorithm2 = TestLinearModel.createLinearModel(
         "testModelName2",
         features, norms, "testStoreName", allFeatures, modelParams);
@@ -181,7 +180,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
     assertFalse(m1.hashCode() == m4.hashCode());
   }
 
-  
+
   @Test
   public void testLTRScoringQuery() throws IOException, ModelException {
     final Directory dir = newDirectory();
@@ -206,9 +205,9 @@ public class TestLTRScoringQuery extends LuceneTestCase {
     w.close();
 
     // Do ordinary BooleanQuery:
-    final Builder bqBuilder = new Builder();
-    bqBuilder.add(new TermQuery(new Term("field", "wizard")), Occur.SHOULD);
-    bqBuilder.add(new TermQuery(new Term("field", "oz")), Occur.SHOULD);
+    final BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
+    bqBuilder.add(new TermQuery(new Term("field", "wizard")), BooleanClause.Occur.SHOULD);
+    bqBuilder.add(new TermQuery(new Term("field", "oz")), BooleanClause.Occur.SHOULD);
     final IndexSearcher searcher = getSearcher(r);
     // first run the standard query
     final TopDocs hits = searcher.search(bqBuilder.build(), 10);
@@ -219,7 +218,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
     List<Feature> features = makeFeatures(new int[] {0, 1, 2});
     final List<Feature> allFeatures = makeFeatures(new int[] {0, 1, 2, 3, 4, 5,
         6, 7, 8, 9});
-    List<Normalizer> norms = 
+    List<Normalizer> norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     LTRScoringModel ltrScoringModel = TestLinearModel.createLinearModel("test",
@@ -235,7 +234,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
     }
     int[] posVals = new int[] {0, 1, 2};
     int pos = 0;
-    for (FeatureInfo fInfo:modelWeight.featuresInfo) {
+    for (LTRScoringQuery.FeatureInfo fInfo:modelWeight.featuresInfo) {
         if (fInfo == null){
           continue;
         }
@@ -246,7 +245,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
 
     final int[] mixPositions = new int[] {8, 2, 4, 9, 0};
     features = makeFeatures(mixPositions);
-    norms = 
+    norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     ltrScoringModel = TestLinearModel.createLinearModel("test",
@@ -256,7 +255,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
         new LTRScoringQuery(ltrScoringModel));
     assertEquals(mixPositions.length,
         modelWeight.modelFeatureWeights.length);
-    
+
     for (int i = 0; i < mixPositions.length; i++) {
       assertEquals(mixPositions[i],
           modelWeight.modelFeatureValuesNormalized[i], 0.0001);
@@ -265,7 +264,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
     final ModelException expectedModelException = new ModelException("no features declared for model test");
     final int[] noPositions = new int[] {};
     features = makeFeatures(noPositions);
-    norms = 
+    norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),IdentityNormalizer.INSTANCE));
     try {
@@ -293,7 +292,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
         return null;
       }
     };
-    norms = 
+    norms =
         new ArrayList<Normalizer>(
             Collections.nCopies(features.size(),norm));
     final LTRScoringModel normMeta = TestLinearModel.createLinearModel("test",

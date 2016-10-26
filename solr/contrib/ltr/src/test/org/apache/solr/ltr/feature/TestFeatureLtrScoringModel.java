@@ -19,7 +19,6 @@ package org.apache.solr.ltr.feature;
 import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.store.rest.ManagedFeatureStore;
 import org.apache.solr.ltr.store.rest.TestManagedFeatureStore;
-import org.apache.solr.ltr.feature.FeatureException;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -56,7 +55,7 @@ public class TestFeatureLtrScoringModel extends TestRerankBase {
   public void getInvalidInstanceTest()
   {
     final String nonExistingClassName = "org.apache.solr.ltr.feature.LOLFeature";
-    final ClassNotFoundException expectedException = 
+    final ClassNotFoundException expectedException =
         new ClassNotFoundException(nonExistingClassName);
     try {
       store.addFeature(TestManagedFeatureStore.createMap("test",
@@ -68,5 +67,5 @@ public class TestFeatureLtrScoringModel extends TestRerankBase {
       assertEquals(expectedException.toString(), rootError.toString());
     }
   }
-  
+
 }

@@ -14,8 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
-/** 
+
+/**
  * APIs and implementations of {@link org.apache.solr.response.transform.DocTransformer} for modifying documents in Solr request responses
  */
 package org.apache.solr.response.transform;

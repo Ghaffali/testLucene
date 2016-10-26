@@ -88,9 +88,9 @@ public class FieldLengthFeature extends Feature {
   }
 
   @Override
-  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores, 
+  public FeatureWeight createWeight(IndexSearcher searcher, boolean needsScores,
       SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi)
-      throws IOException {
+          throws IOException {
 
     return new FieldLengthFeatureWeight(searcher, request, originalQuery, efi);
   }
@@ -98,7 +98,7 @@ public class FieldLengthFeature extends Feature {
 
   public class FieldLengthFeatureWeight extends FeatureWeight {
 
-    public FieldLengthFeatureWeight(IndexSearcher searcher, 
+    public FieldLengthFeatureWeight(IndexSearcher searcher,
         SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi) {
       super(FieldLengthFeature.this, searcher, request, originalQuery, efi);
     }
@@ -107,7 +107,7 @@ public class FieldLengthFeature extends Feature {
     public FeatureScorer scorer(LeafReaderContext context) throws IOException {
       NumericDocValues norms = context.reader().getNormValues(field);
       if (norms == null){
-        return new ValueFeatureScorer(this, 0f, 
+        return new ValueFeatureScorer(this, 0f,
             DocIdSetIterator.all(DocIdSetIterator.NO_MORE_DOCS));
       }
       return new FieldLengthFeatureScorer(this, norms);

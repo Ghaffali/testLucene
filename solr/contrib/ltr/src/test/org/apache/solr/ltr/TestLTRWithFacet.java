@@ -19,7 +19,6 @@ package org.apache.solr.ltr;
 
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.feature.SolrFeature;
 import org.apache.solr.ltr.model.LinearModel;
 import org.junit.AfterClass;
@@ -51,7 +50,7 @@ public class TestLTRWithFacet extends TestRerankBase {
         "D", "popularity", "8"));
     assertU(commit());
   }
-  
+
   @Test
   public void testRankingSolrFacet() throws Exception {
     // before();

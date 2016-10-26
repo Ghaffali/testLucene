@@ -30,8 +30,8 @@ import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.RandomIndexWriter;
 import org.apache.lucene.index.ReaderUtil;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.search.BooleanClause.Occur;
-import org.apache.lucene.search.BooleanQuery.Builder;
+import org.apache.lucene.search.BooleanClause;
+import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Scorer;
 import org.apache.lucene.search.TermQuery;
@@ -40,7 +40,6 @@ import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
-import org.apache.solr.ltr.LTRScoringQuery;
 import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.feature.ValueFeature;
 import org.apache.solr.ltr.model.LTRScoringModel;
@@ -103,12 +102,12 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
     return modelWeight;
 
   }
-  
-  
+
+
   @BeforeClass
   public static void before() throws Exception {
     setuptest("solrconfig-ltr.xml", "schema-ltr.xml");
-    
+
     assertU(adoc("id", "1", "title", "w1 w3", "description", "w1", "popularity",
         "1"));
     assertU(adoc("id", "2", "title", "w2", "description", "w2", "popularity",
@@ -120,7 +119,7 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
     assertU(adoc("id", "5", "title", "w5", "description", "w5", "popularity",
         "5"));
     assertU(commit());
-    
+
     loadFeatures("external_features.json");
     loadModels("external_model.json");
     loadModels("external_model_store.json");
@@ -130,7 +129,7 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
   public static void after() throws Exception {
     aftertest();
   }
- 
+
   @Test
   public void testScoringQueryWeightCreation() throws IOException, ModelException {
     final Directory dir = newDirectory();
@@ -155,9 +154,9 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
     w.close();
 
     // Do ordinary BooleanQuery:
-    final Builder bqBuilder = new Builder();
-    bqBuilder.add(new TermQuery(new Term("field", "wizard")), Occur.SHOULD);
-    bqBuilder.add(new TermQuery(new Term("field", "oz")), Occur.SHOULD);
+    final BooleanQuery.Builder bqBuilder = new BooleanQuery.Builder();
+    bqBuilder.add(new TermQuery(new Term("field", "wizard")), BooleanClause.Occur.SHOULD);
+    bqBuilder.add(new TermQuery(new Term("field", "oz")), BooleanClause.Occur.SHOULD);
     final IndexSearcher searcher = getSearcher(r);
     // first run the standard query
     final TopDocs hits = searcher.search(bqBuilder.build(), 10);
@@ -179,7 +178,7 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
         makeFeatureWeights(features));
     LTRScoringQuery.ModelWeight modelWeight = performQuery(hits, searcher,
         hits.scoreDocs[0].doc, new LTRScoringQuery(ltrScoringModel1, false)); // features not requested in response
-    
+
     assertEquals(features.size(), modelWeight.modelFeatureValuesNormalized.length);
     int validFeatures = 0;
     for (int i=0; i < modelWeight.featuresInfo.length; ++i){
@@ -188,7 +187,7 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
       }
     }
     assertEquals(validFeatures, features.size());
-    
+
     // when features are requested in the response, weights should be created for all features
     final LTRScoringModel ltrScoringModel2 = TestLinearModel.createLinearModel("test",
         features, norms, "test", allFeatures,
@@ -198,7 +197,7 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
 
     assertEquals(features.size(), modelWeight.modelFeatureValuesNormalized.length);
     assertEquals(allFeatures.size(), modelWeight.extractedFeatureWeights.length);
-    
+
     validFeatures = 0;
     for (int i=0; i < modelWeight.featuresInfo.length; ++i){
       if (modelWeight.featuresInfo[i] != null && modelWeight.featuresInfo[i].isUsed()){
@@ -206,16 +205,16 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
       }
     }
     assertEquals(validFeatures, allFeatures.size());
-    
+
     assertU(delI("0"));assertU(delI("1"));
     r.close();
     dir.close();
   }
-  
- 
+
+
   @Test
   public void testSelectiveWeightsRequestFeaturesFromDifferentStore() throws Exception {
-    
+
     final SolrQuery query = new SolrQuery();
     query.setQuery("*:*");
     query.add("fl", "*,score");
@@ -227,7 +226,7 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
     assertJQ("/query" + query.toQueryString(), "/response/docs/[1]/id=='3'");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[2]/id=='4'");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[0]/fv=='matchedTitle:1.0;titlePhraseMatch:0.40254828'"); // extract all features in default store
-    
+
     query.remove("fl");
     query.remove("rq");
     query.add("fl", "*,score");
@@ -237,8 +236,8 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
     assertJQ("/query" + query.toQueryString(), "/response/docs/[0]/id=='1'");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[0]/score==0.999");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[0]/fv=='popularity:3.0;originalScore:1.0'"); // extract all features from fstore4
-    
-   
+
+
     query.remove("fl");
     query.remove("rq");
     query.add("fl", "*,score");

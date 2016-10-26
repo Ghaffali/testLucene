@@ -41,10 +41,9 @@ import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.feature.FeatureException;
 import org.apache.solr.ltr.feature.ValueFeature;
-import org.apache.solr.ltr.feature.ValueFeature.ValueFeatureWeight;
 import org.apache.solr.ltr.model.LTRScoringModel;
-import org.apache.solr.ltr.model.ModelException;
 import org.apache.solr.ltr.model.LinearModel;
+import org.apache.solr.ltr.model.ModelException;
 import org.apache.solr.ltr.store.rest.ManagedFeatureStore;
 import org.apache.solr.ltr.store.rest.ManagedModelStore;
 import org.apache.solr.request.SolrQueryRequestBase;
@@ -64,7 +63,7 @@ public class TestRerankBase extends RestTestBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   protected static final SolrResourceLoader solrResourceLoader = new SolrResourceLoader();
-  
+
   protected static File tmpSolrHome;
   protected static File tmpConfDir;
 
@@ -95,7 +94,7 @@ public class TestRerankBase extends RestTestBase {
   public static ManagedModelStore getManagedModelStore() {
     return ManagedModelStore.getManagedModelStore(h.getCore());
   }
-  
+
   protected static SortedMap<ServletHolder,String>  setupTestInit(
       String solrconfig, String schema,
       boolean isPersistent) throws Exception {
@@ -104,10 +103,10 @@ public class TestRerankBase extends RestTestBase {
     tmpConfDir.deleteOnExit();
     FileUtils.copyDirectory(new File(TEST_HOME()),
         tmpSolrHome.getAbsoluteFile());
-    
+
     final File fstore = new File(tmpConfDir, FEATURE_FILE_NAME);
     final File mstore = new File(tmpConfDir, MODEL_FILE_NAME);
-    
+
     if (isPersistent) {
       fstorefile = fstore;
       mstorefile = mstore;
@@ -146,7 +145,7 @@ public class TestRerankBase extends RestTestBase {
     extraServlets.put(solrRestApi, PARENT_ENDPOINT);
 
     System.setProperty("managed.schema.mutable", "true");
-    
+
     return extraServlets;
   }
 
@@ -154,9 +153,7 @@ public class TestRerankBase extends RestTestBase {
       throws Exception {
     initCore(solrconfig, schema);
 
-    File mstore = null;
-    File fstore = null;
-    SortedMap<ServletHolder,String> extraServlets = 
+    SortedMap<ServletHolder,String> extraServlets =
         setupTestInit(solrconfig,schema,false);
     System.setProperty("enable.update.log", "false");
 
@@ -168,9 +165,9 @@ public class TestRerankBase extends RestTestBase {
       throws Exception {
     initCore(solrconfig, schema);
 
-    SortedMap<ServletHolder,String> extraServlets = 
+    SortedMap<ServletHolder,String> extraServlets =
         setupTestInit(solrconfig,schema,true);
-    
+
     createJettyAndHarness(tmpSolrHome.getAbsolutePath(), solrconfig, schema,
         "/solr", true, extraServlets);
   }
@@ -360,7 +357,7 @@ public class TestRerankBase extends RestTestBase {
         features[i] = featureName;
         weights[i] = "\"" + featureName + "\":1.0";
       }
-      loadFeature(featureName, ValueFeatureWeight.class.getCanonicalName(),
+      loadFeature(featureName, ValueFeature.ValueFeatureWeight.class.getCanonicalName(),
           "{\"value\":" + i + "}");
     }
 

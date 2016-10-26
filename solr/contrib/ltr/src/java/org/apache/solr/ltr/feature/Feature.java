@@ -53,7 +53,7 @@ import org.apache.solr.util.SolrPluginUtils;
    }
 }</pre>
  * <p>
- * {@link Feature} is an abstract class and concrete classes should implement 
+ * {@link Feature} is an abstract class and concrete classes should implement
  * the {@link #validate()} function, and must implement the {@link #paramsToMap()}
  * and createWeight() methods.
  */
@@ -84,16 +84,16 @@ public abstract class Feature extends Query {
     this.name = name;
     this.params = params;
   }
-  
+
   /**
    * On construction of a feature, this function confirms
    * that the feature parameters are validated
-   * 
+   *
    * @throws FeatureException
    *             Feature Exception
    */
   protected void validate() throws FeatureException {
-    
+
   }
 
   @Override
@@ -138,21 +138,21 @@ public abstract class Feature extends Query {
 
   private boolean equalsTo(Feature other) {
     if (index != other.index) {
-        return false;
+      return false;
     }
     if (name == null) {
-        if (other.name != null) {
-            return false;
-        }
-    } else if (!name.equals(other.name)) {
+      if (other.name != null) {
         return false;
+      }
+    } else if (!name.equals(other.name)) {
+      return false;
     }
     if (params == null) {
-        if (other.params != null) {
-            return false;
-        }
-    } else if (!params.equals(other.params)) {
+      if (other.params != null) {
         return false;
+      }
+    } else if (!params.equals(other.params)) {
+      return false;
     }
     return true;
   }
@@ -204,7 +204,7 @@ public abstract class Feature extends Query {
      * @param searcher
      *          Solr searcher available for features if they need them
      */
-    public FeatureWeight(Query q, IndexSearcher searcher, 
+    public FeatureWeight(Query q, IndexSearcher searcher,
         SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi) {
       super(q);
       this.searcher = searcher;
@@ -237,7 +237,9 @@ public abstract class Feature extends Query {
       float score = getDefaultValue();
       if (r != null) {
         r.iterator().advance(doc);
-        if (r.docID() == doc) score = r.score();
+        if (r.docID() == doc) {
+          score = r.score();
+        }
         return Explanation.match(score, toString());
       }else{
         return Explanation.match(score, "The feature has no value");
@@ -248,7 +250,7 @@ public abstract class Feature extends Query {
      * Used in the FeatureWeight's explain. Each feature should implement this
      * returning properties of the specific scorer useful for an explain. For
      * example "MyCustomClassFeature [name=" + name + "myVariable:" + myVariable +
-     * "]";  If not provided, a default implementation will return basic feature 
+     * "]";  If not provided, a default implementation will return basic feature
      * properties, which might not include query time specific values.
      */
     @Override

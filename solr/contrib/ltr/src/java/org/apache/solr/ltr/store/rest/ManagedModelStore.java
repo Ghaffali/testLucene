@@ -21,8 +21,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrResourceLoader;
@@ -37,15 +37,14 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.rest.BaseSolrResource;
 import org.apache.solr.rest.ManagedResource;
 import org.apache.solr.rest.ManagedResourceObserver;
-import org.apache.solr.rest.ManagedResourceStorage.StorageIO;
+import org.apache.solr.rest.ManagedResourceStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Menaged resource for storing a model
  */
-public class ManagedModelStore extends ManagedResource implements
-    ManagedResource.ChildResourceSupport {
+public class ManagedModelStore extends ManagedResource implements ManagedResource.ChildResourceSupport {
 
   public static void registerManagedModelStore(SolrResourceLoader solrResourceLoader,
       ManagedResourceObserver managedResourceObserver) {
@@ -62,9 +61,6 @@ public class ManagedModelStore extends ManagedResource implements
 
   /** the model store rest endpoint **/
   public static final String REST_END_POINT = "/schema/model-store";
-
-  /** name of the attribute containing the features used by the mode **/
-  private static final Object MODEL_FEATURE_LIST = "features";
 
   /**
    * Managed model store: the name of the attribute containing all the models of
@@ -89,9 +85,9 @@ public class ManagedModelStore extends ManagedResource implements
   private ManagedFeatureStore managedFeatureStore;
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  
+
   public ManagedModelStore(String resourceId, SolrResourceLoader loader,
-      StorageIO storageIO) throws SolrException {
+      ManagedResourceStorage.StorageIO storageIO) throws SolrException {
     super(resourceId, loader, storageIO);
     store = new ModelStore();
   }
@@ -131,7 +127,7 @@ public class ManagedModelStore extends ManagedResource implements
           final LTRScoringModel algo = fromLTRScoringModelMap(solrResourceLoader, u, managedFeatureStore);
           addModel(algo);
         } catch (final ModelException e) {
-          throw new SolrException(ErrorCode.BAD_REQUEST, e);
+          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
         }
       }
     }
@@ -142,7 +138,7 @@ public class ManagedModelStore extends ManagedResource implements
       log.info("adding model {}", ltrScoringModel.getName());
       store.addModel(ltrScoringModel);
     } catch (final ModelException e) {
-      throw new SolrException(ErrorCode.BAD_REQUEST, e);
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
     }
   }
 
@@ -156,7 +152,7 @@ public class ManagedModelStore extends ManagedResource implements
           final LTRScoringModel algo = fromLTRScoringModelMap(solrResourceLoader, u, managedFeatureStore);
           addModel(algo);
         } catch (final ModelException e) {
-          throw new SolrException(ErrorCode.BAD_REQUEST, e);
+          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
         }
       }
     }
@@ -167,7 +163,7 @@ public class ManagedModelStore extends ManagedResource implements
         final LTRScoringModel algo = fromLTRScoringModelMap(solrResourceLoader, map, managedFeatureStore);
         addModel(algo);
       } catch (final ModelException e) {
-        throw new SolrException(ErrorCode.BAD_REQUEST, e);
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
       }
     }
 

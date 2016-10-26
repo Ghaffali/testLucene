@@ -72,14 +72,15 @@ public class MinMaxNormalizer extends Normalizer {
     this.max = Float.parseFloat(max);
     updateDelta();
   }
-  
+
   @Override
   protected void validate() throws NormalizerException {
     super.validate();
-    if (delta == 0f)
-      throw 
+    if (delta == 0f) {
+      throw
       new NormalizerException("MinMax Normalizer delta must not be zero " +
-      "| min = " + min + ",max = " + max + ",delta = " + delta);
+          "| min = " + min + ",max = " + max + ",delta = " + delta);
+    }
   }
 
   @Override

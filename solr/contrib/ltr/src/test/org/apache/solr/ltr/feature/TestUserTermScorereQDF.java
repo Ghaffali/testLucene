@@ -51,8 +51,8 @@ public class TestUserTermScorereQDF extends TestRerankBase {
   @AfterClass
   public static void after() throws Exception {
     aftertest();
-  }  
-  
+  }
+
   @Test
   public void testUserTermScorerQWithDF() throws Exception {
     // before();

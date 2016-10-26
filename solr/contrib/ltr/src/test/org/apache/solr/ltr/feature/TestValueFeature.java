@@ -49,7 +49,7 @@ public class TestValueFeature extends TestRerankBase {
 
   @Test
   public void testValueFeatureWithEmptyValue() throws Exception {
-    final RuntimeException expectedException = 
+    final RuntimeException expectedException =
         new RuntimeException("mismatch: '0'!='500' @ responseHeader/status");
     try {
         loadFeature("c2", ValueFeature.class.getCanonicalName(), "{\"value\":\"\"}");
@@ -61,7 +61,7 @@ public class TestValueFeature extends TestRerankBase {
 
   @Test
   public void testValueFeatureWithWhitespaceValue() throws Exception {
-    final RuntimeException expectedException = 
+    final RuntimeException expectedException =
         new RuntimeException("mismatch: '0'!='500' @ responseHeader/status");
     try {
         loadFeature("c2", ValueFeature.class.getCanonicalName(),
@@ -111,7 +111,7 @@ public class TestValueFeature extends TestRerankBase {
     assertJQ("/query" + query.toQueryString(), "/response/docs/[2]/score==2.0");
     assertJQ("/query" + query.toQueryString(), "/response/docs/[3]/score==2.0");
   }
-  
+
 
   @Test
   public void testValueFeatureImplicitlyNotRequiredShouldReturnOkStatusCode() throws Exception {

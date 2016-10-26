@@ -21,8 +21,8 @@ import java.util.Map;
 
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.ltr.TestRerankBase;
-import org.apache.solr.ltr.model.MultipleAdditiveTreesModel;
 import org.apache.solr.ltr.model.LinearModel;
+import org.apache.solr.ltr.model.MultipleAdditiveTreesModel;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;

@@ -54,7 +54,7 @@ public class TestStandardNormalizer {
   public void testInvalidSTD() {
     final Map<String,Object> params = new HashMap<String,Object>();
     params.put("std", "0f");
-    final NormalizerException expectedException = 
+    final NormalizerException expectedException =
         new NormalizerException("Standard Normalizer standard deviation must be positive "
             + "| avg = 0.0,std = 0.0");
     try {
@@ -71,7 +71,7 @@ public class TestStandardNormalizer {
   public void testInvalidSTD2() {
     final Map<String,Object> params = new HashMap<String,Object>();
     params.put("std", "-1f");
-    final NormalizerException expectedException = 
+    final NormalizerException expectedException =
         new NormalizerException("Standard Normalizer standard deviation must be positive "
             + "| avg = 0.0,std = -1.0");
     try {
@@ -89,7 +89,7 @@ public class TestStandardNormalizer {
     final Map<String,Object> params = new HashMap<String,Object>();
     params.put("avg", "1f");
     params.put("std", "0f");
-    final NormalizerException expectedException = 
+    final NormalizerException expectedException =
         new NormalizerException("Standard Normalizer standard deviation must be positive "
             + "| avg = 1.0,std = 0.0");
     try {
