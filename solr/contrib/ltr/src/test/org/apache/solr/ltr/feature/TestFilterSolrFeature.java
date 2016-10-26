@@ -16,7 +16,6 @@
  */
 package org.apache.solr.ltr.feature;
 
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.model.LinearModel;
@@ -25,7 +24,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-@SuppressCodecs({"Lucene3x", "Lucene41", "Lucene40", "Appending"})
 public class TestFilterSolrFeature extends TestRerankBase {
   @BeforeClass
   public static void before() throws Exception {

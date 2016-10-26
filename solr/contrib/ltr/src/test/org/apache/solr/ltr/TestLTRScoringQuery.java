@@ -41,7 +41,6 @@ import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.feature.ValueFeature;
@@ -52,7 +51,6 @@ import org.apache.solr.ltr.norm.IdentityNormalizer;
 import org.apache.solr.ltr.norm.Normalizer;
 import org.junit.Test;
 
-@SuppressCodecs("Lucene3x")
 public class TestLTRScoringQuery extends LuceneTestCase {
 
   public final static SolrResourceLoader solrResourceLoader = new SolrResourceLoader();

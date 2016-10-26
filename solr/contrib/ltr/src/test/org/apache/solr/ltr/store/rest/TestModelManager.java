@@ -16,7 +16,6 @@
  */
 package org.apache.solr.ltr.store.rest;
 
-import org.apache.solr.SolrTestCaseJ4.SuppressSSL;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.ltr.TestRerankBase;
@@ -31,7 +30,6 @@ import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-@SuppressSSL
 public class TestModelManager extends TestRerankBase {
 
   @BeforeClass

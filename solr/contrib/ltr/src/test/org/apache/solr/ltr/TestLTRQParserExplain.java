@@ -16,14 +16,12 @@
  */
 package org.apache.solr.ltr;
 
-import org.apache.solr.SolrTestCaseJ4.SuppressSSL;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.ltr.model.LinearModel;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-@SuppressSSL
 public class TestLTRQParserExplain extends TestRerankBase {
 
   @BeforeClass

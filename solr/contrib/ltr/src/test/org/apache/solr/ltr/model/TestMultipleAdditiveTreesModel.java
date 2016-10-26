@@ -18,7 +18,6 @@ package org.apache.solr.ltr.model;
 
 //import static org.junit.internal.matchers.StringContains.containsString;
 
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.ltr.TestRerankBase;
 import org.junit.AfterClass;
@@ -26,7 +25,6 @@ import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
-@SuppressCodecs({"Lucene3x", "Lucene41", "Lucene40", "Appending"})
 public class TestMultipleAdditiveTreesModel extends TestRerankBase {
 
 

@@ -20,7 +20,6 @@ import java.util.ArrayList;
 import java.util.Map;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.solr.SolrTestCaseJ4.SuppressSSL;
 import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.feature.ValueFeature;
 import org.apache.solr.ltr.model.LinearModel;
@@ -28,7 +27,6 @@ import org.junit.Before;
 import org.junit.Test;
 import org.noggit.ObjectBuilder;
 
-@SuppressSSL
 public class TestModelManagerPersistence extends TestRerankBase {
 
   @Before

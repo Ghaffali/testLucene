@@ -16,7 +16,6 @@
  */
 package org.apache.solr.ltr.feature;
 
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.ltr.TestRerankBase;
 import org.apache.solr.ltr.model.LinearModel;
@@ -24,7 +23,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-@SuppressCodecs({"Lucene3x", "Lucene41", "Lucene40", "Appending"})
 public class TestFieldValueFeature extends TestRerankBase {
 
   private static final float FIELD_VALUE_FEATURE_DEFAULT_VAL = 0.0f;

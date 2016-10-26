@@ -38,7 +38,6 @@ import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.Weight;
 import org.apache.lucene.store.Directory;
-import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.client.solrj.SolrQuery;
 import org.apache.solr.ltr.feature.Feature;
 import org.apache.solr.ltr.feature.ValueFeature;
@@ -51,7 +50,6 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-@SuppressCodecs({"Lucene3x", "Lucene41", "Lucene40", "Appending"})
 public class TestSelectiveWeightCreation extends TestRerankBase {
   private IndexSearcher getSearcher(IndexReader r) {
     final IndexSearcher searcher = newSearcher(r, false, false);
