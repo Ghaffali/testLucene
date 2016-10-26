@@ -165,29 +165,11 @@
     <!-- <maxBufferedDocs>1000</maxBufferedDocs> -->
 
     <!-- Expert: Merge Policy
-         The Merge Policy in Lucene controls how merging of segments is done.
-         The default since Solr/Lucene 3.3 is TieredMergePolicy.
-         The default since Lucene 2.3 was the LogByteSizeMergePolicy,
-         Even older versions of Lucene used LogDocMergePolicy.
       -->
     <!--
-        <mergePolicyFactory class="org.apache.lucene.index.TieredMergePolicyFactory">
-          <int name="maxMergeAtOnce">10</int>
-          <int name="segmentsPerTier">10</int>
-          <double name="noCFSRatio">0.1</double>
+        <mergePolicyFactory class="...">
+          ...
         </mergePolicyFactory>
-      -->
-
-    <!-- Merge Factor
-         The merge factor controls how many segments will get merged at a time.
-         For TieredMergePolicy, mergeFactor is a convenience parameter which
-         will set both MaxMergeAtOnce and SegmentsPerTier at once.
-         For LogByteSizeMergePolicy, mergeFactor decides how many new segments
-         will be allowed before they are merged into one.
-         Default is 10 for both merge policies.
-      -->
-    <!--
-    <mergeFactor>10</mergeFactor>
       -->
 
     <!-- Expert: Merge Scheduler

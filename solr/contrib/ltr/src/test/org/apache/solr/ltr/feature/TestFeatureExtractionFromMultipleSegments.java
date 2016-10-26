@@ -16,8 +16,6 @@
  */
 package org.apache.solr.ltr.feature;
 
-import java.security.SecureRandom;
-
 import java.util.List;
 import java.util.Map;
 import org.apache.solr.client.solrj.SolrQuery;
@@ -30,12 +28,11 @@ import org.noggit.ObjectBuilder;
 
 public class TestFeatureExtractionFromMultipleSegments extends TestRerankBase {
   static final String AB = "abcdefghijklmnopqrstuvwxyz";
-  static SecureRandom rnd = new SecureRandom();
   
   static String randomString( int len ){
     StringBuilder sb = new StringBuilder( len );
     for( int i = 0; i < len; i++ ) 
-       sb.append( AB.charAt( rnd.nextInt(AB.length()) ) );
+       sb.append( AB.charAt( random().nextInt(AB.length()) ) );
     return sb.toString();
  }
   
