@@ -14,21 +14,41 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.cloud.rule;
 
-import java.util.Set;
-
-import com.google.common.collect.ImmutableSet;
-
-/**
- *
- */
-public abstract class Snitch {
-  static Set<Class> WELL_KNOWN_SNITCHES = ImmutableSet.of(ImplicitSnitch.class);
+package org.apache.solr.handler.dataimport;
 
 
-  public abstract void getTags(String solrNode, Set<String> requestedTags, org.apache.solr.common.cloud.rule.SnitchContext ctx);
+import java.io.Reader;
+import java.io.StringReader;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
 
-  public abstract boolean isKnownTag(String tag);
+public class MockStringDataSource extends DataSource<Reader> {
 
+  private static Map<String, String> cache = new HashMap<>();
+
+  public static void setData(String query,
+                                 String data) {
+    cache.put(query, data);
+  }
+
+  public static void clearCache() {
+    cache.clear();
+  }
+  @Override
+  public void init(Context context, Properties initProps) {
+
+  }
+
+  @Override
+  public Reader getData(String query) {
+    return new StringReader(cache.get(query));
+  }
+
+  @Override
+  public void close() {
+    cache.clear();
+
+  }
 }

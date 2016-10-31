@@ -42,6 +42,7 @@ import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.admin.SecurityConfHandler;
 import org.apache.solr.handler.admin.SecurityConfHandlerLocalForTesting;
 import org.apache.solr.util.AbstractSolrTestCase;
+import org.apache.solr.util.LogLevel;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -71,7 +72,6 @@ public class BasicAuthStandaloneTest extends AbstractSolrTestCase {
     instance = new SolrInstance("inst", null);
     instance.setUp();
     jetty = createJetty(instance);
-    initCore("solrconfig.xml", "schema.xml", instance.getHomeDir().toString());
     securityConfHandler = new SecurityConfHandlerLocalForTesting(jetty.getCoreContainer());
   }
 
@@ -83,6 +83,7 @@ public class BasicAuthStandaloneTest extends AbstractSolrTestCase {
   }
 
   @Test
+  @LogLevel("org.apache.solr=DEBUG")
   public void testBasicAuth() throws Exception {
 
     String authcPrefix = "/admin/authentication";
@@ -100,6 +101,8 @@ public class BasicAuthStandaloneTest extends AbstractSolrTestCase {
       securityConfHandler.persistConf(new SecurityConfHandler.SecurityConfig()
           .setData(Utils.fromJSONString(STD_CONF.replaceAll("'", "\""))));
       securityConfHandler.securityConfEdited();
+      log.debug("Newly written security.json is " + securityConfHandler.getSecurityConfig(false) +
+        " and baseUrl is " + baseUrl);
       verifySecurityStatus(cl, baseUrl + authcPrefix, "authentication/class", "solr.BasicAuthPlugin", 20);
 
       String command = "{\n" +
