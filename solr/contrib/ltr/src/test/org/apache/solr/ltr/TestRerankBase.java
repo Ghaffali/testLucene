@@ -76,12 +76,12 @@ public class TestRerankBase extends RestTestBase {
   protected static File mstorefile = null;
 
   public static void setuptest() throws Exception {
-    setuptest("solrconfig-ltr.xml", "schema-ltr.xml");
+    setuptest("solrconfig-ltr.xml", "schema.xml");
     bulkIndex();
   }
 
   public static void setupPersistenttest() throws Exception {
-    setupPersistentTest("solrconfig-ltr.xml", "schema-ltr.xml");
+    setupPersistentTest("solrconfig-ltr.xml", "schema.xml");
     bulkIndex();
   }
 

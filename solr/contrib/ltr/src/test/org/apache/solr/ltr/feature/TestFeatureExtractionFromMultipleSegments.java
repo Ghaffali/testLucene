@@ -41,7 +41,7 @@ public class TestFeatureExtractionFromMultipleSegments extends TestRerankBase {
   @BeforeClass
   public static void before() throws Exception {
     // solrconfig-multiseg.xml contains the merge policy to restrict merging
-    setuptest("solrconfig-multiseg.xml", "schema-ltr.xml");
+    setuptest("solrconfig-multiseg.xml", "schema.xml");
     // index 400 documents
     for(int i = 0; i<400;i=i+20) {
       assertU(adoc("id", new Integer(i).toString(),   "popularity", "201", "description", "apple is a company " + randomString(i%6+3), "normHits", "0.1"));

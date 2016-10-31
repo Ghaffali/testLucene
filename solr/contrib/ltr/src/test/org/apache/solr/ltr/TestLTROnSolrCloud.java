@@ -39,7 +39,7 @@ public class TestLTROnSolrCloud extends TestRerankBase {
 
   private MiniSolrCloudCluster solrCluster;
   String solrconfig = "solrconfig-ltr.xml";
-  String schema = "schema-ltr.xml";
+  String schema = "schema.xml";
 
   SortedMap<ServletHolder,String> extraServlets = null;
 

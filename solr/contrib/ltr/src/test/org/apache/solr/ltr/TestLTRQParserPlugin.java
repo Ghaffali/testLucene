@@ -26,7 +26,7 @@ public class TestLTRQParserPlugin extends TestRerankBase {
 
   @BeforeClass
   public static void before() throws Exception {
-    setuptest("solrconfig-ltr.xml", "schema-ltr.xml");
+    setuptest("solrconfig-ltr.xml", "schema.xml");
     // store = getModelStore();
     bulkIndex();
 
