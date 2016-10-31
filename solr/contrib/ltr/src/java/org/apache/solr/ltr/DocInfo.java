@@ -28,15 +28,15 @@ public class DocInfo extends HashMap<String,Object> {
   }
 
   public void setOriginalDocScore(Float score) {
-    put(DocInfo.ORIGINAL_DOC_SCORE, score);
+    put(ORIGINAL_DOC_SCORE, score);
   }
 
   public Float getOriginalDocScore() {
-    return (Float)get(DocInfo.ORIGINAL_DOC_SCORE);
+    return (Float)get(ORIGINAL_DOC_SCORE);
   }
 
   public boolean hasOriginalDocScore() {
-    return containsKey(DocInfo.ORIGINAL_DOC_SCORE);
+    return containsKey(ORIGINAL_DOC_SCORE);
   }
 
 }

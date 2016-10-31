@@ -63,14 +63,14 @@ public class LTRScoringQuery extends Query {
   final private Semaphore querySemaphore; // limits the number of threads per query, so that multiple requests can be serviced simultaneously
 
   // feature logger to output the features.
-  protected FeatureLogger<?> fl;
+  private FeatureLogger<?> fl;
   // Map of external parameters, such as query intent, that can be used by
   // features
-  protected final Map<String,String[]> efi;
+  final private Map<String,String[]> efi;
   // Original solr query used to fetch matching documents
-  protected Query originalQuery;
+  private Query originalQuery;
   // Original solr request
-  protected SolrQueryRequest request;
+  private SolrQueryRequest request;
 
   public LTRScoringQuery(LTRScoringModel ltrScoringModel) {
     this(ltrScoringModel, Collections.<String,String[]>emptyMap(), false, null);
@@ -225,7 +225,7 @@ public class LTRScoringQuery extends Query {
         modelFeaturesWeights[j++] = fw;
       }
     }
-    return new ModelWeight(searcher, modelFeaturesWeights, extractedFeatureWeights, allFeatures.size());
+    return new ModelWeight(modelFeaturesWeights, extractedFeatureWeights, allFeatures.size());
   }
 
   private void createWeights(IndexSearcher searcher, boolean needsScores, float boost,
@@ -243,11 +243,11 @@ public class LTRScoringQuery extends Query {
     }
   }
 
-  class CreateWeightCallable implements Callable<Feature.FeatureWeight>{
+  private class CreateWeightCallable implements Callable<Feature.FeatureWeight>{
     final private Feature f;
-    IndexSearcher searcher;
-    boolean needsScores;
-    SolrQueryRequest req;
+    final private IndexSearcher searcher;
+    final private boolean needsScores;
+    final private SolrQueryRequest req;
 
     public CreateWeightCallable(Feature f, IndexSearcher searcher, boolean needsScores, SolrQueryRequest req){
       this.f = f;
@@ -301,16 +301,16 @@ public class LTRScoringQuery extends Query {
   }
 
   public class FeatureInfo {
-    String name;
-    float value;
-    boolean used;
+    final private String name;
+    private float value;
+    private boolean used;
 
     FeatureInfo(String n, float v, boolean u){
       name = n; value = v; used = u;
     }
 
-    public void setScore(float score){
-      this.value = score;
+    public void setValue(float value){
+      this.value = value;
     }
 
     public String getName(){
@@ -332,13 +332,11 @@ public class LTRScoringQuery extends Query {
 
   public class ModelWeight extends Weight {
 
-    IndexSearcher searcher;
-
     // List of the model's features used for scoring. This is a subset of the
     // features used for logging.
-    Feature.FeatureWeight[] modelFeatureWeights;
-    float[] modelFeatureValuesNormalized;
-    Feature.FeatureWeight[] extractedFeatureWeights;
+    final private Feature.FeatureWeight[] modelFeatureWeights;
+    final private float[] modelFeatureValuesNormalized;
+    final private Feature.FeatureWeight[] extractedFeatureWeights;
 
     // List of all the feature names, values - used for both scoring and logging
     /*
@@ -351,7 +349,7 @@ public class LTRScoringQuery extends Query {
      *     we need a map which holds just the features that were triggered by the documents in the result set.
      *
      */
-    FeatureInfo[] featuresInfo;
+    final private FeatureInfo[] featuresInfo;
     /*
      * @param modelFeatureWeights
      *     - should be the same size as the number of features used by the model
@@ -362,10 +360,9 @@ public class LTRScoringQuery extends Query {
      * @param allFeaturesSize
      *     - total number of feature in the feature store used by this model
      */
-    public ModelWeight(IndexSearcher searcher, Feature.FeatureWeight[] modelFeatureWeights,
+    public ModelWeight(Feature.FeatureWeight[] modelFeatureWeights,
         Feature.FeatureWeight[] extractedFeatureWeights, int allFeaturesSize) {
       super(LTRScoringQuery.this);
-      this.searcher = searcher;
       this.extractedFeatureWeights = extractedFeatureWeights;
       this.modelFeatureWeights = modelFeatureWeights;
       this.modelFeatureValuesNormalized = new float[modelFeatureWeights.length];
@@ -384,6 +381,21 @@ public class LTRScoringQuery extends Query {
 
     public FeatureInfo[] getFeaturesInfo(){
       return featuresInfo;
+    }
+
+    // for test use
+    Feature.FeatureWeight[] getModelFeatureWeights() {
+      return modelFeatureWeights;
+    }
+
+    // for test use
+    float[] getModelFeatureValuesNormalized() {
+      return modelFeatureValuesNormalized;
+    }
+
+    // for test use
+    Feature.FeatureWeight[] getExtractedFeatureWeights() {
+      return extractedFeatureWeights;
     }
 
     /**
@@ -439,7 +451,7 @@ public class LTRScoringQuery extends Query {
       for (int i = 0; i < extractedFeatureWeights.length;++i){
         int featId = extractedFeatureWeights[i].getIndex();
         float value = extractedFeatureWeights[i].getDefaultValue();
-        featuresInfo[featId].setScore(value); // need to set default value everytime as the default value is used in 'dense' mode even if used=false
+        featuresInfo[featId].setValue(value); // need to set default value everytime as the default value is used in 'dense' mode even if used=false
         featuresInfo[featId].setUsed(false);
       }
     }
@@ -452,7 +464,7 @@ public class LTRScoringQuery extends Query {
       for (final Feature.FeatureWeight featureWeight : extractedFeatureWeights) {
         final Feature.FeatureWeight.FeatureScorer scorer = featureWeight.scorer(context);
         if (scorer != null) {
-          featureScorers.add(featureWeight.scorer(context));
+          featureScorers.add(scorer);
         }
       }
       // Always return a ModelScorer, even if no features match, because we
@@ -512,14 +524,14 @@ public class LTRScoringQuery extends Query {
         return featureTraversalScorer.iterator();
       }
 
-      public class SparseModelScorer extends Scorer {
-        protected DisiPriorityQueue subScorers;
-        protected ScoringQuerySparseIterator itr;
+      private class SparseModelScorer extends Scorer {
+        final private DisiPriorityQueue subScorers;
+        final private ScoringQuerySparseIterator itr;
 
-        protected int targetDoc = -1;
-        protected int activeDoc = -1;
+        private int targetDoc = -1;
+        private int activeDoc = -1;
 
-        protected SparseModelScorer(Weight weight,
+        private SparseModelScorer(Weight weight,
             List<Feature.FeatureWeight.FeatureScorer> featureScorers) {
           super(weight);
           if (featureScorers.size() <= 1) {
@@ -554,7 +566,7 @@ public class LTRScoringQuery extends Query {
               final Scorer subScorer = w.scorer;
               Feature.FeatureWeight scFW = (Feature.FeatureWeight) subScorer.getWeight();
               final int featureId = scFW.getIndex();
-              featuresInfo[featureId].setScore(subScorer.score());
+              featuresInfo[featureId].setValue(subScorer.score());
               featuresInfo[featureId].setUsed(true);
             }
           }
@@ -586,8 +598,7 @@ public class LTRScoringQuery extends Query {
           return children;
         }
 
-        protected class ScoringQuerySparseIterator extends
-        DisjunctionDISIApproximation {
+        private class ScoringQuerySparseIterator extends DisjunctionDISIApproximation {
 
           public ScoringQuerySparseIterator(DisiPriorityQueue subIterators) {
             super(subIterators);
@@ -620,13 +631,13 @@ public class LTRScoringQuery extends Query {
 
       }
 
-      public class DenseModelScorer extends Scorer {
-        int activeDoc = -1; // The doc that our scorer's are actually at
-        int targetDoc = -1; // The doc we were most recently told to go to
-        int freq = -1;
-        List<Feature.FeatureWeight.FeatureScorer> featureScorers;
+      private class DenseModelScorer extends Scorer {
+        private int activeDoc = -1; // The doc that our scorer's are actually at
+        private int targetDoc = -1; // The doc we were most recently told to go to
+        private int freq = -1;
+        final private List<Feature.FeatureWeight.FeatureScorer> featureScorers;
 
-        protected DenseModelScorer(Weight weight,
+        private DenseModelScorer(Weight weight,
             List<Feature.FeatureWeight.FeatureScorer> featureScorers) {
           super(weight);
           this.featureScorers = featureScorers;
@@ -647,7 +658,7 @@ public class LTRScoringQuery extends Query {
                 freq++;
                 Feature.FeatureWeight scFW = (Feature.FeatureWeight) scorer.getWeight();
                 final int featureId = scFW.getIndex();
-                featuresInfo[featureId].setScore(scorer.score());
+                featuresInfo[featureId].setValue(scorer.score());
                 featuresInfo[featureId].setUsed(true);
               }
             }
@@ -675,7 +686,7 @@ public class LTRScoringQuery extends Query {
           return new DenseIterator();
         }
 
-        class DenseIterator extends DocIdSetIterator {
+        private class DenseIterator extends DocIdSetIterator {
 
           @Override
           public int docID() {

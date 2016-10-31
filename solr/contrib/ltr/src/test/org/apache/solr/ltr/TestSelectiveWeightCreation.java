@@ -176,11 +176,12 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
         makeFeatureWeights(features));
     LTRScoringQuery.ModelWeight modelWeight = performQuery(hits, searcher,
         hits.scoreDocs[0].doc, new LTRScoringQuery(ltrScoringModel1, false)); // features not requested in response
+    LTRScoringQuery.FeatureInfo[] featuresInfo = modelWeight.getFeaturesInfo();
 
-    assertEquals(features.size(), modelWeight.modelFeatureValuesNormalized.length);
+    assertEquals(features.size(), modelWeight.getModelFeatureValuesNormalized().length);
     int validFeatures = 0;
-    for (int i=0; i < modelWeight.featuresInfo.length; ++i){
-      if (modelWeight.featuresInfo[i] != null && modelWeight.featuresInfo[i].isUsed()){
+    for (int i=0; i < featuresInfo.length; ++i){
+      if (featuresInfo[i] != null && featuresInfo[i].isUsed()){
         validFeatures += 1;
       }
     }
@@ -192,13 +193,14 @@ public class TestSelectiveWeightCreation extends TestRerankBase {
         makeFeatureWeights(features));
     modelWeight = performQuery(hits, searcher,
         hits.scoreDocs[0].doc, new LTRScoringQuery(ltrScoringModel2, true)); // features requested in response
+    featuresInfo = modelWeight.getFeaturesInfo();
 
-    assertEquals(features.size(), modelWeight.modelFeatureValuesNormalized.length);
-    assertEquals(allFeatures.size(), modelWeight.extractedFeatureWeights.length);
+    assertEquals(features.size(), modelWeight.getModelFeatureValuesNormalized().length);
+    assertEquals(allFeatures.size(), modelWeight.getExtractedFeatureWeights().length);
 
     validFeatures = 0;
-    for (int i=0; i < modelWeight.featuresInfo.length; ++i){
-      if (modelWeight.featuresInfo[i] != null && modelWeight.featuresInfo[i].isUsed()){
+    for (int i=0; i < featuresInfo.length; ++i){
+      if (featuresInfo[i] != null && featuresInfo[i].isUsed()){
         validFeatures += 1;
       }
     }

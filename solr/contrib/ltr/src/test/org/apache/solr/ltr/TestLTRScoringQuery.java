@@ -225,14 +225,14 @@ public class TestLTRScoringQuery extends LuceneTestCase {
 
     LTRScoringQuery.ModelWeight modelWeight = performQuery(hits, searcher,
         hits.scoreDocs[0].doc, new LTRScoringQuery(ltrScoringModel));
-    assertEquals(3, modelWeight.modelFeatureValuesNormalized.length);
+    assertEquals(3, modelWeight.getModelFeatureValuesNormalized().length);
 
     for (int i = 0; i < 3; i++) {
-      assertEquals(i, modelWeight.modelFeatureValuesNormalized[i], 0.0001);
+      assertEquals(i, modelWeight.getModelFeatureValuesNormalized()[i], 0.0001);
     }
     int[] posVals = new int[] {0, 1, 2};
     int pos = 0;
-    for (LTRScoringQuery.FeatureInfo fInfo:modelWeight.featuresInfo) {
+    for (LTRScoringQuery.FeatureInfo fInfo:modelWeight.getFeaturesInfo()) {
         if (fInfo == null){
           continue;
         }
@@ -252,11 +252,11 @@ public class TestLTRScoringQuery extends LuceneTestCase {
     modelWeight = performQuery(hits, searcher, hits.scoreDocs[0].doc,
         new LTRScoringQuery(ltrScoringModel));
     assertEquals(mixPositions.length,
-        modelWeight.modelFeatureWeights.length);
+        modelWeight.getModelFeatureWeights().length);
 
     for (int i = 0; i < mixPositions.length; i++) {
       assertEquals(mixPositions[i],
-          modelWeight.modelFeatureValuesNormalized[i], 0.0001);
+          modelWeight.getModelFeatureValuesNormalized()[i], 0.0001);
     }
 
     final ModelException expectedModelException = new ModelException("no features declared for model test");
@@ -271,7 +271,7 @@ public class TestLTRScoringQuery extends LuceneTestCase {
       fail("unexpectedly got here instead of catching "+expectedModelException);
       modelWeight = performQuery(hits, searcher, hits.scoreDocs[0].doc,
           new LTRScoringQuery(ltrScoringModel));
-      assertEquals(0, modelWeight.modelFeatureWeights.length);
+      assertEquals(0, modelWeight.getModelFeatureWeights().length);
     } catch (ModelException actualModelException) {
       assertEquals(expectedModelException.toString(), actualModelException.toString());
     }
@@ -299,11 +299,11 @@ public class TestLTRScoringQuery extends LuceneTestCase {
 
     modelWeight = performQuery(hits, searcher, hits.scoreDocs[0].doc,
         new LTRScoringQuery(normMeta));
-    normMeta.normalizeFeaturesInPlace(modelWeight.modelFeatureValuesNormalized);
+    normMeta.normalizeFeaturesInPlace(modelWeight.getModelFeatureValuesNormalized());
     assertEquals(mixPositions.length,
-        modelWeight.modelFeatureWeights.length);
+        modelWeight.getModelFeatureWeights().length);
     for (int i = 0; i < mixPositions.length; i++) {
-      assertEquals(42.42f, modelWeight.modelFeatureValuesNormalized[i], 0.0001);
+      assertEquals(42.42f, modelWeight.getModelFeatureValuesNormalized()[i], 0.0001);
     }
     r.close();
     dir.close();
