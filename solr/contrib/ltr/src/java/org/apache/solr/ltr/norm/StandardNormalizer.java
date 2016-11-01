@@ -72,7 +72,6 @@ public class StandardNormalizer extends Normalizer {
 
   @Override
   protected void validate() throws NormalizerException {
-    super.validate();
     if (std <= 0f) {
       throw
       new NormalizerException("Standard Normalizer standard deviation must "

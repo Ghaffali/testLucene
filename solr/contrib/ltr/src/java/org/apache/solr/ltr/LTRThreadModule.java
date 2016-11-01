@@ -112,7 +112,7 @@ final public class LTRThreadModule implements NamedListInitializedPlugin {
         );
   }
 
-  public void validate() {
+  private void validate() {
     if (totalPoolThreads <= 0){
       throw new IllegalArgumentException("totalPoolThreads cannot be less than 1");
     }

@@ -306,7 +306,7 @@ public class MultipleAdditiveTreesModel extends LTRScoringModel {
   }
 
   @Override
-  public void validate() throws ModelException {
+  protected void validate() throws ModelException {
     super.validate();
     if (trees == null) {
       throw new ModelException("no trees declared for model "+name);

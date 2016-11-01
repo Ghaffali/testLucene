@@ -122,7 +122,7 @@ public abstract class LTRScoringModel {
    * Validate that settings make sense and throws
    * {@link ModelException} if they do not make sense.
    */
-  public void validate() throws ModelException {
+  protected void validate() throws ModelException {
     if (features.isEmpty()) {
       throw new ModelException("no features declared for model "+name);
     }

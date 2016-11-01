@@ -17,6 +17,7 @@
 package org.apache.solr.ltr.feature;
 
 import java.io.IOException;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -29,7 +30,6 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.solr.request.SolrQueryRequest;
 
-import com.google.common.collect.Sets;
 /**
  * This feature returns the value of a field in the current document
  * Example configuration:
@@ -52,7 +52,7 @@ public class FieldValueFeature extends Feature {
 
   public void setField(String field) {
     this.field = field;
-    fieldAsSet = Sets.newHashSet(field);
+    fieldAsSet = Collections.singleton(field);
   }
 
   @Override
@@ -60,6 +60,14 @@ public class FieldValueFeature extends Feature {
     final LinkedHashMap<String,Object> params = new LinkedHashMap<>(1, 1.0f);
     params.put("field", field);
     return params;
+  }
+
+  @Override
+  protected void validate() throws FeatureException {
+    if (field == null || field.isEmpty()) {
+      throw new FeatureException(getClass().getSimpleName()+
+          ": field must be provided");
+    }
   }
 
   public FieldValueFeature(String name, Map<String,Object> params) {

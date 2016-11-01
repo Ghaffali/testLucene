@@ -61,6 +61,7 @@ public class ManagedModelStore extends ManagedResource implements ManagedResourc
 
   /** the model store rest endpoint **/
   public static final String REST_END_POINT = "/schema/model-store";
+  // TODO: reduce from public to package visibility (once tests no longer need public access)
 
   /**
    * Managed model store: the name of the attribute containing all the models of
@@ -174,8 +175,7 @@ public class ManagedModelStore extends ManagedResource implements ManagedResourc
   public synchronized void doDeleteChild(BaseSolrResource endpoint, String childId) {
     if (childId.equals("*")) {
       store.clear();
-    }
-    if (store.containsModel(childId)) {
+    } else {
       store.delete(childId);
     }
     storeManagedData(applyUpdatesToManagedData(null));

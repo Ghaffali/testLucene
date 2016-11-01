@@ -61,6 +61,14 @@ public class FieldLengthFeature extends Feature {
     return params;
   }
 
+  @Override
+  protected void validate() throws FeatureException {
+    if (field == null || field.isEmpty()) {
+      throw new FeatureException(getClass().getSimpleName()+
+          ": field must be provided");
+    }
+  }
+
   /** Cache of decoded bytes. */
 
   private static final float[] NORM_TABLE = new float[256];

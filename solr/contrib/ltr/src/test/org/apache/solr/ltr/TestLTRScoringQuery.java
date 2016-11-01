@@ -49,6 +49,7 @@ import org.apache.solr.ltr.model.ModelException;
 import org.apache.solr.ltr.model.TestLinearModel;
 import org.apache.solr.ltr.norm.IdentityNormalizer;
 import org.apache.solr.ltr.norm.Normalizer;
+import org.apache.solr.ltr.norm.NormalizerException;
 import org.junit.Test;
 
 public class TestLTRScoringQuery extends LuceneTestCase {
@@ -289,6 +290,11 @@ public class TestLTRScoringQuery extends LuceneTestCase {
       public LinkedHashMap<String,Object> paramsToMap() {
         return null;
       }
+
+      @Override
+      protected void validate() throws NormalizerException {
+      }
+
     };
     norms =
         new ArrayList<Normalizer>(

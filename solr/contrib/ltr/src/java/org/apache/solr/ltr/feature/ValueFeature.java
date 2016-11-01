@@ -59,9 +59,6 @@ public class ValueFeature extends Feature {
     this.value = value;
     if (value instanceof String) {
       configValueStr = (String) value;
-      if (configValueStr.trim().isEmpty()) {
-        throw new FeatureException("Empty field 'value' in params for " + this);
-      }
     } else if (value instanceof Double) {
       configValue = ((Double) value).floatValue();
     } else if (value instanceof Float) {
@@ -91,6 +88,13 @@ public class ValueFeature extends Feature {
       params.put("required", required);
     }
     return params;
+  }
+
+  @Override
+  protected void validate() throws FeatureException {
+    if (configValueStr != null && configValueStr.trim().isEmpty()) {
+      throw new FeatureException("Empty field 'value' in params for " + this);
+    }
   }
 
   public ValueFeature(String name, Map<String,Object> params) {

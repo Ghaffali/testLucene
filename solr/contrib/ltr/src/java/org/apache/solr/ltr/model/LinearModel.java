@@ -81,7 +81,7 @@ public class LinearModel extends LTRScoringModel {
   }
 
   @Override
-  public void validate() throws ModelException {
+  protected void validate() throws ModelException {
     super.validate();
 
     final ArrayList<String> missingWeightFeatureNames = new ArrayList<String>();

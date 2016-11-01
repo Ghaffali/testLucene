@@ -57,6 +57,7 @@ public class ManagedFeatureStore extends ManagedResource implements ManagedResou
 
   /** the feature store rest endpoint **/
   public static final String REST_END_POINT = "/schema/feature-store";
+  // TODO: reduce from public to package visibility (once tests no longer need public access)
 
   /** name of the attribute containing the feature class **/
   static final String CLASS_KEY = "class";
@@ -182,7 +183,7 @@ public class ManagedFeatureStore extends ManagedResource implements ManagedResou
   }
 
   private static List<Object> featuresAsManagedResources(FeatureStore store) {
-    final List<Object> features = new ArrayList<Object>(store.size());
+    final List<Object> features = new ArrayList<Object>();
     for (final Feature f : store.getFeatures()) {
       final LinkedHashMap<String,Object> m = toFeatureMap(f);
       m.put(FEATURE_STORE_NAME_KEY, store.getName());

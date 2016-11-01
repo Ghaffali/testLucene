@@ -113,7 +113,6 @@ public class SolrFeature extends Feature {
 
   @Override
   protected void validate() throws FeatureException {
-    super.validate();
     if ((q == null || q.isEmpty()) &&
         ((fq == null) || fq.isEmpty())) {
       throw new FeatureException(getClass().getSimpleName()+
@@ -183,8 +182,6 @@ public class SolrFeature extends Feature {
 
     private LocalSolrQueryRequest makeRequest(SolrCore core, String solrQuery,
         List<String> fqs, String df) {
-      // Map.Entry<String, String> [] entries = new NamedListEntry[q.length /
-      // 2];
       final NamedList<String> returnList = new NamedList<String>();
       if ((solrQuery != null) && !solrQuery.isEmpty()) {
         returnList.add(CommonParams.Q, solrQuery);
@@ -192,7 +189,6 @@ public class SolrFeature extends Feature {
       if (fqs != null) {
         for (final String fq : fqs) {
           returnList.add(CommonParams.FQ, fq);
-          // entries[i/2] = new NamedListEntry<>(q[i], q[i+1]);
         }
       }
       if ((df != null) && !df.isEmpty()) {
@@ -235,7 +231,7 @@ public class SolrFeature extends Feature {
      * @return DocIdSetIterator to traverse documents that matched all filter
      *         criteria
      */
-    public DocIdSetIterator getDocIdSetIteratorFromQueries(List<Query> queries,
+    private DocIdSetIterator getDocIdSetIteratorFromQueries(List<Query> queries,
         LeafReaderContext context) throws IOException {
       final SolrIndexSearcher.ProcessedFilter pf = ((SolrIndexSearcher) searcher)
           .getProcessedFilter(null, queries);

@@ -42,6 +42,10 @@ public class IdentityNormalizer extends Normalizer {
   }
 
   @Override
+  protected void validate() throws NormalizerException {
+  }
+
+  @Override
   public String toString() {
     return getClass().getSimpleName();
   }

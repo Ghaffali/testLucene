@@ -53,14 +53,12 @@ public abstract class Normalizer {
   }
 
   /**
-   * On construction of a normalizer, this function confirms
-   * that the normalizer parameters are validated
+   * As part of creation of a normalizer instance, this function confirms
+   * that the normalizer parameters are valid.
    *
    * @throws NormalizerException
    *             Normalizer Exception
    */
-  protected void validate() throws NormalizerException {
-
-  }
+  protected abstract void validate() throws NormalizerException;
 
 }

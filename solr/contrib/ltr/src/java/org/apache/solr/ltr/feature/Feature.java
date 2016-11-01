@@ -86,15 +86,13 @@ public abstract class Feature extends Query {
   }
 
   /**
-   * On construction of a feature, this function confirms
-   * that the feature parameters are validated
+   * As part of creation of a feature instance, this function confirms
+   * that the feature parameters are valid.
    *
    * @throws FeatureException
    *             Feature Exception
    */
-  protected void validate() throws FeatureException {
-
-  }
+  protected abstract void validate() throws FeatureException;
 
   @Override
   public String toString(String field) {
@@ -271,7 +269,7 @@ public abstract class Feature extends Query {
 
       final protected String name;
       private DocInfo docInfo;
-      protected DocIdSetIterator itr;
+      final protected DocIdSetIterator itr;
 
       public FeatureScorer(Feature.FeatureWeight weight,
           DocIdSetIterator itr) {

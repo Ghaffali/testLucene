@@ -50,6 +50,10 @@ public class OriginalScoreFeature extends Feature {
   }
 
   @Override
+  protected void validate() throws FeatureException {
+  }
+
+  @Override
   public OriginalScoreWeight createWeight(IndexSearcher searcher,
       boolean needsScores, SolrQueryRequest request, Query originalQuery, Map<String,String[]> efi) throws IOException {
     return new OriginalScoreWeight(searcher, request, originalQuery, efi);
@@ -82,7 +86,7 @@ public class OriginalScoreFeature extends Feature {
     }
 
     public class OriginalScoreScorer extends FeatureScorer {
-      Scorer originalScorer;
+      final private Scorer originalScorer;
 
       public OriginalScoreScorer(FeatureWeight weight, Scorer originalScorer) {
         super(weight,null);

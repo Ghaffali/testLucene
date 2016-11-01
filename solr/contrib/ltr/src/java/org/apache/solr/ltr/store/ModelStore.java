@@ -40,16 +40,8 @@ public class ModelStore {
     return availableModels.get(name);
   }
 
-  public boolean containsModel(String modelName) {
-    return availableModels.containsKey(modelName);
-  }
-
   public void clear() {
     availableModels.clear();
-  }
-
-  public int size() {
-    return availableModels.size();
   }
 
   public List<LTRScoringModel> getModels() {
@@ -63,15 +55,15 @@ public class ModelStore {
     return "ModelStore [availableModels=" + availableModels.keySet() + "]";
   }
 
-  public void delete(String modelName) {
-    availableModels.remove(modelName);
+  public LTRScoringModel delete(String modelName) {
+    return availableModels.remove(modelName);
   }
 
   public synchronized void addModel(LTRScoringModel modeldata)
       throws ModelException {
     final String name = modeldata.getName();
 
-    if (containsModel(name)) {
+    if (availableModels.containsKey(name)) {
       throw new ModelException("model '" + name
           + "' already exists. Please use a different name");
     }
