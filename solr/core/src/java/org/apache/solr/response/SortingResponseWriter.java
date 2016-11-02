@@ -20,9 +20,9 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Writer;
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
-import java.util.ArrayList;
 
 import org.apache.lucene.index.DocValues;
 import org.apache.lucene.index.LeafReader;
@@ -85,21 +85,23 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     SolrRequestInfo info = SolrRequestInfo.getRequestInfo();
     SortSpec sortSpec = info.getResponseBuilder().getSortSpec();
-    Exception exception = null;
 
     if(sortSpec == null) {
-      exception = new IOException(new SyntaxError("No sort criteria was provided."));
+      writeException((new IOException(new SyntaxError("No sort criteria was provided."))), writer, true);
+      return;
     }
 
     SolrIndexSearcher searcher = req.getSearcher();
     Sort sort = searcher.weightSort(sortSpec.getSort());
 
     if(sort == null) {
-      exception = new IOException(new SyntaxError("No sort criteria was provided."));
+      writeException((new IOException(new SyntaxError("No sort criteria was provided."))), writer, true);
+      return;
     }
 
     if(sort != null && sort.needsScores()) {
-      exception = new IOException(new SyntaxError("Scoring is not currently supported with xsort."));
+      writeException((new IOException(new SyntaxError("Scoring is not currently supported with xsort."))), writer, true);
+      return;
     }
 
     // There is a bailout in SolrIndexSearcher.getDocListNC when there are _no_ docs in the index at all.
@@ -117,7 +119,8 @@ public class SortingResponseWriter implements QueryResponseWriter {
       totalHits = ((Integer)req.getContext().get("totalHits")).intValue();
       sets = (FixedBitSet[]) req.getContext().get("export");
       if (sets == null) {
-        exception = new IOException(new SyntaxError("xport RankQuery is required for xsort: rq={!xport}"));
+        writeException((new IOException(new SyntaxError("xport RankQuery is required for xsort: rq={!xport}"))), writer, true);
+        return;
       }
     }
     SolrParams params = req.getParams();
@@ -126,7 +129,8 @@ public class SortingResponseWriter implements QueryResponseWriter {
     String[] fields = null;
 
     if(fl == null) {
-      exception = new IOException(new SyntaxError("export field list (fl) must be specified."));
+      writeException((new IOException(new SyntaxError("export field list (fl) must be specified."))), writer, true);
+      return;
     } else  {
       fields = fl.split(",");
 
@@ -135,8 +139,8 @@ public class SortingResponseWriter implements QueryResponseWriter {
         fields[i] = fields[i].trim();
 
         if(fields[i].equals("score")) {
-          exception =  new IOException(new SyntaxError("Scoring is not currently supported with xsort."));
-          break;
+          writeException((new IOException(new SyntaxError("Scoring is not currently supported with xsort."))), writer, true);
+          return;
         }
       }
     }
@@ -146,12 +150,7 @@ public class SortingResponseWriter implements QueryResponseWriter {
     try {
       fieldWriters = getFieldWriters(fields, req.getSearcher());
     } catch (Exception e) {
-      exception = e;
-    }
-
-
-    if(exception != null) {
-      writeException(exception, writer, true);
+      writeException(e, writer, true);
       return;
     }
 
@@ -381,7 +380,7 @@ public class SortingResponseWriter implements QueryResponseWriter {
           sortValues[i] = new LongValue(field, new LongAsc());
         }
       } else if(ft instanceof StrField) {
-        LeafReader reader = searcher.getLeafReader();
+        LeafReader reader = searcher.getSlowAtomicReader();
         SortedDocValues vals =  reader.getSortedDocValues(field);
         if(reverse) {
           sortValues[i] = new StringValue(vals, field, new IntDesc());
@@ -398,7 +397,7 @@ public class SortingResponseWriter implements QueryResponseWriter {
         // This is a bit of a hack, but since the boolean field stores ByteRefs, just like Strings
         // _and_ since "F" happens to sort before "T" (thus false sorts "less" than true)
         // we can just use the existing StringValue here.
-        LeafReader reader = searcher.getLeafReader();
+        LeafReader reader = searcher.getSlowAtomicReader();
         SortedDocValues vals =  reader.getSortedDocValues(field);
         if(reverse) {
           sortValues[i] = new StringValue(vals, field, new IntDesc());
@@ -857,6 +856,7 @@ public class SortingResponseWriter implements QueryResponseWriter {
     protected String field;
     protected int currentValue;
     protected IntComp comp;
+    private int lastDocID;
 
     public IntValue copy() {
       return new IntValue(field, comp);
@@ -870,10 +870,23 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public void setNextReader(LeafReaderContext context) throws IOException {
       this.vals = DocValues.getNumeric(context.reader(), field);
+      lastDocID = 0;
     }
 
-    public void setCurrentValue(int docId) {
-      currentValue = (int)vals.get(docId);
+    public void setCurrentValue(int docId) throws IOException {
+      if (docId < lastDocID) {
+        throw new AssertionError("docs were sent out-of-order: lastDocID=" + lastDocID + " vs doc=" + docId);
+      }
+      lastDocID = docId;
+      int curDocID = vals.docID();
+      if (docId > curDocID) {
+        curDocID = vals.advance(docId);
+      }
+      if (docId == curDocID) {
+        currentValue = (int) vals.longValue();
+      } else {
+        currentValue = 0;
+      }
     }
 
     public int compareTo(SortValue o) {
@@ -935,6 +948,7 @@ public class SortingResponseWriter implements QueryResponseWriter {
     protected String field;
     protected long currentValue;
     protected LongComp comp;
+    private int lastDocID;
 
     public LongValue(String field, LongComp comp) {
       this.field = field;
@@ -948,10 +962,23 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public void setNextReader(LeafReaderContext context) throws IOException {
       this.vals = DocValues.getNumeric(context.reader(), field);
+      lastDocID = 0;
     }
 
-    public void setCurrentValue(int docId) {
-      currentValue = vals.get(docId);
+    public void setCurrentValue(int docId) throws IOException {
+      if (docId < lastDocID) {
+        throw new AssertionError("docs were sent out-of-order: lastDocID=" + lastDocID + " vs doc=" + docId);
+      }
+      lastDocID = docId;
+      int curDocID = vals.docID();
+      if (docId > curDocID) {
+        curDocID = vals.advance(docId);
+      }
+      if (docId == curDocID) {
+        currentValue = vals.longValue();
+      } else {
+        currentValue = 0;
+      }
     }
 
     public void setCurrentValue(SortValue sv) {
@@ -1014,6 +1041,7 @@ public class SortingResponseWriter implements QueryResponseWriter {
     protected String field;
     protected float currentValue;
     protected FloatComp comp;
+    private int lastDocID;
 
     public FloatValue(String field, FloatComp comp) {
       this.field = field;
@@ -1027,10 +1055,23 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public void setNextReader(LeafReaderContext context) throws IOException {
       this.vals = DocValues.getNumeric(context.reader(), field);
+      lastDocID = 0;
     }
 
-    public void setCurrentValue(int docId) {
-      currentValue = Float.intBitsToFloat((int)vals.get(docId));
+    public void setCurrentValue(int docId) throws IOException {
+      if (docId < lastDocID) {
+        throw new AssertionError("docs were sent out-of-order: lastDocID=" + lastDocID + " vs doc=" + docId);
+      }
+      lastDocID = docId;
+      int curDocID = vals.docID();
+      if (docId > curDocID) {
+        curDocID = vals.advance(docId);
+      }
+      if (docId == curDocID) {
+        currentValue = Float.intBitsToFloat((int)vals.longValue());
+      } else {
+        currentValue = 0f;
+      }
     }
 
     public void setCurrentValue(SortValue sv) {
@@ -1091,6 +1132,8 @@ public class SortingResponseWriter implements QueryResponseWriter {
     protected String field;
     protected double currentValue;
     protected DoubleComp comp;
+    private int lastDocID;
+    private LeafReader reader;
 
     public DoubleValue(String field, DoubleComp comp) {
       this.field = field;
@@ -1103,11 +1146,26 @@ public class SortingResponseWriter implements QueryResponseWriter {
     }
 
     public void setNextReader(LeafReaderContext context) throws IOException {
-      this.vals = DocValues.getNumeric(context.reader(), field);
+      this.reader = context.reader();
+      this.vals = DocValues.getNumeric(this.reader, this.field);
+      lastDocID = 0;
     }
 
-    public void setCurrentValue(int docId) {
-      currentValue = Double.longBitsToDouble(vals.get(docId));
+    public void setCurrentValue(int docId) throws IOException {
+      if (docId < lastDocID) {
+        // TODO: can we enforce caller to go in order instead?
+        this.vals = DocValues.getNumeric(this.reader, this.field);
+      }
+      lastDocID = docId;
+      int curDocID = vals.docID();
+      if (docId > curDocID) {
+        curDocID = vals.advance(docId);
+      }
+      if (docId == curDocID) {
+        currentValue = Double.longBitsToDouble(vals.longValue());
+      } else {
+        currentValue = 0f;
+      }
     }
 
     public void setCurrentValue(SortValue sv) {
@@ -1178,7 +1236,7 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public StringValue(SortedDocValues vals, String field, IntComp comp)  {
       this.vals = vals;
-      if(vals instanceof  MultiDocValues.MultiSortedDocValues) {
+      if(vals instanceof MultiDocValues.MultiSortedDocValues) {
         this.segmentVals = ((MultiDocValues.MultiSortedDocValues) vals).values;
         this.ordinalMap = ((MultiDocValues.MultiSortedDocValues) vals).mapping;
       }
@@ -1191,17 +1249,19 @@ public class SortingResponseWriter implements QueryResponseWriter {
       return new StringValue(vals, field, comp);
     }
 
-    public void setCurrentValue(int docId) {
-      int ord = currentVals.getOrd(docId);
-
-      if(ord < 0) {
-        currentOrd = -1;
-      } else {
+    public void setCurrentValue(int docId) throws IOException {
+      if (docId > currentVals.docID()) {
+        currentVals.advance(docId);
+      }
+      if (docId == currentVals.docID()) {
+        int ord = currentVals.ordValue();
         if(globalOrds != null) {
           currentOrd = (int)globalOrds.get(ord);
         } else {
           currentOrd = ord;
         }
+      } else {
+        currentOrd = -1;
       }
     }
 
@@ -1247,7 +1307,12 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       NumericDocValues vals = DocValues.getNumeric(reader, this.field);
-      int val = (int)vals.get(docId);
+      int val;
+      if (vals.advance(docId) == docId) {
+        val = (int) vals.longValue();
+      } else {
+        val = 0;
+      }
       if(fieldIndex>0) {
         out.write(',');
       }
@@ -1273,14 +1338,15 @@ public class SortingResponseWriter implements QueryResponseWriter {
     }
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       SortedSetDocValues vals = DocValues.getSortedSet(reader, this.field);
-      vals.setDocument(docId);
-      List<Long> ords = new ArrayList();
-      long o = -1;
-      while((o = vals.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
-        ords.add(o);
-      }
-
-      if(ords.size()== 0) {
+      List<Long> ords;
+      if (vals.advance(docId) == docId) {
+        ords = new ArrayList();
+        long o = -1;
+        while((o = vals.nextOrd()) != SortedSetDocValues.NO_MORE_ORDS) {
+          ords.add(o);
+        }
+        assert ords.size() > 0;
+      } else {
         return false;
       }
 
@@ -1326,7 +1392,12 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       NumericDocValues vals = DocValues.getNumeric(reader, this.field);
-      long val = vals.get(docId);
+      long val;
+      if (vals.advance(docId) == docId) {
+        val = vals.longValue();
+      } else {
+        val = 0;
+      }
       if(fieldIndex > 0) {
         out.write(',');
       }
@@ -1348,7 +1419,12 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       NumericDocValues vals = DocValues.getNumeric(reader, this.field);
-      long val = vals.get(docId);
+      long val;
+      if (vals.advance(docId) == docId) {
+        val = vals.longValue();
+      } else {
+        val = 0;
+      }
 
       if (fieldIndex > 0) {
         out.write(',');
@@ -1376,10 +1452,10 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       SortedDocValues vals = DocValues.getSorted(reader, this.field);
-      int ord = vals.getOrd(docId);
-      if(ord == -1) {
+      if (vals.advance(docId) != docId) {
         return false;
       }
+      int ord = vals.ordValue();
 
       BytesRef ref = vals.lookupOrd(ord);
       fieldType.indexedToReadable(ref, cref);
@@ -1407,7 +1483,12 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       NumericDocValues vals = DocValues.getNumeric(reader, this.field);
-      int val = (int)vals.get(docId);
+      int val;
+      if (vals.advance(docId) == docId) {
+        val = (int)vals.longValue();
+      } else {
+        val = 0;
+      }
       if(fieldIndex > 0) {
         out.write(',');
       }
@@ -1429,10 +1510,15 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       NumericDocValues vals = DocValues.getNumeric(reader, this.field);
+      long val;
+      if (vals.advance(docId) == docId) {
+        val = vals.longValue();
+      } else {
+        val = 0;
+      }
       if(fieldIndex > 0) {
         out.write(',');
       }
-      long val = vals.get(docId);
       out.write('"');
       out.write(this.field);
       out.write('"');
@@ -1454,10 +1540,10 @@ public class SortingResponseWriter implements QueryResponseWriter {
 
     public boolean write(int docId, LeafReader reader, Writer out, int fieldIndex) throws IOException {
       SortedDocValues vals = DocValues.getSorted(reader, this.field);
-      int ord = vals.getOrd(docId);
-      if(ord == -1) {
+      if (vals.advance(docId) != docId) {
         return false;
       }
+      int ord = vals.ordValue();
 
       BytesRef ref = vals.lookupOrd(ord);
       fieldType.indexedToReadable(ref, cref);

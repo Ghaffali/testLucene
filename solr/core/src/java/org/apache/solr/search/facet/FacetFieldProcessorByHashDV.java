@@ -29,7 +29,6 @@ import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.search.SimpleCollector;
 import org.apache.lucene.util.BitUtil;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.LongValues;
 import org.apache.solr.common.SolrException;
@@ -198,7 +197,7 @@ class FacetFieldProcessorByHashDV extends FacetFieldProcessor {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
           getClass()+" doesn't support prefix"); // yet, but it could
     }
-    FieldInfo fieldInfo = fcontext.searcher.getLeafReader().getFieldInfos().fieldInfo(sf.getName());
+    FieldInfo fieldInfo = fcontext.searcher.getSlowAtomicReader().getFieldInfos().fieldInfo(sf.getName());
     if (fieldInfo != null &&
         fieldInfo.getDocValuesType() != DocValuesType.NUMERIC &&
         fieldInfo.getDocValuesType() != DocValuesType.SORTED) {
@@ -333,7 +332,13 @@ class FacetFieldProcessorByHashDV extends FacetFieldProcessor {
 
       // TODO support SortedSetDocValues
       SortedDocValues globalDocValues = FieldUtil.getSortedDocValues(fcontext.qcontext, sf, null);
-      ((TermOrdCalc)calc).lookupOrdFunction = globalDocValues::lookupOrd;
+      ((TermOrdCalc)calc).lookupOrdFunction = ord -> {
+        try {
+          return globalDocValues.lookupOrd(ord);
+        } catch (IOException e) {
+          throw new RuntimeException(e);
+        }
+      };
 
       DocSetUtil.collectSortedDocSet(fcontext.base, fcontext.searcher.getIndexReader(), new SimpleCollector() {
           SortedDocValues docValues = globalDocValues; // this segment/leaf. NN
@@ -353,9 +358,11 @@ class FacetFieldProcessorByHashDV extends FacetFieldProcessor {
 
           @Override
           public void collect(int segDoc) throws IOException {
-            long ord = docValues.getOrd(segDoc);
-            if (ord != -1) {
-              long val = toGlobal.get(ord);
+            if (segDoc > docValues.docID()) {
+              docValues.advance(segDoc);
+            }
+            if (segDoc == docValues.docID()) {
+              long val = toGlobal.get(docValues.ordValue());
               collectValFirstPhase(segDoc, val);
             }
           }
@@ -366,7 +373,6 @@ class FacetFieldProcessorByHashDV extends FacetFieldProcessor {
       // TODO support SortedNumericDocValues
       DocSetUtil.collectSortedDocSet(fcontext.base, fcontext.searcher.getIndexReader(), new SimpleCollector() {
           NumericDocValues values = null; //NN
-          Bits docsWithField = null; //NN
 
           @Override public boolean needsScores() { return false; }
 
@@ -374,14 +380,15 @@ class FacetFieldProcessorByHashDV extends FacetFieldProcessor {
           protected void doSetNextReader(LeafReaderContext ctx) throws IOException {
             setNextReaderFirstPhase(ctx);
             values = DocValues.getNumeric(ctx.reader(), sf.getName());
-            docsWithField = DocValues.getDocsWithField(ctx.reader(), sf.getName());
           }
 
           @Override
           public void collect(int segDoc) throws IOException {
-            long val = values.get(segDoc);
-            if (val != 0 || docsWithField.get(segDoc)) {
-              collectValFirstPhase(segDoc, val);
+            if (segDoc > values.docID()) {
+              values.advance(segDoc);
+            }
+            if (segDoc == values.docID()) {
+              collectValFirstPhase(segDoc, values.longValue());
             }
           }
         });

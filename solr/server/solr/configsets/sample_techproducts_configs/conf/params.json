@@ -1,8 +1,11 @@
 {
   "params": {
-    "update_json_docs": {
+    "_UPDATE_JSON_DOCS": {
       "srcField": "_src_",
-      "mapUniqueKeyOnly": true
+      "mapUniqueKeyOnly": true,
+      "": {
+        "v": 0
+      }
     }
   }
 }
