@@ -21,7 +21,6 @@
     "/update/json/docs": {
       "useParams":"_UPDATE_JSON_DOCS",
       "class": "solr.UpdateRequestHandler",
-      "useParams": "update_json_docs",
       "invariants": {
         "update.contentType": "application/json",
         "json.command": "false"
@@ -29,7 +28,7 @@
     },
     "update":{
       "class":"solr.UpdateRequestHandlerApi",
-      "useParams": "update_json_docs"
+      "useParams": "_UPDATE_JSON_DOCS"
     },
     "/config": {
       "useParams":"_CONFIG",
