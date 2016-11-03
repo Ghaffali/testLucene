@@ -75,7 +75,7 @@ public class TestCoreAdminApis extends SolrTestCaseJ4 {
   public static CoreContainer getCoreContainerMock(final Map<String, Object[]> in,Map<String,Object> out ) {
     CoreContainer mockCC = EasyMock.createMock(CoreContainer.class);
     EasyMock.reset(mockCC);
-    mockCC.create(anyObject(String.class), anyObject(Path.class) , anyObject(Map.class), false);
+    mockCC.create(anyObject(String.class), anyObject(Path.class) , anyObject(Map.class), anyBoolean());
     EasyMock.expectLastCall().andAnswer(() -> {
       in.put("create", getCurrentArguments());
       return null;
