@@ -25,7 +25,6 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
@@ -109,7 +108,6 @@ class JSONWriter extends TextResponseWriter {
     if(wrapperFunction!=null) {
         writer.write(wrapperFunction + "(");
     }
-    if(req.getParams().getBool(CommonParams.OMIT_HEADER, false)) rsp.removeResponseHeader();
     writeNamedList(null, rsp.getValues());
     if(wrapperFunction!=null) {
         writer.write(')');
@@ -289,7 +287,7 @@ class JSONWriter extends TextResponseWriter {
   // NamedList("a"=1,"b"=2,null=3) => ["a",1,"b",2,null,3]
   protected void writeNamedListAsFlat(String name, NamedList val) throws IOException {
     int sz = val.size();
-    writeArrayOpener(sz);
+    writeArrayOpener(sz*2);
     incLevel();
 
     for (int i=0; i<sz; i++) {
@@ -543,8 +541,20 @@ class JSONWriter extends TextResponseWriter {
   }
 
   @Override
+  public void writeArray(String name, List l) throws IOException {
+    writeArrayOpener(l.size());
+    writeJsonIter(l.iterator());
+    writeArrayCloser();
+  }
+
+  @Override
   public void writeArray(String name, Iterator val) throws IOException {
     writeArrayOpener(-1); // no trivial way to determine array size
+    writeJsonIter(val);
+    writeArrayCloser();
+  }
+
+  private void writeJsonIter(Iterator val) throws IOException {
     incLevel();
     boolean first=true;
     while( val.hasNext() ) {
@@ -556,7 +566,6 @@ class JSONWriter extends TextResponseWriter {
       first=false;
     }
     decLevel();
-    writeArrayCloser();
   }
 
   //
@@ -624,6 +633,11 @@ class ArrayOfNamedValuePairJSONWriter extends JSONWriter {
       throw new UnsupportedOperationException(ArrayOfNamedValuePairJSONWriter.class.getSimpleName()+" must only be used with "
           + JSON_NL_ARROFNVP + " style");
     }
+  }
+
+  @Override
+  public void writeArray(String name, List l) throws IOException {
+    super.writeArray(name, l);
   }
 
   @Override
