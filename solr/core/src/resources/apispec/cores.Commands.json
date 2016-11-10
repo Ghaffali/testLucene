@@ -62,7 +62,7 @@
         },
         "numShards": {
           "type":"number",
-          "description":"NO:of shards"
+          "description":"number of shards"
         },
         "async": {
           "type": "string",

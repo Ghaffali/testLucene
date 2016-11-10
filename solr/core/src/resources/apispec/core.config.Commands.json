@@ -65,8 +65,7 @@
         }
       },
       "required": [
-        "name",
-        "class"
+        "name"
       ],
       "additionalProperties": true
     },

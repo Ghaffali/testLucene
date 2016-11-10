@@ -35,6 +35,10 @@
         "to": {
           "type": "string",
           "description": "The new name"
+        },
+        "async": {
+          "type": "string",
+          "description": "Request ID to track this action which will be processed asynchronously"
         }
       },
       "required": [
@@ -98,17 +102,22 @@
       "description": "Internal API"
     },
     "split": "cores.core.Commands.split",
-    "preprecovery": {
+    "prep-recovery": {
       "type": "object",
       "additionalProperties": true,
       "description": "Internal API"
     },
-    "requestapplyupdates": {
+    "request-apply-updates": {
       "type": "object",
       "additionalProperties": true,
       "description": "Internal API"
     },
-    "requestbufferupdates": {
+    "request-sync-shard": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Internal API"
+    },
+    "request-buffer-updates": {
       "type": "object",
       "additionalProperties": true,
       "description": "Internal API"
