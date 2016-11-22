@@ -161,23 +161,23 @@ public class PathTrie<T> {
 
     /**
      *
-     * @param pieces pieces in the url /a/b/c has pieces as 'a' , 'b' , 'c'
+     * @param pathSegments pieces in the url /a/b/c has pieces as 'a' , 'b' , 'c'
      * @param index current index of the pieces that we are looking at in /a/b/c 0='a' and 1='b'
      * @param templateVariables The mapping of template variable to its value
      * @param availableSubPaths If not null , available sub paths will be returned in this set
      */
-    public T lookup(List<String> pieces, int index, Map<String, String> templateVariables, Set<String> availableSubPaths) {
-      if (templateName != null) templateVariables.put(templateName, pieces.get(index - 1));
-      if (pieces.size() < index + 1) {
+    public T lookup(List<String> pathSegments, int index, Map<String, String> templateVariables, Set<String> availableSubPaths) {
+      if (templateName != null) templateVariables.put(templateName, pathSegments.get(index - 1));
+      if (pathSegments.size() < index + 1) {
         findAvailableChildren("", availableSubPaths);
         return obj;
       }
-      String piece = pieces.get(index);
+      String piece = pathSegments.get(index);
       if (children == null) return null;
       Node n = children.get(piece);
       if (n == null && !reserved.contains(piece)) n = children.get("");
       if (n == null) return null;
-      return n.lookup(pieces, index + 1, templateVariables, availableSubPaths);
+      return n.lookup(pathSegments, index + 1, templateVariables, availableSubPaths);
     }
   }
 

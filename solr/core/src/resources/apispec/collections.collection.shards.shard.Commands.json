@@ -16,7 +16,7 @@
       "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-ForceLeader",
       "type": "object"
     },
-    "synch-shard": {
+    "sync-shard": {
       "type": "object"
     }
   }
