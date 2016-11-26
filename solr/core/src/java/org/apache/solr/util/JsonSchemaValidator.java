@@ -261,7 +261,7 @@ public class JsonSchemaValidator {
   }
 
   interface TypeValidator {
-    void valdateData(String key, Object o, SchemaNode schemaNode, List<String> errs);
+    void validateData(String key, Object o, SchemaNode schemaNode, List<String> errs);
   }
 
   enum Type {
@@ -338,7 +338,7 @@ public class JsonSchemaValidator {
 
     void validateData(String key, Object o, SchemaNode attr, List<String> errs) {
       if (validator != null) {
-        validator.valdateData(key, o, attr, errs);
+        validator.validateData(key, o, attr, errs);
         return;
       }
       if (!typeValidator.test(o))

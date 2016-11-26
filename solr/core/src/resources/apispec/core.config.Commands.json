@@ -147,8 +147,9 @@
       "additionalProperties": true
     },
     "update-listener": {
-      "type": "object",
-      "additionalProperties": true
+      "#extends#":"core.config.Commands.generic",
+      "description":"",
+      "documentation":""
     },
     "delete-listener": {
       "type": "array",
