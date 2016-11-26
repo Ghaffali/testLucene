@@ -74,7 +74,7 @@ public class JsonSchemaValidator {
       }
       Type type = Type.get(typeStr);
       if (type == null) {
-        errs.add ("Unknown type " + typeStr + "in object "+ Utils.toJSONString(jsonSchema));
+        errs.add ("Unknown type " + typeStr + " in object "+ Utils.toJSONString(jsonSchema));
         return;
       }
       this.type = type;
