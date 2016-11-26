@@ -32,7 +32,8 @@
           "type": "string",
           "description": "Request ID to track this action which will be processed asynchronously"
         }
-      }
+      },
+      "required":["target", "splitKey"]
     },
     "balanceshardunique":{
       "type":"object",
@@ -50,7 +51,8 @@
           "type":"string",
           "description": "the actual property"
         }
-      }
+      },
+      "required":["property"]
     },
     "rebalance-leaders" :{
       "type":"object",
@@ -84,7 +86,7 @@
         },
         "value": {
           "type": "string",
-          "description": "he value to assign to the property"
+          "description": "The value to assign to the property"
         },
         "shardUnique": {
           "type": "boolean",
@@ -93,7 +95,9 @@
       },
       "required": [
         "name",
-        "value"
+        "value",
+        "shard",
+        "replica"
       ]
     },
     "delete-replica-property": {
@@ -113,7 +117,8 @@
           "type": "string",
           "description": "The property name"
         }
-      }
+      },
+      "required":["shard","replica","property"]
     }
   }
 }
