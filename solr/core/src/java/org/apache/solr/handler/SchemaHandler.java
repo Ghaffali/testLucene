@@ -260,7 +260,9 @@ public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, 
     return ApiBag.wrapRequestHandlers(this, "core.SchemaRead",
         "core.SchemaRead.fields",
         "core.SchemaRead.copyFields",
-        "core.SchemaEdit");
+        "core.SchemaEdit",
+        "core.SchemaRead.fields.dynamicFields_fieldTypes"
+        );
 
   }
 

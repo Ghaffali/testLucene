@@ -6,11 +6,7 @@
   "url": {
     "paths": [
       "/schema/fields",
-      "/schema/fields/{name}",
-      "/schema/dynamicfields",
-      "/schema/dynamicfields/{name}",
-      "/schema/fieldtypes/",
-      "/schema/fieldtypes/{name}"
+      "/schema/fields/{name}"
     ],
     "params": {
       "includeDynamic": {

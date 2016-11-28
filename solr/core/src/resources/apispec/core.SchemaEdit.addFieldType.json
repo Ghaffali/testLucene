@@ -52,9 +52,6 @@
     "analyzer": {
       "type": "object",
       "properties": {
-        "type": {
-          "type": "string"
-        },
         "class": {
           "type": "string"
         },
