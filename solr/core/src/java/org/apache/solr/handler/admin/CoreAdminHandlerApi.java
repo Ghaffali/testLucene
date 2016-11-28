@@ -62,7 +62,7 @@ public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
     OVERSEEROP(NODEAPIS, POST, OVERSEEROP_OP, "overseer-op", null),
     REJOINLEADERELECTION(NODEAPIS, POST, REJOINLEADERELECTION_OP, "rejoin-leader-election", null),
     INVOKE(NODEINVOKE, GET, INVOKE_OP, null, null),
-    FORCEPREPAREFORLEADERSHIP(PER_CORE_COMMANDS, POST, FORCEPREPAREFORLEADERSHIP_OP, null, null);
+    FORCEPREPAREFORLEADERSHIP(PER_CORE_COMMANDS, POST, FORCEPREPAREFORLEADERSHIP_OP, "force-prepare-for-leadership", null);
 
     public final String commandName;
     public final EndPoint endPoint;

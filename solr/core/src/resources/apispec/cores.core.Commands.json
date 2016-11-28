@@ -10,8 +10,7 @@
   },
   "commands": {
     "reload": {
-      "type":"object",
-      "additionalProperties":true
+      "type":"object"
     },
     "swap": {
       "type":"object",
@@ -92,13 +91,11 @@
     },
     "request-recovery": {
       "type":"object",
-      "additionalProperties": true,
       "description": "Internal API"
 
     },
-    "forceprepareforleadership": {
+    "force-prepare-for-leadership": {
       "type": "object",
-      "additionalProperties": true,
       "description": "Internal API"
     },
     "split":  { "#include": "cores.core.Commands.split"},

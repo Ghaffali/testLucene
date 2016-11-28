@@ -7,14 +7,14 @@
       "items": {
         "type": "string"
       },
-      "description": "the directory path in which a piece of the index will be written"
+      "description": "the directory path(s) in which a piece of the index will be written"
     },
     "targetCore": {
       "type": "array",
       "items": {
         "type": "string"
       },
-      "description": "the target Solr core to which a piece of the index will be merged"
+      "description": "the target Solr core(s) to which a piece of the index will be merged"
     },
     "splitKey": {
       "type":"string",
