@@ -19,11 +19,80 @@
     "postingsFormat": {
       "type": "string"
     },
+    "queryAnalyzer": {
+      "type": "object",
+      "properties": {
+        "tokenizer": {
+          "type": "object",
+          "properties": {
+            "class": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
+    "indexAnalyzer": {
+      "type": "object",
+      "properties": {
+        "tokenizer": {
+          "type": "object",
+          "properties": {
+            "class": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "additionalProperties": true
+    },
     "analyzer": {
       "type": "object",
       "properties": {
         "type": {
           "type": "string"
+        },
+        "class": {
+          "type": "string"
+        },
+        "tokenizer":{
+          "type":"object",
+          "properties":{
+            "class":{
+              "type":"string"
+            }
+          },
+          "required":["class"],
+          "additionalProperties":true
+        },
+        "charFilters":{
+          "type":"array",
+          "items":{
+            "type":"object",
+            "properties":{
+              "class":{
+                "type":"string"
+              }
+            },
+            "required":["class"],
+            "additionalProperties":true
+          }
+        },
+        "filters":{
+          "type":"array",
+          "items":{
+            "type":"object",
+            "properties":{
+              "class":{
+                "type":"string"
+              }
+            },
+            "required":["class"],
+            "additionalProperties":true
+          }
         }
       },
       "additionalProperties": true

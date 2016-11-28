@@ -129,6 +129,46 @@ public class JsonValidatorTest extends SolrTestCaseJ4 {
     errs = validator.validateJson(Utils.fromJSONString("{name: 'Joe Average' , sex:m}"));
     assertEquals(1, errs.size());
     assertTrue(errs.get(0).contains("value of enum"));
+    
+    String schema = "{\n" +
+        "  'type': 'object',\n" +
+        "  'properties': {\n" +
+        "    'links': {\n" +
+        "      'type': 'array',\n" +
+        "      'items':{" +
+        "          'type': 'object',\n" +
+        "          'properties': {\n" +
+        "            'rel': {\n" +
+        "              'type': 'string'\n" +
+        "            },\n" +
+        "            'href': {\n" +
+        "              'type': 'string'\n" +
+        "            }\n" +
+        "          }\n" +
+        "        }\n" +
+        "    }\n" +
+        "\n" +
+        "  }\n" +
+        "}";
+    validator = new JsonSchemaValidator(schema);
+    validator.validateJson(Utils.fromJSONString("{\n" +
+        "  'links': [\n" +
+        "    {\n" +
+        "        'rel': 'x',\n" +
+        "        'href': 'x'\n" +
+        "    },\n" +
+        "    {\n" +
+        "        'rel': 'x',\n" +
+        "        'href': 'x'\n" +
+        "    },\n" +
+        "    {\n" +
+        "        'rel': 'x',\n" +
+        "        'href': 'x'\n" +
+        "    }\n" +
+        "  ]\n" +
+        "}"));
+    
+
 
 
   }
