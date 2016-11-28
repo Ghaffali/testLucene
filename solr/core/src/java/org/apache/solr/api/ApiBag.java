@@ -216,10 +216,14 @@ public class ApiBag {
         Map  commands2BReplaced = new ValidatingJsonMap();
         for (Object o : cmds.keySet()) {
           Object val = cmds.get(o);
-          if (val instanceof String) {
-            String s = (String) val;
-            ValidatingJsonMap cmdSpec = getResource(APISPEC_LOCATION + s + ".json");
-            commands2BReplaced.put(o.toString(), cmdSpec);
+          Map m = (Map) val;
+          String include = (String) m.get("#include");
+          if (include != null) {
+            ValidatingJsonMap cmdSpec = getResource(APISPEC_LOCATION + include + ".json");
+            m = ValidatingJsonMap.getDeepCopy(m, 4, true);
+            m.remove("#include");
+            m.putAll(cmdSpec);
+            commands2BReplaced.put(o.toString(), m);
           }
         }
 

@@ -107,7 +107,7 @@ public class ValidatingJsonMap implements Map<String, Object> {
 
   @Override
   public Object remove(Object key) {
-    return null;
+    return delegate.remove(key);
   }
 
   @Override

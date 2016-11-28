@@ -10,8 +10,12 @@
     ]
   },
   "commands": {
-    "modify": "collections.collection.Commands.modify",
-    "reload": "collections.collection.Commands.reload",
+    "modify": {
+      "#include": "collections.collection.Commands.modify"
+    },
+    "reload": {
+      "#include": "collections.collection.Commands.reload"
+    },
     "migrate-docs":{
       "type":"object",
       "documentation":"https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api12",

@@ -22,23 +22,7 @@
     },
     "add-requesthandler": {
       "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string"
-        },
-        "runtimeLib": {
-          "type": "boolean"
-        },
-        "startup": {
-          "type": "string",
-          "enum": [
-            "lazy"
-          ]
-        }
-      },
+      "#include":"core.config.Commands.addRequestHandler.properties",
       "required": [
         "name",
         "class"
@@ -47,23 +31,7 @@
     },
     "update-requesthandler": {
       "type": "object",
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "class": {
-          "type": "string"
-        },
-        "runtimeLib": {
-          "type": "boolean"
-        },
-        "startup": {
-          "type": "string",
-          "enum": [
-            "lazy"
-          ]
-        }
-      },
+      "#include":"core.config.Commands.addRequestHandler.properties",
       "required": [
         "name"
       ],
@@ -75,8 +43,12 @@
         "type": "string"
       }
     },
-    "add-searchcomponent": "core.config.Commands.generic",
-    "update-searchcomponent": "core.config.Commands.generic",
+    "add-searchcomponent": {
+      "#include": "core.config.Commands.generic"
+    },
+    "update-searchcomponent": {
+      "#include": "core.config.Commands.generic"
+    },
     "delete-searchcomponent": {
       "type": "array",
       "items": {
@@ -97,45 +69,69 @@
         "type": "string"
       }
     },
-    "add-queryresponsewriter": "core.config.Commands.generic",
-    "update-queryresponsewriter": "core.config.Commands.generic",
+    "add-queryresponsewriter": {
+      "#include": "core.config.Commands.generic"
+    },
+    "update-queryresponsewriter": {
+      "#include": "core.config.Commands.generic"
+    },
     "delete-queryresponsewriter": {
       "type": "array",
       "items": {
         "type": "string"
       }
     },
-    "add-queryparser": "core.config.Commands.generic",
-    "update-queryparser": "core.config.Commands.generic",
+    "add-queryparser": {
+      "#include": "core.config.Commands.generic"
+    },
+    "update-queryparser": {
+      "#include": "core.config.Commands.generic"
+    },
     "delete-queryparser": {
       "type": "string"
     },
-    "add-valuesourceparser": "core.config.Commands.generic",
-    "update-valuesourceparser": "core.config.Commands.generic",
+    "add-valuesourceparser": {
+      "#include": "core.config.Commands.generic"
+    },
+    "update-valuesourceparser": {
+      "#include": "core.config.Commands.generic"
+    },
     "delete-valuesourceparser": {
       "type": "array",
       "items": {
         "type": "string"
       }
     },
-    "add-transformer": "core.config.Commands.generic",
-    "update-transformer": "core.config.Commands.generic",
+    "add-transformer": {
+      "#include": "core.config.Commands.generic"
+    },
+    "update-transformer": {
+      "#include": "core.config.Commands.generic"
+    },
     "delete-transformer": {
       "type": "array",
       "items": {
         "type": "string"
       }
     },
-    "add-updateprocessor": "core.config.Commands.generic",
-    "update-updateprocessor": "core.config.Commands.generic",
+    "add-updateprocessor": {
+      "#include": "core.config.Commands.generic"
+    },
+    "update-updateprocessor": {
+      "#include": "core.config.Commands.generic"
+    },
     "delete-updateprocessor": {
       "type": "array",
       "items": {
         "type": "string"
       }
     },
-    "add-queryconverter": "core.config.Commands.generic",
-    "update-queryconverter": "core.config.Commands.generic",
+    "add-queryconverter": {
+      "#include": "core.config.Commands.generic"
+    },
+    "update-queryconverter": {
+      "#include": "core.config.Commands.generic"
+    },
     "delete-queryconverter": {
       "type": "array",
       "items": {
@@ -156,8 +152,12 @@
         "type": "string"
       }
     },
-    "add-runtimelib": "core.config.Commands.addRuntimeLib",
-    "update-runtimelib": "core.config.Commands.updateRuntimeLib",
+    "add-runtimelib": {
+      "#include": "core.config.Commands.addRuntimeLib"
+    },
+    "update-runtimelib": {
+      "#include": "core.config.Commands.updateRuntimeLib"
+    },
     "delete-runtimelib": {
       "type":"array",
       "items": {

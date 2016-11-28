@@ -9,16 +9,38 @@
     ]
   },
   "commands": {
-    "add-field": "core.SchemaEdit.addField",
-    "delete-field": "core.SchemaEdit.deleteField",
-    "replace-field": "core.SchemaEdit.addField",
-    "add-dynamic-field": "core.SchemaEdit.addField",
-    "delete-dynamic-field": "core.SchemaEdit.deleteDynamicField",
-    "replace-dynamic-field": "core.SchemaEdit.addField",
-    "add-field-type": "core.SchemaEdit.addFieldType",
-    "delete-field-type": "core.SchemaEdit.deleteFieldType",
-    "replace-field-type": "core.SchemaEdit.replaceFieldType",
-    "add-copy-field": "core.SchemaEdit.addCopyField",
-    "delete-copy-field": "core.SchemaEdit.deleteCopyField"
+    "add-field": {
+      "#include": "core.SchemaEdit.addField"
+    },
+    "delete-field": {
+      "#include": "core.SchemaEdit.deleteField"
+    },
+    "replace-field": {
+      "#include": "core.SchemaEdit.addField"
+    },
+    "add-dynamic-field": {
+      "#include": "core.SchemaEdit.addField"
+    },
+    "delete-dynamic-field": {
+      "#include": "core.SchemaEdit.deleteDynamicField"
+    },
+    "replace-dynamic-field": {
+      "#include": "core.SchemaEdit.addField"
+    },
+    "add-field-type": {
+      "#include": "core.SchemaEdit.addFieldType"
+    },
+    "delete-field-type": {
+      "#include": "core.SchemaEdit.deleteFieldType"
+    },
+    "replace-field-type": {
+      "#include": "core.SchemaEdit.replaceFieldType"
+    },
+    "add-copy-field": {
+      "#include": "core.SchemaEdit.addCopyField"
+    },
+    "delete-copy-field": {
+      "#include": "core.SchemaEdit.deleteCopyField"
+    }
   }
 }

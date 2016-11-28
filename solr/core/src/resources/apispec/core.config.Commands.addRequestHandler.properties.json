@@ -1,0 +1,19 @@
+{
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "class": {
+      "type": "string"
+    },
+    "runtimeLib": {
+      "type": "boolean"
+    },
+    "startup": {
+      "type": "string",
+      "enum": [
+        "lazy"
+      ]
+    }
+  }
+}
