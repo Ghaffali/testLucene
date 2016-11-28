@@ -21,21 +21,17 @@
       }
     },
     "add-requesthandler": {
-      "type": "object",
       "#include":"core.config.Commands.addRequestHandler.properties",
       "required": [
         "name",
         "class"
-      ],
-      "additionalProperties": true
+      ]
     },
     "update-requesthandler": {
-      "type": "object",
       "#include":"core.config.Commands.addRequestHandler.properties",
       "required": [
         "name"
-      ],
-      "additionalProperties": true
+      ]
     },
     "delete-requesthandler": {
       "type": "array",
