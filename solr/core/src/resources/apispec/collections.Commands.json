@@ -28,6 +28,7 @@
           "properties": {
             "name": {
               "type": "string",
+              "enum":["implicit","compositeId"],
               "description": "Router implementation compositeId or implicit",
               "default": "compositeId"
             },
@@ -134,7 +135,8 @@
           "type": "string",
           "description": "Request ID to track this action which will be processed asynchronously"
         }
-      }
+      },
+      "required":["name"]
     },
     "backup-collection": {
       "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-Backup",

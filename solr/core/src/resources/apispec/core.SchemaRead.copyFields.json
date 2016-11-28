@@ -5,8 +5,7 @@
   ],
   "url": {
     "paths": [
-      "schema/copyfields",
-      "schema/copyfields/{name}"
+      "schema/copyfields"
     ],
     "params": {
       "source.fl": {
