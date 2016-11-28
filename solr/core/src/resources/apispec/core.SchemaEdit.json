@@ -34,7 +34,7 @@
       "#include": "core.SchemaEdit.deleteFieldType"
     },
     "replace-field-type": {
-      "#include": "core.SchemaEdit.replaceFieldType"
+      "#include": "core.SchemaEdit.addFieldType"
     },
     "add-copy-field": {
       "#include": "core.SchemaEdit.addCopyField"
