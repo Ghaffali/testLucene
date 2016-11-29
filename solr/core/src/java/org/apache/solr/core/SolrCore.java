@@ -401,6 +401,15 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   }
 
   /**
+   * Returns the {@link SolrCoreMetricManager} for this core.
+   *
+   * @return the {@link SolrCoreMetricManager} for this core
+   */
+  public SolrCoreMetricManager getMetricManager() {
+    return metricManager;
+  }
+
+  /**
    * Returns a Map of name vs SolrInfoMBean objects. The returned map is an instance of
    * a ConcurrentHashMap and therefore no synchronization is needed for putting, removing
    * or iterating over it.

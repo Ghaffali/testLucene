@@ -30,11 +30,10 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrInfoMBean;
-import org.apache.solr.metrics.reporters.SolrJmxReporter;
+import org.apache.solr.metrics.reporters.MockMetricReporter;
 import org.apache.solr.schema.FieldType;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
@@ -42,13 +41,9 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
 
   private SolrCoreMetricManager metricManager;
 
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    initCore("solrconfig-basic.xml", "schema.xml");
-  }
-
   @Before
-  public void beforeTest() {
+  public void beforeTest() throws Exception {
+    initCore("solrconfig-basic.xml", "schema.xml");
     metricManager = new SolrCoreMetricManager(h.getCore());
   }
 
@@ -56,6 +51,7 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
   public void afterTest() throws IOException {
     metricManager.close();
     assertTrue(metricManager.getReporters().isEmpty());
+    deleteCore();
   }
 
   @Test
@@ -104,12 +100,16 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
   public void testLoadReporter() throws Exception {
     Random random = random();
 
-    String className = SolrJmxReporter.class.getName();
+    String className = MockMetricReporter.class.getName();
     String reporterName = TestUtil.randomUnicodeString(random);
 
     Map<String, Object> attrs = new HashMap<>();
     attrs.put(FieldType.CLASS_NAME, className);
     attrs.put(CoreAdminParams.NAME, reporterName);
+
+    boolean shouldDefineConfigurable = random.nextBoolean();
+    String configurable = TestUtil.randomUnicodeString(random);
+    if (shouldDefineConfigurable) attrs.put("configurable", configurable);
 
     boolean shouldDefinePlugin = random.nextBoolean();
     PluginInfo pluginInfo = shouldDefinePlugin ? new PluginInfo(TestUtil.randomUnicodeString(random), attrs) : null;
@@ -119,9 +119,9 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
       assertNotNull(pluginInfo);
       assertEquals(1, metricManager.getReporters().size());
       assertNotNull(metricManager.getReporters().get(reporterName));
-      assertTrue(metricManager.getReporters().get(reporterName) instanceof SolrJmxReporter);
+      assertTrue(metricManager.getReporters().get(reporterName) instanceof MockMetricReporter);
     } catch (IllegalArgumentException e) {
-      assertNull(pluginInfo);
+      assertTrue(pluginInfo == null || attrs.get("configurable") == null);
       assertTrue(metricManager.getReporters().isEmpty());
     }
   }

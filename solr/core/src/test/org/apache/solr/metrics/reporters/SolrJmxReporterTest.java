@@ -20,7 +20,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
-import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -39,7 +38,6 @@ import org.apache.solr.metrics.SolrMetricTestUtils;
 import org.apache.solr.schema.FieldType;
 import org.junit.After;
 import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class SolrJmxReporterTest extends SolrTestCaseJ4 {
@@ -52,16 +50,9 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
   private SolrJmxReporter reporter;
   private MBeanServer mBeanServer;
 
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    initCore("solrconfig-basic.xml", "schema.xml");
-  }
-
   @Before
   public void beforeTest() throws Exception {
-    // Ensure we have at least one MBeanServer available
-    MBeanServer platformServer = ManagementFactory.getPlatformMBeanServer();
-    // TODO: can we skip this call? either always or randomly?
+    initCore("solrconfig-basic.xml", "schema.xml");
 
     Random random = random();
 
@@ -102,6 +93,7 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     assertTrue(objects.isEmpty());
 
     metricManager.close();
+    deleteCore();
   }
 
   @Test

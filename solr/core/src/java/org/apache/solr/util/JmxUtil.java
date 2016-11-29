@@ -23,7 +23,6 @@ import javax.management.remote.JMXConnectorServerFactory;
 import javax.management.remote.JMXServiceURL;
 
 import java.io.IOException;
-import java.lang.management.ManagementFactory;
 import java.util.List;
 
 /**
@@ -40,17 +39,7 @@ public final class JmxUtil {
    * @return the first MBeanServer found
    */
   public static MBeanServer findFirstMBeanServer() {
-    // TODO: does findMBeanServerForAgentId need the getPlatformMBeanServer call also?
-    // TODO: can findFirstMBeanServer be implemented as findMBeanServerForAgentId(null)?
-    // Ensure we have at least one MBeanServer available
-    MBeanServer platformServer = ManagementFactory.getPlatformMBeanServer();
-
-    List<MBeanServer> servers = MBeanServerFactory.findMBeanServer(null);
-    if (servers == null || servers.isEmpty()) {
-      return null;
-    }
-
-    return servers.get(0);
+    return findMBeanServerForAgentId(null);
   }
 
   /**
@@ -79,10 +68,6 @@ public final class JmxUtil {
    * @return a MBeanServer
    */
   public static MBeanServer findMBeanServerForAgentId(String agentId) {
-    if (agentId == null) {
-      return null;
-    }
-
     List<MBeanServer> servers = MBeanServerFactory.findMBeanServer(agentId);
     if (servers == null || servers.isEmpty()) {
       return null;

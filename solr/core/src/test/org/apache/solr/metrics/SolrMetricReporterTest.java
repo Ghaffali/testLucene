@@ -16,48 +16,29 @@
  */
 package org.apache.solr.metrics;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
+import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
-import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.core.PluginInfo;
+import org.apache.solr.metrics.reporters.MockMetricReporter;
 import org.apache.solr.schema.FieldType;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.BeforeClass;
 import org.junit.Test;
 
-public class SolrMetricReporterTest extends SolrTestCaseJ4 {
-
-  private SolrCoreMetricManager metricManager;
-
-  @BeforeClass
-  public static void beforeClass() throws Exception {
-    initCore("solrconfig-basic.xml", "schema.xml");
-  }
-
-  @Before
-  public void beforeTest() {
-    metricManager = new SolrCoreMetricManager(h.getCore());
-  }
-
-  @After
-  public void afterTest() throws Exception {
-    metricManager.close();
-  }
+public class SolrMetricReporterTest extends LuceneTestCase {
 
   @Test
   public void testInit() throws Exception {
     Random random = random();
 
-    MockReporter reporter = new MockReporter(h.getCore().getName());
+    final String registryName = TestUtil.randomSimpleString(random);
+    final MockMetricReporter reporter = new MockMetricReporter(registryName);
 
     Map<String, Object> attrs = new HashMap<>();
-    attrs.put(FieldType.CLASS_NAME, MockReporter.class.getName());
+    attrs.put(FieldType.CLASS_NAME, MockMetricReporter.class.getName());
     attrs.put(CoreAdminParams.NAME, TestUtil.randomUnicodeString(random));
 
     boolean shouldDefineConfigurable = random.nextBoolean();
@@ -70,46 +51,17 @@ public class SolrMetricReporterTest extends SolrTestCaseJ4 {
 
     try {
       reporter.init(pluginInfo);
+      assertNotNull(pluginInfo);
+      assertEquals(configurable, attrs.get("configurable"));
       assertTrue(reporter.didValidate);
       assertNotNull(reporter.configurable);
       assertEquals(configurable, reporter.configurable);
-      assertTrue(pluginInfo != null && attrs.get("configurable") == configurable);
     } catch (IllegalStateException e) {
+      assertTrue(pluginInfo == null || attrs.get("configurable") == null);
       assertTrue(reporter.didValidate);
       assertNull(reporter.configurable);
-      assertTrue(pluginInfo == null || attrs.get("configurable") == null);
     } finally {
       reporter.close();
-    }
-  }
-
-  public static class MockReporter extends SolrMetricReporter {
-    String configurable;
-    boolean didValidate = false;
-
-    MockReporter(String registryName) {
-      super(registryName);
-    }
-
-    @Override
-    public void init(PluginInfo pluginInfo) {
-      super.init(pluginInfo);
-    }
-
-    @Override
-    public void close() throws IOException {
-    }
-
-    @Override
-    protected void validate() throws IllegalStateException {
-      didValidate = true;
-      if (configurable == null) {
-        throw new IllegalStateException("MockReporter::configurable not configured.");
-      }
-    }
-
-    public void setConfigurable(String configurable) {
-      this.configurable = configurable;
     }
   }
 }

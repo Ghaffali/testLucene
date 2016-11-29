@@ -22,6 +22,7 @@ import javax.management.ObjectName;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.lang.management.ManagementFactory;
 import java.util.Locale;
 
 import com.codahale.metrics.JmxReporter;
@@ -70,6 +71,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
     super.init(pluginInfo);
 
     if (serviceUrl != null && agentId != null) {
+      ManagementFactory.getPlatformMBeanServer(); // Ensure at least one MBeanServer is available.
       mBeanServer = JmxUtil.findFirstMBeanServer();
       log.warn("No more than one of serviceUrl(%s) and agentId(%s) should be configured, using first MBeanServer instead of configuration.",
           serviceUrl, agentId, mBeanServer);
@@ -85,6 +87,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
     else if (agentId != null) {
       mBeanServer = JmxUtil.findMBeanServerForAgentId(agentId);
     } else {
+      ManagementFactory.getPlatformMBeanServer(); // Ensure at least one MBeanServer is available.
       mBeanServer = JmxUtil.findFirstMBeanServer();
       log.warn("No serviceUrl or agentId was configured, using first MBeanServer.", mBeanServer);
     }
@@ -112,9 +115,8 @@ public class SolrJmxReporter extends SolrMetricReporter {
   @Override
   public synchronized void close() {
     if (reporter != null) {
-      reporter.stop();
-      // TODO: stop() vs. close() // change or add comment re: why stop instead of close is called
-      // maybe TODO: reporter = null;
+      reporter.close();
+      reporter = null;
     }
   }
 
