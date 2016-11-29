@@ -24,9 +24,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
-import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
-import org.apache.solr.common.util.NamedList;
 
 /**
  *
@@ -34,7 +32,6 @@ import org.apache.solr.common.util.NamedList;
 public class SolrMetricManager {
 
   public static final String REGISTRY_NAME_PREFIX = "solr";
-  public static final String DEFAULT_REGISTRY = MetricRegistry.name(REGISTRY_NAME_PREFIX, "default");
 
   // don't create instances of this class
   private SolrMetricManager() { }
@@ -184,15 +181,5 @@ public class SolrMetricManager {
       return name;
     else
       return MetricRegistry.name(REGISTRY_NAME_PREFIX, name);
-  }
-
-  /**
-   * Timers return measurements as a double representing nanos.
-   * This converts that to a double representing millis.
-   * @param ns Nanoseconds
-   * @return Milliseconds
-   */
-  public static double nsToMs(double ns) {
-    return ns / 1000000;  // Using TimeUnit involves casting to Long, so don't bother.
   }
 }

@@ -17,7 +17,6 @@
 package org.apache.solr.metrics.reporters;
 
 import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
@@ -28,8 +27,6 @@ import java.util.Random;
 import java.util.Set;
 
 import com.codahale.metrics.Counter;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricRegistryListener;
 import org.apache.lucene.util.TestUtil;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.params.CoreAdminParams;
@@ -37,7 +34,6 @@ import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.metrics.SolrCoreMetricManager;
-import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.metrics.SolrMetricTestUtils;
 import org.apache.solr.schema.FieldType;

@@ -22,14 +22,12 @@ import javax.management.ObjectName;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.util.Hashtable;
 import java.util.Locale;
 
 import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.ObjectNameFactory;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.metrics.SolrMetricInfo;
-import org.apache.solr.metrics.SolrCoreMetricManager;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricReporter;
 import org.apache.solr.util.JmxUtil;

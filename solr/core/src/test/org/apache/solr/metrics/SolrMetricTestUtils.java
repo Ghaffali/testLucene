@@ -25,8 +25,6 @@ import java.util.Map;
 import java.util.Random;
 
 import com.codahale.metrics.Counter;
-import com.codahale.metrics.Metric;
-import com.codahale.metrics.MetricRegistry;
 import org.apache.lucene.util.TestUtil;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrInfoMBean;
