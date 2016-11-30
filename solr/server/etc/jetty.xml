@@ -33,7 +33,7 @@
     <New id="threadpool" class="com.codahale.metrics.jetty9.InstrumentedQueuedThreadPool">
       <Arg name="registry">
         <Call id="solrJettyMetricRegistry" name="getOrCreate" class="com.codahale.metrics.SharedMetricRegistries">
-          <Arg>/jetty</Arg>
+          <Arg>solr.jetty</Arg>
         </Call>
       </Arg>
     </New>

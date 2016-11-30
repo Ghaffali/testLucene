@@ -24,6 +24,6 @@ import com.codahale.metrics.servlets.MetricsServlet;
 public class SolrMetricsServletContextListener extends MetricsServlet.ContextListener {
   @Override
   protected MetricRegistry getMetricRegistry() {
-    return SharedMetricRegistries.getOrCreate("/jetty");
+    return SharedMetricRegistries.getOrCreate("solr.jetty");
   }
 }
