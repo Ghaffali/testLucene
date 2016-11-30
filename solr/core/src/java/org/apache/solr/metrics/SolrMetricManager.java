@@ -121,7 +121,7 @@ public class SolrMetricManager {
   }
 
   /**
-   * Remove a single specific metric from a named registry
+   * Remove some metrics from a named registry
    * @param registry registry name
    * @param metricPath (optional) top-most metric name path elements. If empty then
    *        this is equivalent to calling {@link #clearRegistry(String)},
