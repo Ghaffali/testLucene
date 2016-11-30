@@ -35,7 +35,7 @@ import com.google.common.base.Preconditions;
  */
 public class SolrMetricManager {
 
-  public static final String REGISTRY_NAME_PREFIX = "solr";
+  public static final String REGISTRY_NAME_PREFIX = "solr.";
 
   // don't create instances of this class
   private SolrMetricManager() { }
@@ -102,6 +102,14 @@ public class SolrMetricManager {
    */
   public static MetricRegistry registry(String registry) {
     return SharedMetricRegistries.getOrCreate(overridableRegistryName(registry));
+  }
+
+  /**
+   * Remove a named registry.
+   * @param registry name of the registry to remove
+   */
+  public static void removeRegistry(String registry) {
+    SharedMetricRegistries.remove(registry);
   }
 
   /**
@@ -234,9 +242,10 @@ public class SolrMetricManager {
    * input name with the prefix prepended.
    */
   public static String enforcePrefix(String name) {
-    if (name.startsWith(REGISTRY_NAME_PREFIX))
+    if (name.startsWith(REGISTRY_NAME_PREFIX)) {
       return name;
-    else
-      return MetricRegistry.name(REGISTRY_NAME_PREFIX, name);
+    } else {
+      return new StringBuilder(REGISTRY_NAME_PREFIX).append(name).toString();
+    }
   }
 }

@@ -53,8 +53,12 @@ public class SolrCoreMetricManager implements Closeable {
    */
   public SolrCoreMetricManager(SolrCore core) {
     this.core = core;
-    this.registryName = MetricRegistry.name(REGISTRY_PREFIX, core.getName());
+    this.registryName = getRegistryName(core.getName());
     this.reporters = new ConcurrentHashMap<>();
+  }
+
+  public static final String getRegistryName(String coreName) {
+    return MetricRegistry.name(REGISTRY_PREFIX, coreName);
   }
 
   /**
