@@ -56,7 +56,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
    */
   public SolrJmxReporter(String registryName) {
     super(registryName);
-    this.domain = registryName;
+    setDomain(registryName);
   }
 
   /**
@@ -94,7 +94,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
       return;
     }
 
-    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(registryName);
+    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(registryName, domain);
 
     reporter = JmxReporter.forRegistry(SolrMetricManager.registry(registryName))
                           .registerWith(mBeanServer)
@@ -184,28 +184,55 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private static class JmxObjectNameFactory implements ObjectNameFactory {
 
     private final String registryName;
+    private final String domain;
+    private final String[] subdomains;
 
-    JmxObjectNameFactory(String registryName) {
+    JmxObjectNameFactory(String registryName, String domain) {
       this.registryName = registryName;
+      this.domain = domain;
+      this.subdomains = domain.split("\\.");
     }
 
     /**
-     * TODO description
+     * Create a hierarchical name of a metric.
      *
-     * @param type    TODO description, example
-     * @param domain  TODO description, example
-     * @param name    TODO description, example
+     * @param type    metric class, eg. "counters"
+     * @param currentDomain  JMX domain
+     * @param name    metric name
      */
     @Override
-    public ObjectName createName(String type, String domain, String name) {
+    public ObjectName createName(String type, String currentDomain, String name) {
       SolrMetricInfo metricInfo = SolrMetricInfo.of(name);
 
       // It turns out that ObjectName(String) mostly preserves key ordering
       // as specified in the constructor (except for the 'type' key that ends
       // up at top level) - unlike ObjectName(String, Map) constructor
       // that seems to have a mind of its own...
-      StringBuilder sb = new StringBuilder(domain);
-      sb.append(':');
+      StringBuilder sb = new StringBuilder();
+      if (domain.equals(currentDomain)) {
+        if (subdomains != null && subdomains.length > 1) {
+          // use only first segment as domain
+          sb.append(subdomains[0]);
+          sb.append(':');
+          // use remaining segments as properties
+          for (int i = 1; i < subdomains.length; i++) {
+            if (i > 1) {
+              sb.append(',');
+            }
+            sb.append("dom");
+            sb.append(String.valueOf(i));
+            sb.append('=');
+            sb.append(subdomains[i]);
+          }
+          sb.append(','); // separate from other properties
+        } else {
+          sb.append(currentDomain);
+          sb.append(':');
+        }
+      } else {
+        sb.append(currentDomain);
+        sb.append(':');
+      }
       if (metricInfo != null) {
         sb.append("category=");
         sb.append(metricInfo.category.toString());
@@ -242,7 +269,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
       try {
         objectName = new ObjectName(sb.toString());
       } catch (MalformedObjectNameException e) {
-        throw new RuntimeException(e);
+        throw new RuntimeException(sb.toString(), e);
       }
 
       return objectName;

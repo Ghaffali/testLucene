@@ -58,7 +58,7 @@ public class SolrCoreMetricManager implements Closeable {
   }
 
   public static final String getRegistryName(String coreName) {
-    return MetricRegistry.name(REGISTRY_PREFIX, coreName);
+    return SolrMetricManager.overridableRegistryName(MetricRegistry.name(REGISTRY_PREFIX, coreName));
   }
 
   /**
