@@ -58,7 +58,7 @@ public class SolrMetricManager {
    * @param registry registry name
    */
   public static void clearRegistryFor(String registry) {
-    SharedMetricRegistries.getOrCreate(overridableRegistryName(registry)).removeMatching(MetricFilter.ALL);
+    registryFor(registry).removeMatching(MetricFilter.ALL);
   }
 
   /**
@@ -69,8 +69,7 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    */
   public static void clearMetric(String registry, String metricName, String... metricPath) {
-    SharedMetricRegistries.getOrCreate(overridableRegistryName(registry)).
-        remove(mkName(metricName, metricPath));
+    registryFor(registry).remove(mkName(metricName, metricPath));
   }
 
   /**
@@ -82,8 +81,7 @@ public class SolrMetricManager {
    * @return existing or a newly created {@link Meter}
    */
   public static Meter getOrCreateMeter(String registry, String metricName, String... metricPath) {
-    return SharedMetricRegistries.getOrCreate(overridableRegistryName(registry)).
-        meter(mkName(metricName, metricPath));
+    return registryFor(registry).meter(mkName(metricName, metricPath));
   }
 
   /**
@@ -95,8 +93,7 @@ public class SolrMetricManager {
    * @return existing or a newly created {@link Timer}
    */
   public static Timer getOrCreateTimer(String registry, String metricName, String... metricPath) {
-    return SharedMetricRegistries.getOrCreate(overridableRegistryName(registry)).
-        timer(mkName(metricName, metricPath));
+    return registryFor(registry).timer(mkName(metricName, metricPath));
   }
 
   /**
@@ -108,8 +105,7 @@ public class SolrMetricManager {
    * @return existing or a newly created {@link Counter}
    */
   public static Counter getOrCreateCounter(String registry, String metricName, String... metricPath) {
-    return SharedMetricRegistries.getOrCreate(overridableRegistryName(registry)).
-        counter(mkName(metricName, metricPath));
+    return registryFor(registry).counter(mkName(metricName, metricPath));
   }
 
   /**
@@ -121,8 +117,7 @@ public class SolrMetricManager {
    * @return existing or a newly created {@link Histogram}
    */
   public static Histogram getOrCreateHistogram(String registry, String metricName, String... metricPath) {
-    return SharedMetricRegistries.getOrCreate(overridableRegistryName(registry)).
-        histogram(mkName(metricName, metricPath));
+    return registryFor(registry).histogram(mkName(metricName, metricPath));
   }
 
   /**
