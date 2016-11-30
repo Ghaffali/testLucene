@@ -155,6 +155,8 @@ New Features
 * SOLR-9788: Use instrumented jetty classes provided by the dropwizard metric library. This also introduces a
   new /admin/metrics API endpoint to return all registered metrics in JSON format. (shalin)
 
+* SOLR-9805: Use metrics-jvm library to instrument jvm internals such as GC, memory usage and others. (shalin)
+
 Optimizations
 ----------------------
 * SOLR-9704: Facet Module / JSON Facet API: Optimize blockChildren facets that have

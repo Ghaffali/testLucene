@@ -37,6 +37,7 @@
     <dependency org="io.dropwizard.metrics" name="metrics-servlets" rev="${/io.dropwizard.metrics/metrics-servlets}" conf="metrics" />
     <dependency org="io.dropwizard.metrics" name="metrics-json" rev="${/io.dropwizard.metrics/metrics-json}" conf="metrics" />
     <dependency org="io.dropwizard.metrics" name="metrics-jetty9" rev="${/io.dropwizard.metrics/metrics-jetty9}" conf="metrics" />
+    <dependency org="io.dropwizard.metrics" name="metrics-jvm" rev="${/io.dropwizard.metrics/metrics-jvm}" conf="metrics" />
     <dependency org="com.fasterxml.jackson.core" name="jackson-core" rev="${/com.fasterxml.jackson.core/jackson-core}" conf="metrics"/>
     <dependency org="com.fasterxml.jackson.core" name="jackson-databind" rev="${/com.fasterxml.jackson.core/jackson-databind}" conf="metrics"/>
     <dependency org="com.fasterxml.jackson.core" name="jackson-annotations" rev="${/com.fasterxml.jackson.core/jackson-annotations}" conf="metrics"/>

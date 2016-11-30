@@ -16,6 +16,7 @@
  */
 package org.apache.solr.servlet;
 
+import javax.management.MBeanServer;
 import javax.servlet.FilterChain;
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
@@ -33,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles;
+import java.lang.management.ManagementFactory;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
@@ -45,6 +47,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.SharedMetricRegistries;
+import com.codahale.metrics.jvm.BufferPoolMetricSet;
+import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
+import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
+import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
+import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
+import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.lang.StringUtils;
@@ -142,6 +152,7 @@ public class SolrDispatchFilter extends BaseSolrFilter {
         excludePatterns.add(Pattern.compile(element));
       }
     }
+    setupJvmMetrics();
     try {
       Properties extraProperties = (Properties) config.getServletContext().getAttribute(PROPERTIES_ATTRIBUTE);
       if (extraProperties == null)
@@ -165,6 +176,17 @@ public class SolrDispatchFilter extends BaseSolrFilter {
     }
 
     log.trace("SolrDispatchFilter.init() done");
+  }
+
+  private void setupJvmMetrics()  {
+    MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
+    MetricRegistry metricRegistry = SharedMetricRegistries.getOrCreate("solr.jvm");
+    metricRegistry.registerAll(new BufferPoolMetricSet(platformMBeanServer));
+    metricRegistry.registerAll(new ClassLoadingGaugeSet());
+    metricRegistry.register("fileDescriptorRatio", new FileDescriptorRatioGauge());
+    metricRegistry.registerAll(new GarbageCollectorMetricSet());
+    metricRegistry.registerAll(new MemoryUsageGaugeSet());
+    metricRegistry.registerAll(new ThreadStatesGaugeSet()); // todo should we use CachedThreadStatesGaugeSet instead?
   }
 
   private void logWelcomeBanner() {
