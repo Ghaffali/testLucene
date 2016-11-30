@@ -96,7 +96,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
 
     JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(registryName);
 
-    reporter = JmxReporter.forRegistry(SolrMetricManager.registryFor(registryName))
+    reporter = JmxReporter.forRegistry(SolrMetricManager.registry(registryName))
                           .registerWith(mBeanServer)
                           .inDomain(domain)
                           .createsObjectNamesWith(jmxObjectNameFactory)

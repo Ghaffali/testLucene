@@ -131,7 +131,7 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
       return;
     }
     String filter = "." + scope + ".";
-    MetricRegistry registry = SolrMetricManager.registryFor(metricManager.getRegistryName());
+    MetricRegistry registry = SolrMetricManager.registry(metricManager.getRegistryName());
     assertEquals(newMetrics.size(), registry.getMetrics().
         keySet().stream().filter(s -> s.contains(filter)).count());
 

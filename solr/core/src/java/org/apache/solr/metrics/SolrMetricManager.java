@@ -16,15 +16,19 @@
  */
 package org.apache.solr.metrics;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
+import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
+import com.google.common.base.Preconditions;
 
 /**
  *
@@ -36,6 +40,53 @@ public class SolrMetricManager {
   // don't create instances of this class
   private SolrMetricManager() { }
 
+  /**
+   * An implementation of {@link MetricFilter} that selects metrics
+   * with names that start with a prefix.
+   */
+  public static class PrefixFilter implements MetricFilter {
+    private final String prefix;
+    private final Set<String> matched = new HashSet<>();
+
+    /**
+     * Create a filter that uses the provided prefix.
+     * @param prefix prefix to use, must not be null. If empty then any
+     *               name will match.
+     */
+    public PrefixFilter(String prefix) {
+      Preconditions.checkNotNull(prefix);
+      this.prefix = prefix;
+    }
+
+    @Override
+    public boolean matches(String name, Metric metric) {
+      if (prefix.isEmpty()) {
+        matched.add(name);
+        return true;
+      }
+      if (name.startsWith(prefix)) {
+        matched.add(name);
+        return true;
+      } else {
+        return false;
+      }
+    }
+
+    /**
+     * Return the set of names that matched this filter.
+     * @return
+     */
+    public Set<String> getMatched() {
+      return Collections.unmodifiableSet(matched);
+    }
+
+    /**
+     * Clear the set of names that matched.
+     */
+    public void reset() {
+      matched.clear();
+    }
+  }
 
   /**
    * Return a set of existing registry names.
@@ -49,7 +100,7 @@ public class SolrMetricManager {
    * @param registry name of the registry
    * @return existing or newly created registry
    */
-  public static MetricRegistry registryFor(String registry) {
+  public static MetricRegistry registry(String registry) {
     return SharedMetricRegistries.getOrCreate(overridableRegistryName(registry));
   }
 
@@ -57,19 +108,30 @@ public class SolrMetricManager {
    * Remove all metrics from a specified registry.
    * @param registry registry name
    */
-  public static void clearRegistryFor(String registry) {
-    registryFor(registry).removeMatching(MetricFilter.ALL);
+  public static void clearRegistry(String registry) {
+    registry(registry).removeMatching(MetricFilter.ALL);
   }
 
   /**
-   * Remove a single specific metric from a named registry
+   * Remove some metrics from a named registry
    * @param registry registry name
-   * @param metricName metric name, either final name or a fully-qualified name
-   *                   using dotted notation
-   * @param metricPath (optional) additional top-most metric name path elements
+   * @param metricPath (optional) top-most metric name path elements. If empty then
+   *        this is equivalent to calling {@link #clearRegistry(String)},
+   *        otherwise non-empty elements will be joined using dotted notation
+   *        to form a fully-qualified prefix. Metrics with names that start
+   *        with the prefix will be removed.
+   * @return set of metrics names that have been removed.
    */
-  public static void clearMetric(String registry, String metricName, String... metricPath) {
-    registryFor(registry).remove(mkName(metricName, metricPath));
+  public static Set<String> clearMetrics(String registry, String... metricPath) {
+    PrefixFilter filter;
+    if (metricPath == null || metricPath.length == 0) {
+      filter = new PrefixFilter("");
+    } else {
+      String prefix = MetricRegistry.name("", metricPath);
+      filter = new PrefixFilter(prefix);
+    }
+    registry(registry).removeMatching(filter);
+    return filter.getMatched();
   }
 
   /**
@@ -80,8 +142,8 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Meter}
    */
-  public static Meter getOrCreateMeter(String registry, String metricName, String... metricPath) {
-    return registryFor(registry).meter(mkName(metricName, metricPath));
+  public static Meter meter(String registry, String metricName, String... metricPath) {
+    return registry(registry).meter(mkName(metricName, metricPath));
   }
 
   /**
@@ -92,8 +154,8 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Timer}
    */
-  public static Timer getOrCreateTimer(String registry, String metricName, String... metricPath) {
-    return registryFor(registry).timer(mkName(metricName, metricPath));
+  public static Timer timer(String registry, String metricName, String... metricPath) {
+    return registry(registry).timer(mkName(metricName, metricPath));
   }
 
   /**
@@ -104,8 +166,8 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Counter}
    */
-  public static Counter getOrCreateCounter(String registry, String metricName, String... metricPath) {
-    return registryFor(registry).counter(mkName(metricName, metricPath));
+  public static Counter counter(String registry, String metricName, String... metricPath) {
+    return registry(registry).counter(mkName(metricName, metricPath));
   }
 
   /**
@@ -116,8 +178,8 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Histogram}
    */
-  public static Histogram getOrCreateHistogram(String registry, String metricName, String... metricPath) {
-    return registryFor(registry).histogram(mkName(metricName, metricPath));
+  public static Histogram histogram(String registry, String metricName, String... metricPath) {
+    return registry(registry).histogram(mkName(metricName, metricPath));
   }
 
   /**
