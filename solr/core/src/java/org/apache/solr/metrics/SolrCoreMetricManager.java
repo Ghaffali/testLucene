@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,8 +38,6 @@ import org.slf4j.LoggerFactory;
  * and exposing metrics to {@link SolrMetricReporter}'s.
  */
 public class SolrCoreMetricManager implements Closeable {
-
-  public static final String REGISTRY_PREFIX = "core";
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -58,7 +57,7 @@ public class SolrCoreMetricManager implements Closeable {
   }
 
   public static final String getRegistryName(String coreName) {
-    return SolrMetricManager.overridableRegistryName(MetricRegistry.name(REGISTRY_PREFIX, coreName));
+    return SolrMetricManager.overridableRegistryName(MetricRegistry.name(SolrInfoMBean.Group.core.toString(), coreName));
   }
 
   /**
@@ -126,7 +125,6 @@ public class SolrCoreMetricManager implements Closeable {
    */
   @Override
   public void close() throws IOException {
-    // Close reporters first to ensure no reporter is listening to the registry.
     Iterator<Map.Entry<String, SolrMetricReporter>> it = reporters.entrySet().iterator();
     while (it.hasNext()) {
       Map.Entry<String, SolrMetricReporter> entry = it.next();
