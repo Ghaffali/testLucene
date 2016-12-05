@@ -33,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.http.auth.AuthSchemeProvider;
@@ -67,6 +68,7 @@ import org.apache.solr.logging.LogWatcher;
 import org.apache.solr.logging.MDCLoggingContext;
 import org.apache.solr.metrics.SolrCoreMetricManager;
 import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.AuthorizationPlugin;
@@ -469,19 +471,18 @@ public class CoreContainer {
     reloadSecurityProperties();
     this.backupRepoFactory = new BackupRepositoryFactory(cfg.getBackupRepositoryPlugins());
 
-    containerHandlers.put(ZK_PATH, new ZookeeperInfoHandler(this));
-    collectionsHandler = createHandler(cfg.getCollectionsHandlerClass(), CollectionsHandler.class);
-    containerHandlers.put(COLLECTIONS_HANDLER_PATH, collectionsHandler);
-    infoHandler        = createHandler(cfg.getInfoHandlerClass(), InfoHandler.class);
-    containerHandlers.put(INFO_HANDLER_PATH, infoHandler);
-    coreAdminHandler   = createHandler(cfg.getCoreAdminHandlerClass(), CoreAdminHandler.class);
-    containerHandlers.put(CORES_HANDLER_PATH, coreAdminHandler);
-    configSetsHandler = createHandler(cfg.getConfigSetsHandlerClass(), ConfigSetsHandler.class);
-    containerHandlers.put(CONFIGSETS_HANDLER_PATH, configSetsHandler);
+    createHandler(ZK_PATH, ZookeeperInfoHandler.class.getName(), ZookeeperInfoHandler.class);
+    collectionsHandler = createHandler(COLLECTIONS_HANDLER_PATH, cfg.getCollectionsHandlerClass(), CollectionsHandler.class);
+    infoHandler        = createHandler(INFO_HANDLER_PATH, cfg.getInfoHandlerClass(), InfoHandler.class);
+    coreAdminHandler   = createHandler(CORES_HANDLER_PATH, cfg.getCoreAdminHandlerClass(), CoreAdminHandler.class);
+    configSetsHandler = createHandler(CONFIGSETS_HANDLER_PATH, cfg.getConfigSetsHandlerClass(), ConfigSetsHandler.class);
     containerHandlers.put(AUTHZ_PATH, securityConfHandler);
+    securityConfHandler.initializeMetrics(SolrInfoMBean.Group.node.toString(), AUTHZ_PATH);
     containerHandlers.put(AUTHC_PATH, securityConfHandler);
     if(pkiAuthenticationPlugin != null)
       containerHandlers.put(PKIAuthenticationPlugin.PATH, pkiAuthenticationPlugin.getRequestHandler());
+
+    initializeMetricReporters(loader, cfg.getMetricReporterPlugins(), SolrInfoMBean.Group.node.toString(), null);
 
     coreConfigService = ConfigSetService.createConfigSetService(cfg, loader, zkSys.zkController);
 
@@ -660,6 +661,12 @@ public class CoreContainer {
       }
     }
 
+    try {
+      closeMetricReporters(SolrInfoMBean.Group.node.toString(), null);
+    } catch (Exception e) {
+      log.warn("Exception while closing metric reporter plugins.", e);
+    }
+
     // It should be safe to close the authorization plugin at this point.
     try {
       if(authorizationPlugin != null) {
@@ -695,6 +702,46 @@ public class CoreContainer {
         SolrException.log(log, "Error canceling recovery for core", e);
       }
     }
+  }
+
+  protected void initializeMetricReporters(SolrResourceLoader pluginLoader, PluginInfo[] metricPlugins, String group, String registry) {
+    if (registry == null) {
+      registry = group;
+    } else {
+      registry = MetricRegistry.name(group, registry);
+    }
+    String registryName = SolrMetricManager.overridableRegistryName(registry);
+    for (PluginInfo info : metricPlugins) {
+      String target = info.attributes.get("group");
+      if (target == null) {
+        target = info.attributes.get("registry"); // for now only single registry allowed
+      } else if (!group.equals(target)) { // skip plugins for other groups
+        continue;
+      }
+      if (target == null) {
+        continue;
+      }
+      // enforce prefix and possibly override
+      target = SolrMetricManager.overridableRegistryName(target);
+      if (!registryName.equals(target)) {
+        continue;
+      }
+      try {
+        SolrMetricManager.loadReporter(registryName, pluginLoader, info);
+      } catch (Exception e) {
+        log.warn("Error loading metrics reporter, plugin info: " + info, e);
+      }
+    }
+  }
+
+  protected void closeMetricReporters(String group, String registry) {
+    if (registry == null) {
+      registry = group;
+    } else {
+      registry = MetricRegistry.name(group, registry);
+    }
+    String registryName = SolrMetricManager.overridableRegistryName(registry);
+    SolrMetricManager.closeReporters(registryName);
   }
 
   @Override
@@ -1172,8 +1219,15 @@ public class CoreContainer {
 
   // ---------------- CoreContainer request handlers --------------
 
-  protected <T> T createHandler(String handlerClass, Class<T> clazz) {
-    return loader.newInstance(handlerClass, clazz, null, new Class[] { CoreContainer.class }, new Object[] { this });
+  protected <T> T createHandler(String path, String handlerClass, Class<T> clazz) {
+    T handler = loader.newInstance(handlerClass, clazz, null, new Class[] { CoreContainer.class }, new Object[] { this });
+    if (handler instanceof SolrRequestHandler) {
+      containerHandlers.put(path, (SolrRequestHandler)handler);
+    }
+    if (handler instanceof SolrMetricProducer) {
+      ((SolrMetricProducer)handler).initializeMetrics(SolrInfoMBean.Group.node.toString(), path);
+    }
+    return handler;
   }
 
   public CoreAdminHandler getMultiCoreHandler() {

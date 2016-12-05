@@ -16,8 +16,12 @@
  */
 package org.apache.solr.metrics;
 
+import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import com.codahale.metrics.Counter;
@@ -29,13 +33,27 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
 import com.google.common.base.Preconditions;
+import com.google.common.collect.LinkedListMultimap;
+import com.google.common.collect.ListMultimap;
+import com.google.common.collect.MapMaker;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.Multimaps;
+import org.apache.solr.core.PluginInfo;
+import org.apache.solr.core.SolrResourceLoader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  */
 public class SolrMetricManager {
 
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
   public static final String REGISTRY_NAME_PREFIX = "solr.";
+
+  private static final ListMultimap<String, SolrMetricReporter> metricReporters =
+      Multimaps.synchronizedListMultimap(LinkedListMultimap.create());
 
   // don't create instances of this class
   private SolrMetricManager() { }
@@ -74,7 +92,7 @@ public class SolrMetricManager {
 
     /**
      * Return the set of names that matched this filter.
-     * @return
+     * @return matching names
      */
     public Set<String> getMatched() {
       return Collections.unmodifiableSet(matched);
@@ -109,6 +127,8 @@ public class SolrMetricManager {
    * @param registry name of the registry to remove
    */
   public static void removeRegistry(String registry) {
+    // close any reporters for this registry first
+    closeReporters(registry);
     SharedMetricRegistries.remove(registry);
   }
 
@@ -246,6 +266,43 @@ public class SolrMetricManager {
       return name;
     } else {
       return new StringBuilder(REGISTRY_NAME_PREFIX).append(name).toString();
+    }
+  }
+
+  // reporter management
+
+  public static void loadReporter(String registry, SolrResourceLoader loader, PluginInfo pluginInfo) throws Exception {
+    if (registry == null || pluginInfo == null) {
+      throw new IllegalArgumentException("loadReporter called with missing arguments: " +
+          "registry=" + registry + ", loader=" + loader + ", pluginInfo=" + pluginInfo);
+    }
+    SolrMetricReporter reporter = loader.newInstance(
+        pluginInfo.className,
+        SolrMetricReporter.class,
+        new String[0],
+        new Class[] { String.class },
+        new Object[] { registry }
+    );
+    try {
+      reporter.init(pluginInfo);
+    } catch (IllegalStateException e) {
+      throw new IllegalArgumentException("loadReporter called with invalid plugin info = " + pluginInfo);
+    }
+    if (metricReporters.containsEntry(registry, reporter)) {
+      // replace
+      metricReporters.remove(registry, reporter);
+    }
+    metricReporters.put(registry, reporter);
+  }
+
+  public static void closeReporters(String registry) {
+    List<SolrMetricReporter> reporters = metricReporters.removeAll(registry);
+    for (SolrMetricReporter reporter : reporters) {
+      try {
+        reporter.close();
+      } catch (IOException ioe) {
+        log.warn("Exception closing reporter " + reporter, ioe);
+      }
     }
   }
 }
