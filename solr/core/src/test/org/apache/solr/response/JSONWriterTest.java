@@ -98,6 +98,7 @@ public class JSONWriterTest extends SolrTestCaseJ4 {
     NamedList nl = new NamedList();
     nl.add("data1", "he\u2028llo\u2029!");       // make sure that 2028 and 2029 are both escaped (they are illegal in javascript)
     nl.add(null, 42);
+    nl.add(null, null);
     rsp.add("nl", nl);
 
     rsp.add("byte", Byte.valueOf((byte)-3));
@@ -108,15 +109,15 @@ public class JSONWriterTest extends SolrTestCaseJ4 {
 
     final String expectedNLjson;
     if (namedListStyle == JSONWriter.JSON_NL_FLAT) {
-      expectedNLjson = "\"nl\":[\"data1\",\"he\\u2028llo\\u2029!\",null,42]";
+      expectedNLjson = "\"nl\":[\"data1\",\"he\\u2028llo\\u2029!\",null,42,null,null]";
     } else if (namedListStyle == JSONWriter.JSON_NL_MAP) {
-      expectedNLjson = "\"nl\":{\"data1\":\"he\\u2028llo\\u2029!\",\"\":42}";
+      expectedNLjson = "\"nl\":{\"data1\":\"he\\u2028llo\\u2029!\",\"\":42,\"\":null}";
     } else if (namedListStyle == JSONWriter.JSON_NL_ARROFARR) {
-      expectedNLjson = "\"nl\":[[\"data1\",\"he\\u2028llo\\u2029!\"],[null,42]]";
+      expectedNLjson = "\"nl\":[[\"data1\",\"he\\u2028llo\\u2029!\"],[null,42],[null,null]]";
     } else if (namedListStyle == JSONWriter.JSON_NL_ARROFMAP) {
-      expectedNLjson = "\"nl\":[{\"data1\":\"he\\u2028llo\\u2029!\"},42]";
+      expectedNLjson = "\"nl\":[{\"data1\":\"he\\u2028llo\\u2029!\"},42,null]";
     } else if (namedListStyle == JSONWriter.JSON_NL_ARROFNVP) {
-      expectedNLjson = "\"nl\":[{\"name\":\"data1\",\"str\":\"he\\u2028llo\\u2029!\"},{\"int\":42}]";
+      expectedNLjson = "\"nl\":[{\"name\":\"data1\",\"str\":\"he\\u2028llo\\u2029!\"},{\"int\":42},{\"null\":null}]";
     } else {
       expectedNLjson = null;
       fail("unexpected namedListStyle="+namedListStyle);
@@ -181,15 +182,19 @@ public class JSONWriterTest extends SolrTestCaseJ4 {
     methodsExpectedNotOverriden.add("writeMapOpener");
     methodsExpectedNotOverriden.add("writeMapSeparator");
     methodsExpectedNotOverriden.add("writeMapCloser");
+    methodsExpectedNotOverriden.add("public void org.apache.solr.response.JSONWriter.writeArray(java.lang.String,java.util.List) throws java.io.IOException");
     methodsExpectedNotOverriden.add("writeArrayOpener");
     methodsExpectedNotOverriden.add("writeArraySeparator");
     methodsExpectedNotOverriden.add("writeArrayCloser");
+    methodsExpectedNotOverriden.add("public void org.apache.solr.response.JSONWriter.writeMap(org.apache.solr.common.MapWriter) throws java.io.IOException");
+    methodsExpectedNotOverriden.add("public void org.apache.solr.response.JSONWriter.writeIterator(org.apache.solr.common.IteratorWriter) throws java.io.IOException");
 
     final Class<?> subClass = ArrayOfNamedValuePairJSONWriter.class;
     final Class<?> superClass = subClass.getSuperclass();
 
     for (final Method superClassMethod : superClass.getDeclaredMethods()) {
       final String methodName = superClassMethod.getName();
+      final String methodFullName = superClassMethod.toString();
       if (!methodName.startsWith("write")) continue;
 
       final int modifiers = superClassMethod.getModifiers();
@@ -197,7 +202,8 @@ public class JSONWriterTest extends SolrTestCaseJ4 {
       if (Modifier.isStatic(modifiers)) continue;
       if (Modifier.isPrivate(modifiers)) continue;
 
-      final boolean expectOverriden = !methodsExpectedNotOverriden.contains(methodName);
+      final boolean expectOverriden = !methodsExpectedNotOverriden.contains(methodName)
+          && !methodsExpectedNotOverriden.contains(methodFullName);
 
       try {
         final Method subClassMethod = subClass.getDeclaredMethod(
@@ -215,7 +221,7 @@ public class JSONWriterTest extends SolrTestCaseJ4 {
         if (expectOverriden) {
           fail(subClass + " needs to override '" + superClassMethod + "'");
         } else {
-          assertTrue(methodName+" not found in remaining "+methodsExpectedNotOverriden, methodsExpectedNotOverriden.remove(methodName));
+          assertTrue(methodName+" not found in remaining "+methodsExpectedNotOverriden, methodsExpectedNotOverriden.remove(methodName)|| methodsExpectedNotOverriden.remove(methodFullName));
         }
       }
     }

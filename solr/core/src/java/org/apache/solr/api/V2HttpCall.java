@@ -105,7 +105,12 @@ public class V2HttpCall extends HttpSolrCall {
         DocCollection collection = getDocCollection(collectionName);
         if (collection == null)
           throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "no such collection or alias");
-        core = getCoreByCollection(collection.getName());
+
+        boolean isPreferLeader = false;
+        if (path.endsWith("/update") || path.contains("/update/")) {
+          isPreferLeader = true;
+        }
+        core = getCoreByCollection(collection.getName(), isPreferLeader);
         if (core == null) {
           //this collection exists , but this node does not have a replica for that collection
           //todo find a better way to compute remote

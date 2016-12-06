@@ -110,7 +110,6 @@ import org.apache.solr.response.RubyResponseWriter;
 import org.apache.solr.response.SchemaXmlResponseWriter;
 import org.apache.solr.response.SmileResponseWriter;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.response.SortingResponseWriter;
 import org.apache.solr.response.XMLResponseWriter;
 import org.apache.solr.response.transform.TransformerFactory;
 import org.apache.solr.rest.ManagedResourceStorage;
@@ -120,7 +119,6 @@ import org.apache.solr.schema.FieldType;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.IndexSchemaFactory;
 import org.apache.solr.schema.ManagedIndexSchema;
-import org.apache.solr.schema.SchemaManager;
 import org.apache.solr.schema.SimilarityFactory;
 import org.apache.solr.search.QParserPlugin;
 import org.apache.solr.search.SolrFieldCacheMBean;
@@ -2332,7 +2330,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     m.put("raw", new RawResponseWriter());
     m.put(CommonParams.JAVABIN, new BinaryResponseWriter());
     m.put("csv", new CSVResponseWriter());
-    m.put("xsort", new SortingResponseWriter());
     m.put("schema.xml", new SchemaXmlResponseWriter());
     m.put("smile", new SmileResponseWriter());
     m.put(ReplicationHandler.FILE_STREAM, getFileStreamWriter());
@@ -2350,12 +2347,21 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       @Override
       public void write(OutputStream out, SolrQueryRequest req, SolrQueryResponse response) throws IOException {
         RawWriter rawWriter = (RawWriter) response.getValues().get(ReplicationHandler.FILE_STREAM);
-        if(rawWriter!=null) rawWriter.write(out);
+        if (rawWriter != null) {
+          rawWriter.write(out);
+          if (rawWriter instanceof Closeable) ((Closeable) rawWriter).close();
+        }
+
       }
 
       @Override
       public String getContentType(SolrQueryRequest request, SolrQueryResponse response) {
-        return BinaryResponseParser.BINARY_CONTENT_TYPE;
+        RawWriter rawWriter = (RawWriter) response.getValues().get(ReplicationHandler.FILE_STREAM);
+        if (rawWriter != null) {
+          return rawWriter.getContentType();
+        } else {
+          return BinaryResponseParser.BINARY_CONTENT_TYPE;
+        }
       }
     };
   }
@@ -2365,6 +2371,9 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   }
 
   public interface RawWriter {
+    default String getContentType() {
+      return BinaryResponseParser.BINARY_CONTENT_TYPE;
+    }
     void write(OutputStream os) throws IOException ;
   }
 
@@ -2635,16 +2644,14 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       try {
         FileUtils.deleteDirectory(dataDir);
       } catch (IOException e) {
-        SolrException.log(log, "Failed to delete data dir for unloaded core:" + cd.getName()
-            + " dir:" + dataDir.getAbsolutePath());
+        log.error("Failed to delete data dir for unloaded core: {} dir: {}", cd.getName(), dataDir.getAbsolutePath(), e);
       }
     }
     if (deleteInstanceDir) {
       try {
         FileUtils.deleteDirectory(cd.getInstanceDir().toFile());
       } catch (IOException e) {
-        SolrException.log(log, "Failed to delete instance dir for unloaded core:" + cd.getName()
-            + " dir:" + cd.getInstanceDir());
+        log.error("Failed to delete instance dir for unloaded core: {} dir: {}", cd.getName(), cd.getInstanceDir(), e);
       }
     }
   }
@@ -2712,13 +2719,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       if (checkStale(zkClient, overlayPath, solrConfigversion) ||
           checkStale(zkClient, solrConfigPath, overlayVersion) ||
           checkStale(zkClient, managedSchmaResourcePath, managedSchemaVersion)) {
-
-        try (SolrCore solrCore = cc.solrCores.getCoreFromAnyList(coreName, true)) {
-          solrCore.setLatestSchema(SchemaManager.getFreshManagedSchema(solrCore));
-        } catch (Exception e) {
-          log.warn("", SolrZkClient.checkInterrupted(e));
-        }
-
         log.info("core reload {}", coreName);
         try {
           cc.reload(coreName);
