@@ -48,6 +48,10 @@ public class HardAutoCommitTest extends AbstractSolrTestCase {
     clearIndex();
     // reload the core to clear stats
     h.getCoreContainer().reload(h.getCore().getName());
+
+    // nocommit: why was this line added in last patch? .. seems fine, but also unrelated to issue?
+    // nocommit: addition seems fishy: was this a cut/paste mistake ment for one/all of the other tests modified by this patch?
+    assertFalse(h.getCore().getSolrConfig().getUpdateHandlerInfo().commitWithinSoftCommit);
   }
 
 

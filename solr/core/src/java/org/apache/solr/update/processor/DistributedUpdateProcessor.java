@@ -36,7 +36,13 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CharsRefBuilder;
+import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.SolrRequest.METHOD;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.request.GenericSolrRequest;
 import org.apache.solr.client.solrj.request.UpdateRequest;
+import org.apache.solr.client.solrj.response.SimpleSolrResponse;
 import org.apache.solr.cloud.CloudDescriptor;
 import org.apache.solr.cloud.DistributedQueue;
 import org.apache.solr.cloud.Overseer;
@@ -82,9 +88,11 @@ import org.apache.solr.update.SolrIndexSplitter;
 import org.apache.solr.update.UpdateCommand;
 import org.apache.solr.update.UpdateHandler;
 import org.apache.solr.update.UpdateLog;
+import org.apache.solr.update.UpdateShardHandler;
 import org.apache.solr.update.VersionBucket;
 import org.apache.solr.update.VersionInfo;
 import org.apache.solr.util.TestInjection;
+import org.apache.solr.util.TimeOut;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -98,6 +106,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
   public static final String DISTRIB_FROM_COLLECTION = "distrib.from.collection";
   public static final String DISTRIB_FROM_PARENT = "distrib.from.parent";
   public static final String DISTRIB_FROM = "distrib.from";
+  public static final String DISTRIB_INPLACE_PREVVERSION = "distrib.inplace.prevversion";
   private static final String TEST_DISTRIB_SKIP_SERVERS = "test.distrib.skip.servers";
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -728,7 +737,11 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
         }                
       }
     }
-    
+
+    // If we were sent a previous version, set this to the AddUpdateCommand (if not already set)
+    if (!cmd.isInPlaceUpdate()) {
+      cmd.prevVersion = cmd.getReq().getParams().getLong(DistributedUpdateProcessor.DISTRIB_INPLACE_PREVVERSION, -1);
+    }
     // TODO: if minRf > 1 and we know the leader is the only active replica, we could fail
     // the request right here but for now I think it is better to just return the status
     // to the client that the minRf wasn't reached and let them handle it    
@@ -785,7 +798,10 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
       
       if (replicationTracker != null && minRf > 1)
         params.set(UpdateRequest.MIN_REPFACT, String.valueOf(minRf));
-      
+
+      if (cmd.isInPlaceUpdate()) {
+        params.set(DISTRIB_INPLACE_PREVVERSION, String.valueOf(cmd.prevVersion));
+      }
       cmdDistrib.distribAdd(cmd, nodes, params, false, replicationTracker);
     }
     
@@ -1013,9 +1029,21 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
 
     VersionBucket bucket = vinfo.bucket(bucketHash);
 
+    long dependentVersionFound = -1; // Last found version for a dependent update; applicable only for in-place updates; useful for logging later
+    // if this is an inplace update, check and wait if we should be waiting for a dependent update, before 
+    // entering the synchronized block
+    if (!leaderLogic && cmd.isInPlaceUpdate()) {
+      dependentVersionFound = waitForDependentUpdates(cmd, versionOnUpdate, isReplayOrPeersync, bucket);
+      if (dependentVersionFound == -1) {
+        // it means in leader, the document has been deleted by now. drop this update
+        return true;
+      }
+    }
+
     vinfo.lockForUpdate();
     try {
       synchronized (bucket) {
+        bucket.notifyAll(); //just in case anyone is waiting let them know that we have a new update
         // we obtain the version when synchronized and then do the add so we can ensure that
         // if version1 < version2 then version1 is actually added before version2.
 
@@ -1080,23 +1108,85 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
               return true;
             }
 
-            // if we aren't the leader, then we need to check that updates were not re-ordered
-            if (bucketVersion != 0 && bucketVersion < versionOnUpdate) {
-              // we're OK... this update has a version higher than anything we've seen
-              // in this bucket so far, so we know that no reordering has yet occurred.
-              bucket.updateHighest(versionOnUpdate);
-            } else {
-              // there have been updates higher than the current update.  we need to check
-              // the specific version for this id.
+            if (cmd.isInPlaceUpdate()) { // nocommit: OUTER IF (see nocommits below regarding INNER ELSE)
+              
+              long prev = cmd.prevVersion;
               Long lastVersion = vinfo.lookupVersion(cmd.getIndexedId());
-              if (lastVersion != null && Math.abs(lastVersion) >= versionOnUpdate) {
-                // This update is a repeat, or was reordered.  We need to drop this update.
-                log.debug("Dropping add update due to version {}", idBytes.utf8ToString());
-                return true;
+              if (lastVersion == null || Math.abs(lastVersion) < prev) {
+                // this was checked for (in waitForDependentUpdates()) before entering the synchronized block.
+                // So we shouldn't be here, unless what must've happened is:
+                // by the time synchronization block was entered, the prev update was deleted by DBQ. Since
+                // now that update is not in index, the vinfo.lookupVersion() is possibly giving us a version 
+                // from the deleted list (which might be older than the prev update!) 
+                AddUpdateCommand fetchedFromLeader = fetchFullUpdateFromLeader(cmd.getPrintableId(), 
+                    cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler());
+
+                // nocommit: this log message isn't seem useful in it's current form...
+                // nocommit: it doesn't explain *why* it did a "fetch from leader" let alone why anyone should care
+                // nocommit: perhaps: ("In-place update of {} failed to find valid lastVersion to apply to, forced to fetch full doc from leader: {}", idBytes, ...)
+                log.info("Fetched from leader: {}", (fetchedFromLeader == null? null: fetchedFromLeader.solrDoc));
+
+                if (fetchedFromLeader == null) {
+                  log.debug("Leader told us that this document was subsequently deleted. lastVersion: " +
+                    lastVersion + ", prev: " + prev + ", id: " + idBytes.utf8ToString() + ", lastFoundVersion: " + dependentVersionFound);
+                  return true;
+                } else {
+                  // Newer document was fetched from the leader. Apply that document instead of this current
+                  // in-place update.
+                  log.debug("Newer document is available now. lastVersion: " +
+                      lastVersion + ", prev: " + prev + ", id: " + idBytes.utf8ToString() + ", lastFoundVersion: " + dependentVersionFound);
+
+                  // nocommit: INNER ELSE -- I'm concerned/confused by this code happening here...
+                  //
+                  // at this point, we're replacing the data in our existing "in-place" update (cmd) so it
+                  // becomes a normal "add" using the full SolrInputDocument fetched from the leader
+                  //
+                  // but this if/else is itself is wrapped in a bigger if (grep for "OUTER IF" above
+                  // and "OUTER ELSE" below) where the "else" clause does some sanity checking / processing
+                  // logic for "// non inplace update, i.e. full document update" -- all of which is
+                  // skipped for our modified "cmd"
+                  //
+                  // shouldn't the logic in that outer else clause also be applied to our
+                  // "no longer really an in-place" update?
+                  cmd.solrDoc = fetchedFromLeader.solrDoc;
+                  cmd.prevVersion = -1;
+                  cmd.setVersion((long)cmd.solrDoc.getFieldValue(VERSION_FIELD));
+                }
               }
 
-              // also need to re-apply newer deleteByQuery commands
-              checkDeleteByQueries = true;
+              if (lastVersion != null && prev < Math.abs(lastVersion)) {
+                // this means we got a newer full doc update and in that case it makes no sense to apply the older
+                // inplace update. Drop this update
+                log.info("Update was applied on version: " + prev + ", but last version I have is: " + lastVersion
+                    + ". Dropping current update.");
+                return true;
+              } else {
+                // We're good, we should apply this update. First, update the bucket's highest.
+                if (bucketVersion != 0 && bucketVersion < versionOnUpdate) {
+                  bucket.updateHighest(versionOnUpdate);
+                }
+              }
+            } else { // non inplace update, i.e. full document update
+              // nocommit: OUTER ELSE (see nocommits above regarding INNER ELSE)
+              
+              // if we aren't the leader, then we need to check that updates were not re-ordered
+              if (bucketVersion != 0 && bucketVersion < versionOnUpdate) {
+                // we're OK... this update has a version higher than anything we've seen
+                // in this bucket so far, so we know that no reordering has yet occurred.
+                bucket.updateHighest(versionOnUpdate);
+              } else {
+                // there have been updates higher than the current update.  we need to check
+                // the specific version for this id.
+                Long lastVersion = vinfo.lookupVersion(cmd.getIndexedId());
+                if (lastVersion != null && Math.abs(lastVersion) >= versionOnUpdate) {
+                  // This update is a repeat, or was reordered.  We need to drop this update.
+                  log.debug("Dropping add update due to version {}", idBytes.utf8ToString());
+                  return true;
+                }
+
+                // also need to re-apply newer deleteByQuery commands
+                checkDeleteByQueries = true;
+              }
             }
           }
         }
@@ -1122,11 +1212,213 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     return false;
   }
 
+  /**
+   * This method checks the update/transaction logs and index to find out if the update ("previous update") that the current update
+   * depends on (in the case that this current update is an in-place update) has already been completed. If not,
+   * this method will wait for the missing update until it has arrived. If it doesn't arrive within a timeout threshold,
+   * then this actively fetches from the leader.
+   * 
+   * @return -1 if the current in-place should be dropped, or last found version if previous update has been indexed.
+   */
+  private long waitForDependentUpdates(AddUpdateCommand cmd, long versionOnUpdate,
+                               boolean isReplayOrPeersync, VersionBucket bucket) throws IOException {
+    long lastFoundVersion = 0;
+    TimeOut waitTimeout = new TimeOut(5, TimeUnit.SECONDS); 
+
+    vinfo.lockForUpdate();
+    try {
+      synchronized (bucket) {
+        Long lookedUpVersion = vinfo.lookupVersion(cmd.getIndexedId());
+        lastFoundVersion = lookedUpVersion == null ? 0L: lookedUpVersion;
+
+        if (Math.abs(lastFoundVersion) < cmd.prevVersion) {
+          log.debug("Re-ordered inplace update. version={}, prevVersion={}, lastVersion={}, replayOrPeerSync={}, id={}", 
+              (cmd.getVersion() == 0 ? versionOnUpdate : cmd.getVersion()), cmd.prevVersion, lastFoundVersion, isReplayOrPeersync, cmd.getPrintableId());
+        }
+
+        while (Math.abs(lastFoundVersion) < cmd.prevVersion && !waitTimeout.hasTimedOut())  {
+          try {
+            long timeLeft = waitTimeout.timeLeft(TimeUnit.MILLISECONDS);
+            if (timeLeft > 0) { // wait(0) waits forever until notified, but we don't want that.
+              bucket.wait(timeLeft);
+            }
+          } catch (InterruptedException ie) {
+            throw new RuntimeException(ie);
+          }
+          lookedUpVersion = vinfo.lookupVersion(cmd.getIndexedId());
+          lastFoundVersion = lookedUpVersion == null ? 0L: lookedUpVersion;
+        }
+      }
+    } finally {
+      vinfo.unlockForUpdate();
+    }
+
+    if (Math.abs(lastFoundVersion) > cmd.prevVersion) {
+      // This must've been the case due to a higher version full update succeeding concurrently, while we were waiting or
+      // trying to index this partial update. Since a full update more recent than this partial update has succeeded,
+      // we can drop the current update.
+      if (log.isDebugEnabled()) {
+        log.debug("Update was applied on version: {}, but last version I have is: {}"
+            + ". Current update should be dropped. id={}", cmd.prevVersion, lastFoundVersion, cmd.getPrintableId());
+      }
+      return -1;
+    } else if (lastFoundVersion == cmd.prevVersion) {
+      // nocommit: suspicious comparison: why aren't we using Math.abs(lastFoundVersion) here?
+      //
+      // nocommit: most conditional checks on lastFoundVersion use Math.abs(lastFoundVersion) to account
+      // nocommit: for the possibility that it's negative -- which IIUC means that it was a delete
+      //
+      // i'm not entirely sure how/why/if the cmd.prevVersion could ever refer to a version corrisponding
+      // to a delete, but it's a possibility the code should account for one way or another..
+      //
+      // if the answer is "should never happen" then -- as with any situation where someone tells me
+      // something can never happen -- my response is "assert that it doesn't"
+      //
+      // nocommit: suggest replacing this "else if" clause with...
+      //
+      // } else if (Math.abs(lastFoundVersion) == cmd.prevVersion) {
+      //   assert 0 < lastFoundVersion : "prevVersion " + cmd.prevVersion + " found but is a delete!"
+      //   if (log.isDebugEnabled()) {
+      //     log.debug("Dependent update found. id={}", cmd.getPrintableId());
+      //   }
+      //   return lastFoundVersion;
+      // }
+      //
+      // nocommit: or am i missunderstanding? is there a deliberate reason Math.abs isn't being used here?
+      if (log.isDebugEnabled()) {
+        log.debug("Dependent update found. id={}", cmd.getPrintableId());
+      }
+      return lastFoundVersion;
+    }
+
+    // We have waited enough, but dependent update didn't arrive. Its time to actively fetch it from leader
+    log.info("Missing update, on which current in-place update depends on, hasn't arrived. id={}, looking for version={}, last found version={}", 
+        cmd.getPrintableId(), cmd.prevVersion, lastFoundVersion);
+    
+    AddUpdateCommand missingUpdate = fetchFullUpdateFromLeader(cmd.getPrintableId(), 
+        cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler());
+    if (missingUpdate == null) {
+      // nocommit: this message isn't helpful to users...
+      // nocommit: it doesn't make it clear that we know/understand why his happened and it's "ok"
+      // nocommit: suggest: "Tried to fetch missing update from the leader, but leader says document has been deleted, skipping update (Last found version: {}, was looking for {}, id={})"
+      log.info("Tried to fetch missing update from the leader, but missing wasn't present at leader. "
+          + "Last found version: " + lastFoundVersion + ", was looking for: " + cmd.prevVersion + ", id=" + cmd.getPrintableId());
+      return -1; // -1 indicates deleted at leader.
+    }
+    log.info("Fetched the update: {}", missingUpdate);
+
+    versionAdd(missingUpdate);
+
+    log.info("Added the fetched update, id="+missingUpdate.getPrintableId()+", version="+missingUpdate.getVersion());
+    return missingUpdate.getVersion();
+  }
+
+  /**
+   * This method is used when an update on which a particular in-place update has been lost for some reason. This method
+   * sends a request to the shard leader to fetch the latest full document as seen on the leader.
+   * @return AddUpdateCommand containing latest full doc at shard leader for the given id, or null if not found.
+   */
+  private AddUpdateCommand fetchFullUpdateFromLeader(String id, UpdateShardHandler updateHandler) throws IOException {
+    // nocommit: why does this method take in a an a String id and UpdateShardHandler
+    // nocommit: when the only callers always pass the exact same values from an AddUpdateCommand?
+    //
+    // this method should just take in an AddUpdateCommand and let call cmd.getPrintableId() and cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler() itself 
+
+    ModifiableSolrParams params = new ModifiableSolrParams();
+    params.set("distrib", false);
+    params.set("getInputDocument", id);
+    params.set("onlyIfActive", true);
+    SolrRequest<SimpleSolrResponse> ur = new GenericSolrRequest(METHOD.GET, "/get", params);
+
+    String leaderUrl = req.getParams().get(DISTRIB_FROM);
+    
+    if (leaderUrl == null) {
+      // An update we're dependent upon didn't arrive! This is unexpected. Perhaps likely our leader is
+      // down or partitioned from us for some reason. Lets force refresh cluster state, and request the
+      // leader for the update.
+      if (zkController == null) { // we should be in cloud mode, but wtf? could be a unit test
+        throw new SolrException(ErrorCode.SERVER_ERROR, "Can't find document with id=" + id + ", but fetching from leader "
+            + "failed since we're not in cloud mode.");
+      }
+      try {
+        // nocommit: do not use forceUpdateCollection here, per shalin's comments back in August...
+        
+        // Under no circumstances should we we calling `forceUpdateCollection` in the indexing code path.
+        // It is just too dangerous in the face of high indexing rates. Instead we should do what the
+        // DUP is already doing i.e. calling getLeaderRetry to figure out the current leader. If the
+        // current replica is partitioned from the leader then we have other mechanisms for taking care
+        // of it and the replica has no business trying to determine this.
+        zkController.getZkStateReader().forceUpdateCollection(cloudDesc.getCollectionName()); // nocommit
+      } catch (KeeperException | InterruptedException e1) { /* No worries if the force refresh failed */ }
+      Replica leader = zkController.getClusterState().
+          getCollection(cloudDesc.getCollectionName()).getLeader(cloudDesc.getShardId());
+      leaderUrl = leader.getCoreUrl();
+    }
+    
+    HttpSolrClient hsc = new HttpSolrClient.Builder(leaderUrl).
+        withHttpClient(updateHandler.getHttpClient()).build();
+    NamedList rsp = null;
+    try {
+      rsp = hsc.request(ur);
+    } catch (SolrServerException e) {
+      throw new SolrException(ErrorCode.SERVER_ERROR, "Error during fetching [" + id +
+          "] from leader (" + leaderUrl + "): ", e);
+    } finally {
+      hsc.close();
+    }
+    Object inputDocObj = rsp.get("inputDocument");
+    SolrInputDocument leaderDoc = (SolrInputDocument) inputDocObj;
+
+    if (leaderDoc == null) {
+      return null; // desired update not found (likely deleted by now)
+      
+      // nocommit: i think there's a gap in the DUP logic related to how the results of this method
+      // nocommit: are used when it returns null -- ie: replicas never get dependent updates...
+      //
+      // nocommit: consider a situation like this..
+      //
+      //   - assume some doc D exists.
+      //   - assume replica1 gets an in-place update for D we'll call Y,
+      //     which is dependent on a prevVersion update we'll call X
+      //   - assume replica1 never recieved update X
+      //     - In current (patched) DUP code, this will cause replica1 to wait to see if X arrives out of order.
+      //     - assume X never arrives.
+      //   - In the current (patched) DUP code, replica1 will then ask the leader for the latest SolrInputDocument of D
+      //     - assume leader has already processed some update we'll call Z which did a DBQ that deleted D
+      //     - because of this, leader will return "null" to indicate D has been deleted
+      //   - when replica1 gets "null" from the leader, the current (patched) DUP code "drops" Y
+      //     - presumably this is because it shouldn't mater, and we expect to (eventually process) Z
+      //       to delete the doc from the local replica1
+      //   - but what if the Z's DBQ was dependent of the modified values of Y?
+      //     - ie: what if Y was "add(id=mydocid,field_i={set=42})" and Z was "deleteByQuery(field_i:42)" 
+      //
+      // nocommit: Shouldn't the current code paths where replicas will drop/ignore update Y when
+      // nocommit: fetchFullUpdateFromLeader returns null be changed so that instead replicas will explicitly
+      // nocommit: delete the docId involved???
+      // nocommit: or at the very least, fallback to handling this as a normal (non-inplace) "atomic update" ?
+
+    }
+    AddUpdateCommand cmd = new AddUpdateCommand(req);
+    cmd.solrDoc = leaderDoc;
+    cmd.setVersion((long)leaderDoc.getFieldValue(VERSION_FIELD));
+    return cmd;
+  }
+  
   // TODO: may want to switch to using optimistic locking in the future for better concurrency
   // that's why this code is here... need to retry in a loop closely around/in versionAdd
   boolean getUpdatedDocument(AddUpdateCommand cmd, long versionOnUpdate) throws IOException {
     if (!AtomicUpdateDocumentMerger.isAtomicUpdate(cmd)) return false;
 
+    Set<String> inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd);
+    if (inPlaceUpdatedFields.size() > 0) { // non-empty means this is suitable for in-place updates
+      if (docMerger.doInPlaceUpdateMerge(cmd, inPlaceUpdatedFields)) {
+        return true;
+      } else {
+        // in-place update failed, so fall through and re-try the same with a full atomic update
+      }
+    }
+    
+    // full (non-inplace) atomic update
     SolrInputDocument sdoc = cmd.getSolrInputDocument();
     BytesRef id = cmd.getIndexedId();
     SolrInputDocument oldDoc = RealTimeGetComponent.getInputDocument(cmd.getReq().getCore(), id);
@@ -1142,7 +1434,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     } else {
       oldDoc.remove(VERSION_FIELD);
     }
-    
+
 
     cmd.solrDoc = docMerger.merge(sdoc, oldDoc);
     return true;

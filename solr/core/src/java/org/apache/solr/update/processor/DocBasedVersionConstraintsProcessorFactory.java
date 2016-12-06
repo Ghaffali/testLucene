@@ -261,7 +261,12 @@ public class DocBasedVersionConstraintsProcessorFactory extends UpdateRequestPro
       SolrInputDocument oldDoc = null;
 
       if (useFieldCache) {
-        oldDoc = RealTimeGetComponent.getInputDocumentFromTlog(core, indexedDocId);
+        // nocommit: why is this passing false?
+        // nocommit: prior to this patch, there was no such thing as an inplace update...
+        // nocommit: any call to getInputDocument* would by definition return a "full document"
+        //
+        // (last patch fixed getInputDocument call, but not this getInputDocumentFromTlog; intentional?)
+        oldDoc = RealTimeGetComponent.getInputDocumentFromTlog(core, indexedDocId, false);
         if (oldDoc == RealTimeGetComponent.DELETED) {
           return true;
         }

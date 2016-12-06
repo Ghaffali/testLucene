@@ -574,7 +574,7 @@
 
   <field name="tlong" type="tlong" indexed="true" stored="true"/>
 
-  <field name="_version_" type="long" indexed="true" stored="true" multiValued="false"/>
+  <field name="_version_" type="long" indexed="false" stored="false" docValues="true" multiValued="false" useDocValuesAsStored="true"/>
 
   <field name="title_stringNoNorms" type="string" omitNorms="true" indexed="true" stored="true"/>
 
@@ -679,15 +679,15 @@
   <dynamicField name="*_f1_dv" type="float" indexed="true" stored="true" docValues="true" multiValued="false"/>
 
   <!--  Non-stored, DocValues=true -->
-  <dynamicField name="*_i_dvo" multiValued="false" type="int" docValues="true" indexed="true" stored="false"
+  <dynamicField name="*_i_dvo" multiValued="false" type="int" docValues="true" indexed="false" stored="false"
                 useDocValuesAsStored="true"/>
-  <dynamicField name="*_d_dvo" multiValued="false" type="double" docValues="true" indexed="true" stored="false"
+  <dynamicField name="*_d_dvo" multiValued="false" type="double" docValues="true" indexed="false" stored="false"
                 useDocValuesAsStored="true"/>
-  <dynamicField name="*_s_dvo" multiValued="false" type="string" docValues="true" indexed="true" stored="false"
+  <dynamicField name="*_s_dvo" multiValued="false" type="string" docValues="true" indexed="false" stored="false"
                 useDocValuesAsStored="true"/>
-  <dynamicField name="*_ii_dvo" multiValued="true" type="int" docValues="true" indexed="true" stored="false"
+  <dynamicField name="*_ii_dvo" multiValued="true" type="int" docValues="true" indexed="false" stored="false"
                 useDocValuesAsStored="true"/>
-  <dynamicField name="*_dd_dvo" multiValued="true" type="double" docValues="true" indexed="true" stored="false"
+  <dynamicField name="*_dd_dvo" multiValued="true" type="double" docValues="true" indexed="false" stored="false"
                 useDocValuesAsStored="true"/>
 
   <!--  Non-stored, DocValues=true, useDocValuesAsStored=false -->

@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -322,6 +323,10 @@ public class FieldInfos implements Iterable<FieldInfo> {
         // only return true if the field has the same dvType as the requested one
         return dvType == docValuesType.get(fieldName);
       }
+    }
+    
+    synchronized Set<String> getFieldNames() {
+      return nameToNumber.keySet();
     }
     
     synchronized void clear() {

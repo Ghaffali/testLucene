@@ -1617,7 +1617,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   public long updateNumericDocValue(Term term, String field, long value) throws IOException {
     ensureOpen();
     if (!globalFieldNumberMap.contains(field, DocValuesType.NUMERIC)) {
-      throw new IllegalArgumentException("can only update existing numeric-docvalues fields!");
+      throw new IllegalArgumentException("can only update existing numeric-docvalues fields! Attempted"
+          + " to update field: " + field + "=" + value);
     }
     try {
       long seqNo = docWriter.updateDocValues(new NumericDocValuesUpdate(term, field, value));
@@ -1771,6 +1772,14 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   // for test purpose
   final int getFlushDeletesCount() {
     return flushDeletesCount.get();
+  }
+
+  /**
+   * Return a set of all field names as seen by this IndexWriter, across all segments
+   * of the index.
+   */
+  public Set<String> getFieldNames() {
+    return globalFieldNumberMap.getFieldNames();
   }
 
   final String newSegmentName() {
