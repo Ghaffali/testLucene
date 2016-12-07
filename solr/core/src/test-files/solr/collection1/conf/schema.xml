@@ -566,6 +566,8 @@
   <field name="timestamp" type="date" indexed="true" stored="true" docValues="true" default="NOW" multiValued="false"/>
   <field name="multiDefault" type="string" indexed="true" stored="true" default="muLti-Default" multiValued="true"/>
   <field name="intDefault" type="int" indexed="true" stored="true" default="42" multiValued="false"/>
+  <field name="intDvoDefault" type="int" indexed="false" stored="false" multiValued="false"
+         useDocValuesAsStored="true" docValues="true" default="42" />
   <field name="intRemove" type="int" indexed="true" stored="true" multiValued="true"/>
   <field name="dateRemove" type="date" indexed="true" stored="true" multiValued="true"/>
   <field name="floatRemove" type="float" indexed="true" stored="true" multiValued="true"/>
