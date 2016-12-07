@@ -18,20 +18,17 @@
 
 package org.apache.solr.update;
 
-import java.util.ArrayList;
+import static org.junit.internal.matchers.StringContains.containsString;
+
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
-import org.apache.lucene.document.NumericDocValuesField;
-import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.legacy.LegacyField;
 import org.apache.lucene.util.TestUtil;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
@@ -42,8 +39,8 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
-import org.apache.solr.schema.SchemaField;
 import org.apache.solr.schema.IndexSchema;
+import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.search.TestRTGBase;
 import org.apache.solr.update.processor.AtomicUpdateDocumentMerger;
@@ -51,7 +48,6 @@ import org.apache.solr.util.RefCounted;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import static org.junit.internal.matchers.StringContains.containsString;
 
 
 /**
@@ -783,7 +779,7 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
    * @param valField the field to model
    * @param commands A sequence of Commands which can either be SolrInputDocuments 
    *                 (regular or containing atomic update Maps)
-   *                 or one of the {@link HARDCOMMIT} or {@link SOFTCOMMIT} sentinal objects.
+   *                 or one of the {@link TestInPlaceUpdatesStandalone#HARDCOMMIT} or {@link TestInPlaceUpdatesStandalone#SOFTCOMMIT} sentinal objects.
    */
   public void checkReplay(final String valField, Object... commands) throws Exception {
     

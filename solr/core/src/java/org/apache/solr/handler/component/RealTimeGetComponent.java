@@ -364,7 +364,7 @@ public class RealTimeGetComponent extends SearchComponent
    * @return Returns the merged document, i.e. the resolved full document, or null if the document was not found (deleted
    *          after the resolving began)
    */
-  private static SolrDocumentBase resolveFullDocument(SolrCore core, BytesRef idBytes,
+  private static SolrDocument resolveFullDocument(SolrCore core, BytesRef idBytes,
                                            ReturnFields returnFields, SolrDocumentBase partialDoc, List logEntry) throws IOException {
     if (idBytes == null || logEntry.size() != 5) {
       throw new SolrException(ErrorCode.INVALID_STATE, "Either Id field not present in partial document or log entry doesn't have previous version.");
@@ -391,7 +391,11 @@ public class RealTimeGetComponent extends SearchComponent
     } else { // i.e. lastPrevPointer==0
       assert lastPrevPointer == 0;
       // We have successfully resolved the document based off the tlogs
-      return partialDoc;
+      if (partialDoc instanceof SolrInputDocument) {
+        return toSolrDoc((SolrInputDocument)partialDoc, core.getLatestSchema(), false); // last param is false since this is no longer meant to be a partial doc
+      } else {
+        return (SolrDocument)partialDoc;
+      }
     }
   }
 
@@ -509,7 +513,9 @@ public class RealTimeGetComponent extends SearchComponent
               try {
                 // For in-place update case, we have obtained the partial document till now. We need to
                 // resolve it to a full document to be returned to the user.
-                doc = (SolrInputDocument) resolveFullDocument(core, idBytes, new SolrReturnFields(), doc, entry);
+                doc = toSolrInputDocument(
+                    resolveFullDocument(core, idBytes, new SolrReturnFields(), doc, entry),
+                    core.getLatestSchema());
                 if (doc == null) {
                   return DELETED;
                 }
@@ -626,6 +632,30 @@ public class RealTimeGetComponent extends SearchComponent
     return out;
   }
 
+  private static SolrInputDocument toSolrInputDocument(SolrDocument doc, IndexSchema schema) {
+    SolrInputDocument out = new SolrInputDocument();
+    for( String fname : doc.getFieldNames() ) {
+      SchemaField sf = schema.getFieldOrNull(fname);
+      if (sf != null) {
+        if ((!sf.hasDocValues() && !sf.stored()) || schema.isCopyFieldTarget(sf)) continue;
+      }
+      for (Object val: doc.getFieldValues(fname)) {
+        if (val instanceof Field) {
+          Field f = (Field) val;
+          if (sf != null) {
+            val = sf.getType().toObject(f);   // object or external string?
+          } else {
+            val = f.stringValue();
+            if (val == null) val = f.numericValue();
+            if (val == null) val = f.binaryValue();
+            if (val == null) val = f;
+          }
+        }
+        out.addField(fname, val);
+      }
+    }
+    return out;
+  }
 
   private static SolrDocument toSolrDoc(Document doc, IndexSchema schema) {
     SolrDocument out = new SolrDocument();
