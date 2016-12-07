@@ -1,5 +1,6 @@
 {
-  "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API",
+  "description": "General information about the cluster, including defined collections (with the 'cluster' endpoint), status of the overseer (with the 'cluster/overseer' endpoint), and available nodes (with the 'cluster/nodes' endpoint).",
   "methods": [
     "GET"
   ],

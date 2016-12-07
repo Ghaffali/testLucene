@@ -1,5 +1,6 @@
 {
-  "documentation": "https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api1",
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/ConfigSets+API#ConfigSetsAPI-list",
+  "description": "List all ConfigSets in the cluster.",
   "methods": [
     "GET"
   ],

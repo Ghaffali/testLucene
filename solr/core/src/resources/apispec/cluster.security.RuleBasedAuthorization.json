@@ -1,5 +1,6 @@
 {
-  "documentation": "https://cwiki.apache.org",
+  "documentation": "https://cwiki.apache.org/confluence/display/solr/Rule-Based+Authorization+Plugin",
+  "description": "Defines roles for accessing Solr, and assigns users to those roles. Use this API to change user authorizations to each of Solr's components.",
   "methods": [
     "POST"
   ],
@@ -11,16 +12,16 @@
   "commands": {
     "set-permission": {
       "type":"object",
-      "description": "create a new permission, overwrite an existing permission definition, or assign a pre-defined permission to a role.",
+      "description": "Create a new permission, overwrite an existing permission definition, or assign a pre-defined permission to a role.",
       "properties": {
         "name":{
           "type":"string",
-          "description":"The name of the permission. The name will be used to update or delete the permission later."
+          "description": "The name of the permission. The name will be used to update or delete the permission later."
         },
         "method":{
           "type":"string",
           "enum":["GET", "POST", "DELETE","PUT"],
-          "description":"HTTP methods that are allowed for this permission. You could allow only GET requests, or have a role that allows PUT and POST requests. The method values that are allowed for this property are GET, POST, PUT, DELETE and HEAD."
+          "description": "HTTP methods that are allowed for this permission. You could allow only GET requests, or have a role that allows PUT and POST requests. The method values that are allowed for this property are GET, POST, PUT, DELETE and HEAD."
         },
 
         "collection":{
@@ -28,7 +29,7 @@
           "items": {
             "type": "string"
           },
-          "description":"The collection or collections the permission will apply to. When the path that will be allowed is collection-specific, such as when setting permissions to allow use of the Schema API, omitting the collection property will allow the defined path and/or method for all collections. However, when the path is one that is non-collection-specific, such as the Collections API, the collection value must be null."
+          "description":"The collection or collections the permission will apply to. When the path that will be allowed is collection-specific, such as when setting permissions to allow use of the Schema API, omitting the collection property will allow the defined path and/or method for all collections. However, when the path is one that is non-collection-specific, such as the Collections API, the collection value must be null. In this case, two permissions may need to be created; one for collection-specific API paths allowing access to all collections, and another for non-collection-specific paths defining no collection limitations."
         },
 
         "path":{
@@ -40,7 +41,7 @@
         },
         "index": {
           "type": "integer",
-          "description": "The index of the permission you wish to overwrite. Skip this if it is a new permission that should be created"
+          "description": "The index of the permission you wish to overwrite. Skip this if it is a new permission that should be created."
         },
         "before":{
           "type": "integer",
@@ -49,7 +50,7 @@
         "params":{
           "type":"object",
           "additionalProperties":true,
-          "description":"The names and values of request parameters. This property can be omitted if all request parameters are allowed, but will restrict access only to the values provided if defined."
+          "description": "The names and values of request parameters. This property can be omitted if all request parameters are allowed, but will restrict access only to the values provided if defined."
         },
         "role": {
           "type": "array",
@@ -79,7 +80,7 @@
           "items": {
             "type": "string"
           },
-          "description": "The collection or collections the permission will apply to. When the path that will be allowed is collection-specific, such as when setting permissions to allow use of the Schema API, omitting the collection property will allow the defined path and/or method for all collections. However, when the path is one that is non-collection-specific, such as the Collections API, the collection value must be null."
+          "description": "The collection or collections the permission will apply to. When the path that will be allowed is collection-specific, such as when setting permissions to allow use of the Schema API, omitting the collection property will allow the defined path and/or method for all collections. However, when the path is one that is non-collection-specific, such as the Collections API, the collection value must be null. In this case, two permissions may need to be created; one for collection-specific API paths allowing access to all collections, and another for non-collection-specific paths defining no collection limitations."
         },
         "path": {
           "type":"array",
@@ -90,7 +91,7 @@
         },
         "index": {
           "type": "integer",
-          "description": "The index of the permission you wish to overwrite"
+          "description": "The index of the permission you wish to overwrite."
         },
         "before": {
           "type": "integer",
@@ -120,7 +121,7 @@
     },
     "set-user-role": {
       "type":"object",
-      "description": "A single command allows roles to be mapped to users. To remove a user's permission, you should set the role to null. The key is always a user id and the value is one or more role names",
+      "description": "A single command allows roles to be mapped to users. To remove a user's permission, you should set the role to null. The key is always a user id and the value is one or more role names.",
       "additionalProperties":true
 
     }
