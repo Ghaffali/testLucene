@@ -582,6 +582,55 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
                 SOFTCOMMIT);
   }
   
+  @Test
+  public void testReplay_SetOverriddenWithNoValueThenInc() throws Exception {
+    final String inplaceField = "inplace_l_dvo"; 
+    // final String inplaceField = "inplace_nocommit_not_really_l"; // nocommit: "inplace_l_dvo"
+    
+    checkReplay(inplaceField,
+                //
+                sdoc("id", "1", inplaceField, map("set", 555L)),
+                SOFTCOMMIT,
+                sdoc("id", "1", "regular_l", 666L), // NOTE: no inplaceField, regular add w/overwrite 
+                sdoc("id", "1", inplaceField, map("inc", -77)),
+                HARDCOMMIT);
+  }
+
+  @Test
+  public void testReplay_nocommit() throws Exception { 
+    // nocommit: this sequence came from a randomized test fail
+    // nocommit: distilled what seem to be key bits of this sequence into testReplay_SetOverriddenWithNoValueThenInc
+    // nocommit: if this test passes once testReplay_SetOverriddenWithNoValueThenInc passes, can prob just delete this test
+    // nocommit: otherwise there's still some other bug, and this test should stay with a better name
+    
+    
+    checkReplay("inplace_l_dvo",
+                //
+                sdoc("id", "1", "inplace_l_dvo", map("set", 5227783332305435299L)),
+                sdoc("id", "1", "inplace_l_dvo", map("set", 5177016292017914821L)),
+                SOFTCOMMIT,
+                sdoc("id", "4", "inplace_l_dvo", -1041456048397735257L, "regular_l", -8163239469025076016L),
+                sdoc("id", "1", "regular_l", 1844427848265038310L),
+                sdoc("id", "3", "regular_l", -5364557547718093009L),
+                sdoc("id", "4", "inplace_l_dvo", 352737585764277911L, "regular_l", -2324552916378921247L),
+                sdoc("id", "4", "inplace_l_dvo", map("set", 1522902648458117343L)),
+                sdoc("id", "4", "inplace_l_dvo", map("inc", -1561423187L)),
+                sdoc("id", "4", "inplace_l_dvo", map("set", -7306651717735309226L)),
+                sdoc("id", "2", "inplace_l_dvo", map("set", -5108528772159723270L)),
+                sdoc("id", "4", "inplace_l_dvo", map("set", -3571192220077854115L)),
+                sdoc("id", "1", "inplace_l_dvo", map("inc", -770582321L)),
+                sdoc("id", "4", "inplace_l_dvo", map("inc", -342982790L)),
+                sdoc("id", "2", "inplace_l_dvo", map("inc", -806437401L)),
+                sdoc("id", "4", "inplace_l_dvo", map("inc", -617215801), "regular_l", map("inc", 1767173241L)),
+                sdoc("id", "4", "inplace_l_dvo", map("inc", 1951931987L)),
+                sdoc("id", "3", "regular_l", -3216004491312079553L),
+                sdoc("id", "4", "inplace_l_dvo", map("set", -7877563014171453076L)),
+                sdoc("id", "2", "regular_l", 6651364545098361399L),
+                HARDCOMMIT);
+    
+  }
+
+  
   
   /** 
    * Simple enum for randomizing a type of update.
@@ -674,7 +723,8 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
       deleteAllAndCommit();
     }
   }
-  
+
+
   /** 
    * @see #checkReplay 
    * @see RandomUpdate
@@ -751,6 +801,9 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
       assertNotNull(cmds[iter]); // sanity check switch
     }
 
+    // nocommit: uncomment for quick sanity checking reproducibility, not a good idea to log in general
+    // System.err.println("nocommit: sequence == " + Arrays.asList(cmds));
+    
     checkReplay(inplaceField, cmds);
   }
   
