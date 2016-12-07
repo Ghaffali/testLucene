@@ -33,7 +33,9 @@ import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.metrics.SolrCoreMetricManager;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
+import org.apache.solr.metrics.SolrMetricReporter;
 import org.apache.solr.metrics.SolrMetricTestUtils;
 import org.apache.solr.schema.FieldType;
 import org.junit.After;
@@ -49,18 +51,34 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
   private SolrCoreMetricManager metricManager;
   private SolrJmxReporter reporter;
   private MBeanServer mBeanServer;
+  private String reporterName;
 
   @Before
   public void beforeTest() throws Exception {
     initCore("solrconfig-basic.xml", "schema.xml");
 
-    Random random = random();
-
     final SolrCore core = h.getCore();
     domain = core.getName();
 
+    metricManager = new SolrCoreMetricManager(core);
+    PluginInfo pluginInfo = createReporterPluginInfo();
+    SolrMetricManager.loadReporter(metricManager.getRegistryName(), metricManager.getCore().getResourceLoader(), pluginInfo);
+
+    Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters(metricManager.getRegistryName());
+    assertTrue("reporters.size should be > 0, but was + " + reporters.size(), reporters.size() > 0);
+    reporterName = pluginInfo.name;
+    assertNotNull("reporter " + reporterName + " not present among " + reporters, reporters.get(reporterName));
+    assertTrue("wrong reporter class: " + reporters.get(reporterName), reporters.get(reporterName) instanceof SolrJmxReporter);
+
+    reporter = (SolrJmxReporter) reporters.get(reporterName);
+    mBeanServer = reporter.getMBeanServer();
+    assertNotNull("MBean server not found.", mBeanServer);
+  }
+
+  private PluginInfo createReporterPluginInfo() {
+    Random random = random();
     String className = SolrJmxReporter.class.getName();
-    String reporterName = TestUtil.randomUnicodeString(random);
+    String reporterName = TestUtil.randomSimpleString(random, 1, 10);
 
     Map<String, Object> attrs = new HashMap<>();
     attrs.put(FieldType.CLASS_NAME, className);
@@ -72,22 +90,12 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
       attrs.put("domain", domain);
     }
 
-    PluginInfo pluginInfo = new PluginInfo(TestUtil.randomUnicodeString(random), attrs);
-    metricManager = new SolrCoreMetricManager(core);
-    metricManager.loadReporter(pluginInfo);
-
-    assertEquals(1, metricManager.getReporters().size());
-    assertNotNull(metricManager.getReporters().get(reporterName));
-    assertTrue(metricManager.getReporters().get(reporterName) instanceof SolrJmxReporter);
-
-    reporter = (SolrJmxReporter) metricManager.getReporters().get(reporterName);
-    mBeanServer = reporter.getMBeanServer();
-    assertNotNull("MBean server not found.", mBeanServer);
+    return new PluginInfo(TestUtil.randomUnicodeString(random), attrs);
   }
 
   @After
   public void afterTest() throws Exception {
-    reporter.close();
+    SolrMetricManager.closeReporters(metricManager.getRegistryName());
     Set<ObjectInstance> objects =
         mBeanServer.queryMBeans(ObjectName.getInstance(domain + ":*"), null);
     assertTrue(objects.isEmpty());
@@ -113,8 +121,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
       //waitForListener();
       Set<ObjectInstance> objects = mBeanServer.queryMBeans(null, null);
       assertEquals(registered.size(), objects.stream().
-          filter(o -> o.getObjectName().getKeyProperty("scope") != null &&
-              o.getObjectName().getKeyProperty("scope").equals(scope)).count());
+          filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&
+                      reporterName.equals(o.getObjectName().getKeyProperty("reporter"))).count());
     }
   }
 
@@ -127,20 +135,21 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     Map<String, Counter> metrics = SolrMetricTestUtils.getRandomMetrics(random, true);
     SolrMetricProducer producer = SolrMetricTestUtils.getProducerOf(category, scope, metrics);
     metricManager.registerMetricProducer(scope, producer);
-    //waitForListener();
 
     Set<ObjectInstance> objects = mBeanServer.queryMBeans(null, null);
     assertEquals(metrics.size(), objects.stream().
-        filter(o -> o.getObjectName().getKeyProperty("scope") != null &&
-            o.getObjectName().getKeyProperty("scope").equals(scope)).count());
+        filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&
+            reporterName.equals(o.getObjectName().getKeyProperty("reporter"))).count());
 
     h.getCoreContainer().reload(h.getCore().getName());
+    PluginInfo pluginInfo = createReporterPluginInfo();
+    SolrMetricManager.loadReporter(metricManager.getRegistryName(), metricManager.getCore().getResourceLoader(), pluginInfo);
     metricManager.registerMetricProducer(scope, producer);
 
     objects = mBeanServer.queryMBeans(null, null);
     assertEquals(metrics.size(), objects.stream().
-        filter(o -> o.getObjectName().getKeyProperty("scope") != null &&
-            o.getObjectName().getKeyProperty("scope").equals(scope)).count());
+        filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&
+            pluginInfo.name.equals(o.getObjectName().getKeyProperty("reporter"))).count());
   }
 
 }

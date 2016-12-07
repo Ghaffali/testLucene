@@ -482,7 +482,7 @@ public class CoreContainer {
     if(pkiAuthenticationPlugin != null)
       containerHandlers.put(PKIAuthenticationPlugin.PATH, pkiAuthenticationPlugin.getRequestHandler());
 
-    initializeMetricReporters(loader, cfg.getMetricReporterPlugins(), SolrInfoMBean.Group.node.toString(), null);
+    SolrMetricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.node, null);
 
     coreConfigService = ConfigSetService.createConfigSetService(cfg, loader, zkSys.zkController);
 
@@ -661,11 +661,7 @@ public class CoreContainer {
       }
     }
 
-    try {
-      closeMetricReporters(SolrInfoMBean.Group.node.toString(), null);
-    } catch (Exception e) {
-      log.warn("Exception while closing metric reporter plugins.", e);
-    }
+    SolrMetricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node));
 
     // It should be safe to close the authorization plugin at this point.
     try {
@@ -702,46 +698,6 @@ public class CoreContainer {
         SolrException.log(log, "Error canceling recovery for core", e);
       }
     }
-  }
-
-  protected void initializeMetricReporters(SolrResourceLoader pluginLoader, PluginInfo[] metricPlugins, String group, String registry) {
-    if (registry == null) {
-      registry = group;
-    } else {
-      registry = MetricRegistry.name(group, registry);
-    }
-    String registryName = SolrMetricManager.overridableRegistryName(registry);
-    for (PluginInfo info : metricPlugins) {
-      String target = info.attributes.get("group");
-      if (target == null) {
-        target = info.attributes.get("registry"); // for now only single registry allowed
-      } else if (!group.equals(target)) { // skip plugins for other groups
-        continue;
-      }
-      if (target == null) {
-        continue;
-      }
-      // enforce prefix and possibly override
-      target = SolrMetricManager.overridableRegistryName(target);
-      if (!registryName.equals(target)) {
-        continue;
-      }
-      try {
-        SolrMetricManager.loadReporter(registryName, pluginLoader, info);
-      } catch (Exception e) {
-        log.warn("Error loading metrics reporter, plugin info: " + info, e);
-      }
-    }
-  }
-
-  protected void closeMetricReporters(String group, String registry) {
-    if (registry == null) {
-      registry = group;
-    } else {
-      registry = MetricRegistry.name(group, registry);
-    }
-    String registryName = SolrMetricManager.overridableRegistryName(registry);
-    SolrMetricManager.closeReporters(registryName);
   }
 
   @Override
@@ -1084,7 +1040,7 @@ public class CoreContainer {
     coresLocator.delete(this, cd);
 
     // delete metrics specific to this core
-    SolrMetricManager.removeRegistry(SolrCoreMetricManager.getRegistryName(name));
+    SolrMetricManager.removeRegistry(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, name));
 
     if (core == null) {
       // transient core

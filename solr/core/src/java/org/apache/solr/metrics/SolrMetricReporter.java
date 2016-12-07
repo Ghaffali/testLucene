@@ -29,6 +29,7 @@ import org.apache.solr.util.plugin.PluginInfoInitialized;
 public abstract class SolrMetricReporter implements Closeable, PluginInfoInitialized {
 
   protected final String registryName;
+  protected PluginInfo pluginInfo;
 
   /**
    * Create a reporter for metrics managed in a named registry.
@@ -38,6 +39,7 @@ public abstract class SolrMetricReporter implements Closeable, PluginInfoInitial
   protected SolrMetricReporter(String registryName) {
     this.registryName = registryName;
   }
+
   /**
    * Initializes a {@link SolrMetricReporter} with the plugin's configuration.
    *
@@ -45,11 +47,22 @@ public abstract class SolrMetricReporter implements Closeable, PluginInfoInitial
    */
   @SuppressWarnings("unchecked")
   public void init(PluginInfo pluginInfo) {
-    if (pluginInfo != null && pluginInfo.initArgs != null) {
-      SolrPluginUtils.invokeSetters(this, pluginInfo.initArgs);
+    if (pluginInfo != null) {
+      this.pluginInfo = pluginInfo.copy();
+      if (this.pluginInfo.initArgs != null) {
+        SolrPluginUtils.invokeSetters(this, this.pluginInfo.initArgs);
+      }
     }
-
     validate();
+  }
+
+  /**
+   * Get the effective {@link PluginInfo} instance that was used for
+   * initialization of this plugin.
+   * @return plugin info, or null if not yet initialized.
+   */
+  public PluginInfo getPluginInfo() {
+    return pluginInfo;
   }
 
   /**
@@ -61,6 +74,9 @@ public abstract class SolrMetricReporter implements Closeable, PluginInfoInitial
 
   @Override
   public String toString() {
-    return String.format(Locale.ENGLISH, "[%s@%s]", getClass().getName(), Integer.toHexString(hashCode()));
+    return getClass().getName() + "{" +
+        "registryName='" + registryName + '\'' +
+        ", pluginInfo=" + pluginInfo +
+        '}';
   }
 }

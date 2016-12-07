@@ -19,10 +19,14 @@ package org.apache.solr.metrics;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Histogram;
@@ -33,12 +37,8 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
 import com.google.common.base.Preconditions;
-import com.google.common.collect.LinkedListMultimap;
-import com.google.common.collect.ListMultimap;
-import com.google.common.collect.MapMaker;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.Multimaps;
 import org.apache.solr.core.PluginInfo;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,8 +52,9 @@ public class SolrMetricManager {
 
   public static final String REGISTRY_NAME_PREFIX = "solr.";
 
-  private static final ListMultimap<String, SolrMetricReporter> metricReporters =
-      Multimaps.synchronizedListMultimap(LinkedListMultimap.create());
+  private static final Map<String, Map<String, SolrMetricReporter>> reporters = new HashMap<>();
+
+  private static final Lock reportersLock = new ReentrantLock();
 
   // don't create instances of this class
   private SolrMetricManager() { }
@@ -129,7 +130,36 @@ public class SolrMetricManager {
   public static void removeRegistry(String registry) {
     // close any reporters for this registry first
     closeReporters(registry);
+    // make sure we use a name with prefix, with overrides
+    registry = overridableRegistryName(registry);
     SharedMetricRegistries.remove(registry);
+  }
+
+  /**
+   * Move all matching metrics from one registry to another. This is useful eg. during
+   * {@link org.apache.solr.core.SolrCore} rename or swap operations.
+   * @param fromRegistry source registry
+   * @param toRegistry target registry
+   * @param filter optional {@link MetricFilter} to select what metrics to move. If null
+   *               then all metrics will be moved.
+   */
+  public static void moveMetrics(String fromRegistry, String toRegistry, MetricFilter filter) {
+    MetricRegistry from = registry(fromRegistry);
+    MetricRegistry to = registry(toRegistry);
+    if (from == to) {
+      return;
+    }
+    if (filter == null) {
+      to.registerAll(from);
+      from.removeMatching(MetricFilter.ALL);
+    } else {
+      for (Map.Entry<String, Metric> entry : from.getMetrics().entrySet()) {
+        if (filter.matches(entry.getKey(), entry.getValue())) {
+          to.register(entry.getKey(), entry.getValue());
+        }
+      }
+      from.removeMatching(filter);
+    }
   }
 
   /**
@@ -269,13 +299,85 @@ public class SolrMetricManager {
     }
   }
 
+  public static String getRegistryName(SolrInfoMBean.Group group, String... names) {
+    String fullName = MetricRegistry.name(group.toString(), names);
+    return overridableRegistryName(fullName);
+  }
+
   // reporter management
 
+  /**
+   * Create and register {@link SolrMetricReporter}-s specific to a {@link org.apache.solr.core.SolrInfoMBean.Group}.
+   * Note: reporters that don't specify "group" nor "registry" attributes are treated as universal -
+   * they will always be loaded for any group. These attributes may also contain multiple comma- or
+   * whitespace-separated values, in which case the reporter will be loaded for any matching value from
+   * the list.
+   * @param pluginInfos plugin configurations
+   * @param loader resource loader
+   * @param group selected group, not null
+   * @param registry optional registry name within a group
+   */
+  public static void loadReporters(PluginInfo[] pluginInfos, SolrResourceLoader loader, SolrInfoMBean.Group group, String registry) {
+    if (pluginInfos == null || pluginInfos.length == 0) {
+      return;
+    }
+    String registryName = getRegistryName(group, registry);
+    for (PluginInfo info : pluginInfos) {
+      String target = info.attributes.get("group");
+      if (target == null) { // no "group"
+        target = info.attributes.get("registry");
+        if (target != null) {
+          String[] targets = target.split("[\\s,]+");
+          boolean found = false;
+          for (String t : targets) {
+            t = overridableRegistryName(t);
+            if (registryName.equals(t)) {
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            continue;
+          }
+        } else {
+          // neither group nor registry specified.
+          // always register this plugin for all groups and registries
+        }
+      } else { // check groups
+        String[] targets = target.split("[\\s,]+");
+        boolean found = false;
+        for (String t : targets) {
+          if (group.toString().equals(t)) {
+            found = true;
+            break;
+          }
+        }
+        if (!found) {
+          continue;
+        }
+      }
+      try {
+        loadReporter(registryName, loader, info);
+      } catch (Exception e) {
+        log.warn("Error loading metrics reporter, plugin info: " + info, e);
+      }
+    }
+  }
+
+  /**
+   * Create and register an instance of {@link SolrMetricReporter}.
+   * @param registry reporter is associated with this registry
+   * @param loader loader to use to create an instance of the reporter
+   * @param pluginInfo plugin configuration. Plugin "name" and "class" attributes are required.
+   * @throws Exception if any argument is missing or invalid
+   */
   public static void loadReporter(String registry, SolrResourceLoader loader, PluginInfo pluginInfo) throws Exception {
-    if (registry == null || pluginInfo == null) {
+    if (registry == null || pluginInfo == null || pluginInfo.name == null || pluginInfo.className == null) {
       throw new IllegalArgumentException("loadReporter called with missing arguments: " +
           "registry=" + registry + ", loader=" + loader + ", pluginInfo=" + pluginInfo);
     }
+    // make sure we use a name with prefix, with overrides
+    registry = overridableRegistryName(registry);
     SolrMetricReporter reporter = loader.newInstance(
         pluginInfo.className,
         SolrMetricReporter.class,
@@ -288,21 +390,133 @@ public class SolrMetricManager {
     } catch (IllegalStateException e) {
       throw new IllegalArgumentException("loadReporter called with invalid plugin info = " + pluginInfo);
     }
-    if (metricReporters.containsEntry(registry, reporter)) {
-      // replace
-      metricReporters.remove(registry, reporter);
+    try {
+      if (!reportersLock.tryLock(10, TimeUnit.SECONDS)) {
+        throw new Exception("Could not obtain lock to modify reporters registry: " + registry);
+      }
+    } catch (InterruptedException e) {
+      throw new Exception("Interrupted while trying to obtain lock to modify reporters registry: " + registry);
     }
-    metricReporters.put(registry, reporter);
+    try {
+      Map<String, SolrMetricReporter> perRegistry = reporters.get(registry);
+      if (perRegistry == null) {
+        perRegistry = new HashMap<>();
+        reporters.put(registry, perRegistry);
+      }
+      SolrMetricReporter oldReporter = perRegistry.get(pluginInfo.name);
+      if (oldReporter != null) { // close it
+        log.info("Replacing existing reporter '" + pluginInfo.name + "' in registry '" + registry + "': " + oldReporter.toString());
+        oldReporter.close();
+      }
+      perRegistry.put(pluginInfo.name, reporter);
+
+    } finally {
+      reportersLock.unlock();
+    }
   }
 
-  public static void closeReporters(String registry) {
-    List<SolrMetricReporter> reporters = metricReporters.removeAll(registry);
-    for (SolrMetricReporter reporter : reporters) {
+  /**
+   * Close and unregister a named {@link SolrMetricReporter} for a registry.
+   * @param registry registry name
+   * @param name reporter name
+   * @return true if a named reporter existed and was closed.
+   */
+  public static boolean closeReporter(String registry, String name) {
+    // make sure we use a name with prefix, with overrides
+    registry = overridableRegistryName(registry);
+    try {
+      if (!reportersLock.tryLock(10, TimeUnit.SECONDS)) {
+        log.warn("Could not obtain lock to modify reporters registry: " + registry);
+        return false;
+      }
+    } catch (InterruptedException e) {
+      log.warn("Interrupted while trying to obtain lock to modify reporters registry: " + registry);
+      return false;
+    }
+    try {
+      Map<String, SolrMetricReporter> perRegistry = reporters.get(registry);
+      if (perRegistry == null) {
+        return false;
+      }
+      SolrMetricReporter reporter = perRegistry.remove(name);
+      if (reporter == null) {
+        return false;
+      }
       try {
         reporter.close();
-      } catch (IOException ioe) {
-        log.warn("Exception closing reporter " + reporter, ioe);
+      } catch (Exception e) {
+        log.warn("Error closing metric reporter, registry=" + registry + ", name=" + name, e);
       }
+      return true;
+    } finally {
+      reportersLock.unlock();
+    }
+  }
+
+  /**
+   * Close and unregister all {@link SolrMetricReporter}-s for a registry.
+   * @param registry registry name
+   * @return names of closed reporters
+   */
+  public static Set<String> closeReporters(String registry) {
+    // make sure we use a name with prefix, with overrides
+    registry = overridableRegistryName(registry);
+    try {
+      if (!reportersLock.tryLock(10, TimeUnit.SECONDS)) {
+        log.warn("Could not obtain lock to modify reporters registry: " + registry);
+        return Collections.emptySet();
+      }
+    } catch (InterruptedException e) {
+      log.warn("Interrupted while trying to obtain lock to modify reporters registry: " + registry);
+      return Collections.emptySet();
+    }
+    log.info("Closing metric reporters for: " + registry);
+    try {
+      Map<String, SolrMetricReporter> perRegistry = reporters.remove(registry);
+      if (perRegistry != null) {
+        for (SolrMetricReporter reporter : perRegistry.values()) {
+          try {
+            reporter.close();
+          } catch (IOException ioe) {
+            log.warn("Exception closing reporter " + reporter, ioe);
+          }
+        }
+        return perRegistry.keySet();
+      } else {
+        return Collections.emptySet();
+      }
+    } finally {
+      reportersLock.unlock();
+    }
+  }
+
+  /**
+   * Get a map of reporters for a registry. Keys are reporter names, values are reporter instances.
+   * @param registry registry name
+   * @return map or reporters and their names, may be empty but never null
+   */
+  public static Map<String, SolrMetricReporter> getReporters(String registry) {
+    // make sure we use a name with prefix, with overrides
+    registry = overridableRegistryName(registry);
+    try {
+      if (!reportersLock.tryLock(10, TimeUnit.SECONDS)) {
+        log.warn("Could not obtain lock to modify reporters registry: " + registry);
+        return Collections.emptyMap();
+      }
+    } catch (InterruptedException e) {
+      log.warn("Interrupted while trying to obtain lock to modify reporters registry: " + registry);
+      return Collections.emptyMap();
+    }
+    try {
+      Map<String, SolrMetricReporter> perRegistry = reporters.get(registry);
+      if (perRegistry == null) {
+        return Collections.emptyMap();
+      } else {
+        // defensive copy - the original map may change after we release the lock
+        return Collections.unmodifiableMap(new HashMap<>(perRegistry));
+      }
+    } finally {
+      reportersLock.unlock();
     }
   }
 }

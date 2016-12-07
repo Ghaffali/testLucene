@@ -26,6 +26,7 @@ import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.codahale.metrics.MetricRegistry;
+import org.apache.solr.core.NodeConfig;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
@@ -42,8 +43,6 @@ public class SolrCoreMetricManager implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final SolrCore core;
-  private final String registryName;
-  private final ConcurrentHashMap<String, SolrMetricReporter> reporters;
 
   /**
    * Constructs a metric manager.
@@ -52,18 +51,42 @@ public class SolrCoreMetricManager implements Closeable {
    */
   public SolrCoreMetricManager(SolrCore core) {
     this.core = core;
-    this.registryName = getRegistryName(core.getName());
-    this.reporters = new ConcurrentHashMap<>();
   }
 
-  public static final String getRegistryName(String coreName) {
-    return SolrMetricManager.overridableRegistryName(MetricRegistry.name(SolrInfoMBean.Group.core.toString(), coreName));
+  /**
+   * Load reporters configured globally and specific to {@link org.apache.solr.core.SolrInfoMBean.Group#core}
+   * group or with a registry name specific to this core.
+   */
+  public void loadReporters() {
+    NodeConfig nodeConfig = core.getCoreDescriptor().getCoreContainer().getConfig();
+    PluginInfo[] pluginInfos = nodeConfig.getMetricReporterPlugins();
+    SolrMetricManager.loadReporters(pluginInfos, core.getResourceLoader(), SolrInfoMBean.Group.core, core.getName());
+  }
+
+  /**
+   * Make sure that metrics already collected that correspond to the old core name
+   * are carried over and will be used under the new core name.
+   * This method also reloads reporters so that they use the new core name.
+   * @param oldCoreName core name before renaming, may be null
+   * @param newCoreName core name after renaming, not null
+   */
+  public void afterCoreSetName(String oldCoreName, String newCoreName) {
+    if (newCoreName.equals(oldCoreName)) {
+      return;
+    }
+    String oldRegistryName = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, oldCoreName);
+    String newRegistryName = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, newCoreName);
+    // close old reporters
+    SolrMetricManager.closeReporters(oldRegistryName);
+    SolrMetricManager.moveMetrics(oldRegistryName, newRegistryName, null);
+    // old registry is no longer used - we have moved the metrics
+    SolrMetricManager.removeRegistry(oldRegistryName);
+    // load reporters again, using the new core name
+    loadReporters();
   }
 
   /**
    * Registers a mapping of name/metric's with the manager's metric registry.
-   * If a metric with the same metric name has already been registered, this method
-   * replaces the original metric with the new metric.
    *
    * @param scope     the scope of the metrics to be registered (e.g. `/admin/ping`)
    * @param producer  producer of metrics to be registered
@@ -73,7 +96,7 @@ public class SolrCoreMetricManager implements Closeable {
       throw new IllegalArgumentException("registerMetricProducer() called with illegal arguments: " +
           "scope = " + scope + ", producer = " + producer);
     }
-    Collection<String> registered = producer.initializeMetrics(registryName, scope);
+    Collection<String> registered = producer.initializeMetrics(getRegistryName(), scope);
     if (registered == null || registered.isEmpty()) {
       throw new IllegalArgumentException("registerMetricProducer() did not register any metrics " +
       "for scope = " + scope + ", producer = " + producer);
@@ -81,63 +104,13 @@ public class SolrCoreMetricManager implements Closeable {
   }
 
   /**
-   * Loads a reporter and registers it to listen to the manager's metric registry.
-   * If a reporter with the same name has already been registered, this method
-   * closes the original reporter and registers the new reporter.
-   *
-   * @param pluginInfo the configuration of the reporter
-   * @throws IOException if the reporter could not be loaded
-   */
-  public void loadReporter(PluginInfo pluginInfo) throws IOException {
-    if (pluginInfo == null) {
-      throw new IllegalArgumentException("loadReporter called with null plugin info.");
-    }
-
-    SolrResourceLoader resourceLoader = core.getResourceLoader();
-    SolrMetricReporter reporter = resourceLoader.newInstance(
-      pluginInfo.className,
-      SolrMetricReporter.class,
-      new String[0],
-      new Class[] { String.class },
-      new Object[] { registryName }
-    );
-
-    try {
-      reporter.init(pluginInfo);
-    } catch (IllegalStateException e) {
-      throw new IllegalArgumentException("loadReporter called with invalid plugin info = " + pluginInfo);
-    }
-
-    SolrMetricReporter existing = reporters.putIfAbsent(pluginInfo.name, reporter);
-    if (existing != null) {
-      log.warn("{} has already been register; replacing existing reporter = {}.", pluginInfo.name, existing);
-      synchronized (reporters) {
-        reporters.get(pluginInfo.name).close(); // Get the existing reporter again in case it was replaced
-        reporters.put(pluginInfo.name, reporter); // Replace the existing reporter with the new one
-      }
-    }
-
-    log.info("{} is successfully registered.", pluginInfo.name);
-  }
-
-  /**
-   * Closes registered reporters.
+   * Closes reporters specific to this core.
    */
   @Override
   public void close() throws IOException {
-    Iterator<Map.Entry<String, SolrMetricReporter>> it = reporters.entrySet().iterator();
-    while (it.hasNext()) {
-      Map.Entry<String, SolrMetricReporter> entry = it.next();
-      entry.getValue().close();
-      it.remove();
-    }
+    SolrMetricManager.closeReporters(getRegistryName());
   }
 
-  /**
-   * Retrieves the solr core of the manager.
-   *
-   * @return the solr core of the manager.
-   */
   public SolrCore getCore() {
     return core;
   }
@@ -148,16 +121,6 @@ public class SolrCoreMetricManager implements Closeable {
    * @return the metric registry name of the manager.
    */
   public String getRegistryName() {
-    return registryName;
+    return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, core.getName());
   }
-
-  /**
-   * Retrieves all registered reporters and their names.
-   *
-   * @return all registered reporters and their names
-   */
-  public Map<String, SolrMetricReporter> getReporters() {
-    return Collections.unmodifiableMap(reporters);
-  }
-
 }

@@ -50,7 +50,7 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
   @After
   public void afterTest() throws IOException {
     metricManager.close();
-    assertTrue(metricManager.getReporters().isEmpty());
+    assertTrue(SolrMetricManager.getReporters(metricManager.getRegistryName()).isEmpty());
     deleteCore();
   }
 
@@ -115,14 +115,15 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
     PluginInfo pluginInfo = shouldDefinePlugin ? new PluginInfo(TestUtil.randomUnicodeString(random), attrs) : null;
 
     try {
-      metricManager.loadReporter(pluginInfo);
+      SolrMetricManager.loadReporter(metricManager.getRegistryName(), metricManager.getCore().getResourceLoader(), pluginInfo);
       assertNotNull(pluginInfo);
-      assertEquals(1, metricManager.getReporters().size());
-      assertNotNull(metricManager.getReporters().get(reporterName));
-      assertTrue(metricManager.getReporters().get(reporterName) instanceof MockMetricReporter);
+      Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters(metricManager.getRegistryName());
+      assertTrue("reporters.size should be > 0, but was + " + reporters.size(), reporters.size() > 0);
+      assertNotNull("reporter " + reporterName + " not present among " + reporters, reporters.get(reporterName));
+      assertTrue("wrong reporter class: " + reporters.get(reporterName), reporters.get(reporterName) instanceof MockMetricReporter);
     } catch (IllegalArgumentException e) {
       assertTrue(pluginInfo == null || attrs.get("configurable") == null);
-      assertTrue(metricManager.getReporters().isEmpty());
+      assertNull(SolrMetricManager.getReporters(metricManager.getRegistryName()).get(reporterName));
     }
   }
 

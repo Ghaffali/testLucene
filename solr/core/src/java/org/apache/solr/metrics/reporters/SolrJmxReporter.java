@@ -97,7 +97,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
       return;
     }
 
-    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(registryName, domain);
+    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain);
 
     reporter = JmxReporter.forRegistry(SolrMetricManager.registry(registryName))
                           .registerWith(mBeanServer)
@@ -185,12 +185,12 @@ public class SolrJmxReporter extends SolrMetricReporter {
    */
   private static class JmxObjectNameFactory implements ObjectNameFactory {
 
-    private final String registryName;
     private final String domain;
     private final String[] subdomains;
+    private final String reporterName;
 
-    JmxObjectNameFactory(String registryName, String domain) {
-      this.registryName = registryName;
+    JmxObjectNameFactory(String reporterName, String domain) {
+      this.reporterName = reporterName;
       this.domain = domain;
       this.subdomains = domain.split("\\.");
     }
@@ -235,6 +235,9 @@ public class SolrJmxReporter extends SolrMetricReporter {
         sb.append(currentDomain);
         sb.append(':');
       }
+      sb.append("reporter=");
+      sb.append(reporterName);
+      sb.append(',');
       if (metricInfo != null) {
         sb.append("category=");
         sb.append(metricInfo.category.toString());

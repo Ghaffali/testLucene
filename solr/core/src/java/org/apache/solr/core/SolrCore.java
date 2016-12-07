@@ -390,9 +390,13 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   }
 
   public void setName(String v) {
+    String oldName = this.name;
     this.name = v;
     this.logid = (v==null)?"":("["+v+"] ");
     this.coreDescriptor = new CoreDescriptor(v, this.coreDescriptor);
+    if (metricManager != null) {
+      metricManager.afterCoreSetName(oldName, this.name);
+    }
   }
 
   public String getLogId()
@@ -1059,21 +1063,14 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
   /**
    * Initializes the core's {@link SolrCoreMetricManager} with a given configuration.
-   * If metric reporters are configured, they are also registered with the manager.
+   * If metric reporters are configured, they are also initialized for this core.
    *
    * @param config the given configuration
    * @return an instance of {@link SolrCoreMetricManager}
    */
   private SolrCoreMetricManager initMetricManager(SolrConfig config) {
     SolrCoreMetricManager metricManager = new SolrCoreMetricManager(this);
-    for (PluginInfo pluginInfo : config.readPluginInfos("metricReporter", true, true)) {
-      try {
-        metricManager.loadReporter(pluginInfo);
-      } catch (IOException e) {
-        log.error("Failed to load reporter for plugin info = {}.", pluginInfo);
-        // TODO: shall we re-throw the exception here?
-      }
-    }
+    metricManager.loadReporters();
     return metricManager;
   }
 
