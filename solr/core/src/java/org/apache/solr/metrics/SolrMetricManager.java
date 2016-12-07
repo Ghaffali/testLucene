@@ -34,6 +34,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.Metric;
 import com.codahale.metrics.MetricFilter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
 import com.google.common.base.Preconditions;
@@ -163,6 +164,27 @@ public class SolrMetricManager {
   }
 
   /**
+   * Register all metrics in the provided {@link MetricSet}, optionally skipping those that
+   * already exist.
+   * @param registry registry name
+   * @param metrics metric set to register
+   * @param skipExisting if true then already existing metrics with the same name will be kept.
+   *                     When false and a metric with the same name already exists an exception
+   *                     will be thrown.
+   * @throws Exception if a metric with this name already exists.
+   */
+  public static void registerAll(String registry, MetricSet metrics, boolean skipExisting) throws Exception {
+    MetricRegistry metricRegistry = registry(registry);
+    Map<String, Metric> existingMetrics = metricRegistry.getMetrics();
+    for (Map.Entry<String, Metric> entry : metrics.getMetrics().entrySet()) {
+      if (skipExisting && existingMetrics.containsKey(entry.getKey())) {
+        continue;
+      }
+      metricRegistry.register(entry.getKey(), entry.getValue());
+    }
+  }
+
+  /**
    * Remove all metrics from a specified registry.
    * @param registry registry name
    */
@@ -239,6 +261,28 @@ public class SolrMetricManager {
   public static Histogram histogram(String registry, String metricName, String... metricPath) {
     return registry(registry).histogram(mkName(metricName, metricPath));
   }
+
+  /**
+   * Register an instance of {@link Metric}.
+   * @param registry registry name
+   * @param metric metric instance
+   * @param skipExisting if true then already an existing metric with the same name will be kept.
+   *                     When false and a metric with the same name already exists an exception
+   *                     will be thrown.
+   * @param metricName metric name, either final name or a fully-qualified name
+   *                   using dotted notation
+   * @param metricPath (optional) additional top-most metric name path elements
+   */
+  public static void register(String registry, Metric metric, boolean skipExisting, String metricName, String... metricPath) {
+    MetricRegistry metricRegistry = registry(registry);
+    String fullName = mkName(metricName, metricPath);
+    if (skipExisting && metricRegistry.getMetrics().containsKey(fullName)) {
+      return;
+    }
+    metricRegistry.register(fullName, metric);
+  }
+
+
 
   /**
    * This method creates a hierarchical name with arbitrary levels of hierarchy

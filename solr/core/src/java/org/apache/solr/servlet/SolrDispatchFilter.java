@@ -67,8 +67,10 @@ import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.NodeConfig;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.core.SolrXmlConfig;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.request.SolrRequestInfo;
 import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.PKIAuthenticationPlugin;
@@ -180,13 +182,18 @@ public class SolrDispatchFilter extends BaseSolrFilter {
 
   private void setupJvmMetrics()  {
     MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
-    MetricRegistry metricRegistry = SharedMetricRegistries.getOrCreate("solr.jvm");
-    metricRegistry.registerAll(new BufferPoolMetricSet(platformMBeanServer));
-    metricRegistry.registerAll(new ClassLoadingGaugeSet());
-    metricRegistry.register("fileDescriptorRatio", new FileDescriptorRatioGauge());
-    metricRegistry.registerAll(new GarbageCollectorMetricSet());
-    metricRegistry.registerAll(new MemoryUsageGaugeSet());
-    metricRegistry.registerAll(new ThreadStatesGaugeSet()); // todo should we use CachedThreadStatesGaugeSet instead?
+    try {
+      String registry = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.jvm);
+      SolrMetricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true);
+      SolrMetricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true);
+      SolrMetricManager.registerAll(registry, new ClassLoadingGaugeSet(), true);
+      SolrMetricManager.register(registry, new FileDescriptorRatioGauge(), true, "fileDescriptorRatio");
+      SolrMetricManager.registerAll(registry, new GarbageCollectorMetricSet(), true);
+      SolrMetricManager.registerAll(registry, new MemoryUsageGaugeSet(), true);
+      SolrMetricManager.registerAll(registry, new ThreadStatesGaugeSet(), true); // todo should we use CachedThreadStatesGaugeSet instead?
+    } catch (Exception e) {
+      log.warn("Error registering JVM metrics", e);
+    }
   }
 
   private void logWelcomeBanner() {
