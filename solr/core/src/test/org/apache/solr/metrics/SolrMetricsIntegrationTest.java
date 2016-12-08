@@ -19,12 +19,9 @@ package org.apache.solr.metrics;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
 
-import com.codahale.metrics.Metric;
 import com.codahale.metrics.Timer;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.util.TestUtil;
@@ -43,6 +40,7 @@ import org.junit.Test;
 
 public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
   private static final int MAX_ITERATIONS = 20;
+  private static final String CORE_NAME = "metricsIntegration";
   private static final String METRIC_NAME = "requestTimes";
   private static final String HANDLER_NAME = "standard";
   private static final String[] REPORTER_NAMES = {"reporter1", "reporter2"};
@@ -50,7 +48,8 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
   private static final String SPECIFIC = "specific";
   private static final String MULTIGROUP = "multigroup";
   private static final String MULTIREGISTRY = "multiregistry";
-  private static final String[] ALL_REPORTERS = {REPORTER_NAMES[0], REPORTER_NAMES[1], UNIVERSAL, SPECIFIC, MULTIGROUP, MULTIREGISTRY};
+  private static final String[] INITIAL_REPORTERS = {REPORTER_NAMES[0], REPORTER_NAMES[1], UNIVERSAL, SPECIFIC, MULTIGROUP, MULTIREGISTRY};
+  private static final String[] RENAMED_REPORTERS = {REPORTER_NAMES[0], REPORTER_NAMES[1], UNIVERSAL, MULTIGROUP};
   private static final SolrInfoMBean.Category HANDLER_CATEGORY = SolrInfoMBean.Category.QUERYHANDLER;
 
   private CoreContainer cc;
@@ -66,6 +65,9 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
     cc = createCoreContainer(cfg,
         new TestHarness.TestCoresLocator(DEFAULT_TEST_CORENAME, initCoreDataDir.getAbsolutePath(), "solrconfig.xml", "schema.xml"));
     h.coreName = DEFAULT_TEST_CORENAME;
+    // test rename operation
+    cc.rename(DEFAULT_TEST_CORENAME, CORE_NAME);
+    h.coreName = CORE_NAME;
     cfg = cc.getConfig();
     PluginInfo[] plugins = cfg.getMetricReporterPlugins();
     assertNotNull(plugins);
@@ -91,7 +93,7 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
 
     deleteCore();
 
-    for (String reporterName : ALL_REPORTERS) {
+    for (String reporterName : RENAMED_REPORTERS) {
       SolrMetricReporter reporter = reporters.get(reporterName);
       MockMetricReporter mockReporter = (MockMetricReporter) reporter;
       assertTrue("Reporter " + reporterName + " was not closed: " + mockReporter, mockReporter.didClose);
@@ -102,17 +104,25 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
   public void testConfigureReporter() throws Exception {
     Random random = random();
 
+    String metricName = SolrMetricManager.mkName(METRIC_NAME, HANDLER_CATEGORY.toString(), HANDLER_NAME);
+    SolrCoreMetricManager metricManager = h.getCore().getMetricManager();
+    Timer timer = (Timer) SolrMetricManager.timer(metricManager.getRegistryName(), metricName);
+
+    long initialCount = timer.getCount();
+
     int iterations = TestUtil.nextInt(random, 0, MAX_ITERATIONS);
     for (int i = 0; i < iterations; ++i) {
       h.query(req("*"));
     }
 
-    String metricName = SolrMetricManager.mkName(METRIC_NAME, HANDLER_CATEGORY.toString(), HANDLER_NAME);
-    SolrCoreMetricManager metricManager = h.getCore().getMetricManager();
+    long finalCount = timer.getCount();
+    assertEquals("metric counter incorrect", iterations, finalCount - initialCount);
     Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters(metricManager.getRegistryName());
-    assertEquals(ALL_REPORTERS.length, reporters.size());
+    assertEquals(RENAMED_REPORTERS.length, reporters.size());
 
-    for (String reporterName : ALL_REPORTERS) {
+    // SPECIFIC and MULTIREGISTRY were skipped because they were
+    // specific to collection1
+    for (String reporterName : RENAMED_REPORTERS) {
       SolrMetricReporter reporter = reporters.get(reporterName);
       assertNotNull("Reporter " + reporterName + " was not found.", reporter);
       assertTrue(reporter instanceof MockMetricReporter);
@@ -121,13 +131,6 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
       assertTrue("Reporter " + reporterName + " was not initialized: " + mockReporter, mockReporter.didInit);
       assertTrue("Reporter " + reporterName + " was not validated: " + mockReporter, mockReporter.didValidate);
       assertFalse("Reporter " + reporterName + " was incorrectly closed: " + mockReporter, mockReporter.didClose);
-
-      Metric metric = mockReporter.reportMetric(metricName);
-      assertNotNull("Metric " + metricName + " was not reported.", metric);
-      assertTrue("Metric " + metricName + " is not an instance of Timer: " + metric, metric instanceof Timer);
-
-      Timer timer = (Timer) metric;
-      assertEquals(iterations, timer.getCount());
     }
   }
 }
