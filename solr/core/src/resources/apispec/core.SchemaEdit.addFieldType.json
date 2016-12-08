@@ -30,8 +30,17 @@
     "queryAnalyzer": {
       "type": "object",
       "description": "A query analyzer section defines how incoming queries to Solr will be analyzed for a field of this type.",
-      "properties":
-         {"#include":"core.SchemaEdit.addFieldType.analyzers.json"},
+      "properties":{
+            "tokenizer": {
+          "type": "object",
+           "properties": {
+             "class": {
+               "type": "string"
+             }
+          },
+           "additionalProperties": true
+         }
+      },
       "additionalProperties": true
     },
     "indexAnalyzer": {
