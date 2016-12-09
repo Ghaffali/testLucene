@@ -21,6 +21,10 @@
   <field name="_version_" type="long" indexed="false" stored="false"  docValues="true" />
   
   <!-- specific schema fields for dv in-place updates -->
+  <!-- nocommit: most tests should be able to pass w/o these fields having default="0" -->
+  <!-- nocommit: if any tests that actaully depend/use the the default field value,
+       nocommit: then they should be changed to use a new field, with a non-0 default,
+       nocommit: so we don't risk confusion with an *implicit* (in code) default of 0 -->
   <field name="inplace_updatable_float" type="float" indexed="false" stored="false" docValues="true" default="0"/>
   <field name="inplace_updatable_int"   type="int"   indexed="false" stored="false" docValues="true" default="0"/>
 
