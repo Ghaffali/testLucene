@@ -477,7 +477,7 @@ public class CoreContainer {
     coreAdminHandler   = createHandler(CORES_HANDLER_PATH, cfg.getCoreAdminHandlerClass(), CoreAdminHandler.class);
     configSetsHandler = createHandler(CONFIGSETS_HANDLER_PATH, cfg.getConfigSetsHandlerClass(), ConfigSetsHandler.class);
     containerHandlers.put(AUTHZ_PATH, securityConfHandler);
-    securityConfHandler.initializeMetrics(SolrInfoMBean.Group.node.toString(), Collections.emptyList(), AUTHZ_PATH);
+    securityConfHandler.initializeMetrics(SolrInfoMBean.Group.node.toString(), AUTHZ_PATH);
     containerHandlers.put(AUTHC_PATH, securityConfHandler);
     if(pkiAuthenticationPlugin != null)
       containerHandlers.put(PKIAuthenticationPlugin.PATH, pkiAuthenticationPlugin.getRequestHandler());
@@ -1181,7 +1181,7 @@ public class CoreContainer {
       containerHandlers.put(path, (SolrRequestHandler)handler);
     }
     if (handler instanceof SolrMetricProducer) {
-      ((SolrMetricProducer)handler).initializeMetrics(SolrInfoMBean.Group.node.toString(), Collections.emptyList(), path);
+      ((SolrMetricProducer)handler).initializeMetrics(SolrInfoMBean.Group.node.toString(), path);
     }
     return handler;
   }

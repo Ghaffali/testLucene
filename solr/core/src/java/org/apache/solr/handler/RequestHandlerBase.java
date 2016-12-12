@@ -20,7 +20,6 @@ import java.lang.invoke.MethodHandles;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.List;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
@@ -134,19 +133,13 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
   }
 
   @Override
-  public Collection<String> initializeMetrics(String registryName, List<String> linkedRegistries, String scope) {
-    numErrors = SolrMetricManager.meter(registryName, linkedRegistries,
-        "errors", getCategory().toString(), scope);
-    numServerErrors = SolrMetricManager.meter(registryName, linkedRegistries,
-        "serverErrors", getCategory().toString(), scope);
-    numClientErrors = SolrMetricManager.meter(registryName, linkedRegistries,
-        "clientErrors", getCategory().toString(), scope);
-    numTimeouts = SolrMetricManager.meter(registryName, linkedRegistries,
-        "timeouts", getCategory().toString(), scope);
-    requests = SolrMetricManager.counter(registryName, linkedRegistries,
-        "requests", getCategory().toString(), scope);
-    requestTimes = SolrMetricManager.timer(registryName, linkedRegistries,
-        "requestTimes", getCategory().toString(), scope);
+  public Collection<String> initializeMetrics(String registryName, String scope) {
+    numErrors = SolrMetricManager.meter(registryName, "errors", getCategory().toString(), scope);
+    numServerErrors = SolrMetricManager.meter(registryName, "serverErrors", getCategory().toString(), scope);
+    numClientErrors = SolrMetricManager.meter(registryName, "clientErrors", getCategory().toString(), scope);
+    numTimeouts = SolrMetricManager.meter(registryName, "timeouts", getCategory().toString(), scope);
+    requests = SolrMetricManager.counter(registryName, "requests", getCategory().toString(), scope);
+    requestTimes = SolrMetricManager.timer(registryName, "requestTimes", getCategory().toString(), scope);
     return Arrays.asList("errors", "serverErrors", "clientErrors", "timeouts", "requestTimes", "requests");
   }
 

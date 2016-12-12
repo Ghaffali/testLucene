@@ -17,7 +17,6 @@
 package org.apache.solr.metrics;
 
 import java.util.Collection;
-import java.util.List;
 
 import org.apache.solr.core.SolrInfoMBean;
 
@@ -30,11 +29,9 @@ public interface SolrMetricProducer extends SolrInfoMBean {
   /**
    * Initializes metrics specific to this producer
    * @param registry registry name where metrics are registered
-   * @param linkedRegistries other registries where changes to these metrics will be tracked, too,
-   *                         via {@link LinkedMetric} implementations.
    * @param scope scope of the metrics (eg. handler name) to separate metrics of
    *              instances of the same component executing in different contexts
    * @return registered (or existing) unqualified names of metrics specific to this producer.
    */
-  Collection<String> initializeMetrics(String registry, List<String> linkedRegistries, String scope);
+  Collection<String> initializeMetrics(String registry, String scope);
 }

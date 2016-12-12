@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
@@ -83,12 +82,12 @@ public final class SolrMetricTestUtils {
   public static SolrMetricProducer getProducerOf(SolrInfoMBean.Category category, String scope, Map<String, Counter> metrics) {
     return new SolrMetricProducer() {
       @Override
-      public Collection<String> initializeMetrics(String registry, List<String> linkedRegistries, String scope) {
+      public Collection<String> initializeMetrics(String registry, String scope) {
         if (metrics == null || metrics.isEmpty()) {
           return Collections.emptyList();
         }
         for (Map.Entry<String, Counter> entry : metrics.entrySet()) {
-          SolrMetricManager.counter(registry, linkedRegistries, entry.getKey(), category.toString(), scope);
+          SolrMetricManager.counter(registry, entry.getKey(), category.toString(), scope);
         }
         return metrics.keySet();
       }

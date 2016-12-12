@@ -18,8 +18,6 @@ package org.apache.solr.metrics;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -130,19 +128,11 @@ public class SolrMetricManager {
    * Remove a named registry.
    * @param registry name of the registry to remove
    */
-  public static synchronized void removeRegistry(String registry) {
+  public static void removeRegistry(String registry) {
     // close any reporters for this registry first
     closeReporters(registry);
     // make sure we use a name with prefix, with overrides
     registry = overridableRegistryName(registry);
-    if (SharedMetricRegistries.names().contains(registry)) {
-      // dereference any linked metrics
-      for (Map.Entry<String, Metric> entry : SharedMetricRegistries.getOrCreate(registry).getMetrics().entrySet()) {
-        if (entry.getValue() instanceof LinkedMetric) {
-          ((LinkedMetric)entry.getValue()).getLinked().clear();
-        }
-      }
-    }
     SharedMetricRegistries.remove(registry);
   }
 
@@ -195,10 +185,18 @@ public class SolrMetricManager {
   }
 
   /**
+   * Remove all metrics from a specified registry.
+   * @param registry registry name
+   */
+  public static void clearRegistry(String registry) {
+    registry(registry).removeMatching(MetricFilter.ALL);
+  }
+
+  /**
    * Remove some metrics from a named registry
    * @param registry registry name
    * @param metricPath (optional) top-most metric name path elements. If empty then
-   *        this is equivalent to removing all metrics,
+   *        this is equivalent to calling {@link #clearRegistry(String)},
    *        otherwise non-empty elements will be joined using dotted notation
    *        to form a fully-qualified prefix. Metrics with names that start
    *        with the prefix will be removed.
@@ -221,34 +219,11 @@ public class SolrMetricManager {
    * @param registry registry name
    * @param metricName metric name, either final name or a fully-qualified name
    *                   using dotted notation
-   * @param linkedRegistries other registry names where updates to this metric should be propagated. This is
-   *                         achieved by creating an instance of {@link LinkedMetric} that references
-   *                         metrics registered in all linked registries, and propagating every update
-   *                         from this metric to the linked ones.
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Meter}
    */
-  public static Meter meter(String registry, List<String> linkedRegistries, String metricName, String... metricPath) {
-    MetricRegistry metricRegistry = registry(registry);
-    String name = mkName(metricName, metricPath);
-    // return existing?
-    if (metricRegistry.getMetrics().containsKey(name)) {
-      return metricRegistry.meter(name);
-    }
-    // create new, possibly with linked
-    registry = overridableRegistryName(registry);
-    if (linkedRegistries != null && !linkedRegistries.isEmpty()) {
-      List<Meter> list = new ArrayList<>(linkedRegistries.size());
-      for (String pr : linkedRegistries) {
-        MetricRegistry linked = registry(pr);
-        list.add(linked.meter(name));
-      }
-      Meter meter = new LinkedMeter(list);
-      metricRegistry.register(name, meter);
-      return meter;
-    } else {
-      return registry(registry).meter(name);
-    }
+  public static Meter meter(String registry, String metricName, String... metricPath) {
+    return registry(registry).meter(mkName(metricName, metricPath));
   }
 
   /**
@@ -256,31 +231,11 @@ public class SolrMetricManager {
    * @param registry registry name
    * @param metricName metric name, either final name or a fully-qualified name
    *                   using dotted notation
-   * @param linkedRegistries other registry names where updates to this metric should be propagated
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Timer}
    */
-  public static Timer timer(String registry, List<String> linkedRegistries, String metricName, String... metricPath) {
-    MetricRegistry metricRegistry = registry(registry);
-    String name = mkName(metricName, metricPath);
-    // return existing?
-    if (metricRegistry.getMetrics().containsKey(name)) {
-      return metricRegistry.timer(name);
-    }
-    // create new, possibly with linked
-    registry = overridableRegistryName(registry);
-    if (linkedRegistries != null && !linkedRegistries.isEmpty()) {
-      List<Timer> list = new ArrayList<>(linkedRegistries.size());
-      for (String pr : linkedRegistries) {
-        MetricRegistry linked = registry(pr);
-        list.add(linked.timer(name));
-      }
-      Timer timer = new LinkedTimer(list);
-      metricRegistry.register(name, timer);
-      return timer;
-    } else {
-      return registry(registry).timer(name);
-    }
+  public static Timer timer(String registry, String metricName, String... metricPath) {
+    return registry(registry).timer(mkName(metricName, metricPath));
   }
 
   /**
@@ -288,31 +243,11 @@ public class SolrMetricManager {
    * @param registry registry name
    * @param metricName metric name, either final name or a fully-qualified name
    *                   using dotted notation
-   * @param linkedRegistries other registry names where updates to this metric should be propagated
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Counter}
    */
-  public static Counter counter(String registry, List<String> linkedRegistries, String metricName, String... metricPath) {
-    MetricRegistry metricRegistry = registry(registry);
-    String name = mkName(metricName, metricPath);
-    // return existing?
-    if (metricRegistry.getMetrics().containsKey(name)) {
-      return metricRegistry.counter(name);
-    }
-    // create new, possibly with linked
-    registry = overridableRegistryName(registry);
-    if (linkedRegistries != null && !linkedRegistries.isEmpty()) {
-      List<Counter> list = new ArrayList<>(linkedRegistries.size());
-      for (String pr : linkedRegistries) {
-        MetricRegistry parent = registry(pr);
-        list.add(parent.counter(name));
-      }
-      Counter counter = new LinkedCounter(list);
-      metricRegistry.register(name, counter);
-      return counter;
-    } else {
-      return registry(registry).counter(name);
-    }
+  public static Counter counter(String registry, String metricName, String... metricPath) {
+    return registry(registry).counter(mkName(metricName, metricPath));
   }
 
   /**
@@ -323,27 +258,8 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Histogram}
    */
-  public static Histogram histogram(String registry, List<String> linkedRegistries, String metricName, String... metricPath) {
-    MetricRegistry metricRegistry = registry(registry);
-    String name = mkName(metricName, metricPath);
-    // return existing?
-    if (metricRegistry.getMetrics().containsKey(name)) {
-      return metricRegistry.histogram(name);
-    }
-    // create new, possibly with linked
-    registry = overridableRegistryName(registry);
-    if (linkedRegistries != null && !linkedRegistries.isEmpty()) {
-      List<Histogram> list = new ArrayList<>(linkedRegistries.size());
-      for (String pr : linkedRegistries) {
-        MetricRegistry parent = registry(pr);
-        list.add(parent.histogram(name));
-      }
-      Histogram histogram = new LinkedHistogram(list);
-      metricRegistry.register(name, histogram);
-      return histogram;
-    } else {
-      return registry(registry).histogram(name);
-    }
+  public static Histogram histogram(String registry, String metricName, String... metricPath) {
+    return registry(registry).histogram(mkName(metricName, metricPath));
   }
 
   /**
