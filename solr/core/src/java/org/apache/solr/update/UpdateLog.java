@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorCompletionService;
 import java.util.concurrent.Future;
 import java.util.concurrent.SynchronousQueue;
@@ -780,11 +781,14 @@ public static final int VERSION_IDX = 1;
    * @param id          Binary representation of the unique key field
    * @param prevPointer Pointer to the previous entry in the ulog, based on which the current in-place update was made.
    * @param prevVersion Version of the previous entry in the ulog, based on which the current in-place update was made.
+   * @param onlyTheseFields When a non-null set of field names is passed in, the resolve process only attempts to populate
+   *        the given fields in this set. When this set is null, it resolves all fields.
    * @param latestPartialDoc   Partial document that is to be populated
    * @return Returns 0 if a full document was found in the log, -1 if no full document was found. If full document was supposed
    * to be found in the tlogs, but couldn't be found (because the logs were rotated) then the prevPointer is returned.
    */
-  public long applyPartialUpdates(BytesRef id, long prevPointer, long prevVersion, SolrDocumentBase latestPartialDoc) {
+  public long applyPartialUpdates(BytesRef id, long prevPointer, long prevVersion,
+      Set<String> onlyTheseFields, SolrDocumentBase latestPartialDoc) {
     
     // nocommit: changes that should probably be made (see jira comments for elaboration) ...
     // 1) "final List<TransactionLog> lookupLogs" should be created once, outside of any looping
@@ -819,7 +823,7 @@ public static final int VERSION_IDX = 1;
       // if this is an ADD (i.e. full document update), stop here
       if ((flags & UpdateLog.ADD) == UpdateLog.ADD) {
         partialUpdateDoc = (SolrInputDocument) entry.get(entry.size() - 1);
-        applyOlderUpdates(latestPartialDoc, partialUpdateDoc);
+        applyOlderUpdates(latestPartialDoc, partialUpdateDoc, onlyTheseFields);
         return 0; // Full document was found in the tlog itself
       }
       if (entry.size() < 5) {
@@ -828,9 +832,13 @@ public static final int VERSION_IDX = 1;
       }
       // This update is an inplace update, get the partial doc. The input doc is always at last position.
       partialUpdateDoc = (SolrInputDocument) entry.get(entry.size() - 1);
-      applyOlderUpdates(latestPartialDoc, partialUpdateDoc);
+      applyOlderUpdates(latestPartialDoc, partialUpdateDoc, onlyTheseFields);
       prevPointer = (long) entry.get(UpdateLog.PREV_POINTER_IDX);
       prevVersion = (long) entry.get(UpdateLog.PREV_VERSION_IDX);
+      
+      if (onlyTheseFields != null && latestPartialDoc.keySet().containsAll(onlyTheseFields)) {
+        return 0; // all the onlyTheseFields have been resolved, safe to abort now.
+      }
     }
 
     return -1; // last full document is not supposed to be in tlogs, but it must be in the index
@@ -839,10 +847,10 @@ public static final int VERSION_IDX = 1;
   /**
    * Add all fields from olderDoc into newerDoc if not already present in newerDoc
    */
-  private void applyOlderUpdates(SolrDocumentBase newerDoc, SolrInputDocument olderDoc) {
+  private void applyOlderUpdates(SolrDocumentBase newerDoc, SolrInputDocument olderDoc, Set<String> mergeFields) {
     for (String fieldName : olderDoc.getFieldNames()) {
       // if the newerDoc has this field, then this field from olderDoc can be ignored
-      if (!newerDoc.containsKey(fieldName)) {
+      if (!newerDoc.containsKey(fieldName) && (mergeFields == null || mergeFields.contains(fieldName))) {
         for (Object val : olderDoc.getFieldValues(fieldName)) {
           newerDoc.addField(fieldName, val);
         }

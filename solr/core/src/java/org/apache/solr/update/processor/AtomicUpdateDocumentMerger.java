@@ -29,7 +29,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.index.Term;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 import org.apache.solr.common.SolrException;
@@ -234,35 +233,26 @@ public class AtomicUpdateDocumentMerger {
           return Collections.emptySet();
       }
 
-      // nocommit: why does it matter if this is a dynamic field?
-      //
-      // nocommit: comment below says dynamicField dests that don't yet exist won't work for inplace...
-      // nocommit: ...but that doesn't explain why <dynamicFields> are special
-      // nocommit: why would a <field> that doesn't yet exist in the IndexWriter work?
-      //
-      // nocommit: see elaboration of this question in jira comments
-      if (schema.isDynamicField(fieldName)) {
-        if (null == fieldNamesFromIndexWriter) { // lazy init fieldNamesFromIndexWriter
+      if (null == fieldNamesFromIndexWriter) { // lazy init fieldNamesFromIndexWriter
+        try {
+          SolrCore core = cmd.getReq().getCore();
+          RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
           try {
-            SolrCore core = cmd.getReq().getCore();
-            RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
-            try {
-              IndexWriter iw = holder.get();
-              fieldNamesFromIndexWriter = iw.getFieldNames();
-            } finally {
-              holder.decref();
-            }
-          } catch (IOException e) {
-            throw new RuntimeException(e); // nocommit
-
-            // nocommit: if we're going to throw a runtime excep it should be a SolrException with usefull code/msg
-            // nocommit: but why are we catching/wrapping the IOE?  why aren't we rethrowing?
+            IndexWriter iw = holder.get();
+            fieldNamesFromIndexWriter = iw.getFieldNames();
+          } finally {
+            holder.decref();
           }
+        } catch (IOException e) {
+          throw new RuntimeException(e); // nocommit
+
+          // nocommit: if we're going to throw a runtime excep it should be a SolrException with usefull code/msg
+          // nocommit: but why are we catching/wrapping the IOE?  why aren't we rethrowing?
         }
-        if (! fieldNamesFromIndexWriter.contains(fieldName) ) {
-          // nocommit: this comment is not usefull - doesn't explain *WHY*
-          return Collections.emptySet(); // if dynamic field and this field doesn't exist, DV update can't work
-        }
+      }
+      if (! fieldNamesFromIndexWriter.contains(fieldName) ) {
+        // nocommit: this comment is not usefull - doesn't explain *WHY*
+        return Collections.emptySet(); // if dynamic field and this field doesn't exist, DV update can't work
       }
     }
     return candidateFields;
@@ -284,34 +274,10 @@ public class AtomicUpdateDocumentMerger {
 
     updatedFields.add(DistributedUpdateProcessor.VERSION_FIELD); // add the version field so that it is fetched too
     SolrInputDocument oldDocument = RealTimeGetComponent.getInputDocument(cmd.getReq().getCore(),
-                                              idBytes, true, updatedFields, false); // avoid stored fields from index
+                                              idBytes, true, updatedFields, true); // avoid stored fields from index
     if (oldDocument == RealTimeGetComponent.DELETED || oldDocument == null) {
       // This doc was deleted recently. In-place update cannot work, hence a full atomic update should be tried.
       return false;
-    }
-
-    // If oldDocument doesn't have a field that is present in updatedFields, 
-    // then fetch the field from RT searcher into oldDocument.
-    // This can happen if the oldDocument was fetched from tlog, but the DV field to be
-    // updated was not in that document.
-    if (oldDocument.getFieldNames().containsAll(updatedFields) == false) {
-      RefCounted<SolrIndexSearcher> searcherHolder = null;
-      try {
-        searcherHolder = cmd.getReq().getCore().getRealtimeSearcher();
-        SolrIndexSearcher searcher = searcherHolder.get();
-        int docid = searcher.getFirstMatch(new Term(idField.getName(), idBytes));
-        if (docid >= 0) {
-          searcher.decorateDocValueFields(oldDocument, docid, updatedFields);
-        } else {
-          // Not all fields needed for DV updates were found in the document obtained
-          // from tlog, and the document wasn't found in the index.
-          return false; // do a full atomic update
-        }
-      } finally {
-        if (searcherHolder != null) {
-          searcherHolder.decref();
-        }
-      }
     }
 
     if (oldDocument.containsKey(DistributedUpdateProcessor.VERSION_FIELD) == false) {
@@ -320,6 +286,17 @@ public class AtomicUpdateDocumentMerger {
     }
     Long oldVersion = (Long) oldDocument.remove(DistributedUpdateProcessor.VERSION_FIELD).getValue();
 
+    // If the oldDocument contains any other field apart from updatedFields (or id/version field), then remove them.
+    // This can happen, despite requesting for these fields in the call to RTGC.getInputDocument, if the document was
+    // fetched from the tlog and had all these fields (possibly because it was a full document ADD operation).
+    if (updatedFields != null) {
+      Collection<String> names = new HashSet<String>(oldDocument.getFieldNames());
+      for (String fieldName: names) {
+        if (fieldName.equals(DistributedUpdateProcessor.VERSION_FIELD)==false && fieldName.equals("id")==false && updatedFields.contains(fieldName)==false) {
+          oldDocument.remove(fieldName);
+        }
+      }
+    }
     // Copy over all supported DVs from oldDocument to partialDoc
     //
     // Assuming multiple updates to the same doc: field 'dv1' in one update, then field 'dv2' in a second

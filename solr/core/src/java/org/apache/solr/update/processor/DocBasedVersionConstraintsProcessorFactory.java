@@ -266,7 +266,7 @@ public class DocBasedVersionConstraintsProcessorFactory extends UpdateRequestPro
         // nocommit: any call to getInputDocument* would by definition return a "full document"
         //
         // (last patch fixed getInputDocument call, but not this getInputDocumentFromTlog; intentional?)
-        oldDoc = RealTimeGetComponent.getInputDocumentFromTlog(core, indexedDocId, false);
+        oldDoc = RealTimeGetComponent.getInputDocumentFromTlog(core, indexedDocId, null, false);
         if (oldDoc == RealTimeGetComponent.DELETED) {
           return true;
         }

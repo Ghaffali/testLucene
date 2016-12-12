@@ -983,7 +983,13 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
   public void testIsInPlaceUpdate() throws Exception {
     Set<String> inPlaceUpdatedFields = new HashSet<String>();
 
-    // In-place updates:
+    // In-place updateable field updated before it exists SHOULD NOT BE in-place updated:
+    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(
+        UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_float", map("set", 10))));
+    assertFalse(inPlaceUpdatedFields.contains("inplace_updatable_float"));
+
+    // In-place updateable field updated after it exists SHOULD BE in-place updated:
+    addAndGetVersion(sdoc("id", "1", "inplace_updatable_float", "0"), params()); // setting up the dv
     inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(
         UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_float", map("set", 10))));
     assertTrue(inPlaceUpdatedFields.contains("inplace_updatable_float"));

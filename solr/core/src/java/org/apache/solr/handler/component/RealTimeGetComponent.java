@@ -236,7 +236,7 @@ public class RealTimeGetComponent extends SearchComponent
                  assert entry.size() == 5;
                  // For in-place update case, we have obtained the partial document till now. We need to
                  // resolve it to a full document to be returned to the user.
-                 doc = (SolrDocument) resolveFullDocument(core, idBytes.get(), rsp.getReturnFields(), doc, entry);
+                 doc = (SolrDocument) resolveFullDocument(core, idBytes.get(), rsp.getReturnFields(), doc, entry, null);
                  if (doc == null) {
                    break;
                  }
@@ -361,11 +361,13 @@ public class RealTimeGetComponent extends SearchComponent
    * Given a partial document obtained from the transaction log (e.g. as a result of RTG), resolve to a full document
    * by populating all the partial updates that were applied on top of that last full document update.
    * 
+   * @param onlyTheseFields When a non-null set of field names is passed in, the resolve process only attempts to populate
+   *        the given fields in this set. When this set is null, it resolves all fields.
    * @return Returns the merged document, i.e. the resolved full document, or null if the document was not found (deleted
    *          after the resolving began)
    */
   private static SolrDocument resolveFullDocument(SolrCore core, BytesRef idBytes,
-                                           ReturnFields returnFields, SolrDocumentBase partialDoc, List logEntry) throws IOException {
+                                           ReturnFields returnFields, SolrDocumentBase partialDoc, List logEntry, Set<String> onlyTheseFields) throws IOException {
     if (idBytes == null || logEntry.size() != 5) {
       throw new SolrException(ErrorCode.INVALID_STATE, "Either Id field not present in partial document or log entry doesn't have previous version.");
     }
@@ -374,10 +376,10 @@ public class RealTimeGetComponent extends SearchComponent
 
     // get the last full document from ulog
     UpdateLog ulog = core.getUpdateHandler().getUpdateLog();
-    long lastPrevPointer = ulog.applyPartialUpdates(idBytes, prevPointer, prevVersion, partialDoc);
+    long lastPrevPointer = ulog.applyPartialUpdates(idBytes, prevPointer, prevVersion, onlyTheseFields, partialDoc);
 
     if (lastPrevPointer == -1) { // full document was not found in tlog, but exists in index
-      SolrDocument mergedDoc = mergePartialDocWithFullDocFromIndex(core, idBytes, returnFields, partialDoc);
+      SolrDocument mergedDoc = mergePartialDocWithFullDocFromIndex(core, idBytes, returnFields, onlyTheseFields, partialDoc);
       return mergedDoc;
     } else if (lastPrevPointer > 0) {
       // We were supposed to have found the last full doc also in the tlogs, but the prevPointer links led to nowhere
@@ -432,6 +434,8 @@ public class RealTimeGetComponent extends SearchComponent
    * @param core           A SolrCore instance, useful for obtaining a realtimesearcher and the schema
    * @param idBytes        Binary representation of the value of the unique key field
    * @param returnFields   Return fields, as requested
+   * @param onlyTheseFields When a non-null set of field names is passed in, the merge process only attempts to merge
+   *        the given fields in this set. When this set is null, it merges all fields.
    * @param partialDoc     A partial document (containing an in-place update) used for merging against a full document
    *                       from index; this maybe be null.
    * @return If partial document is null, this returns document from the index or null if not found. 
@@ -439,7 +443,7 @@ public class RealTimeGetComponent extends SearchComponent
    *         document doesn't exist in the index.
    */
   private static SolrDocument mergePartialDocWithFullDocFromIndex(SolrCore core, BytesRef idBytes, ReturnFields returnFields,
-        SolrDocumentBase partialDoc) throws IOException {
+		  Set<String> onlyTheseFields, SolrDocumentBase partialDoc) throws IOException {
     RefCounted<SolrIndexSearcher> searcherHolder = core.getRealtimeSearcher(); //Searcher();
     try {
       // now fetch last document from index, and merge partialDoc on top of it
@@ -461,9 +465,11 @@ public class RealTimeGetComponent extends SearchComponent
         return doc;
       }
 
+      SolrDocument doc;
+      Set<String> decorateFields = onlyTheseFields == null ? searcher.getNonStoredDVs(false): onlyTheseFields; 
       Document luceneDocument = searcher.doc(docid, returnFields.getLuceneFieldNames());
-      SolrDocument doc = toSolrDoc(luceneDocument, core.getLatestSchema());
-      searcher.decorateDocValueFields(doc, docid, searcher.getNonStoredDVs(false));
+      doc = toSolrDoc(luceneDocument, core.getLatestSchema());
+      searcher.decorateDocValueFields(doc, docid, decorateFields);
 
       long docVersion = (long) doc.getFirstValue(DistributedUpdateProcessor.VERSION_FIELD);
       Object partialVersionObj = partialDoc.getFieldValue(DistributedUpdateProcessor.VERSION_FIELD);
@@ -493,7 +499,8 @@ public class RealTimeGetComponent extends SearchComponent
    *                  was an in-place update. In that case, should this partial document be resolved to a full document (by following
    *                  back prevPointer/prevVersion)?
    */
-  public static SolrInputDocument getInputDocumentFromTlog(SolrCore core, BytesRef idBytes, boolean resolveFullDocument) {
+  public static SolrInputDocument getInputDocumentFromTlog(SolrCore core, BytesRef idBytes,
+      Set<String> onlyTheseNonStoredDVs, boolean resolveFullDocument) {
 
     UpdateLog ulog = core.getUpdateHandler().getUpdateLog();
 
@@ -514,7 +521,7 @@ public class RealTimeGetComponent extends SearchComponent
                 // For in-place update case, we have obtained the partial document till now. We need to
                 // resolve it to a full document to be returned to the user.
                 doc = toSolrInputDocument(
-                    resolveFullDocument(core, idBytes, new SolrReturnFields(), doc, entry),
+                    resolveFullDocument(core, idBytes, new SolrReturnFields(), doc, entry, onlyTheseNonStoredDVs),
                     core.getLatestSchema());
                 if (doc == null) {
                   return DELETED;
@@ -571,7 +578,7 @@ public class RealTimeGetComponent extends SearchComponent
     RefCounted<SolrIndexSearcher> searcherHolder = null;
     try {
       SolrIndexSearcher searcher = null;
-      sid = getInputDocumentFromTlog(core, idBytes, resolveFullDocument);
+      sid = getInputDocumentFromTlog(core, idBytes, onlyTheseNonStoredDVs, resolveFullDocument);
       if (sid == DELETED) {
         return null;
       }

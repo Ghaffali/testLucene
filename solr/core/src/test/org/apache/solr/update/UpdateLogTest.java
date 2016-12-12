@@ -72,7 +72,7 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
     assertEquals(3L, ((NumericDocValuesField)partialDoc.getFieldValue("val1_i_dvo")).numericValue());
     assertFalse(partialDoc.containsKey("title_s"));
 
-    long returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, partialDoc);
+    long returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, null, partialDoc);
 
     assertEquals(0, returnVal);
     assertEquals(1000, Integer.parseInt(partialDoc.getFieldValue("price").toString()));
@@ -96,7 +96,7 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
     assertEquals(5L, ((NumericDocValuesField)partialDoc.getFieldValue("val1_i_dvo")).numericValue());
     assertFalse(partialDoc.containsKey("title_s"));
 
-    returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, partialDoc);
+    returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, null, partialDoc);
 
     assertEquals(0, returnVal);
     assertEquals(2000, Integer.parseInt(partialDoc.getFieldValue("price").toString()));
@@ -125,7 +125,7 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
     assertEquals(6L, ((NumericDocValuesField)partialDoc.getFieldValue("val1_i_dvo")).numericValue());
     assertFalse(partialDoc.containsKey("title_s"));
 
-    long returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, partialDoc);
+    long returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, null, partialDoc);
 
     assertEquals(-1, returnVal);
   }
@@ -151,7 +151,7 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
 
     // If an in-place update depends on a non-add (i.e. DBI), assert that an exception is thrown.
     SolrException ex = expectThrows(SolrException.class, () -> {
-        long returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, partialDoc);
+        long returnVal = ulog.applyPartialUpdates(cmd.getIndexedId(), prevPointer, prevVersion, null, partialDoc);
         fail("502 depends on 501, 501 depends on 500, but 500 is a"
              + " DELETE. This should've generated an exception. returnVal is: "+returnVal);
       });
