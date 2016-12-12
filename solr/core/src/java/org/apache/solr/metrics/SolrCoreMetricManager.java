@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.lang.invoke.MethodHandles;
 import java.util.concurrent.ConcurrentHashMap;
@@ -96,7 +97,7 @@ public class SolrCoreMetricManager implements Closeable {
       throw new IllegalArgumentException("registerMetricProducer() called with illegal arguments: " +
           "scope = " + scope + ", producer = " + producer);
     }
-    Collection<String> registered = producer.initializeMetrics(getRegistryName(), scope);
+    Collection<String> registered = producer.initializeMetrics(getRegistryName(), getLinkedRegistries(), scope);
     if (registered == null || registered.isEmpty()) {
       throw new IllegalArgumentException("registerMetricProducer() did not register any metrics " +
       "for scope = " + scope + ", producer = " + producer);
@@ -122,5 +123,18 @@ public class SolrCoreMetricManager implements Closeable {
    */
   public String getRegistryName() {
     return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, core.getName());
+  }
+
+  public List<String> getLinkedRegistries() {
+    String collectionName = core.getCoreDescriptor().getCollectionName();
+    if (collectionName == null) {
+      return Collections.emptyList();
+    } else {
+      if (collectionName.equals(core.getName())) {
+        return Collections.emptyList();
+      } else {
+        return Collections.singletonList(collectionName);
+      }
+    }
   }
 }
