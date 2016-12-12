@@ -20,6 +20,7 @@ package org.apache.solr.update;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.lucene.index.LogDocMergePolicy;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.LuceneTestCase.Slow;
@@ -50,10 +52,11 @@ import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
-import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.index.LogDocMergePolicyFactory;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
 import org.apache.solr.util.DefaultSolrThreadFactory;
@@ -80,8 +83,14 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     schemaString = "schema-inplace-updates.xml";
     configString = "solrconfig-tlog.xml";
 
-    // sanity check that autocommits are disabled
+    // we need consistent segments that aren't re-ordered on merge because we're
+    // asserting inplace updates happen by checking the internal [docid]
+    systemSetPropertySolrTestsMergePolicy(LogDocMergePolicy.class.getName());
+    systemSetPropertySolrTestsMergePolicyFactory(LogDocMergePolicyFactory.class.getName());
+    
     initCore(configString, schemaString);
+    
+    // sanity check that autocommits are disabled
     assertEquals(-1, h.getCore().getSolrConfig().getUpdateHandlerInfo().autoCommmitMaxTime);
     assertEquals(-1, h.getCore().getSolrConfig().getUpdateHandlerInfo().autoSoftCommmitMaxTime);
     assertEquals(-1, h.getCore().getSolrConfig().getUpdateHandlerInfo().autoCommmitMaxDocs);
@@ -107,16 +116,16 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     // sanity check no one broke the assumptions we make about our schema
     checkExpectedSchemaField(map("name", "inplace_updatable_int",
         "type","int",
+        "default","0",              // nocommit: we have no reason to depend on this
         "stored",Boolean.FALSE,
         "indexed",Boolean.FALSE,
-        "docValues",Boolean.TRUE,
-        "default","0"));
+        "docValues",Boolean.TRUE));
     checkExpectedSchemaField(map("name", "inplace_updatable_float",
         "type","float",
+        "default","0",              // nocommit: we have no reason to depend on this
         "stored",Boolean.FALSE,
         "indexed",Boolean.FALSE,
-        "docValues",Boolean.TRUE,
-        "default","0"));
+        "docValues",Boolean.TRUE));
     checkExpectedSchemaField(map("name", "_version_",
         "type","long",
         "stored",Boolean.FALSE,
@@ -124,6 +133,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
         "docValues",Boolean.TRUE));
 
     // Do the tests now:
+    
     outOfOrderDBQsTest();
     docValuesUpdateTest();
     ensureRtgWorksWithPartialUpdatesTest();
@@ -236,136 +246,154 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     del("*:*");
     commit();
 
-    int numDocs = atLeast(100);
+    // number of docs we're testing (0 <= id), index may contain additional random docs (id < 0)
+    final int numDocs = atLeast(100);
     log.info("Trying num docs = " + numDocs);
-
-    // nocommit: reuse buildRandomIndex here (ideally with randomized initFloat)
-    // nocommit: switching to it isn't trivial, because many places in test assume no docs in index other then ones being udpated
-    //
-    // nocommit: doing that and changing rest of method to only look at specialIds (positive ids)
-    // nocommit: to ensure we don't hit have any edge case bugs where this test only passes because
-    // nocommit: all docs are updated (or all in a segment, etc...)
-    for (int i = 0; i < numDocs; i++) {
-      index("id", i, "title_s", "title" + i, "id_i", i, "inplace_updatable_float", "101.0");
+    final List<Integer> ids = new ArrayList<Integer>(numDocs);
+    for (int id = 0; id < numDocs; id++) {
+      ids.add(id);
     }
-    commit();
+      
+    // nocommit: is it definitely safe to use "true" here?
+    // nocommit: once the default="0" from the schema is removed, then some docs won't have an init value,
+    // nocommit: will that mean the docid will change on 1st set? if so: it will break luceneDocids asserts
+    // nocommit: we can switch to false to ensure every doc starts with a value if need be
+    buildRandomIndex(101.0F, true, ids);
     
-    List<Integer> luceneDocids = new ArrayList<>();
-    ModifiableSolrParams params = params("q", "*:*", "fl", "*,[docid]", "rows", String.valueOf(numDocs), "sort", "id_i asc");
+    List<Integer> luceneDocids = new ArrayList<>(numDocs);
+    List<Float> valuesList = new ArrayList<Float>(numDocs);
+    SolrParams params = params("q", "id:[0 TO *]", "fl", "*,[docid]", "rows", String.valueOf(numDocs), "sort", "id_i asc");
     SolrDocumentList results = LEADER.query(params).getResults();
     assertEquals(numDocs, results.size());
     for (SolrDocument doc : results) {
       luceneDocids.add((int) doc.get("[docid]"));
+      valuesList.add((Float) doc.get("inplace_updatable_float"));
     }
     log.info("Initial results: "+results);
-    List<Float> valuesList = new ArrayList<Float>();
-    for (int i = 0; i < numDocs; i++) {
-      valuesList.add(r.nextFloat()*5.0f);
+    
+    // before we do any atomic operations, sanity check our results against all clients
+    assertDocIdsAndValuesAgainstAllClients("sanitycheck", params, luceneDocids, valuesList);
+
+    // now we're going to overwrite the value for all of our testing docs
+    // giving them a value between -5 and +5
+    for (int id : ids) {
+      // NOTE: in rare cases, this may be setting the value to 0, on a doc that
+      // already had an init value of 0 -- which is an interesting edge case, so we don't exclude it
+      final float multiplier = random().nextBoolean() ? -5.0F : 5.0F;
+      final float value = r.nextFloat() * multiplier;
+      assert -5.0F <= value && value <= 5.0F;
+      valuesList.set(id, value);
     }
-    log.info("inplace_updatable_float: "+valuesList);
+    log.info("inplace_updatable_float: " + valuesList);
+    
     // update doc w/ set
-    for (int i = numDocs - 1; i >= 0; i--) {
-      index("id", i, "inplace_updatable_float", map("set", valuesList.get(i)));
+    Collections.shuffle(ids, random()); // so updates aren't applied in index order
+    for (int id : ids) {
+      index("id", id, "inplace_updatable_float", map("set", valuesList.get(id)));
     }
 
     commit();
 
-    // Keep querying until the commit is distributed and expected number of results are obtained
-    boolean expectedResults = false;
-    long numFound = 0;
-    // nocommit: need to loop to check all (non-leader) clients -- see jira for elabroration
-    SolrClient clientToTest = clients.get(random().nextInt(clients.size()));
-    for (int retries=0; retries < NUM_RETRIES; retries++) {
-      log.info("Attempt: "+retries+", Results: "+results);
-
-      // nocommit: useless validation query since every doc starts off with a value when index is built
-      // nocommit: see jira comment for more detailed suggestion on fix
-      //
-      // nocommit: inplace_updatable_float has a schema default="0" -- which means even if we switch to using buildRandomIndex, this check is useless
-      numFound = clientToTest.query(
-          params("q", "inplace_updatable_float:[* TO *]")).getResults().getNumFound();
-      if (numFound != numDocs) {
-        Thread.sleep(WAIT_TIME);
-      } else {
-        expectedResults = true;
-        break;
-      }
-    }
-    if (!expectedResults) {
-      fail("Waited " + (NUM_RETRIES*WAIT_TIME/1000) + " secs, but not obtained expected results. numFound: "
-          + numFound + ", numDocs: " + numDocs);
-    }
-
-    // nocommit: picking random from "clients" means LEADER is included, making tests uselss 1/3 the time
-    // nocommit: need to loop to check all (non-leader) clients -- see jira for elabroration
-    results = clients.get(random().nextInt(clients.size())).query(params).getResults();
-    assertTrue(matchResults(results, luceneDocids, valuesList));
-    
-    // update doc, increment
-    // ensure all ratings have a value such that abs(ratings) < X, 
-    // then the second update can use an increment such that abs(inc) > X*3
-    // and we can use -ratings:[-X TO X] as the query in a retry loop
+    assertDocIdsAndValuesAgainstAllClients
+      ("set", SolrParams.wrapDefaults(params("q", "inplace_updatable_float:[-5.0 TO 5.0]",
+                                             "fq", "id:[0 TO *]"),
+                                      // existing sort & fl that we want...
+                                      params),
+       luceneDocids, valuesList);
+      
+    // update doc, w/increment
     log.info("Updating the documents...");
-    // nocommit: what if min(valuesList) and max(valuesList) are both negative?
-    // nocommit: don't we need the abs of both values?
-    // nocommit: see jira comment for longer discussion about eliminating need to find X dynamically
-    float X = Math.max(Collections.max(valuesList), Math.abs(Collections.min(valuesList)));
-    for (int i = 0; i < numDocs; i++) {
-      int inc = r.nextBoolean()? (int)(Math.ceil(X*3)) + r.nextInt(1000): (int)(-Math.ceil(X*3)) - r.nextInt(1000);
-      valuesList.set(i, valuesList.get(i) + inc);
-      index("id", i, "inplace_updatable_float", map("inc", inc));
+    Collections.shuffle(ids, random()); // so updates aren't applied in the same order as our 'set'
+    for (int id : ids) {
+      // all incremements will use some value X such that 20 < abs(X)
+      // thus ensuring that after all incrememnts are done, there should be
+      // 0 test docs matching the query inplace_updatable_float:[-10 TO 10]
+      final float inc = (r.nextBoolean() ? -1.0F : 1.0F) * (random().nextFloat() + (float)atLeast(20));
+      assert 20 < Math.abs(inc);
+      final float value = valuesList.get(id) + inc;
+      assert value < -10 || 10 < value;
+        
+      valuesList.set(id, value);
+      index("id", id, "inplace_updatable_float", map("inc", inc));
     }
     commit();
     
-    // Keep querying until the commit is distributed and expected results are obtained
-    expectedResults = false;
-    for (int retries=0; retries < NUM_RETRIES; retries++) {
-      log.info("Attempt: "+retries+", Results: "+results);
-      numFound = clientToTest.query(
-          params("q", "+inplace_updatable_float:[* TO *] -inplace_updatable_float:[-"+X+" TO "+X+"]"))
-          .getResults().getNumFound();
-      if (numFound != numDocs) {
-        Thread.sleep(WAIT_TIME);
-      } else {
-        expectedResults = true;
-        break;
-      }    
-    }
-    if (!expectedResults) {
-      fail("Waited " + (NUM_RETRIES*WAIT_TIME/1000) + " secs, but not obtained expected results. numFound: "
-          + numFound + ", numDocs: " + numDocs);
-    }
-    // nocommit: picking random from "clients" means LEADER is included, making tests uselss 1/3 the time
-    // nocommit: need to loop to check all (non-leader) clients -- see jira for elabroration
-    results = clients.get(random().nextInt(clients.size())).query(params).getResults();
-    assertTrue(matchResults(results, luceneDocids, valuesList));
+    assertDocIdsAndValuesAgainstAllClients
+      ("inc", SolrParams.wrapDefaults(params("q", "-inplace_updatable_float:[-10.0 TO 10.0]",
+                                             "fq", "id:[0 TO *]"),
+                                      // existing sort & fl that we want...
+                                      params),
+       luceneDocids, valuesList);
   }
 
   /**
-   * Return true if the (same ordered) luceneDocids & ratings match the results
+   * Retries the specified 'req' against each SolrClient in "clients" untill the expected number of 
+   * results are returned, at which point the results are verified using assertDocIdsAndValuesInResults
+   *
+   * @param debug used in log and assertion messages
+   * @param req the query to execut, should include rows &amp; sort params such that the results can be compared to luceneDocids and valuesList
+   * @param luceneDocids a list of "[docid]" values to be tested against each doc in the req results (in order)
+   * @param valuesList a list of "inplace_updatable_float" values to be tested against each doc in the req results (in order)
    */
-  private boolean matchResults(SolrDocumentList results, List<Integer> luceneDocids, List<Float> valuesList) {
-    // nocommit: method should just assert expected values, not return boolean
-    // nocommit: simplifies caller code, and protects against risk of missuse in future (tests forgeting to check return value)
-    // nocommit: should rename something like "assertDocIdsAndValuesInResults"
+  private void assertDocIdsAndValuesAgainstAllClients(final String debug,
+                                                      final SolrParams req,
+                                                      final List<Integer> luceneDocids,
+                                                      final List<Float> valuesList) throws Exception {
+    assert luceneDocids.size() == valuesList.size();
+    final long numFoundExpected = luceneDocids.size();
     
-    int counter = 0;
-    if (luceneDocids.size() == results.size()) {
-      for (SolrDocument doc : results) {
-        float r = (float) doc.get("inplace_updatable_float");
-        int id = (int) doc.get("[docid]");
-
-        if (!(luceneDocids.get(counter).intValue() == id &&
-            Math.abs(valuesList.get(counter).floatValue() - r) <= 0.001)) {
-          return false;
+    CLIENT: for (SolrClient client : clients) {
+      final String clientDebug = client.toString() + (LEADER.equals(client) ? " (leader)" : " (not leader)");
+      final String msg = "'"+debug+"' results against client: " + clientDebug;
+      SolrDocumentList results = null;
+      // For each client, do a (sorted) sanity check query to confirm searcher has been re-opened
+      // after our update -- if the numFound matches our expectations, then verify the inplace float
+      // value and [docid] of each result doc against our expecations to ensure that the values were
+      // updated properly w/o the doc being completley re-added internally. (ie: truly inplace)
+      RETRY: for (int attempt = 0; attempt <= NUM_RETRIES; attempt++) {
+        log.info("Attempt #{} checking {}", attempt, msg);
+        results = client.query(req).getResults();
+        if (numFoundExpected == results.getNumFound()) {
+          break RETRY;
         }
-        counter++;
+        if (attempt == NUM_RETRIES) {
+          fail("Repeated retry for "+msg+"; Never got numFound="+numFoundExpected+"; results=> "+results);
+        }
+        log.info("numFound missmatch, searcher may not have re-opened yet.  Will sleep an retry...");
+        Thread.sleep(WAIT_TIME);          
       }
-    } else {
-      return false;
+      
+      assertDocIdsAndValuesInResults(msg, results, luceneDocids, valuesList);
     }
+  }
+  
+  /**
+   * Given a result list sorted by "id", asserts that the "[docid] and "inplace_updatable_float" values 
+   * for each document match in order.
+   *
+   * @param msgPre used as a prefix for assertion messages
+   * @param results the sorted results of some query, such that all matches are included (ie: rows = numFound)
+   * @param luceneDocids a list of "[docid]" values to be tested against each doc in results (in order)
+   * @param valuesList a list of "inplace_updatable_float" values to be tested against each doc in results (in order)
+   */
+  private void assertDocIdsAndValuesInResults(final String msgPre,
+                                              final SolrDocumentList results,
+                                              final List<Integer> luceneDocids,
+                                              final List<Float> valuesList) {
+
+    assert luceneDocids.size() == valuesList.size();
+    assertEquals(msgPre + ": rows param wasn't big enough, we need to compare all results matching the query",
+                 results.getNumFound(), results.size());
+    assertEquals(msgPre + ": didn't get a result for every known docid",
+                 luceneDocids.size(), results.size());
     
-    return true;
+    for (SolrDocument doc : results) {
+      final int id = Integer.parseInt(doc.get("id").toString());
+      final Object val = doc.get("inplace_updatable_float");
+      final Object docid = doc.get("[docid]");
+      assertEquals(msgPre + " wrong val for " + doc.toString(), valuesList.get(id), val);
+      assertEquals(msgPre + " wrong [docid] for " + doc.toString(), luceneDocids.get(id), docid);
+    }
   }
   
   
@@ -699,7 +727,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     commit();
     
     float inplace_updatable_float = 1F;
-    buildRandomIndex(inplace_updatable_float, false, 1);
+    buildRandomIndex(inplace_updatable_float, false, Collections.singletonList(1));
 
     float newinplace_updatable_float = 100F;
     List<UpdateRequest> updates = new ArrayList<>();
@@ -930,11 +958,8 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     SolrInputDocument doc = new SolrInputDocument();
     addFields(doc, fields);
     
-    ModifiableSolrParams params = new ModifiableSolrParams();
-    params.add("versions", "true");
-    
     UpdateRequest ureq = new UpdateRequest();
-    ureq.setParams(params);
+    ureq.setParam("versions", "true");
     ureq.add(doc);
     UpdateResponse resp;
     
@@ -951,10 +976,10 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
 
   /**
    * Convinience method variant that never uses <code>initFloat</code>
-   * @see #buildRandomIndex(Float,boolean,int[])
+   * @see #buildRandomIndex(Float,boolean,List)
    */
-  protected List<Long> buildRandomIndex(int... specialIds) throws Exception {
-    return buildRandomIndex(null, false, specialIds);
+  protected List<Long> buildRandomIndex(Integer... specialIds) throws Exception {
+    return buildRandomIndex(null, false, Arrays.asList(specialIds));
   }
                                         
   /** 
@@ -970,14 +995,16 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
    * @return the versions of each of the specials document returned when indexing it
    */
   protected List<Long> buildRandomIndex(Float initFloat, boolean useFloatRandomly,
-                                        int... specialIds) throws Exception {
+                                        List<Integer> specialIds) throws Exception {
+    // nocommit: optimize away the useFloatRandomly param if it winds up being false in all callers
+    
     int id = -1; // used for non special docs
     final int numPreDocs = rarely() ? TestUtil.nextInt(random(),0,9) : atLeast(10);
     for (int i = 1; i <= numPreDocs; i++) {
       addDocAndGetVersion("id", id, "title_s", "title" + id, "id_i", id);
       id--;
     }
-    final List<Long> versions = new ArrayList<>(specialIds.length);
+    final List<Long> versions = new ArrayList<>(specialIds.size());
     for (int special : specialIds) {
       if (null == initFloat || (useFloatRandomly && random().nextBoolean()) ) {
         versions.add(addDocAndGetVersion("id", special, "title_s", "title" + special, "id_i", special));
@@ -993,7 +1020,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     }
     LEADER.commit();
     
-    assert specialIds.length == versions.size();
+    assert specialIds.size() == versions.size();
     return versions;
   }
   
