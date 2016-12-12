@@ -1,6 +1,6 @@
 {
   "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API",
-  "description": "The Config API enables manipulating various aspects of your solrconfig.xml using REST-like API calls.",
+  "description": "The Config API enables manipulating various aspects of your solrconfig.xml using REST-like API calls. All properties set with this API update a file called configoverlay.json, but not the solrconfig.xml file itself.",
   "methods": [
     "POST"
   ],
@@ -12,10 +12,14 @@
   "commands": {
     "set-property:": {
       "type": "object",
+      "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API#ConfigAPI-Commandstomodifytheconfig",
+      "description": "Sets one or more of several pre-defined properties. These properties set cache sizes and classes, commit rules, JMX settings, and request dispatcher settings. See the documentation for the list of properties that are supported. If a property is set that already exists, it will be overwritten.",
       "additionalProperties": true
     },
     "unset-property": {
       "type":"array",
+      "documentation": "https://cwiki.apache.org/confluence/display/solr/Config+API#ConfigAPI-Commandstomodifytheconfig",
+      "description": "Removes one or more of several pre-defined properties. These properties set cache sizes and classes, commit rules, JMX settings, and request dispatcher settings. See the documentation for the list of properties that are supported. The value of the property does not need to be defined with the list of properties, only the name of the property.",
       "items": {
         "type": "string"
       }
@@ -35,6 +39,7 @@
     },
     "delete-requesthandler": {
       "type": "array",
+      "description": "Deletes one or more request handlers, using the name given when the request handler was created. Define more than one request handler by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -47,6 +52,7 @@
     },
     "delete-searchcomponent": {
       "type": "array",
+      "description": "Deletes one or more search components, using the name given when the search component was created. Define more than one search component by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -61,6 +67,7 @@
     },
     "delete-initparams": {
       "type": "array",
+      "description": "Deletes one or more init params, using the name given when the init param set was created. Define more than one init params by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -73,6 +80,7 @@
     },
     "delete-queryresponsewriter": {
       "type": "array",
+      "description": "Deletes one or more query response writers, using the name given when the response writer was created. Define more than one response writer by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -84,7 +92,8 @@
       "#include": "core.config.Commands.generic"
     },
     "delete-queryparser": {
-      "type": "string"
+      "type": "string",
+      "description": "Deletes one or more query parsers, using the name given when the query parser was created. Define more than one query parser by separating the list of names with commas.",
     },
     "add-valuesourceparser": {
       "#include": "core.config.Commands.generic"
@@ -94,6 +103,7 @@
     },
     "delete-valuesourceparser": {
       "type": "array",
+      "description": "Deletes one or more ValueSourceParsers, using the name given when the ValueSourceParser was created. Define more than one ValueSourceParsers by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -106,6 +116,7 @@
     },
     "delete-transformer": {
       "type": "array",
+      "description": "Deletes one or more document transformers, using the name given when the document transformer was created. Define more than one document transformers by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -118,6 +129,7 @@
     },
     "delete-updateprocessor": {
       "type": "array",
+      "description": "Deletes one or more update processors, using the name given when the update processor was created. Define more than one update processors by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -130,6 +142,7 @@
     },
     "delete-queryconverter": {
       "type": "array",
+      "description": "Deletes one or more query converters, using the name given when the query converter was created. Define more than one query converters by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -144,6 +157,7 @@
     },
     "delete-listener": {
       "type": "array",
+      "description": "Deletes one or more listeners, using the name given when the listener was created. Define more than one listener by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
@@ -156,6 +170,7 @@
     },
     "delete-runtimelib": {
       "type":"array",
+      "description": "Deletes one or more runtime libraries (runtimeLibs), using the name given when the runtimeLib was created. Define more than one runtimeLibs by separating the list of names with commas.",
       "items": {
         "type": "string"
       }
