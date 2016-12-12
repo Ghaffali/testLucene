@@ -447,39 +447,36 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     assertTrue(currentVersion > version);
     version = currentVersion;
 
-    // RTG from tlog
-    // nocommit: picking random from "clients" means LEADER is included, making tests uselss 1/3 the time
-    sdoc = clients.get(random().nextInt(clients.size())).getById("100");
+    // RTG from tlog(s)
+    for (SolrClient client : clients) {
+      final String clientDebug = client.toString() + (LEADER.equals(client) ? " (leader)" : " (not leader)");
+      sdoc = client.getById("100", params("distrib", "false"));
 
-    assertEquals(sdoc.toString(), (int) 100, sdoc.get("inplace_updatable_int"));
-    assertEquals(sdoc.toString(), (float) inplace_updatable_float, sdoc.get("inplace_updatable_float"));
-    assertEquals(sdoc.toString(), title, sdoc.get("title_s"));
-    assertEquals(sdoc.toString(), version, sdoc.get("_version_"));
+      assertEquals(clientDebug + " => "+ sdoc, (int) 100, sdoc.get("inplace_updatable_int"));
+      assertEquals(clientDebug + " => "+ sdoc, (float) inplace_updatable_float, sdoc.get("inplace_updatable_float"));
+      assertEquals(clientDebug + " => "+ sdoc, title, sdoc.get("title_s"));
+      assertEquals(clientDebug + " => "+ sdoc, version, sdoc.get("_version_"));
+    }
     
     // assert that the internal docid for id=100 document remains same, in each replica, as before
     LEADER.commit();
     assertTrue("Earlier: "+docids+", now: "+getInternalDocIds("100"), docids.equals(getInternalDocIds("100")));
   }
-  
-  private List<Integer> getInternalDocIds(String id) throws IOException {
-    // nocommit: no reason for ths method to use SolrIndexSearcher directly -- will make converting to cloud test later hard
-    // nocommit: should just use RTG w/fl=[docid] to check values
-    // nocommit: seems like method created because of SOLR-9289, but that's been fixed for a while.
-    
-    List<Integer> ret = new ArrayList<>();
-    for (CloudJettyRunner jetty: shardToJetty.get(SHARD1)) {
-      try (SolrCore core = jetty.jetty.getCoreContainer().getCore(DEFAULT_TEST_COLLECTION_NAME)) {
-        RefCounted<SolrIndexSearcher> holder = core.openNewSearcher(false, true);
-        try {
-          SolrIndexSearcher searcher = holder.get();
-          int docId = searcher.search(new TermQuery(new Term("id", id)), 1).scoreDocs[0].doc;
-          ret.add(docId);
-          // debug: System.out.println("gIDI: "+searcher.doc(docId));
-        } finally {
-          holder.decref();
-        }
-      }
+
+  /**
+   * Returns the "[docid]" value(s) returned from a non-distrib RTG to each of the clients used 
+   * in this test (in the same order as the clients list)
+   */
+  private List<Integer> getInternalDocIds(String id) throws SolrServerException, IOException {
+    List<Integer> ret = new ArrayList<>(clients.size());
+    for (SolrClient client : clients) {
+      SolrDocument doc = client.getById(id, params("distrib", "false", "fl", "[docid]"));
+      Object docid = doc.get("[docid]");
+      assertNotNull(docid);
+      assertEquals(Integer.class, docid.getClass());
+      ret.add((Integer) docid);
     }
+    assert clients.size() == ret.size();
     return ret;
   }
 
@@ -771,10 +768,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
       assertEquals("The replica receiving reordered updates must not have gone down", 3, numActiveReplicas);
     }
 
-    // nocommit: what's the point of this ad-hoc array?
-    // nocommit: if we want the leader and all non leaders, why not just loop over "clients" ?
-    for (SolrClient client: new SolrClient[] {LEADER, NONLEADERS.get(0), 
-        NONLEADERS.get(1)}) { // nonleader 0 re-ordered replica, nonleader 1 well-ordered replica
+    for (SolrClient client : clients) {
       log.info("Testing client (Fetch missing test): " + ((HttpSolrClient)client).getBaseURL());
       log.info("Version at " + ((HttpSolrClient)client).getBaseURL() + " is: " + getReplicaValue(client, 1, "_version_"));
 
@@ -875,8 +869,6 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
   }
   
   Object getReplicaValue(SolrClient client, int doc, String field) throws SolrServerException, IOException {
-    // nocommit: all other usages of SolrClient.getById in this class should be replaced by calls to this method
-    // nocommit: that way we ensure distrib=false
     SolrDocument sdoc = client.getById(String.valueOf(doc), params("distrib", "false"));
     return sdoc.get(field);
   }
