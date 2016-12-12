@@ -21,7 +21,6 @@ import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -45,7 +44,22 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * This class maintains a repository of named {@link MetricRegistry} instances, and provides several
+ * helper methods for managing various aspects of metrics reporting:
+ * <ul>
+ *   <li>registry creation, clearing and removal,</li>
+ *   <li>creation of most common metric implementations,</li>
+ *   <li>management of {@link SolrMetricReporter}-s specific to a named registry.</li>
+ * </ul>
+ * {@link MetricRegistry} instances are automatically created when first referenced by name. Similarly,
+ * instances of {@link Metric} implementations, such as {@link Meter}, {@link Counter}, {@link Timer} and
+ * {@link Histogram} are automatically created and registered under hierarchical names, in a specified
+ * registry, when {@link #meter(String, String, String...)} and other similar methods are called.
+ * <p>This class enforces a common prefix ({@link #REGISTRY_NAME_PREFIX}) in all registry
+ * names.</p>
+ * <p>Solr uses several different registries for collecting metrics belonging to different groups, using
+ * {@link org.apache.solr.core.SolrInfoMBean.Group} as the main name of the registry (plus the
+ * above-mentioned prefix).</p>
  */
 public class SolrMetricManager {
 
@@ -321,6 +335,15 @@ public class SolrMetricManager {
    * Allows named registries to be renamed using System properties.
    * This would be mostly be useful if you want to combine the metrics from a few registries for a single
    * reporter.
+   * <p>For example, in order to collect metrics from related cores in a single registry you could specify
+   * the following system properties:
+   * <pre>
+   *   ... -Dsolr.core.collection1=solr.core.allCollections -Dsolr.core.collection2=solr.core.allCollections
+   * </pre>
+   * </p>
+   * <b>NOTE:</b> Once a registry is renamed in a way that its metrics are combined with another repository
+   * it is no longer possible to retrieve the original metrics until this renaming is removed and the Solr
+   * {@link org.apache.solr.core.SolrInfoMBean.Group} of components that reported to that name is restarted.
    * @param registry The name of the registry
    * @return A potentially overridden (via System properties) registry name
    */
@@ -343,6 +366,12 @@ public class SolrMetricManager {
     }
   }
 
+  /**
+   * Helper method to construct a properly prefixed registry name based on the group.
+   * @param group reporting group
+   * @param names optional child elements of the registry name
+   * @return fully-qualified and prefixed registry name
+   */
   public static String getRegistryName(SolrInfoMBean.Group group, String... names) {
     String fullName = MetricRegistry.name(group.toString(), names);
     return overridableRegistryName(fullName);
@@ -352,14 +381,14 @@ public class SolrMetricManager {
 
   /**
    * Create and register {@link SolrMetricReporter}-s specific to a {@link org.apache.solr.core.SolrInfoMBean.Group}.
-   * Note: reporters that don't specify "group" nor "registry" attributes are treated as universal -
-   * they will always be loaded for any group. These attributes may also contain multiple comma- or
+   * Note: reporters that specify neither "group" nor "registry" attributes are treated as universal -
+   * they will always be loaded for any group. These two attributes may also contain multiple comma- or
    * whitespace-separated values, in which case the reporter will be loaded for any matching value from
-   * the list.
+   * the list. If both attributes are present then only "group" attribute will be processed.
    * @param pluginInfos plugin configurations
    * @param loader resource loader
    * @param group selected group, not null
-   * @param registry optional registry name within a group
+   * @param registry optional fully-qualified registry name
    */
   public static void loadReporters(PluginInfo[] pluginInfos, SolrResourceLoader loader, SolrInfoMBean.Group group, String registry) {
     if (pluginInfos == null || pluginInfos.length == 0) {
@@ -411,7 +440,7 @@ public class SolrMetricManager {
   /**
    * Create and register an instance of {@link SolrMetricReporter}.
    * @param registry reporter is associated with this registry
-   * @param loader loader to use to create an instance of the reporter
+   * @param loader loader to use when creating an instance of the reporter
    * @param pluginInfo plugin configuration. Plugin "name" and "class" attributes are required.
    * @throws Exception if any argument is missing or invalid
    */
@@ -537,7 +566,7 @@ public class SolrMetricManager {
   /**
    * Get a map of reporters for a registry. Keys are reporter names, values are reporter instances.
    * @param registry registry name
-   * @return map or reporters and their names, may be empty but never null
+   * @return map of reporters and their names, may be empty but never null
    */
   public static Map<String, SolrMetricReporter> getReporters(String registry) {
     // make sure we use a name with prefix, with overrides

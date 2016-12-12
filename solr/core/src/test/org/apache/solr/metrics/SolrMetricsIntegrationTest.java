@@ -19,6 +19,7 @@ package org.apache.solr.metrics;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Random;
 
@@ -65,6 +66,10 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
     cc = createCoreContainer(cfg,
         new TestHarness.TestCoresLocator(DEFAULT_TEST_CORENAME, initCoreDataDir.getAbsolutePath(), "solrconfig.xml", "schema.xml"));
     h.coreName = DEFAULT_TEST_CORENAME;
+    // initially there are more reporters, because two of them are added via a matching collection name
+    Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters("solr.core." + DEFAULT_TEST_CORENAME);
+    assertEquals(INITIAL_REPORTERS.length, reporters.size());
+    assertTrue(reporters.keySet().containsAll(Arrays.asList(INITIAL_REPORTERS)));
     // test rename operation
     cc.rename(DEFAULT_TEST_CORENAME, CORE_NAME);
     h.coreName = CORE_NAME;
@@ -72,7 +77,7 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
     PluginInfo[] plugins = cfg.getMetricReporterPlugins();
     assertNotNull(plugins);
     assertEquals(10, plugins.length);
-    Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters("solr.node");
+    reporters = SolrMetricManager.getReporters("solr.node");
     assertEquals(4, reporters.size());
     assertTrue("Reporter '" + REPORTER_NAMES[0] + "' missing in solr.node", reporters.containsKey(REPORTER_NAMES[0]));
     assertTrue("Reporter '" + UNIVERSAL + "' missing in solr.node", reporters.containsKey(UNIVERSAL));
