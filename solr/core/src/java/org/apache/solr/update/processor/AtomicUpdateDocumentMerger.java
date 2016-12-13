@@ -235,8 +235,12 @@ public class AtomicUpdateDocumentMerger {
     BytesRef idBytes = cmd.getIndexedId();
 
     updatedFields.add(DistributedUpdateProcessor.VERSION_FIELD); // add the version field so that it is fetched too
-    SolrInputDocument oldDocument = RealTimeGetComponent.getInputDocument(cmd.getReq().getCore(),
-                                              idBytes, true, updatedFields, true); // avoid stored fields from index
+    SolrInputDocument oldDocument = RealTimeGetComponent.getInputDocument
+      (cmd.getReq().getCore(), idBytes,
+       true, // avoid stored fields from index
+       updatedFields,
+       true); // resolve the full document
+                                              
     if (oldDocument == RealTimeGetComponent.DELETED || oldDocument == null) {
       // This doc was deleted recently. In-place update cannot work, hence a full atomic update should be tried.
       return false;
