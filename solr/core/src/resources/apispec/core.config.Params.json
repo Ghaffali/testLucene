@@ -1,5 +1,6 @@
 {
   "documentation": "https://cwiki.apache.org/confluence/display/solr/Request+Parameters+API",
+  "description": "List all parameter sets (paramsets). Individual paramsets can be requested by paramset name.",
   "methods": [
     "GET"
   ],
