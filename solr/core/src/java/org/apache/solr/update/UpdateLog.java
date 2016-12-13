@@ -787,28 +787,18 @@ public static final int VERSION_IDX = 1;
    * @return Returns 0 if a full document was found in the log, -1 if no full document was found. If full document was supposed
    * to be found in the tlogs, but couldn't be found (because the logs were rotated) then the prevPointer is returned.
    */
-  public long applyPartialUpdates(BytesRef id, long prevPointer, long prevVersion,
+  synchronized public long applyPartialUpdates(BytesRef id, long prevPointer, long prevVersion,
       Set<String> onlyTheseFields, SolrDocumentBase latestPartialDoc) {
     
-    // nocommit: changes that should probably be made (see jira comments for elaboration) ...
-    // 1) "final List<TransactionLog> lookupLogs" should be created once, outside of any looping
-    // 2) "lookupLogs" and any calls to "getEntryFromTLog" that use that List *MUST* happen in the same sync block.
-    // 3) 1+2 => the sync block must wrap the while loop
-    // 4) 3 => we might as well declare the entire method synchronized.
-    //
-    //
-    // nocommit: regardless of any changes, need additional eyeballs (besides ishan & hoss) on the synchronization in this method/class
-
+    // nocommit: need additional eyeballs (besides ishan & hoss) on the synchronization in this method/class
     
     SolrInputDocument partialUpdateDoc = null;
 
+    List<TransactionLog> lookupLogs = Arrays.asList(tlog, prevMapLog, prevMapLog2);
     while (prevPointer >= 0) {
       //go through each partial update and apply it on the incoming doc one after another
       List entry;
-      synchronized (this) {
-        List<TransactionLog> lookupLogs = Arrays.asList(tlog, prevMapLog, prevMapLog2);
-        entry = getEntryFromTLog(prevPointer, prevVersion, lookupLogs);
-      }
+      entry = getEntryFromTLog(prevPointer, prevVersion, lookupLogs);
       if (entry == null) {
         return prevPointer; // a previous update was supposed to be found, but wasn't found (due to log rotation)
       }
@@ -864,14 +854,7 @@ public static final int VERSION_IDX = 1;
    *
    * @return The entry if found, otherwise null
    */
-  private List getEntryFromTLog(long lookupPointer, long lookupVersion, List<TransactionLog> lookupLogs) {
-    // nocommit: faily certain this method should be "synchronized...
-    // nocommit: isn't the only valid usage of that method is when the thread has a lock on "this" ?
-    // nocommit: otherwise some other thread might be decrefing/closing the TransactionLog instances passed to this method
-    //
-    // should have no impact on performance/correctness since the only existing usage of this
-    // method are already in a "synchronized (this)" blocks ... but we should protect against future missuse
-    
+  private synchronized List getEntryFromTLog(long lookupPointer, long lookupVersion, List<TransactionLog> lookupLogs) {
     for (TransactionLog lookupLog : lookupLogs) {
       if (lookupLog != null && lookupLog.getLogSize() > lookupPointer) {
         lookupLog.incref();

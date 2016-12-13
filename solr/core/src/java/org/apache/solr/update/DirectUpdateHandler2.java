@@ -452,18 +452,10 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       //
       synchronized (solrCoreState.getUpdateLock()) {
 
-        // nocommit: this line is very innocuous and easy to over look
-        // nocommit: if the purpose of this line is to work around LUCENE-7344 there should be a comment
-        // nocommit: ...otherwise someone might not realize why it's here and try to remove it
-        // nocommit: ...likewise if/when LUCENE-7344 is fixed no one will realize it can be removed
-        // 
-        //
-        // nocommit: alternatively: if that's not the reason for this line, then what is?
-        //
-        // nocommit: LUCENE-7344
+        // We are reopening a searcher before applying the deletes to overcome LUCENE-7344.
+        // Once LUCENE-7344 is resolved, we can consider removing this.
         if (ulog != null) ulog.openRealtimeSearcher();
-        // nocommit: END
-        
+
         if (delAll) {
           deleteAll();
         } else {

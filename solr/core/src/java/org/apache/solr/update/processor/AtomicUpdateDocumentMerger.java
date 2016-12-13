@@ -42,7 +42,6 @@ import org.apache.solr.schema.CopyField;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.NumericValueFieldType;
 import org.apache.solr.schema.SchemaField;
-import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.update.AddUpdateCommand;
 import org.apache.solr.util.RefCounted;
 import org.slf4j.Logger;
@@ -140,40 +139,18 @@ public class AtomicUpdateDocumentMerger {
    * only then is such an update command executed as an in-place update.
    */
   private static boolean isSupportedFieldForInPlaceUpdate(SchemaField schemaField) {
-    if (schemaField == null) {
-      // nocommit: shouldn't "schemaField == null" trip an assert, or cause IllegalArgumentException
-      // nocommit: if there is a reason for this behavior, it should be noted in javadocs, and explained here in comment
-
-      return false; // nocommit: why?
-    }
     return !(schemaField.indexed() || schemaField.stored() || !schemaField.hasDocValues() || 
         schemaField.multiValued() || !(schemaField.getType() instanceof NumericValueFieldType));
   }
   
   /**
-   * Get a list of the non stored DV Fields in the index from a realtime searcher
-   */
-  private static Set<String> getNonStoredDocValueFieldNamesFromSearcher(SolrCore core) {
-    // nocommit: is this dead code?
-    // nocommit: originally calling code now uses IndexWriter to get field names
-    RefCounted<SolrIndexSearcher> holder = core.getRealtimeSearcher();
-    try {
-      SolrIndexSearcher searcher = holder.get();
-      return Collections.unmodifiableSet(searcher.getNonStoredDVs(false));
-    } finally {
-      holder.decref();
-    }
-  }
-  
-  /**
-   * Given an add update command, is it suitable for an in-place update operation? If so, return the updated fields
+   * Given an add update command, compute a list of fields that can be updated in-place. If there is even a single
+   * field in the update that cannot be updated in-place, the entire update cannot be executed in-place (and empty set
+   * will be returned in that case).
    * 
-   * @return If this is an in-place update, return a set of fields that require in-place update.
-   *         If this is not an in-place update, return an empty set.
+   * @return Return a set of fields that can be in-place updated.
    */
-  public static Set<String> isInPlaceUpdate(AddUpdateCommand cmd) {
-    // nocommit: this method name no longer makes any sense since it doesn't return a boolean
-    
+  public static Set<String> computeInPlaceUpdateableFields(AddUpdateCommand cmd) throws IOException {
     SolrInputDocument sdoc = cmd.getSolrInputDocument();
     BytesRef id = cmd.getIndexedId();
     IndexSchema schema = cmd.getReq().getSchema();
@@ -182,9 +159,6 @@ public class AtomicUpdateDocumentMerger {
     final String uniqueKeyFieldName = null == uniqueKeyField ? null : uniqueKeyField.getName();
     
     Set<String> candidateFields = new HashSet<>();
-
-    // Whether this update command has any update to a supported field. A supported update requires the value be a map.
-    boolean hasAMap = false;
 
     // first pass, check the things that are virtually free,
     // and bail out early if anything is obviously not a valid in-place update
@@ -214,14 +188,10 @@ public class AtomicUpdateDocumentMerger {
 
     // lazy init this so we don't call iw.getFields() (and sync lock on IndexWriter) unless needed
     Set<String> fieldNamesFromIndexWriter = null;
-    // nocommit: see question about why dynamicFields are special below...
-    // nocommit: if dynamicField doesn't actaully matter, then don't bother lazy initing this,
-    // nocommit: just move the init logic here.
-    
     // second pass over the candidates for in-place updates
     // this time more expensive checks
     for (String fieldName: candidateFields) {
-      SchemaField schemaField = schema.getFieldOrNull(fieldName);
+      SchemaField schemaField = schema.getField(fieldName);
 
       if (!isSupportedFieldForInPlaceUpdate(schemaField)) {
         return Collections.emptySet();
@@ -234,20 +204,13 @@ public class AtomicUpdateDocumentMerger {
       }
 
       if (null == fieldNamesFromIndexWriter) { // lazy init fieldNamesFromIndexWriter
+        SolrCore core = cmd.getReq().getCore();
+        RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
         try {
-          SolrCore core = cmd.getReq().getCore();
-          RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
-          try {
-            IndexWriter iw = holder.get();
-            fieldNamesFromIndexWriter = iw.getFieldNames();
-          } finally {
-            holder.decref();
-          }
-        } catch (IOException e) {
-          throw new RuntimeException(e); // nocommit
-
-          // nocommit: if we're going to throw a runtime excep it should be a SolrException with usefull code/msg
-          // nocommit: but why are we catching/wrapping the IOE?  why aren't we rethrowing?
+          IndexWriter iw = holder.get();
+          fieldNamesFromIndexWriter = iw.getFieldNames();
+        } finally {
+          holder.decref();
         }
       }
       if (! fieldNamesFromIndexWriter.contains(fieldName) ) {

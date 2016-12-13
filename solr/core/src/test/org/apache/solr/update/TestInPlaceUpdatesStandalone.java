@@ -978,7 +978,7 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
 
   /** 
    * @see #callIsInPlaceUpdate
-   * @see AtomicUpdateDocumentMerger#isInPlaceUpdate 
+   * @see AtomicUpdateDocumentMerger#computeInPlaceUpdateableFields 
    */
   @Test
   public void testIsInPlaceUpdate() throws Exception { // nocommit: rename when isInPlaceUpdate is renamed
@@ -1056,7 +1056,7 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
       AddUpdateCommand cmd = buildAddUpdateCommand(req, sdoc("id", "1", "_version_", 42L,
                                                              "inplace_updatable_float", map("inc", 10)));
       AtomicUpdateDocumentMerger docMerger = new AtomicUpdateDocumentMerger(req);
-      assertTrue(docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd)));
+      assertTrue(docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.computeInPlaceUpdateableFields(cmd)));
       assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
       assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
       assertEquals(210f, cmd.getSolrInputDocument().getFieldValue("inplace_updatable_float"));
@@ -1073,7 +1073,7 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
       AddUpdateCommand cmd = buildAddUpdateCommand(req, sdoc("id", "1", "_version_", 42L,
                                                              "inplace_updatable_float", map("inc", 10)));
       AtomicUpdateDocumentMerger docMerger = new AtomicUpdateDocumentMerger(req);
-      assertTrue(docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd)));
+      assertTrue(docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.computeInPlaceUpdateableFields(cmd)));
       assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
       assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
       assertEquals(210f, cmd.getSolrInputDocument().getFieldValue("inplace_updatable_float"));
@@ -1084,18 +1084,16 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
   }
   
   /** 
-   * Helper method that sets up a req/cmd to run {@link AtomicUpdateDocumentMerger#isInPlaceUpdate} 
+   * Helper method that sets up a req/cmd to run {@link AtomicUpdateDocumentMerger#computeInPlaceUpdateableFields} 
    * on the specified solr input document.
    */
   private static Set<String> callIsInPlaceUpdate(final SolrInputDocument sdoc) throws Exception {
-    // nocommit: rename when isInPlaceUpdate is renamed
-
     try (SolrQueryRequest req = req()) {
       AddUpdateCommand cmd = new AddUpdateCommand(req);
       cmd.solrDoc = sdoc;
       assertTrue(cmd.solrDoc.containsKey(DistributedUpdateProcessor.VERSION_FIELD));
       cmd.setVersion(Long.parseLong(cmd.solrDoc.getFieldValue(DistributedUpdateProcessor.VERSION_FIELD).toString()));
-      return AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd);
+      return AtomicUpdateDocumentMerger.computeInPlaceUpdateableFields(cmd);
     }
   }
 }
