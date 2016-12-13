@@ -417,7 +417,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     
     SolrDocument sdoc = LEADER.getById("100");  // RTG straight from the index
     assertEquals(sdoc.toString(), (float) inplace_updatable_float, sdoc.get("inplace_updatable_float"));
-    assertEquals(sdoc.toString(), "title100", sdoc.get("title_s"));
+    assertEquals(sdoc.toString(), title, sdoc.get("title_s"));
     assertEquals(sdoc.toString(), version, sdoc.get("_version_"));
 
     if(random().nextBoolean()) {
@@ -425,6 +425,14 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
       currentVersion = addDocAndGetVersion("id", 100, "title_s", title, "inplace_updatable_float", inplace_updatable_float); // full indexing
       assertTrue(currentVersion > version);
       version = currentVersion;
+
+      sdoc = LEADER.getById("100");  // RTG from the tlog
+      assertEquals(sdoc.toString(), (float) inplace_updatable_float, sdoc.get("inplace_updatable_float"));
+      assertEquals(sdoc.toString(), title, sdoc.get("title_s"));
+      assertEquals(sdoc.toString(), version, sdoc.get("_version_"));
+
+      // we've done a full index, so we need to update the [docid] for each replica
+      LEADER.commit(); // can't get (real) [docid] from the tlogs, need to force a commit
       docids = getInternalDocIds("100");
     }
 
@@ -456,7 +464,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     }
     
     // assert that the internal docid for id=100 document remains same, in each replica, as before
-    LEADER.commit();
+    LEADER.commit(); // can't get (real) [docid] from the tlogs, need to force a commit
     assertTrue("Earlier: "+docids+", now: "+getInternalDocIds("100"), docids.equals(getInternalDocIds("100")));
   }
 
