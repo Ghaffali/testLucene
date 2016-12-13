@@ -251,8 +251,7 @@ public class AtomicUpdateDocumentMerger {
         }
       }
       if (! fieldNamesFromIndexWriter.contains(fieldName) ) {
-        // nocommit: this comment is not usefull - doesn't explain *WHY*
-        return Collections.emptySet(); // if dynamic field and this field doesn't exist, DV update can't work
+        return Collections.emptySet(); // if this field doesn't exist, DV update can't work
       }
     }
     return candidateFields;

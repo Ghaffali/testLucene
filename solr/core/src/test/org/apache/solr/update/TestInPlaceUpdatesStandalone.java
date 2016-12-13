@@ -61,9 +61,6 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
 
   @BeforeClass
   public static void beforeClass() throws Exception {
-
-    // nocommit: does this test need to randomize between diff schema/fields used?
-    // nocommit: see nocommits/jira questions related to special dynamicField logic in AtomicUpdateDocumentMerger.isInPlaceUpdate
     
     initCore("solrconfig-tlog.xml", "schema-inplace-updates.xml");
 

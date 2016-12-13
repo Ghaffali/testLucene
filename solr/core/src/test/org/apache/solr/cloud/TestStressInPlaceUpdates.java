@@ -55,9 +55,6 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
 
   @BeforeClass
   public static void beforeSuperClass() throws Exception {
-
-    // nocommit: does this test need to randomize between diff schema/fields used?
-    // nocommit: see nocommits/jira questions related to special dynamicField logic in AtomicUpdateDocumentMerger.isInPlaceUpdate
     
     schemaString = "schema-inplace-updates.xml";
     configString = "solrconfig-tlog.xml";
