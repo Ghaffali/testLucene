@@ -336,11 +336,10 @@ public class SolrMetricManager {
    * This would be mostly be useful if you want to combine the metrics from a few registries for a single
    * reporter.
    * <p>For example, in order to collect metrics from related cores in a single registry you could specify
-   * the following system properties:
+   * the following system properties:</p>
    * <pre>
    *   ... -Dsolr.core.collection1=solr.core.allCollections -Dsolr.core.collection2=solr.core.allCollections
    * </pre>
-   * </p>
    * <b>NOTE:</b> Once a registry is renamed in a way that its metrics are combined with another repository
    * it is no longer possible to retrieve the original metrics until this renaming is removed and the Solr
    * {@link org.apache.solr.core.SolrInfoMBean.Group} of components that reported to that name is restarted.
@@ -371,7 +370,7 @@ public class SolrMetricManager {
    * @param group reporting group
    * @param names optional child elements of the registry name. If exactly one element is provided
    *              and it already contains the required prefix and group name then this value will be used,
-   *              and the {@param group} parameter will be ignored.
+   *              and the group parameter will be ignored.
    * @return fully-qualified and prefixed registry name, with overrides applied.
    */
   public static String getRegistryName(SolrInfoMBean.Group group, String... names) {
