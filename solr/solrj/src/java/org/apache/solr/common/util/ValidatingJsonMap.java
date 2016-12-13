@@ -30,15 +30,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.solr.common.SolrException;
 import org.noggit.JSONParser;
 import org.noggit.ObjectBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableSet;
 
 public class ValidatingJsonMap implements Map<String, Object> {
-
+  private static final Logger log = LoggerFactory.getLogger(ValidatingJsonMap.class);
+  private static final String INCLUDE = "#include";
+  private static final String RESOURCE_EXTENSION = ".json";
   public static final PredicateWithErrMsg<Object> NOT_NULL = o -> {
     if (o == null) return " Must not be NULL";
     return null;
@@ -237,16 +242,35 @@ public class ValidatingJsonMap implements Map<String, Object> {
 
   }
 
-  public static ValidatingJsonMap fromJSON(InputStream is) {
-    return fromJSON(new InputStreamReader(is, UTF_8));
+  public static ValidatingJsonMap fromJSON(InputStream is,  String includeLocation) {
+    return fromJSON(new InputStreamReader(is, UTF_8), includeLocation);
   }
 
-  public static ValidatingJsonMap fromJSON(Reader s) {
+  public static ValidatingJsonMap fromJSON(Reader s, String includeLocation) {
     try {
-      return (ValidatingJsonMap) (getObjectBuilder(new JSONParser(s)).getObject());
+      ValidatingJsonMap map = (ValidatingJsonMap)getObjectBuilder(new JSONParser(s)).getObject();
+      handleIncludes(map, includeLocation);
+      return map;
     } catch (IOException e) {
       throw new RuntimeException();
     }
+  }
+
+  /** 
+   * In the given map, recursively replace "#include":"resource-name" with the key/value pairs 
+   * parsed from the resource at {location}/{resource-name}.json
+   */
+  private static void handleIncludes(ValidatingJsonMap map, String location) {
+    final String loc = location == null ? "" // trim trailing slash
+        : (location.endsWith("/") ? location.substring(0, location.length() - 1) : location); 
+    String resourceToInclude = (String)map.get(INCLUDE);
+    if (resourceToInclude != null) {
+      ValidatingJsonMap includedMap = parse(loc + "/" + resourceToInclude + RESOURCE_EXTENSION, loc);
+      map.remove(INCLUDE);
+      map.putAll(includedMap);
+    }
+    map.entrySet().stream().filter(e->e.getValue() instanceof Map).map(Map.Entry::getValue)
+        .forEach(m->handleIncludes((ValidatingJsonMap)m, loc));
   }
 
   public static ValidatingJsonMap getDeepCopy(Map map, int maxDepth, boolean mutable) {
@@ -284,6 +308,24 @@ public class ValidatingJsonMap implements Map<String, Object> {
     };
   }
 
+  public static ValidatingJsonMap parse(String resourceName, String includeLocation) {
+    InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(resourceName);
+    if (is == null)
+      throw new RuntimeException("invalid API spec: " + resourceName);
+    ValidatingJsonMap map = null;
+    try {
+      map = fromJSON(is, includeLocation);
+    } catch (Exception e) {
+      log.error("Error in JSON : " + resourceName, e);
+      if (e instanceof RuntimeException) {
+        throw e;
+      }
+      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, e);
+    }
+    if (map == null) throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Empty value for " + resourceName);
+
+    return getDeepCopy(map, 5, false);
+  }
 
   @Override
   public boolean equals(Object that) {

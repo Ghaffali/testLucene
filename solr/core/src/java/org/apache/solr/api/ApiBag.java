@@ -18,7 +18,6 @@
 package org.apache.solr.api;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.Reader;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -58,27 +57,6 @@ public class ApiBag {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, PathTrie<Api>> apis = new ConcurrentHashMap<>();
-
-  public static ValidatingJsonMap getResource(String name) {
-    InputStream is = Thread.currentThread().getContextClassLoader().getResourceAsStream(name);
-    if (is == null)
-      throw new RuntimeException("invalid API spec :" + name );
-    ValidatingJsonMap map1 = null;
-    try {
-      map1 = ValidatingJsonMap.fromJSON(is);
-    } catch (Exception e) {
-      log.error("Error in JSON : " + name, e);
-      if (e instanceof RuntimeException) {
-        throw (RuntimeException) e;
-      }
-      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, e);
-    }
-    if (map1 == null) throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Empty value for " + name);
-
-    return ValidatingJsonMap.getDeepCopy(map1, 5, false);
-  }
-
-
 
   public synchronized void register(Api api, Map<String, String> nameSubstitutes) {
     try {
@@ -208,36 +186,8 @@ public class ApiBag {
 
   public static SpecProvider getSpec(final String name) {
     return () -> {
-      String jsonName = APISPEC_LOCATION + name + ".json";
-      ValidatingJsonMap map = getResource(jsonName);
-      ValidatingJsonMap result = map;
-      ValidatingJsonMap cmds = result.getMap("commands", null);
-      if (cmds != null) {
-        Map  commands2BReplaced = new ValidatingJsonMap();
-        for (Object o : cmds.keySet()) {
-          Object val = cmds.get(o);
-          Map m = (Map) val;
-          String include = (String) m.get("#include");
-          if (include != null) {
-            ValidatingJsonMap cmdSpec = getResource(APISPEC_LOCATION + include + ".json");
-            m = ValidatingJsonMap.getDeepCopy(m, 4, true);
-            m.remove("#include");
-            m.putAll(cmdSpec);
-            commands2BReplaced.put(o.toString(), m);
-          }
-        }
-
-        if (!commands2BReplaced.isEmpty()) {
-          ValidatingJsonMap mapCopy = ValidatingJsonMap.getDeepCopy(result, 4, true);
-          mapCopy.getMap("commands", NOT_NULL).putAll(commands2BReplaced);
-          result = ValidatingJsonMap.getDeepCopy(mapCopy, 4, false);
-        }
-      }
-
-      return result;
+      return ValidatingJsonMap.parse(APISPEC_LOCATION + name + ".json", APISPEC_LOCATION);
     };
-
-
   }
 
   public static class ReqHandlerToApi extends Api implements PermissionNameProvider {

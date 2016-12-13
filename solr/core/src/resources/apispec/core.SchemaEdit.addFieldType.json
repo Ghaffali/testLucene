@@ -28,83 +28,21 @@
       "description": "Defines a custom PostingsFormat to use for fields of this type. A custom PostingsFormat requires that a schema-aware codec has also been configured in solrconfig.xml."
     },
     "queryAnalyzer": {
-      "type": "object",
       "description": "A query analyzer section defines how incoming queries to Solr will be analyzed for a field of this type.",
-      "properties":{
-         "tokenizer": {
-            "type": "object",
-            "properties": {
-               "class": {
-                  "type": "string"
-             }
-          },
-           "additionalProperties": true
-         }
-      },
-      "additionalProperties": true
+      "#include": "core.SchemaEdit.addFieldType.analyzers"
     },
     "indexAnalyzer": {
-      "type": "object",
       "description": "An index analyzer section defines how incoming text in documents will be analyzed for a field of this type.",
-      "properties": {
-        "tokenizer": {
-          "type": "object",
-          "description": "",
-          "properties": {
-            "class": {
-              "type": "string"
-            }
-          },
-          "additionalProperties": true
-        }
-      },
-      "additionalProperties": true
+      "#include": "core.SchemaEdit.addFieldType.analyzers"
+    },
+    "multiTermAnalyzer": {
+      "description": "A multiterm analyzer section defines how incoming queries that results in Multi-Term expansion will be analyzed for a field of this type.",
+      "documentation": "https://cwiki.apache.org/confluence/display/solr/Analyzers#Analyzers-AnalysisforMulti-TermExpansion",
+      "#include": "core.SchemaEdit.addFieldType.analyzers"
     },
     "analyzer": {
-      "type": "object",
       "description": "An analyzer defines how both incoming text in documents and queries are analyzed for a field of this type. If a query analyzer and an index analyzer have both been defined, a general analyzer does not need to be defined for this type.",
-      "properties": {
-        "class": {
-          "type": "string"
-        },
-        "tokenizer":{
-          "type":"object",
-          "properties":{
-            "class":{
-              "type":"string"
-            }
-          },
-          "required":["class"],
-          "additionalProperties":true
-        },
-        "charFilters":{
-          "type":"array",
-          "items":{
-            "type":"object",
-            "properties":{
-              "class":{
-                "type":"string"
-              }
-            },
-            "required":["class"],
-            "additionalProperties":true
-          }
-        },
-        "filters":{
-          "type":"array",
-          "items":{
-            "type":"object",
-            "properties":{
-              "class":{
-                "type":"string"
-              }
-            },
-            "required":["class"],
-            "additionalProperties":true
-          }
-        }
-      },
-      "additionalProperties": true
+      "#include": "core.SchemaEdit.addFieldType.analyzers"
     }
   },
   "additionalProperties": true,
