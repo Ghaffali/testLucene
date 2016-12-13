@@ -1,4 +1,5 @@
 {
+   "description": "Provides information about system properties, threads, logging settings, and system details for a node.",
   "methods": ["GET"],
   "url": {
     "paths": [

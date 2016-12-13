@@ -1,5 +1,6 @@
 {
   "documentation": "https://cwiki.apache.org/confluence/display/solr/Blob+Store+API",
+  "description": "Uploads a blob to the blob store (.system collection).",
   "methods": [
     "POST"
   ],
