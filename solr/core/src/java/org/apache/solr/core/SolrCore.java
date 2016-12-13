@@ -53,6 +53,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Timer;
 import com.google.common.collect.MapMaker;
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.analysis.util.ResourceLoader;
@@ -95,6 +97,7 @@ import org.apache.solr.handler.component.HighlightComponent;
 import org.apache.solr.handler.component.SearchComponent;
 import org.apache.solr.logging.MDCLoggingContext;
 import org.apache.solr.metrics.SolrCoreMetricManager;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
@@ -203,6 +206,12 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
   private final ReentrantLock ruleExpiryLock;
   private final ReentrantLock snapshotDelLock; // A lock instance to guard against concurrent deletions.
+
+  private final Timer newSearcherTimer;
+  private final Timer newSearcherWarmupTimer;
+  private final Counter newSearcherCounter;
+  private final Counter newSearcherMaxErrorsCounter;
+  private final Counter newSearcherOtherErrorsCounter;
 
   public Date getStartTimeStamp() { return startTime; }
 
@@ -395,7 +404,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     this.logid = (v==null)?"":("["+v+"] ");
     this.coreDescriptor = new CoreDescriptor(v, this.coreDescriptor);
     if (metricManager != null) {
-      metricManager.afterCoreSetName(oldName, this.name);
+      metricManager.afterCoreSetName();
     }
   }
 
@@ -857,6 +866,13 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
     // Initialize the metrics manager
     this.metricManager = initMetricManager(config);
+
+    // initialize searcher-related metrics
+    newSearcherCounter = SolrMetricManager.counter(metricManager.getRegistryName(), "newSearcher");
+    newSearcherTimer = SolrMetricManager.timer(metricManager.getRegistryName(), "newSearcherTime");
+    newSearcherWarmupTimer = SolrMetricManager.timer(metricManager.getRegistryName(), "newSearcherWarmup");
+    newSearcherMaxErrorsCounter = SolrMetricManager.counter(metricManager.getRegistryName(), "newSearcherMaxErrors");
+    newSearcherOtherErrorsCounter = SolrMetricManager.counter(metricManager.getRegistryName(), "newSearcherErrors");
 
     // Initialize JMX
     this.infoRegistry = initInfoRegistry(name, config);
@@ -1961,6 +1977,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       // first: increment count to signal other threads that we are
       //        opening a new searcher.
       onDeckSearchers++;
+      newSearcherCounter.inc();
       if (onDeckSearchers < 1) {
         // should never happen... just a sanity check
         log.error(logid+"ERROR!!! onDeckSearchers is " + onDeckSearchers);
@@ -1970,6 +1987,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
         String msg="Error opening new searcher. exceeded limit of maxWarmingSearchers="+maxWarmingSearchers + ", try again later.";
         log.warn(logid+""+ msg);
         // HTTP 503==service unavailable, or 409==Conflict
+        newSearcherMaxErrorsCounter.inc();
         throw new SolrException(SolrException.ErrorCode.SERVICE_UNAVAILABLE,msg);
       } else if (onDeckSearchers > 1) {
         log.warn(logid+"PERFORMANCE WARNING: Overlapping onDeckSearchers=" + onDeckSearchers);
@@ -1983,6 +2001,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     boolean success = false;
 
     openSearcherLock.lock();
+    Timer.Context timerContext = newSearcherTimer.time();
     try {
       searchHolder = openNewSearcher(updateHandlerReopens, false);
        // the searchHolder will be incremented once already (and it will eventually be assigned to _searcher when registered)
@@ -2025,6 +2044,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
         // should this go before the other event handlers or after?
         if (currSearcher != null) {
           future = searcherExecutor.submit(() -> {
+            Timer.Context warmupContext = newSearcherWarmupTimer.time();
             try {
               newSearcher.warm(currSearcher);
             } catch (Throwable e) {
@@ -2032,6 +2052,8 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
               if (e instanceof Error) {
                 throw (Error) e;
               }
+            } finally {
+              warmupContext.close();
             }
             return null;
           });
@@ -2112,7 +2134,10 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, e);
     } finally {
 
+      timerContext.close();
+
       if (!success) {
+        newSearcherOtherErrorsCounter.inc();;
         synchronized (searcherLock) {
           onDeckSearchers--;
 

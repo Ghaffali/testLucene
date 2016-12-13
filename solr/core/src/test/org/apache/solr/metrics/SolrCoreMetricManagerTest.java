@@ -149,4 +149,22 @@ public class SolrCoreMetricManagerTest extends SolrTestCaseJ4 {
       assertEquals(expectedMetric, actualMetric);
     }
   }
+
+  @Test
+  public void testRegistryName() throws Exception {
+    String collectionName = "my_collection_";
+    String cloudCoreName = "my_collection__shard1_0_replica0";
+    String simpleCoreName = "collection_1_replica0";
+    String simpleRegistryName = "solr.core." + simpleCoreName;
+    String cloudRegistryName = "solr.core." + cloudCoreName;
+    String nestedRegistryName = "solr.core.my_collection_.shard1_0.replica0";
+    // pass through
+    assertEquals(cloudRegistryName, metricManager.createRegistryName(null, cloudCoreName));
+    assertEquals(simpleRegistryName, metricManager.createRegistryName(null, simpleCoreName));
+    // unknown naming scheme -> pass through
+    assertEquals(simpleRegistryName, metricManager.createRegistryName(collectionName, simpleCoreName));
+    // cloud collection
+    assertEquals(nestedRegistryName, metricManager.createRegistryName(collectionName, cloudCoreName));
+
+  }
 }

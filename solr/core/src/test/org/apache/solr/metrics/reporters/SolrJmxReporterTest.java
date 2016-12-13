@@ -135,7 +135,6 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     Map<String, Counter> metrics = SolrMetricTestUtils.getRandomMetrics(random, true);
     SolrMetricProducer producer = SolrMetricTestUtils.getProducerOf(category, scope, metrics);
     metricManager.registerMetricProducer(scope, producer);
-
     Set<ObjectInstance> objects = mBeanServer.queryMBeans(null, null);
     assertEquals(metrics.size(), objects.stream().
         filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&

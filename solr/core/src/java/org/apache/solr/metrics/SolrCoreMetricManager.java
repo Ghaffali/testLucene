@@ -43,6 +43,7 @@ public class SolrCoreMetricManager implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final SolrCore core;
+  private String registryName;
 
   /**
    * Constructs a metric manager.
@@ -51,6 +52,7 @@ public class SolrCoreMetricManager implements Closeable {
    */
   public SolrCoreMetricManager(SolrCore core) {
     this.core = core;
+    registryName = createRegistryName(core.getCoreDescriptor().getCollectionName(), core.getName());
   }
 
   /**
@@ -60,25 +62,23 @@ public class SolrCoreMetricManager implements Closeable {
   public void loadReporters() {
     NodeConfig nodeConfig = core.getCoreDescriptor().getCoreContainer().getConfig();
     PluginInfo[] pluginInfos = nodeConfig.getMetricReporterPlugins();
-    SolrMetricManager.loadReporters(pluginInfos, core.getResourceLoader(), SolrInfoMBean.Group.core, core.getName());
+    SolrMetricManager.loadReporters(pluginInfos, core.getResourceLoader(), SolrInfoMBean.Group.core, registryName);
   }
 
   /**
    * Make sure that metrics already collected that correspond to the old core name
    * are carried over and will be used under the new core name.
    * This method also reloads reporters so that they use the new core name.
-   * @param oldCoreName core name before renaming, may be null
-   * @param newCoreName core name after renaming, not null
    */
-  public void afterCoreSetName(String oldCoreName, String newCoreName) {
-    if (newCoreName.equals(oldCoreName)) {
+  public void afterCoreSetName() {
+    String oldRegistryName = registryName;
+    registryName = createRegistryName(core.getCoreDescriptor().getCollectionName(), core.getName());
+    if (oldRegistryName.equals(registryName)) {
       return;
     }
-    String oldRegistryName = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, oldCoreName);
-    String newRegistryName = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, newCoreName);
     // close old reporters
     SolrMetricManager.closeReporters(oldRegistryName);
-    SolrMetricManager.moveMetrics(oldRegistryName, newRegistryName, null);
+    SolrMetricManager.moveMetrics(oldRegistryName, registryName, null);
     // old registry is no longer used - we have moved the metrics
     SolrMetricManager.removeRegistry(oldRegistryName);
     // load reporters again, using the new core name
@@ -118,9 +118,41 @@ public class SolrCoreMetricManager implements Closeable {
   /**
    * Retrieves the metric registry name of the manager.
    *
+   * In order to make it easier for reporting tools to aggregate metrics from
+   * different cores that logically belong to a single collection we convert the
+   * core name into a dot-separated hierarchy of: collection name, shard name (with optional split)
+   * and replica name.
+   *
+   * <p>For example, when the core name looks like this but it's NOT a SolrCloud collection:
+   * <code>my_collection_shard1_1_replica1</code> then this will be used as the registry name (plus
+   * the required <code>solr.core</code> prefix). However,
+   * if this is a SolrCloud collection <code>my_collection</code> then the registry name will become
+   * <code>solr.core.my_collection.shard1_1.replica1</code>.</p>
+   *
+   *
    * @return the metric registry name of the manager.
    */
   public String getRegistryName() {
-    return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, core.getName());
+    return registryName;
+  }
+
+  /* package visibility for tests. */
+  String createRegistryName(String collectionName, String coreName) {
+    if (collectionName == null || (collectionName != null && !coreName.startsWith(collectionName + "_"))) {
+      // single core, or unknown naming scheme
+      return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, coreName);
+    }
+    // split "collection1_shard1_1_replica1" into parts
+    String str = coreName.substring(collectionName.length() + 1);
+    String shard;
+    String replica = null;
+    int pos = str.lastIndexOf("_replica");
+    if (pos == -1) { // ?? no _replicaN part ??
+      shard = str;
+    } else {
+      shard = str.substring(0, pos);
+      replica = str.substring(pos + 1);
+    }
+    return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, collectionName, shard, replica);
   }
 }

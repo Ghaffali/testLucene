@@ -369,11 +369,27 @@ public class SolrMetricManager {
   /**
    * Helper method to construct a properly prefixed registry name based on the group.
    * @param group reporting group
-   * @param names optional child elements of the registry name
-   * @return fully-qualified and prefixed registry name
+   * @param names optional child elements of the registry name. If exactly one element is provided
+   *              and it already contains the required prefix and group name then this value will be used,
+   *              and the {@param group} parameter will be ignored.
+   * @return fully-qualified and prefixed registry name, with overrides applied.
    */
   public static String getRegistryName(SolrInfoMBean.Group group, String... names) {
-    String fullName = MetricRegistry.name(group.toString(), names);
+    String fullName;
+    String prefix = REGISTRY_NAME_PREFIX + group.toString() + ".";
+    // check for existing prefix and group
+    if (names != null && names.length > 0 && names[0] != null && names[0].startsWith(prefix)) {
+      // assume the first segment already was expanded
+      if (names.length > 1) {
+        String[] newNames = new String[names.length - 1];
+        System.arraycopy(names, 1, newNames, 0, newNames.length);
+        fullName = MetricRegistry.name(names[0], newNames);
+      } else {
+        fullName = MetricRegistry.name(names[0]);
+      }
+    } else {
+      fullName = MetricRegistry.name(group.toString(), names);
+    }
     return overridableRegistryName(fullName);
   }
 
@@ -388,13 +404,13 @@ public class SolrMetricManager {
    * @param pluginInfos plugin configurations
    * @param loader resource loader
    * @param group selected group, not null
-   * @param registry optional fully-qualified registry name
+   * @param registryNames optional child registry name elements
    */
-  public static void loadReporters(PluginInfo[] pluginInfos, SolrResourceLoader loader, SolrInfoMBean.Group group, String registry) {
+  public static void loadReporters(PluginInfo[] pluginInfos, SolrResourceLoader loader, SolrInfoMBean.Group group, String... registryNames) {
     if (pluginInfos == null || pluginInfos.length == 0) {
       return;
     }
-    String registryName = getRegistryName(group, registry);
+    String registryName = getRegistryName(group, registryNames);
     for (PluginInfo info : pluginInfos) {
       String target = info.attributes.get("group");
       if (target == null) { // no "group"
@@ -461,7 +477,7 @@ public class SolrMetricManager {
     try {
       reporter.init(pluginInfo);
     } catch (IllegalStateException e) {
-      throw new IllegalArgumentException("loadReporter called with invalid plugin info = " + pluginInfo);
+      throw new IllegalArgumentException("reporter init failed: " + pluginInfo, e);
     }
     try {
       if (!reportersLock.tryLock(10, TimeUnit.SECONDS)) {

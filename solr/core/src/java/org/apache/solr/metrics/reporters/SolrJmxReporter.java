@@ -243,9 +243,9 @@ public class SolrJmxReporter extends SolrMetricReporter {
         sb.append(metricInfo.category.toString());
         sb.append(",scope=");
         sb.append(metricInfo.scope);
-        // split by type, but don't call it 'type' :)
-        sb.append(",class=");
-        sb.append(type);
+        // we could also split by type, but don't call it 'type' :)
+        // sb.append(",class=");
+        //sb.append(type);
         sb.append(",name=");
         sb.append(metricInfo.name);
       } else {
@@ -263,9 +263,9 @@ public class SolrJmxReporter extends SolrMetricReporter {
           sb.append(',');
         }
         // split by type
-        sb.append("class=");
-        sb.append(type);
-        sb.append(",name=");
+        // sb.append("class=");
+        // sb.append(type);
+        sb.append("name=");
         sb.append(path[path.length - 1]);
       }
 

@@ -482,7 +482,7 @@ public class CoreContainer {
     if(pkiAuthenticationPlugin != null)
       containerHandlers.put(PKIAuthenticationPlugin.PATH, pkiAuthenticationPlugin.getRequestHandler());
 
-    SolrMetricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.node, null);
+    SolrMetricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.node);
 
     coreConfigService = ConfigSetService.createConfigSetService(cfg, loader, zkSys.zkController);
 
