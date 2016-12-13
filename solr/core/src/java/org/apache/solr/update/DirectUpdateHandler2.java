@@ -872,9 +872,11 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
           fieldsToUpdate.add((Field)field);
         }
       }
+      log.debug("updateDocValues({})", cmd);
       writer.updateDocValues(updateTerm, fieldsToUpdate.toArray(new Field[fieldsToUpdate.size()]));
     } else {
       Document luceneDocument = cmd.getLuceneDocument(false);
+      log.debug("updateDocument({})", cmd);
       writer.updateDocument(updateTerm, luceneDocument);
     }
   }
