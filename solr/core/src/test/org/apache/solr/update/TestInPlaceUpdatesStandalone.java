@@ -19,6 +19,7 @@
 package org.apache.solr.update;
 
 import static org.junit.internal.matchers.StringContains.containsString;
+import static org.apache.solr.update.UpdateLogTest.buildAddUpdateCommand;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -37,8 +38,8 @@ import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
-import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.update.processor.DistributedUpdateProcessor;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
@@ -975,64 +976,63 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
     assertEquals(102.0f, rtgDoc.getFieldValue("inplace_updatable_float"));
   }
 
-  /** @see AtomicUpdateDocumentMerger#isInPlaceUpdate */
+  /** 
+   * @see #callIsInPlaceUpdate
+   * @see AtomicUpdateDocumentMerger#isInPlaceUpdate 
+   */
   @Test
-  public void testIsInPlaceUpdate() throws Exception {
+  public void testIsInPlaceUpdate() throws Exception { // nocommit: rename when isInPlaceUpdate is renamed
     Set<String> inPlaceUpdatedFields = new HashSet<String>();
 
     // In-place updateable field updated before it exists SHOULD NOT BE in-place updated:
-    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(
-        UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_float", map("set", 10))));
+    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                                    "inplace_updatable_float", map("set", 10)));
     assertFalse(inPlaceUpdatedFields.contains("inplace_updatable_float"));
 
     // In-place updateable field updated after it exists SHOULD BE in-place updated:
     addAndGetVersion(sdoc("id", "1", "inplace_updatable_float", "0"), params()); // setting up the dv
-    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(
-        UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_float", map("set", 10))));
+    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                                    "inplace_updatable_float", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("inplace_updatable_float"));
 
-    inPlaceUpdatedFields.clear();
-    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(
-        UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_float", map("inc", 10))));
+    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                                    "inplace_updatable_float", map("inc", 10)));
     assertTrue(inPlaceUpdatedFields.contains("inplace_updatable_float"));
-
-    inPlaceUpdatedFields.clear();
-    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(
-        UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_int", map("set", 10))));
+    
+    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                                    "inplace_updatable_int", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("inplace_updatable_int"));
-
+    
     // Non in-place updates
-    inPlaceUpdatedFields.clear();
     addAndGetVersion(sdoc("id", "1", "stored_i", "0"), params()); // setting up the dv
-    assertTrue("stored field updated", AtomicUpdateDocumentMerger.isInPlaceUpdate(
-        UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "stored_i", map("inc", 1)))).isEmpty());
-
-    assertTrue("No map means full document update", AtomicUpdateDocumentMerger.isInPlaceUpdate(
-        UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_int", "100"))).isEmpty());
-
+    assertTrue("stored field updated",
+               callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L, "stored_i", map("inc", 1))).isEmpty());
+    
+    assertTrue("No map means full document update",
+               callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                        "inplace_updatable_int", "100")).isEmpty());
+  
     assertTrue("non existent dynamic dv field updated first time",
-        AtomicUpdateDocumentMerger.isInPlaceUpdate(
-            UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "new_updateable_int_i_dvo", map("set", 10)))).isEmpty());
-
+               callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                        "new_updateable_int_i_dvo", map("set", 10))).isEmpty());
+    
     // After adding a full document with the dynamic dv field, in-place update should work
     addAndGetVersion(sdoc("id", "2", "new_updateable_int_i_dvo", "0"), params()); // setting up the dv
-    if (random().nextBoolean())
+    if (random().nextBoolean()) {
       assertU(commit("softCommit", "false"));
-    inPlaceUpdatedFields.clear();
-    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate(
-        UpdateLogTest.getAddUpdate(null, sdoc("id", "2", "_version_", 42L, "new_updateable_int_i_dvo", map("set", 10))));
+    }
+    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "2", "_version_", 42L,
+                                                    "new_updateable_int_i_dvo", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("new_updateable_int_i_dvo"));
 
     // If a supported dv field has a copyField target which is supported, it should be an in-place update
-    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate
-      (UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L,
-                                             "copyfield1_src__both_updateable", map("set", 10))));
+    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                                    "copyfield1_src__both_updateable", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("copyfield1_src__both_updateable"));
 
     // If a supported dv field has a copyField target which is not supported, it should not be an in-place update
-    inPlaceUpdatedFields = AtomicUpdateDocumentMerger.isInPlaceUpdate
-      (UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L,
-                                             "copyfield2_src__only_src_updatable", map("set", 10))));
+    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+                                                    "copyfield2_src__only_src_updatable", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.isEmpty());
   }
 
@@ -1052,27 +1052,50 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
     version1 = addAndAssertVersion(version1, "id", "1", "inplace_updatable_float", map("set", 200));
 
     // Test the AUDM.doInPlaceUpdateMerge() method is working fine
-    AddUpdateCommand cmd = UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_float", map("inc", 10)));
-    SolrQueryRequest req = new LocalSolrQueryRequest(h.getCore(), params());
-    AtomicUpdateDocumentMerger docMerger = new AtomicUpdateDocumentMerger(req);
-    boolean done = docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd));
-    assertTrue(done);
-    assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
-    assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
-    assertEquals(210f, cmd.getSolrInputDocument().getFieldValue("inplace_updatable_float"));
-    assertFalse(cmd.getSolrInputDocument().containsKey("title_s")); // in-place merged doc shouldn't have non-inplace fields from the index/tlog
-    assertEquals(version1, cmd.prevVersion);
-
+    try (SolrQueryRequest req = req()) {
+      AddUpdateCommand cmd = buildAddUpdateCommand(req, sdoc("id", "1", "_version_", 42L,
+                                                             "inplace_updatable_float", map("inc", 10)));
+      AtomicUpdateDocumentMerger docMerger = new AtomicUpdateDocumentMerger(req);
+      assertTrue(docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd)));
+      assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
+      assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
+      assertEquals(210f, cmd.getSolrInputDocument().getFieldValue("inplace_updatable_float"));
+      // in-place merged doc shouldn't have non-inplace fields from the index/tlog
+      assertFalse(cmd.getSolrInputDocument().containsKey("title_s"));
+      assertEquals(version1, cmd.prevVersion);
+    }
+    
     // do a commit, and the same results should be repeated
     assertU(commit("softCommit", "false"));
 
-    cmd = UpdateLogTest.getAddUpdate(null, sdoc("id", "1", "_version_", 42L, "inplace_updatable_float", map("inc", 10)));
-    done = docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd));
-    assertTrue(done);
-    assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
-    assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
-    assertEquals(210f, cmd.getSolrInputDocument().getFieldValue("inplace_updatable_float"));
-    assertFalse(cmd.getSolrInputDocument().containsKey("title_s")); // in-place merged doc shouldn't have non-inplace fields from the index/tlog
-    assertEquals(version1, cmd.prevVersion);
+    // Test the AUDM.doInPlaceUpdateMerge() method is working fine
+    try (SolrQueryRequest req = req()) {
+      AddUpdateCommand cmd = buildAddUpdateCommand(req, sdoc("id", "1", "_version_", 42L,
+                                                             "inplace_updatable_float", map("inc", 10)));
+      AtomicUpdateDocumentMerger docMerger = new AtomicUpdateDocumentMerger(req);
+      assertTrue(docMerger.doInPlaceUpdateMerge(cmd, AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd)));
+      assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
+      assertEquals(42L, cmd.getSolrInputDocument().getFieldValue("_version_"));
+      assertEquals(210f, cmd.getSolrInputDocument().getFieldValue("inplace_updatable_float"));
+      // in-place merged doc shouldn't have non-inplace fields from the index/tlog
+      assertFalse(cmd.getSolrInputDocument().containsKey("title_s")); 
+      assertEquals(version1, cmd.prevVersion);
+    }
+  }
+  
+  /** 
+   * Helper method that sets up a req/cmd to run {@link AtomicUpdateDocumentMerger#isInPlaceUpdate} 
+   * on the specified solr input document.
+   */
+  private static Set<String> callIsInPlaceUpdate(final SolrInputDocument sdoc) throws Exception {
+    // nocommit: rename when isInPlaceUpdate is renamed
+
+    try (SolrQueryRequest req = req()) {
+      AddUpdateCommand cmd = new AddUpdateCommand(req);
+      cmd.solrDoc = sdoc;
+      assertTrue(cmd.solrDoc.containsKey(DistributedUpdateProcessor.VERSION_FIELD));
+      cmd.setVersion(Long.parseLong(cmd.solrDoc.getFieldValue(DistributedUpdateProcessor.VERSION_FIELD).toString()));
+      return AtomicUpdateDocumentMerger.isInPlaceUpdate(cmd);
+    }
   }
 }
