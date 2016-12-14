@@ -1108,8 +1108,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
               return true;
             }
 
-            if (cmd.isInPlaceUpdate()) { // nocommit: OUTER IF (see nocommits below regarding INNER ELSE)
-              
+            if (cmd.isInPlaceUpdate()) {
               long prev = cmd.prevVersion;
               Long lastVersion = vinfo.lookupVersion(cmd.getIndexedId());
               if (lastVersion == null || Math.abs(lastVersion) < prev) {
@@ -1118,57 +1117,43 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
                 // by the time synchronization block was entered, the prev update was deleted by DBQ. Since
                 // now that update is not in index, the vinfo.lookupVersion() is possibly giving us a version 
                 // from the deleted list (which might be older than the prev update!) 
-                AddUpdateCommand fetchedFromLeader = fetchFullUpdateFromLeader(cmd.getPrintableId(), 
-                    cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler());
+                AddUpdateCommand fetchedFromLeader = fetchFullUpdateFromLeader(cmd);
 
-                // nocommit: this log message isn't seem useful in it's current form...
-                // nocommit: it doesn't explain *why* it did a "fetch from leader" let alone why anyone should care
-                // nocommit: perhaps: ("In-place update of {} failed to find valid lastVersion to apply to, forced to fetch full doc from leader: {}", idBytes, ...)
-                log.info("Fetched from leader: {}", (fetchedFromLeader == null? null: fetchedFromLeader.solrDoc));
+                log.info("In-place update of {} failed to find valid lastVersion to apply to, forced to fetch full doc from leader: ",
+                    idBytes.utf8ToString(), (fetchedFromLeader == null? null: fetchedFromLeader.solrDoc));
 
                 if (fetchedFromLeader == null) {
                   log.debug("Leader told us that this document was subsequently deleted. lastVersion: " +
                     lastVersion + ", prev: " + prev + ", id: " + idBytes.utf8ToString() + ", lastFoundVersion: " + dependentVersionFound);
                   return true;
                 } else {
-                  // Newer document was fetched from the leader. Apply that document instead of this current
-                  // in-place update.
+                  // Newer document was fetched from the leader. Apply that document instead of this current in-place update.
                   log.debug("Newer document is available now. lastVersion: " +
                       lastVersion + ", prev: " + prev + ", id: " + idBytes.utf8ToString() + ", lastFoundVersion: " + dependentVersionFound);
 
-                  // nocommit: INNER ELSE -- I'm concerned/confused by this code happening here...
-                  //
-                  // at this point, we're replacing the data in our existing "in-place" update (cmd) so it
-                  // becomes a normal "add" using the full SolrInputDocument fetched from the leader
-                  //
-                  // but this if/else is itself is wrapped in a bigger if (grep for "OUTER IF" above
-                  // and "OUTER ELSE" below) where the "else" clause does some sanity checking / processing
-                  // logic for "// non inplace update, i.e. full document update" -- all of which is
-                  // skipped for our modified "cmd"
-                  //
-                  // shouldn't the logic in that outer else clause also be applied to our
-                  // "no longer really an in-place" update?
+                  // Make this update to become a non-inplace update containing the full document obtained from the leader
                   cmd.solrDoc = fetchedFromLeader.solrDoc;
                   cmd.prevVersion = -1;
                   cmd.setVersion((long)cmd.solrDoc.getFieldValue(VERSION_FIELD));
+                  assert cmd.isInPlaceUpdate() == false;
                 }
-              }
-
-              if (lastVersion != null && prev < Math.abs(lastVersion)) {
-                // this means we got a newer full doc update and in that case it makes no sense to apply the older
-                // inplace update. Drop this update
-                log.info("Update was applied on version: " + prev + ", but last version I have is: " + lastVersion
-                    + ". Dropping current update.");
-                return true;
               } else {
-                // We're good, we should apply this update. First, update the bucket's highest.
-                if (bucketVersion != 0 && bucketVersion < versionOnUpdate) {
-                  bucket.updateHighest(versionOnUpdate);
+                if (lastVersion != null && Math.abs(lastVersion) > prev) {
+                  // this means we got a newer full doc update and in that case it makes no sense to apply the older
+                  // inplace update. Drop this update
+                  log.info("Update was applied on version: " + prev + ", but last version I have is: " + lastVersion
+                      + ". Dropping current update.");
+                  return true;
+                } else {
+                  // We're good, we should apply this update. First, update the bucket's highest.
+                  if (bucketVersion != 0 && bucketVersion < versionOnUpdate) {
+                    bucket.updateHighest(versionOnUpdate);
+                  }
                 }
               }
-            } else { // non inplace update, i.e. full document update
-              // nocommit: OUTER ELSE (see nocommits above regarding INNER ELSE)
-              
+            }
+
+            if (!cmd.isInPlaceUpdate()) {
               // if we aren't the leader, then we need to check that updates were not re-ordered
               if (bucketVersion != 0 && bucketVersion < versionOnUpdate) {
                 // we're OK... this update has a version higher than anything we've seen
@@ -1262,29 +1247,8 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
             + ". Current update should be dropped. id={}", cmd.prevVersion, lastFoundVersion, cmd.getPrintableId());
       }
       return -1;
-    } else if (lastFoundVersion == cmd.prevVersion) {
-      // nocommit: suspicious comparison: why aren't we using Math.abs(lastFoundVersion) here?
-      //
-      // nocommit: most conditional checks on lastFoundVersion use Math.abs(lastFoundVersion) to account
-      // nocommit: for the possibility that it's negative -- which IIUC means that it was a delete
-      //
-      // i'm not entirely sure how/why/if the cmd.prevVersion could ever refer to a version corrisponding
-      // to a delete, but it's a possibility the code should account for one way or another..
-      //
-      // if the answer is "should never happen" then -- as with any situation where someone tells me
-      // something can never happen -- my response is "assert that it doesn't"
-      //
-      // nocommit: suggest replacing this "else if" clause with...
-      //
-      // } else if (Math.abs(lastFoundVersion) == cmd.prevVersion) {
-      //   assert 0 < lastFoundVersion : "prevVersion " + cmd.prevVersion + " found but is a delete!"
-      //   if (log.isDebugEnabled()) {
-      //     log.debug("Dependent update found. id={}", cmd.getPrintableId());
-      //   }
-      //   return lastFoundVersion;
-      // }
-      //
-      // nocommit: or am i missunderstanding? is there a deliberate reason Math.abs isn't being used here?
+    } else if (Math.abs(lastFoundVersion) == cmd.prevVersion) {
+      assert 0 < lastFoundVersion : "prevVersion " + cmd.prevVersion + " found but is a delete!";
       if (log.isDebugEnabled()) {
         log.debug("Dependent update found. id={}", cmd.getPrintableId());
       }
@@ -1295,8 +1259,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     log.info("Missing update, on which current in-place update depends on, hasn't arrived. id={}, looking for version={}, last found version={}", 
         cmd.getPrintableId(), cmd.prevVersion, lastFoundVersion);
     
-    AddUpdateCommand missingUpdate = fetchFullUpdateFromLeader(cmd.getPrintableId(), 
-        cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler());
+    AddUpdateCommand missingUpdate = fetchFullUpdateFromLeader(cmd);
     if (missingUpdate == null) {
       // nocommit: this message isn't helpful to users...
       // nocommit: it doesn't make it clear that we know/understand why his happened and it's "ok"
@@ -1318,12 +1281,9 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
    * sends a request to the shard leader to fetch the latest full document as seen on the leader.
    * @return AddUpdateCommand containing latest full doc at shard leader for the given id, or null if not found.
    */
-  private AddUpdateCommand fetchFullUpdateFromLeader(String id, UpdateShardHandler updateHandler) throws IOException {
-    // nocommit: why does this method take in a an a String id and UpdateShardHandler
-    // nocommit: when the only callers always pass the exact same values from an AddUpdateCommand?
-    //
-    // this method should just take in an AddUpdateCommand and let call cmd.getPrintableId() and cmd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler() itself 
-
+  private AddUpdateCommand fetchFullUpdateFromLeader(AddUpdateCommand inplaceAdd) throws IOException {
+    String id = inplaceAdd.getPrintableId();
+    UpdateShardHandler updateShardHandler = inplaceAdd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler();
     ModifiableSolrParams params = new ModifiableSolrParams();
     params.set("distrib", false);
     params.set("getInputDocument", id);
@@ -1356,7 +1316,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     }
     
     HttpSolrClient hsc = new HttpSolrClient.Builder(leaderUrl).
-        withHttpClient(updateHandler.getHttpClient()).build();
+        withHttpClient(updateShardHandler.getHttpClient()).build();
     NamedList rsp = null;
     try {
       rsp = hsc.request(ur);
