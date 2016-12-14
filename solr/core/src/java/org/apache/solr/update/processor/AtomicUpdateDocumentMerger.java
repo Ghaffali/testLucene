@@ -186,8 +186,16 @@ public class AtomicUpdateDocumentMerger {
       return Collections.emptySet();
     }
 
-    // lazy init this so we don't call iw.getFields() (and sync lock on IndexWriter) unless needed
     Set<String> fieldNamesFromIndexWriter = null;
+    SolrCore core = cmd.getReq().getCore();
+    RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
+    try {
+      IndexWriter iw = holder.get();
+      fieldNamesFromIndexWriter = iw.getFieldNames();
+    } finally {
+      holder.decref();
+    }
+
     // second pass over the candidates for in-place updates
     // this time more expensive checks
     for (String fieldName: candidateFields) {
@@ -203,16 +211,6 @@ public class AtomicUpdateDocumentMerger {
           return Collections.emptySet();
       }
 
-      if (null == fieldNamesFromIndexWriter) { // lazy init fieldNamesFromIndexWriter
-        SolrCore core = cmd.getReq().getCore();
-        RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
-        try {
-          IndexWriter iw = holder.get();
-          fieldNamesFromIndexWriter = iw.getFieldNames();
-        } finally {
-          holder.decref();
-        }
-      }
       if (! fieldNamesFromIndexWriter.contains(fieldName) ) {
         return Collections.emptySet(); // if this field doesn't exist, DV update can't work
       }

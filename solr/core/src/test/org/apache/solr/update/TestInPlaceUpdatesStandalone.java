@@ -977,7 +977,7 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
   }
 
   /** 
-   * @see #callIsInPlaceUpdate
+   * @see #callComputeInPlaceUpdateableFields
    * @see AtomicUpdateDocumentMerger#computeInPlaceUpdateableFields 
    */
   @Test
@@ -985,35 +985,35 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
     Set<String> inPlaceUpdatedFields = new HashSet<String>();
 
     // In-place updateable field updated before it exists SHOULD NOT BE in-place updated:
-    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                                     "inplace_updatable_float", map("set", 10)));
     assertFalse(inPlaceUpdatedFields.contains("inplace_updatable_float"));
 
     // In-place updateable field updated after it exists SHOULD BE in-place updated:
     addAndGetVersion(sdoc("id", "1", "inplace_updatable_float", "0"), params()); // setting up the dv
-    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                                     "inplace_updatable_float", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("inplace_updatable_float"));
 
-    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                                     "inplace_updatable_float", map("inc", 10)));
     assertTrue(inPlaceUpdatedFields.contains("inplace_updatable_float"));
     
-    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                                     "inplace_updatable_int", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("inplace_updatable_int"));
     
     // Non in-place updates
     addAndGetVersion(sdoc("id", "1", "stored_i", "0"), params()); // setting up the dv
     assertTrue("stored field updated",
-               callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L, "stored_i", map("inc", 1))).isEmpty());
+               callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L, "stored_i", map("inc", 1))).isEmpty());
     
     assertTrue("No map means full document update",
-               callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+               callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                         "inplace_updatable_int", "100")).isEmpty());
   
     assertTrue("non existent dynamic dv field updated first time",
-               callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+               callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                         "new_updateable_int_i_dvo", map("set", 10))).isEmpty());
     
     // After adding a full document with the dynamic dv field, in-place update should work
@@ -1021,17 +1021,17 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
     if (random().nextBoolean()) {
       assertU(commit("softCommit", "false"));
     }
-    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "2", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "2", "_version_", 42L,
                                                     "new_updateable_int_i_dvo", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("new_updateable_int_i_dvo"));
 
     // If a supported dv field has a copyField target which is supported, it should be an in-place update
-    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                                     "copyfield1_src__both_updateable", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("copyfield1_src__both_updateable"));
 
     // If a supported dv field has a copyField target which is not supported, it should not be an in-place update
-    inPlaceUpdatedFields = callIsInPlaceUpdate(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
                                                     "copyfield2_src__only_src_updatable", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.isEmpty());
   }
@@ -1087,7 +1087,7 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
    * Helper method that sets up a req/cmd to run {@link AtomicUpdateDocumentMerger#computeInPlaceUpdateableFields} 
    * on the specified solr input document.
    */
-  private static Set<String> callIsInPlaceUpdate(final SolrInputDocument sdoc) throws Exception {
+  private static Set<String> callComputeInPlaceUpdateableFields(final SolrInputDocument sdoc) throws Exception {
     try (SolrQueryRequest req = req()) {
       AddUpdateCommand cmd = new AddUpdateCommand(req);
       cmd.solrDoc = sdoc;
