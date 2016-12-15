@@ -44,6 +44,8 @@ import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.index.DefaultMergePolicyFactory;
 import org.apache.solr.index.MergePolicyFactory;
 import org.apache.solr.index.MergePolicyFactoryArgs;
+import org.apache.solr.index.MetricsMergePolicy;
+import org.apache.solr.index.MetricsMergeScheduler;
 import org.apache.solr.index.SortingMergePolicy;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.util.SolrPluginUtils;
@@ -70,6 +72,7 @@ public class SolrIndexConfig implements MapSerializable {
   public final int maxBufferedDocs;
   public final int maxMergeDocs;
   public final int mergeFactor;
+  public final boolean metrics;
 
   public final double ramBufferSizeMB;
 
@@ -92,6 +95,7 @@ public class SolrIndexConfig implements MapSerializable {
     maxBufferedDocs = -1;
     maxMergeDocs = -1;
     mergeFactor = -1;
+    metrics = true;
     ramBufferSizeMB = 100;
     writeLockTimeout = -1;
     lockType = DirectoryFactory.LOCK_TYPE_NATIVE;
@@ -139,6 +143,7 @@ public class SolrIndexConfig implements MapSerializable {
     maxBufferedDocs=solrConfig.getInt(prefix+"/maxBufferedDocs",def.maxBufferedDocs);
     maxMergeDocs=solrConfig.getInt(prefix+"/maxMergeDocs",def.maxMergeDocs);
     mergeFactor=solrConfig.getInt(prefix+"/mergeFactor",def.mergeFactor);
+    metrics= solrConfig.getBool(prefix+"/metrics", def.metrics);
     ramBufferSizeMB = solrConfig.getDouble(prefix+"/ramBufferSizeMB", def.ramBufferSizeMB);
 
     writeLockTimeout=solrConfig.getInt(prefix+"/writeLockTimeout", def.writeLockTimeout);
@@ -192,6 +197,7 @@ public class SolrIndexConfig implements MapSerializable {
         "maxBufferedDocs", maxBufferedDocs,
         "maxMergeDocs", maxMergeDocs,
         "mergeFactor", mergeFactor,
+        "metrics", metrics,
         "ramBufferSizeMB", ramBufferSizeMB,
         "writeLockTimeout", writeLockTimeout,
         "lockType", lockType,
@@ -236,8 +242,19 @@ public class SolrIndexConfig implements MapSerializable {
 
     iwc.setSimilarity(schema.getSimilarity());
     MergePolicy mergePolicy = buildMergePolicy(schema);
-    iwc.setMergePolicy(mergePolicy);
-    iwc.setMergeScheduler(buildMergeScheduler(schema));
+    if (metrics) {
+      MetricsMergePolicy metricsMergePolicy = new MetricsMergePolicy(core.getMetricManager().getRegistryName(), mergePolicy);
+      iwc.setMergePolicy(metricsMergePolicy);
+    } else {
+      iwc.setMergePolicy(mergePolicy);
+    }
+    MergeScheduler mergeScheduler = buildMergeScheduler(schema);
+    if (metrics) {
+      MetricsMergeScheduler metricsMergeScheduler = new MetricsMergeScheduler(core.getMetricManager().getRegistryName(), mergeScheduler);
+      iwc.setMergeScheduler(metricsMergeScheduler);
+    } else {
+      iwc.setMergeScheduler(mergeScheduler);
+    }
     iwc.setInfoStream(infoStream);
 
     if (mergePolicy instanceof SortingMergePolicy) {

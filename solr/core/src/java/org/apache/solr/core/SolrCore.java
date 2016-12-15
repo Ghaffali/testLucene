@@ -642,7 +642,11 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       dirFactory = new NRTCachingDirectoryFactory();
       dirFactory.initCoreContainer(getCoreDescriptor().getCoreContainer());
     }
-    return dirFactory;
+    if (solrConfig.indexConfig.metrics) {
+      return new MetricsDirectoryFactory(metricManager.getRegistryName(), dirFactory);
+    } else {
+      return dirFactory;
+    }
   }
 
   private void initIndexReaderFactory() {
@@ -847,6 +851,9 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     this.solrConfig = config;
     this.configSetProperties = configSetProperties;
 
+    // Initialize the metrics manager
+    this.metricManager = initMetricManager(config);
+
     if (updateHandler == null) {
       directoryFactory = initDirectoryFactory();
       solrCoreState = new DefaultSolrCoreState(directoryFactory);
@@ -862,9 +869,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     log.info("[{}] Opening new SolrCore at [{}], dataDir=[{}]", logid, resourceLoader.getInstancePath(), this.dataDir);
 
     checkVersionFieldExistsInSchema(schema, coreDescriptor);
-
-    // Initialize the metrics manager
-    this.metricManager = initMetricManager(config);
 
     // initialize searcher-related metrics
     newSearcherCounter = SolrMetricManager.counter(metricManager.getRegistryName(), "newSearcher");
