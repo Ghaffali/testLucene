@@ -152,13 +152,12 @@ public class AtomicUpdateDocumentMerger {
    */
   public static Set<String> computeInPlaceUpdateableFields(AddUpdateCommand cmd) throws IOException {
     SolrInputDocument sdoc = cmd.getSolrInputDocument();
-    BytesRef id = cmd.getIndexedId();
     IndexSchema schema = cmd.getReq().getSchema();
     
     final SchemaField uniqueKeyField = schema.getUniqueKeyField();
     final String uniqueKeyFieldName = null == uniqueKeyField ? null : uniqueKeyField.getName();
     
-    Set<String> candidateFields = new HashSet<>();
+    final Set<String> candidateFields = new HashSet<>();
 
     // first pass, check the things that are virtually free,
     // and bail out early if anything is obviously not a valid in-place update
@@ -186,18 +185,8 @@ public class AtomicUpdateDocumentMerger {
       return Collections.emptySet();
     }
 
-    Set<String> fieldNamesFromIndexWriter = null;
-    SolrCore core = cmd.getReq().getCore();
-    RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
-    try {
-      IndexWriter iw = holder.get();
-      fieldNamesFromIndexWriter = iw.getFieldNames();
-    } finally {
-      holder.decref();
-    }
-
     // second pass over the candidates for in-place updates
-    // this time more expensive checks
+    // this time more expensive checks involving schema/config settings
     for (String fieldName: candidateFields) {
       SchemaField schemaField = schema.getField(fieldName);
 
@@ -210,11 +199,29 @@ public class AtomicUpdateDocumentMerger {
         if (!isSupportedFieldForInPlaceUpdate(copyField.getDestination()))
           return Collections.emptySet();
       }
-
+    }
+    
+    // third pass: requiring checks against the actual IndexWriter due to internal DV update limitations
+    SolrCore core = cmd.getReq().getCore();
+    RefCounted<IndexWriter> holder = core.getSolrCoreState().getIndexWriter(core);
+    Set<String> fieldNamesFromIndexWriter = null;
+    Set<String> segmentSortingFields = null;
+    try {
+      IndexWriter iw = holder.get();
+      fieldNamesFromIndexWriter = iw.getFieldNames();
+      segmentSortingFields = iw.getConfig().getIndexSortFields();
+    } finally {
+      holder.decref();
+    }
+    for (String fieldName: candidateFields) {
       if (! fieldNamesFromIndexWriter.contains(fieldName) ) {
         return Collections.emptySet(); // if this field doesn't exist, DV update can't work
       }
+      if (segmentSortingFields.contains(fieldName) ) {
+        return Collections.emptySet(); // if this is used for segment sorting, DV updates can't work
+      }
     }
+    
     return candidateFields;
   }
   
