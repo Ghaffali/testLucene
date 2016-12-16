@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
@@ -36,7 +37,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
-import com.google.common.base.Preconditions;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
@@ -88,7 +88,7 @@ public class SolrMetricManager {
      *               name will match.
      */
     public PrefixFilter(String prefix) {
-      Preconditions.checkNotNull(prefix);
+      Objects.requireNonNull(prefix);
       this.prefix = prefix;
     }
 
