@@ -82,7 +82,7 @@ public class TestSegmentSorting extends SolrCloudTestCase {
       .setProperties(collectionProperties);
 
     if (random().nextBoolean()) {
-      assertEquals(RequestStatusState.COMPLETED, cmd.process(cloudSolrClient));
+      assertTrue( cmd.process(cloudSolrClient).isSuccess() );
     } else { // async
       assertEquals(RequestStatusState.COMPLETED, cmd.processAndWait(cloudSolrClient, 30));
     }
