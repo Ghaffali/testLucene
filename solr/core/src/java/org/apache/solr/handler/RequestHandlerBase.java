@@ -39,7 +39,7 @@ import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.search.SyntaxError;
 import org.apache.solr.util.SolrPluginUtils;
-import org.apache.solr.util.stats.TimerUtils;
+import org.apache.solr.util.stats.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -290,7 +290,7 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
     lst.add("serverErrors", numServerErrors.getCount());
     lst.add("clientErrors", numClientErrors.getCount());
     lst.add("timeouts", numTimeouts.getCount());
-    TimerUtils.addMetrics(lst, requestTimes);
+    MetricUtils.addMetrics(lst, requestTimes);
     return lst;
   }
 }

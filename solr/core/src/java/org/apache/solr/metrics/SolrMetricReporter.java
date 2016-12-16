@@ -17,7 +17,6 @@
 package org.apache.solr.metrics;
 
 import java.io.Closeable;
-import java.util.Locale;
 
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.util.SolrPluginUtils;
