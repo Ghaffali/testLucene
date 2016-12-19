@@ -27,6 +27,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 import org.apache.lucene.document.Document;
@@ -317,9 +318,11 @@ public class RealTimeGetComponent extends SearchComponent
 
     String idStr = params.get("getInputDocument", null);
     if (idStr == null) return;
-    SolrInputDocument doc = getInputDocument(req.getCore(), new BytesRef(idStr));
+    AtomicLong version = new AtomicLong();
+    SolrInputDocument doc = getInputDocument(req.getCore(), new BytesRef(idStr), version, false, null, true);
     log.info("getInputDocument called for id="+idStr+", returning: "+doc);
     rb.rsp.add("inputDocument", doc);
+    rb.rsp.add("version", version.get());
   }
 
   /**
@@ -495,11 +498,12 @@ public class RealTimeGetComponent extends SearchComponent
   /** returns the SolrInputDocument from the current tlog, or DELETED if it has been deleted, or
    * null if there is no record of it in the current update log.  If null is returned, it could
    * still be in the latest index.
+   * @param versionReturned If a non-null AtomicLong is passed in, it is set to the version of the update returned from the TLog.
    * @param resolveFullDocument In case the document is fetched from the tlog, it could only be a partial document if the last update
    *                  was an in-place update. In that case, should this partial document be resolved to a full document (by following
    *                  back prevPointer/prevVersion)?
    */
-  public static SolrInputDocument getInputDocumentFromTlog(SolrCore core, BytesRef idBytes,
+  public static SolrInputDocument getInputDocumentFromTlog(SolrCore core, BytesRef idBytes, AtomicLong versionReturned,
       Set<String> onlyTheseNonStoredDVs, boolean resolveFullDocument) {
 
     UpdateLog ulog = core.getUpdateHandler().getUpdateLog();
@@ -511,6 +515,9 @@ public class RealTimeGetComponent extends SearchComponent
         List entry = (List)o;
         assert entry.size() >= 3;
         int oper = (Integer)entry.get(0) & UpdateLog.OPERATION_MASK;
+        if (versionReturned != null) {
+          versionReturned.set((long)entry.get(UpdateLog.VERSION_IDX));
+        }
         switch (oper) {
           case UpdateLog.UPDATE_INPLACE:
             assert entry.size() == 5;
@@ -550,17 +557,18 @@ public class RealTimeGetComponent extends SearchComponent
    * Obtains the latest document for a given id from the tlog or index (if not found in the tlog).
    * 
    * NOTE: This method uses the effective value for avoidRetrievingStoredFields param as false and
-   * for nonStoredDVs as null in the call to @see {@link RealTimeGetComponent#getInputDocument(SolrCore, BytesRef, boolean, Set, boolean)},
+   * for nonStoredDVs as null in the call to @see {@link RealTimeGetComponent#getInputDocument(SolrCore, BytesRef, AtomicLong, boolean, Set, boolean)},
    * so as to retrieve all stored and non-stored DV fields from all documents. Also, it uses the effective value of
    * resolveFullDocument param as true, i.e. it resolves any partial documents (in-place updates), in case the 
    * document is fetched from the tlog, to a full document.
    */
   public static SolrInputDocument getInputDocument(SolrCore core, BytesRef idBytes) throws IOException {
-    return getInputDocument (core, idBytes, false, null, true);
+    return getInputDocument (core, idBytes, null, false, null, true);
   }
   
   /**
    * Obtains the latest document for a given id from the tlog or through the realtime searcher (if not found in the tlog). 
+   * @param versionReturned If a non-null AtomicLong is passed in, it is set to the version of the update returned from the TLog.
    * @param avoidRetrievingStoredFields Setting this to true avoids fetching stored fields through the realtime searcher,
    *                  however has no effect on documents obtained from the tlog. 
    *                  Non-stored docValues fields are populated anyway, and are not affected by this parameter. Note that if
@@ -572,13 +580,13 @@ public class RealTimeGetComponent extends SearchComponent
    *                  was an in-place update. In that case, should this partial document be resolved to a full document (by following
    *                  back prevPointer/prevVersion)?
    */
-  public static SolrInputDocument getInputDocument(SolrCore core, BytesRef idBytes, boolean avoidRetrievingStoredFields,
+  public static SolrInputDocument getInputDocument(SolrCore core, BytesRef idBytes, AtomicLong versionReturned, boolean avoidRetrievingStoredFields,
       Set<String> onlyTheseNonStoredDVs, boolean resolveFullDocument) throws IOException {
     SolrInputDocument sid = null;
     RefCounted<SolrIndexSearcher> searcherHolder = null;
     try {
       SolrIndexSearcher searcher = null;
-      sid = getInputDocumentFromTlog(core, idBytes, onlyTheseNonStoredDVs, resolveFullDocument);
+      sid = getInputDocumentFromTlog(core, idBytes, versionReturned, onlyTheseNonStoredDVs, resolveFullDocument);
       if (sid == DELETED) {
         return null;
       }
@@ -614,6 +622,11 @@ public class RealTimeGetComponent extends SearchComponent
       }
     }
 
+    if (versionReturned != null) {
+      if (sid.containsKey(DistributedUpdateProcessor.VERSION_FIELD)) {
+        versionReturned.set((long)sid.getFieldValue(DistributedUpdateProcessor.VERSION_FIELD));
+      }
+    }
     return sid;
   }
 

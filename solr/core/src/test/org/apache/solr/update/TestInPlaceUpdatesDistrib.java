@@ -125,7 +125,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
         "docValues",Boolean.TRUE));
 
     // Do the tests now:
-    
+    testDBQUsingUpdatedFieldFromDroppedUpdate();
     outOfOrderDBQsTest();
     docValuesUpdateTest();
     ensureRtgWorksWithPartialUpdatesTest();
@@ -870,7 +870,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
   
   Object getReplicaValue(SolrClient client, int doc, String field) throws SolrServerException, IOException {
     SolrDocument sdoc = client.getById(String.valueOf(doc), params("distrib", "false"));
-    return sdoc.get(field);
+    return sdoc==null? null: sdoc.get(field);
   }
 
   void assertReplicaValue(SolrClient client, int doc, String field, Object expected,
@@ -945,6 +945,12 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     return ur;
   }
 
+  UpdateRequest regularDeleteByQueryRequest(String q) throws SolrServerException, IOException {
+    UpdateRequest ur = new UpdateRequest();
+    ur.deleteByQuery(q);
+    return ur;
+  }
+
   @SuppressWarnings("rawtypes")
   protected long addDocAndGetVersion(Object... fields) throws Exception {
     SolrInputDocument doc = new SolrInputDocument();
@@ -1014,6 +1020,73 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     
     assert specialIds.size() == versions.size();
     return versions;
+  }
+
+  /*
+   * Situation:
+   * add(id=1,inpfield=12,title=mytitle,version=1)
+   * inp(id=1,inpfield=13,prevVersion=1,version=2) // timeout indefinitely
+   * inp(id=1,inpfield=14,prevVersion=2,version=3) // will wait till timeout, and then fetch a "not found" from leader
+   * dbq("inp:14",version=4)
+   */
+  private void testDBQUsingUpdatedFieldFromDroppedUpdate() throws Exception {
+    del("*:*");
+    commit();
+    
+    float inplace_updatable_float = 1F;
+    buildRandomIndex(inplace_updatable_float, false, Collections.singletonList(1));
+
+    List<UpdateRequest> updates = new ArrayList<>();
+    updates.add(regularUpdateRequest("id", 1, "id_i", 1, "inplace_updatable_float", 12, "title_s", "mytitle"));
+    updates.add(regularUpdateRequest("id", 1, "inplace_updatable_float", map("inc", 1))); // delay indefinitely
+    updates.add(regularUpdateRequest("id", 1, "inplace_updatable_float", map("inc", 1)));
+    updates.add(regularDeleteByQueryRequest("inplace_updatable_float:14"));
+
+    // The second request will be delayed very very long, so that the next update actually gives up waiting for this
+    // and fetches a full update from the leader.
+    shardToJetty.get(SHARD1).get(1).jetty.getDebugFilter().addDelay(
+        "Waiting for dependant update to timeout", 2, 8000);
+
+    long seed = random().nextLong(); // seed for randomization within the threads
+    ExecutorService threadpool =
+        ExecutorUtil.newMDCAwareFixedThreadPool(updates.size() + 1, new DefaultSolrThreadFactory(getTestName()));
+    for (UpdateRequest update : updates) {
+      AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, cloudClient, seed);
+      threadpool.submit(task);
+
+      // while we can't guarantee/trust what order the updates are executed in, since multiple threads
+      // are involved, but we're trying to bias the thread scheduling to run them in the order submitted
+      Thread.sleep(100); 
+    }
+
+    threadpool.shutdown();
+    assertTrue("Thread pool didn't terminate within 12 secs", threadpool.awaitTermination(12, TimeUnit.SECONDS));
+
+    commit();
+
+    // TODO: Could try checking ZK for LIR flags to ensure LIR has not kicked in
+    // Check every 10ms, 100 times, for a replica to go down (& assert that it doesn't)
+    for (int i=0; i<100; i++) {
+      Thread.sleep(10);
+      cloudClient.getZkStateReader().forceUpdateCollection(DEFAULT_COLLECTION);
+      ClusterState state = cloudClient.getZkStateReader().getClusterState();
+
+      int numActiveReplicas = 0;
+      for (Replica rep: state.getCollection(DEFAULT_COLLECTION).getSlice(SHARD1).getReplicas())
+        if (rep.getState().equals(Replica.State.ACTIVE))
+          numActiveReplicas++;
+
+      assertEquals("The replica receiving reordered updates must not have gone down", 3, numActiveReplicas);
+    }
+
+    for (SolrClient client : clients) {
+      log.info("Testing client (testDBQUsingUpdatedFieldFromDroppedUpdate): " + ((HttpSolrClient)client).getBaseURL());
+      log.info("Version at " + ((HttpSolrClient)client).getBaseURL() + " is: " + getReplicaValue(client, 1, "_version_"));
+
+      assertNull(client.getById("1", params("distrib", "false")));
+    }
+
+    log.info("testDBQUsingUpdatedFieldFromDroppedUpdate: This test passed fine...");
   }
   
 }

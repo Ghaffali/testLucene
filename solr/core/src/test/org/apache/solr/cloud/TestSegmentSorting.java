@@ -21,9 +21,7 @@ import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.lucene.index.TieredMergePolicy;
 import org.apache.lucene.util.TestUtil;
-import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.schema.SchemaRequest.Field;
@@ -32,7 +30,6 @@ import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.core.CoreDescriptor;
-import org.apache.solr.index.TieredMergePolicyFactory;
 
 import org.junit.After;
 import org.junit.Before;

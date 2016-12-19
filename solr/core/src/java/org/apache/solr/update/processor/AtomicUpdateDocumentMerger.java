@@ -242,6 +242,7 @@ public class AtomicUpdateDocumentMerger {
     updatedFields.add(DistributedUpdateProcessor.VERSION_FIELD); // add the version field so that it is fetched too
     SolrInputDocument oldDocument = RealTimeGetComponent.getInputDocument
       (cmd.getReq().getCore(), idBytes,
+       null, // don't want the version to be returned
        true, // avoid stored fields from index
        updatedFields,
        true); // resolve the full document

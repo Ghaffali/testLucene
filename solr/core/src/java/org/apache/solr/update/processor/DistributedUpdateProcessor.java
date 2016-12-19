@@ -1115,22 +1115,21 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
                 // by the time synchronization block was entered, the prev update was deleted by DBQ. Since
                 // now that update is not in index, the vinfo.lookupVersion() is possibly giving us a version 
                 // from the deleted list (which might be older than the prev update!) 
-                AddUpdateCommand fetchedFromLeader = fetchFullUpdateFromLeader(cmd);
+                UpdateCommand fetchedFromLeader = fetchFullUpdateFromLeader(cmd, versionOnUpdate);
 
-                log.info("In-place update of {} failed to find valid lastVersion to apply to, forced to fetch full doc from leader: ",
-                    idBytes.utf8ToString(), (fetchedFromLeader == null? null: fetchedFromLeader.solrDoc));
-
-                if (fetchedFromLeader == null) {
-                  log.debug("Leader told us that this document was subsequently deleted. lastVersion: " +
-                    lastVersion + ", prev: " + prev + ", id: " + idBytes.utf8ToString() + ", lastFoundVersion: " + dependentVersionFound);
+                if (fetchedFromLeader instanceof DeleteUpdateCommand) {
+                  log.info("In-place update of {} failed to find valid lastVersion to apply to, and the document"
+                      + " was deleted at the leader subsequently.", idBytes.utf8ToString());
+                  versionDelete((DeleteUpdateCommand)fetchedFromLeader);
                   return true;
                 } else {
+                  assert fetchedFromLeader instanceof AddUpdateCommand;
                   // Newer document was fetched from the leader. Apply that document instead of this current in-place update.
-                  log.debug("Newer document is available now. lastVersion: " +
-                      lastVersion + ", prev: " + prev + ", id: " + idBytes.utf8ToString() + ", lastFoundVersion: " + dependentVersionFound);
+                  log.info("In-place update of {} failed to find valid lastVersion to apply to, forced to fetch full doc from leader: {}",
+                      idBytes.utf8ToString(), (fetchedFromLeader == null? null: ((AddUpdateCommand)fetchedFromLeader).solrDoc));
 
                   // Make this update to become a non-inplace update containing the full document obtained from the leader
-                  cmd.solrDoc = fetchedFromLeader.solrDoc;
+                  cmd.solrDoc = ((AddUpdateCommand)fetchedFromLeader).solrDoc;
                   cmd.prevVersion = -1;
                   cmd.setVersion((long)cmd.solrDoc.getFieldValue(VERSION_FIELD));
                   assert cmd.isInPlaceUpdate() == false;
@@ -1257,20 +1256,18 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
     log.info("Missing update, on which current in-place update depends on, hasn't arrived. id={}, looking for version={}, last found version={}", 
         cmd.getPrintableId(), cmd.prevVersion, lastFoundVersion);
     
-    AddUpdateCommand missingUpdate = fetchFullUpdateFromLeader(cmd);
-    if (missingUpdate == null) {
-      // nocommit: this message isn't helpful to users...
-      // nocommit: it doesn't make it clear that we know/understand why his happened and it's "ok"
-      // nocommit: suggest: "Tried to fetch missing update from the leader, but leader says document has been deleted, skipping update (Last found version: {}, was looking for {}, id={})"
-      log.info("Tried to fetch missing update from the leader, but missing wasn't present at leader. "
-          + "Last found version: " + lastFoundVersion + ", was looking for: " + cmd.prevVersion + ", id=" + cmd.getPrintableId());
-      return -1; // -1 indicates deleted at leader.
+    UpdateCommand missingUpdate = fetchFullUpdateFromLeader(cmd, versionOnUpdate);
+    if (missingUpdate instanceof DeleteUpdateCommand) {
+      log.info("Tried to fetch document {} from the leader, but the leader says document has been deleted. " 
+          + "Deleting the document here and skipping this update: Last found version: {}, was looking for: {}", cmd.getPrintableId(), lastFoundVersion, cmd.prevVersion);
+      versionDelete((DeleteUpdateCommand)missingUpdate);
+      return -1;
+    } else {
+      assert missingUpdate instanceof AddUpdateCommand;
+      log.info("Fetched the document: {}", ((AddUpdateCommand)missingUpdate).getSolrInputDocument());
+      versionAdd((AddUpdateCommand)missingUpdate);
+      log.info("Added the fetched document, id="+((AddUpdateCommand)missingUpdate).getPrintableId()+", version="+missingUpdate.getVersion());
     }
-    log.info("Fetched the update: {}", missingUpdate);
-
-    versionAdd(missingUpdate);
-
-    log.info("Added the fetched update, id="+missingUpdate.getPrintableId()+", version="+missingUpdate.getVersion());
     return missingUpdate.getVersion();
   }
 
@@ -1279,7 +1276,7 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
    * sends a request to the shard leader to fetch the latest full document as seen on the leader.
    * @return AddUpdateCommand containing latest full doc at shard leader for the given id, or null if not found.
    */
-  private AddUpdateCommand fetchFullUpdateFromLeader(AddUpdateCommand inplaceAdd) throws IOException {
+  private UpdateCommand fetchFullUpdateFromLeader(AddUpdateCommand inplaceAdd, long versionOnUpdate) throws IOException {
     String id = inplaceAdd.getPrintableId();
     UpdateShardHandler updateShardHandler = inplaceAdd.getReq().getCore().getCoreDescriptor().getCoreContainer().getUpdateShardHandler();
     ModifiableSolrParams params = new ModifiableSolrParams();
@@ -1325,37 +1322,18 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
       hsc.close();
     }
     Object inputDocObj = rsp.get("inputDocument");
+    Long version = (Long)rsp.get("version");
     SolrInputDocument leaderDoc = (SolrInputDocument) inputDocObj;
 
     if (leaderDoc == null) {
-      return null; // desired update not found (likely deleted by now)
-      
-      // nocommit: i think there's a gap in the DUP logic related to how the results of this method
-      // nocommit: are used when it returns null -- ie: replicas never get dependent updates...
-      //
-      // nocommit: consider a situation like this..
-      //
-      //   - assume some doc D exists.
-      //   - assume replica1 gets an in-place update for D we'll call Y,
-      //     which is dependent on a prevVersion update we'll call X
-      //   - assume replica1 never recieved update X
-      //     - In current (patched) DUP code, this will cause replica1 to wait to see if X arrives out of order.
-      //     - assume X never arrives.
-      //   - In the current (patched) DUP code, replica1 will then ask the leader for the latest SolrInputDocument of D
-      //     - assume leader has already processed some update we'll call Z which did a DBQ that deleted D
-      //     - because of this, leader will return "null" to indicate D has been deleted
-      //   - when replica1 gets "null" from the leader, the current (patched) DUP code "drops" Y
-      //     - presumably this is because it shouldn't mater, and we expect to (eventually process) Z
-      //       to delete the doc from the local replica1
-      //   - but what if the Z's DBQ was dependent of the modified values of Y?
-      //     - ie: what if Y was "add(id=mydocid,field_i={set=42})" and Z was "deleteByQuery(field_i:42)" 
-      //
-      // nocommit: Shouldn't the current code paths where replicas will drop/ignore update Y when
-      // nocommit: fetchFullUpdateFromLeader returns null be changed so that instead replicas will explicitly
-      // nocommit: delete the docId involved???
-      // nocommit: or at the very least, fallback to handling this as a normal (non-inplace) "atomic update" ?
-
+      // this doc was not found (deleted) on the leader. Lets delete it here as well.
+      DeleteUpdateCommand del = new DeleteUpdateCommand(inplaceAdd.getReq());
+      del.setIndexedId(inplaceAdd.getIndexedId());
+      del.setId(inplaceAdd.getIndexedId().utf8ToString());
+      del.setVersion((version == null || version == 0)? -versionOnUpdate: version);
+      return del;
     }
+
     AddUpdateCommand cmd = new AddUpdateCommand(req);
     cmd.solrDoc = leaderDoc;
     cmd.setVersion((long)leaderDoc.getFieldValue(VERSION_FIELD));
