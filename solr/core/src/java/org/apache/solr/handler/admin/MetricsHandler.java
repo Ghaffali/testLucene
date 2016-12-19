@@ -48,13 +48,16 @@ import org.apache.solr.util.stats.MetricUtils;
  */
 public class MetricsHandler extends RequestHandlerBase implements PermissionNameProvider {
   final CoreContainer container;
+  final SolrMetricManager metricManager;
 
   public MetricsHandler() {
     this.container = null;
+    this.metricManager = null;
   }
 
   public MetricsHandler(CoreContainer container) {
     this.container = container;
+    this.metricManager = this.container.getMetricManager();
   }
 
   @Override
@@ -80,13 +83,13 @@ public class MetricsHandler extends RequestHandlerBase implements PermissionName
         container.getAllCoreNames().forEach(s -> {
           String coreRegistryName;
           try (SolrCore core = container.getCore(s)) {
-            coreRegistryName = core.getMetricManager().getRegistryName();
+            coreRegistryName = core.getCoreMetricManager().getRegistryName();
           }
-          MetricRegistry registry = SolrMetricManager.registry(coreRegistryName);
+          MetricRegistry registry = metricManager.registry(coreRegistryName);
           response.add(coreRegistryName, MetricUtils.toNamedList(registry, metricFilters));
         });
       } else {
-        MetricRegistry registry = SolrMetricManager.registry(registryName);
+        MetricRegistry registry = metricManager.registry(registryName);
         response.add(registryName, MetricUtils.toNamedList(registry, metricFilters));
       }
     }

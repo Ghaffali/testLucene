@@ -192,7 +192,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   private final PluginBag<SearchComponent> searchComponents = new PluginBag<>(SearchComponent.class, this);
   private final PluginBag<UpdateRequestProcessorFactory> updateProcessors = new PluginBag<>(UpdateRequestProcessorFactory.class, this, true);
   private final Map<String,UpdateRequestProcessorChain> updateProcessorChains;
-  private final SolrCoreMetricManager metricManager;
+  private final SolrCoreMetricManager coreMetricManager;
   private final Map<String, SolrInfoMBean> infoRegistry;
   private final IndexDeletionPolicyWrapper solrDelPolicy;
   private final SolrSnapshotMetaDataManager snapshotMgr;
@@ -402,8 +402,8 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     this.name = v;
     this.logid = (v==null)?"":("["+v+"] ");
     this.coreDescriptor = new CoreDescriptor(v, this.coreDescriptor);
-    if (metricManager != null) {
-      metricManager.afterCoreSetName();
+    if (coreMetricManager != null) {
+      coreMetricManager.afterCoreSetName();
     }
   }
 
@@ -417,8 +417,8 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
    *
    * @return the {@link SolrCoreMetricManager} for this core
    */
-  public SolrCoreMetricManager getMetricManager() {
-    return metricManager;
+  public SolrCoreMetricManager getCoreMetricManager() {
+    return coreMetricManager;
   }
 
   /**
@@ -864,14 +864,16 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     checkVersionFieldExistsInSchema(schema, coreDescriptor);
 
     // Initialize the metrics manager
-    this.metricManager = initMetricManager(config);
+    this.coreMetricManager = initCoreMetricManager(config);
+
+    SolrMetricManager metricManager = this.coreDescriptor.getCoreContainer().getMetricManager();
 
     // initialize searcher-related metrics
-    newSearcherCounter = SolrMetricManager.counter(metricManager.getRegistryName(), "newSearcher");
-    newSearcherTimer = SolrMetricManager.timer(metricManager.getRegistryName(), "newSearcherTime");
-    newSearcherWarmupTimer = SolrMetricManager.timer(metricManager.getRegistryName(), "newSearcherWarmup");
-    newSearcherMaxReachedCounter = SolrMetricManager.counter(metricManager.getRegistryName(), "newSearcherMaxReached");
-    newSearcherOtherErrorsCounter = SolrMetricManager.counter(metricManager.getRegistryName(), "newSearcherErrors");
+    newSearcherCounter = metricManager.counter(coreMetricManager.getRegistryName(), "newSearcher");
+    newSearcherTimer = metricManager.timer(coreMetricManager.getRegistryName(), "newSearcherTime");
+    newSearcherWarmupTimer = metricManager.timer(coreMetricManager.getRegistryName(), "newSearcherWarmup");
+    newSearcherMaxReachedCounter = metricManager.counter(coreMetricManager.getRegistryName(), "newSearcherMaxReached");
+    newSearcherOtherErrorsCounter = metricManager.counter(coreMetricManager.getRegistryName(), "newSearcherErrors");
 
     // Initialize JMX
     this.infoRegistry = initInfoRegistry(name, config);
@@ -1083,10 +1085,10 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
    * @param config the given configuration
    * @return an instance of {@link SolrCoreMetricManager}
    */
-  private SolrCoreMetricManager initMetricManager(SolrConfig config) {
-    SolrCoreMetricManager metricManager = new SolrCoreMetricManager(this);
-    metricManager.loadReporters();
-    return metricManager;
+  private SolrCoreMetricManager initCoreMetricManager(SolrConfig config) {
+    SolrCoreMetricManager coreMetricManager = new SolrCoreMetricManager(this);
+    coreMetricManager.loadReporters();
+    return coreMetricManager;
   }
 
   private Map<String,SolrInfoMBean> initInfoRegistry(String name, SolrConfig config) {
@@ -1410,7 +1412,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     }
 
     try {
-      metricManager.close();
+      coreMetricManager.close();
     } catch (Throwable e) {
       SolrException.log(log, e);
       if (e instanceof  Error) {
@@ -2819,7 +2821,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
     if (solrInfoMBean instanceof SolrMetricProducer) {
       SolrMetricProducer producer = (SolrMetricProducer) solrInfoMBean;
-      metricManager.registerMetricProducer(name, producer);
+      coreMetricManager.registerMetricProducer(name, producer);
     }
   }
 

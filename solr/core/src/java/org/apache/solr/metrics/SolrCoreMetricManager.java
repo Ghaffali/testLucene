@@ -37,6 +37,7 @@ public class SolrCoreMetricManager implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final SolrCore core;
+  private final SolrMetricManager metricManager;
   private String registryName;
 
   /**
@@ -46,6 +47,7 @@ public class SolrCoreMetricManager implements Closeable {
    */
   public SolrCoreMetricManager(SolrCore core) {
     this.core = core;
+    this.metricManager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
     registryName = createRegistryName(core.getCoreDescriptor().getCollectionName(), core.getName());
   }
 
@@ -56,7 +58,7 @@ public class SolrCoreMetricManager implements Closeable {
   public void loadReporters() {
     NodeConfig nodeConfig = core.getCoreDescriptor().getCoreContainer().getConfig();
     PluginInfo[] pluginInfos = nodeConfig.getMetricReporterPlugins();
-    SolrMetricManager.loadReporters(pluginInfos, core.getResourceLoader(), SolrInfoMBean.Group.core, registryName);
+    metricManager.loadReporters(pluginInfos, core.getResourceLoader(), SolrInfoMBean.Group.core, registryName);
   }
 
   /**
@@ -71,10 +73,10 @@ public class SolrCoreMetricManager implements Closeable {
       return;
     }
     // close old reporters
-    SolrMetricManager.closeReporters(oldRegistryName);
-    SolrMetricManager.moveMetrics(oldRegistryName, registryName, null);
+    metricManager.closeReporters(oldRegistryName);
+    metricManager.moveMetrics(oldRegistryName, registryName, null);
     // old registry is no longer used - we have moved the metrics
-    SolrMetricManager.removeRegistry(oldRegistryName);
+    metricManager.removeRegistry(oldRegistryName);
     // load reporters again, using the new core name
     loadReporters();
   }
@@ -90,7 +92,7 @@ public class SolrCoreMetricManager implements Closeable {
       throw new IllegalArgumentException("registerMetricProducer() called with illegal arguments: " +
           "scope = " + scope + ", producer = " + producer);
     }
-    Collection<String> registered = producer.initializeMetrics(getRegistryName(), scope);
+    Collection<String> registered = producer.initializeMetrics(metricManager, getRegistryName(), scope);
     if (registered == null || registered.isEmpty()) {
       throw new IllegalArgumentException("registerMetricProducer() did not register any metrics " +
       "for scope = " + scope + ", producer = " + producer);
@@ -102,7 +104,7 @@ public class SolrCoreMetricManager implements Closeable {
    */
   @Override
   public void close() throws IOException {
-    SolrMetricManager.closeReporters(getRegistryName());
+    metricManager.closeReporters(getRegistryName());
   }
 
   public SolrCore getCore() {

@@ -133,13 +133,13 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
   }
 
   @Override
-  public Collection<String> initializeMetrics(String registryName, String scope) {
-    numErrors = SolrMetricManager.meter(registryName, "errors", getCategory().toString(), scope);
-    numServerErrors = SolrMetricManager.meter(registryName, "serverErrors", getCategory().toString(), scope);
-    numClientErrors = SolrMetricManager.meter(registryName, "clientErrors", getCategory().toString(), scope);
-    numTimeouts = SolrMetricManager.meter(registryName, "timeouts", getCategory().toString(), scope);
-    requests = SolrMetricManager.counter(registryName, "requests", getCategory().toString(), scope);
-    requestTimes = SolrMetricManager.timer(registryName, "requestTimes", getCategory().toString(), scope);
+  public Collection<String> initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    numErrors = manager.meter(registryName, "errors", getCategory().toString(), scope);
+    numServerErrors = manager.meter(registryName, "serverErrors", getCategory().toString(), scope);
+    numClientErrors = manager.meter(registryName, "clientErrors", getCategory().toString(), scope);
+    numTimeouts = manager.meter(registryName, "timeouts", getCategory().toString(), scope);
+    requests = manager.counter(registryName, "requests", getCategory().toString(), scope);
+    requestTimes = manager.timer(registryName, "requestTimes", getCategory().toString(), scope);
     return Arrays.asList("errors", "serverErrors", "clientErrors", "timeouts", "requestTimes", "requests");
   }
 

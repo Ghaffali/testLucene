@@ -161,6 +161,8 @@ public class CoreContainer {
 
   private BackupRepositoryFactory backupRepoFactory;
 
+  protected SolrMetricManager metricManager;
+
   protected MetricsHandler metricsHandler;
 
   /**
@@ -430,6 +432,10 @@ public class CoreContainer {
     return pkiAuthenticationPlugin;
   }
 
+  public SolrMetricManager getMetricManager() {
+    return metricManager;
+  }
+
   //-------------------------------------------------------------------
   // Initialization / Cleanup
   //-------------------------------------------------------------------
@@ -470,6 +476,8 @@ public class CoreContainer {
 
     MDCLoggingContext.setNode(this);
 
+    metricManager = new SolrMetricManager();
+
     securityConfHandler = isZooKeeperAware() ? new SecurityConfHandlerZk(this) : new SecurityConfHandlerLocal(this);
     reloadSecurityProperties();
     this.backupRepoFactory = new BackupRepositoryFactory(cfg.getBackupRepositoryPlugins());
@@ -481,12 +489,15 @@ public class CoreContainer {
     configSetsHandler = createHandler(CONFIGSETS_HANDLER_PATH, cfg.getConfigSetsHandlerClass(), ConfigSetsHandler.class);
     metricsHandler = createHandler(METRICS_PATH, MetricsHandler.class.getName(), MetricsHandler.class);
     containerHandlers.put(AUTHZ_PATH, securityConfHandler);
-    securityConfHandler.initializeMetrics(SolrInfoMBean.Group.node.toString(), AUTHZ_PATH);
+    securityConfHandler.initializeMetrics(metricManager, SolrInfoMBean.Group.node.toString(), AUTHZ_PATH);
     containerHandlers.put(AUTHC_PATH, securityConfHandler);
     if(pkiAuthenticationPlugin != null)
       containerHandlers.put(PKIAuthenticationPlugin.PATH, pkiAuthenticationPlugin.getRequestHandler());
 
-    SolrMetricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.node);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.node);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.jvm);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.jetty);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.http);
 
     coreConfigService = ConfigSetService.createConfigSetService(cfg, loader, zkSys.zkController);
 
@@ -497,11 +508,11 @@ public class CoreContainer {
     Gauge<Integer> lazyCores = () -> solrCores.getCoreNames().size() - solrCores.getCores().size();
     Gauge<Integer> unloadedCores = () -> solrCores.getAllCoreNames().size() - solrCores.getCoreNames().size();
 
-    SolrMetricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
+    metricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
         loadedCores, true, "loaded", "cores");
-    SolrMetricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
+    metricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
         lazyCores, true, "lazy", "cores");
-    SolrMetricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
+    metricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
         unloadedCores, true, "unloaded", "cores");
 
     // setup executor to load cores in parallel
@@ -677,7 +688,9 @@ public class CoreContainer {
       }
     }
 
-    SolrMetricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node));
+    if (metricManager != null) {
+      metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node));
+    }
 
     // It should be safe to close the authorization plugin at this point.
     try {
@@ -1056,7 +1069,7 @@ public class CoreContainer {
     coresLocator.delete(this, cd);
 
     // delete metrics specific to this core
-    SolrMetricManager.removeRegistry(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, name));
+    metricManager.removeRegistry(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, name));
 
     if (core == null) {
       // transient core
@@ -1197,7 +1210,7 @@ public class CoreContainer {
       containerHandlers.put(path, (SolrRequestHandler)handler);
     }
     if (handler instanceof SolrMetricProducer) {
-      ((SolrMetricProducer)handler).initializeMetrics(SolrInfoMBean.Group.node.toString(), path);
+      ((SolrMetricProducer)handler).initializeMetrics(metricManager, SolrInfoMBean.Group.node.toString(), path);
     }
     return handler;
   }

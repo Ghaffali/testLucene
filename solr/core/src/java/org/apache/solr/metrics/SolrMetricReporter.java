@@ -18,6 +18,7 @@ package org.apache.solr.metrics;
 
 import java.io.Closeable;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.util.SolrPluginUtils;
 import org.apache.solr.util.plugin.PluginInfoInitialized;
@@ -28,6 +29,7 @@ import org.apache.solr.util.plugin.PluginInfoInitialized;
 public abstract class SolrMetricReporter implements Closeable, PluginInfoInitialized {
 
   protected final String registryName;
+  protected final SolrMetricManager metricManager;
   protected PluginInfo pluginInfo;
 
   /**
@@ -35,8 +37,9 @@ public abstract class SolrMetricReporter implements Closeable, PluginInfoInitial
    * @param registryName registry to use, one of registries managed by
    *                     {@link SolrMetricManager}
    */
-  protected SolrMetricReporter(String registryName) {
+  protected SolrMetricReporter(SolrMetricManager metricManager, String registryName) {
     this.registryName = registryName;
+    this.metricManager = metricManager;
   }
 
   /**

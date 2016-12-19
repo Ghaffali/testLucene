@@ -79,15 +79,15 @@ public final class SolrMetricTestUtils {
     return metrics;
   }
 
-  public static SolrMetricProducer getProducerOf(SolrInfoMBean.Category category, String scope, Map<String, Counter> metrics) {
+  public static SolrMetricProducer getProducerOf(SolrMetricManager metricManager, SolrInfoMBean.Category category, String scope, Map<String, Counter> metrics) {
     return new SolrMetricProducer() {
       @Override
-      public Collection<String> initializeMetrics(String registry, String scope) {
+      public Collection<String> initializeMetrics(SolrMetricManager manager, String registry, String scope) {
         if (metrics == null || metrics.isEmpty()) {
           return Collections.emptyList();
         }
         for (Map.Entry<String, Counter> entry : metrics.entrySet()) {
-          SolrMetricManager.counter(registry, entry.getKey(), category.toString(), scope);
+          manager.counter(registry, entry.getKey(), category.toString(), scope);
         }
         return metrics.keySet();
       }

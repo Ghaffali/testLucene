@@ -156,7 +156,6 @@ public class SolrDispatchFilter extends BaseSolrFilter {
         excludePatterns.add(Pattern.compile(element));
       }
     }
-    setupJvmMetrics();
     try {
       Properties extraProperties = (Properties) config.getServletContext().getAttribute(PROPERTIES_ATTRIBUTE);
       if (extraProperties == null)
@@ -168,6 +167,7 @@ public class SolrDispatchFilter extends BaseSolrFilter {
       this.cores = createCoreContainer(solrHome == null ? SolrResourceLoader.locateSolrHome() : Paths.get(solrHome),
                                        extraProperties);
       this.httpClient = cores.getUpdateShardHandler().getHttpClient();
+      setupJvmMetrics();
       log.debug("user.dir=" + System.getProperty("user.dir"));
     }
     catch( Throwable t ) {
@@ -184,15 +184,15 @@ public class SolrDispatchFilter extends BaseSolrFilter {
 
   private void setupJvmMetrics()  {
     MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
+    SolrMetricManager metricManager = cores.getMetricManager();
     try {
       String registry = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.jvm);
-      SolrMetricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true);
-      SolrMetricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true);
-      SolrMetricManager.registerAll(registry, new ClassLoadingGaugeSet(), true);
-      SolrMetricManager.register(registry, new FileDescriptorRatioGauge(), true, "fileDescriptorRatio");
-      SolrMetricManager.registerAll(registry, new GarbageCollectorMetricSet(), true);
-      SolrMetricManager.registerAll(registry, new MemoryUsageGaugeSet(), true);
-      SolrMetricManager.registerAll(registry, new ThreadStatesGaugeSet(), true); // todo should we use CachedThreadStatesGaugeSet instead?
+      metricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true, "bufferPools");
+      metricManager.registerAll(registry, new ClassLoadingGaugeSet(), true, "classLoading");
+      metricManager.register(registry, new FileDescriptorRatioGauge(), true, "fileDescriptorRatio");
+      metricManager.registerAll(registry, new GarbageCollectorMetricSet(), true, "gc");
+      metricManager.registerAll(registry, new MemoryUsageGaugeSet(), true, "memory");
+      metricManager.registerAll(registry, new ThreadStatesGaugeSet(), true, "threads"); // todo should we use CachedThreadStatesGaugeSet instead?
     } catch (Exception e) {
       log.warn("Error registering JVM metrics", e);
     }

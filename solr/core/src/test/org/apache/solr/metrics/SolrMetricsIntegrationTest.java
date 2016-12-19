@@ -54,6 +54,7 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
   private static final SolrInfoMBean.Category HANDLER_CATEGORY = SolrInfoMBean.Category.QUERYHANDLER;
 
   private CoreContainer cc;
+  private SolrMetricManager metricManager;
 
   @Before
   public void beforeTest() throws Exception {
@@ -66,8 +67,9 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
     cc = createCoreContainer(cfg,
         new TestHarness.TestCoresLocator(DEFAULT_TEST_CORENAME, initCoreDataDir.getAbsolutePath(), "solrconfig.xml", "schema.xml"));
     h.coreName = DEFAULT_TEST_CORENAME;
+    metricManager = cc.getMetricManager();
     // initially there are more reporters, because two of them are added via a matching collection name
-    Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters("solr.core." + DEFAULT_TEST_CORENAME);
+    Map<String, SolrMetricReporter> reporters = metricManager.getReporters("solr.core." + DEFAULT_TEST_CORENAME);
     assertEquals(INITIAL_REPORTERS.length, reporters.size());
     assertTrue(reporters.keySet().containsAll(Arrays.asList(INITIAL_REPORTERS)));
     // test rename operation
@@ -77,7 +79,7 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
     PluginInfo[] plugins = cfg.getMetricReporterPlugins();
     assertNotNull(plugins);
     assertEquals(10, plugins.length);
-    reporters = SolrMetricManager.getReporters("solr.node");
+    reporters = metricManager.getReporters("solr.node");
     assertEquals(4, reporters.size());
     assertTrue("Reporter '" + REPORTER_NAMES[0] + "' missing in solr.node", reporters.containsKey(REPORTER_NAMES[0]));
     assertTrue("Reporter '" + UNIVERSAL + "' missing in solr.node", reporters.containsKey(UNIVERSAL));
@@ -93,8 +95,8 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
 
   @After
   public void afterTest() throws Exception {
-    SolrCoreMetricManager metricManager = h.getCore().getMetricManager();
-    Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters(metricManager.getRegistryName());
+    SolrCoreMetricManager coreMetricManager = h.getCore().getCoreMetricManager();
+    Map<String, SolrMetricReporter> reporters = metricManager.getReporters(coreMetricManager.getRegistryName());
 
     deleteCore();
 
@@ -110,8 +112,8 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
     Random random = random();
 
     String metricName = SolrMetricManager.mkName(METRIC_NAME, HANDLER_CATEGORY.toString(), HANDLER_NAME);
-    SolrCoreMetricManager metricManager = h.getCore().getMetricManager();
-    Timer timer = (Timer) SolrMetricManager.timer(metricManager.getRegistryName(), metricName);
+    SolrCoreMetricManager coreMetricManager = h.getCore().getCoreMetricManager();
+    Timer timer = (Timer) metricManager.timer(coreMetricManager.getRegistryName(), metricName);
 
     long initialCount = timer.getCount();
 
@@ -122,7 +124,7 @@ public class SolrMetricsIntegrationTest extends SolrTestCaseJ4 {
 
     long finalCount = timer.getCount();
     assertEquals("metric counter incorrect", iterations, finalCount - initialCount);
-    Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters(metricManager.getRegistryName());
+    Map<String, SolrMetricReporter> reporters = metricManager.getReporters(coreMetricManager.getRegistryName());
     assertEquals(RENAMED_REPORTERS.length, reporters.size());
 
     // SPECIFIC and MULTIREGISTRY were skipped because they were

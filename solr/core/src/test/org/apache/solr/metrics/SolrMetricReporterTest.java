@@ -34,8 +34,10 @@ public class SolrMetricReporterTest extends LuceneTestCase {
   public void testInit() throws Exception {
     Random random = random();
 
+    SolrMetricManager metricManager = new SolrMetricManager();
+
     final String registryName = TestUtil.randomSimpleString(random);
-    final MockMetricReporter reporter = new MockMetricReporter(registryName);
+    final MockMetricReporter reporter = new MockMetricReporter(metricManager, registryName);
 
     Map<String, Object> attrs = new HashMap<>();
     attrs.put(FieldType.CLASS_NAME, MockMetricReporter.class.getName());
