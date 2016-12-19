@@ -280,18 +280,18 @@ public class SolrMetricManager {
    * Register an instance of {@link Metric}.
    * @param registry registry name
    * @param metric metric instance
-   * @param skipExisting if true then already an existing metric with the same name will be kept.
+   * @param force if true then an already existing metric with the same name will be replaced.
    *                     When false and a metric with the same name already exists an exception
    *                     will be thrown.
    * @param metricName metric name, either final name or a fully-qualified name
    *                   using dotted notation
    * @param metricPath (optional) additional top-most metric name path elements
    */
-  public static void register(String registry, Metric metric, boolean skipExisting, String metricName, String... metricPath) {
+  public static void register(String registry, Metric metric, boolean force, String metricName, String... metricPath) {
     MetricRegistry metricRegistry = registry(registry);
     String fullName = mkName(metricName, metricPath);
-    if (skipExisting && metricRegistry.getMetrics().containsKey(fullName)) {
-      return;
+    if (force && metricRegistry.getMetrics().containsKey(fullName)) {
+      metricRegistry.remove(fullName);
     }
     metricRegistry.register(fullName, metric);
   }

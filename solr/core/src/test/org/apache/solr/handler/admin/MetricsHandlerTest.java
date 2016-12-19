@@ -53,6 +53,8 @@ public class MetricsHandlerTest extends SolrTestCaseJ4 {
     assertNotNull(((NamedList) nl.get("newSearcherErrors")).get("requests"));
     assertEquals(0L, ((NamedList) nl.get("newSearcherErrors")).get("requests"));
     nl = (NamedList) values.get("solr.node");
+    assertNotNull(nl.get("cores.loaded")); // int gauge
+    assertEquals(1, ((NamedList) nl.get("cores.loaded")).get("value"));
     assertNotNull(nl.get("QUERYHANDLER./admin/authorization.clientErrors")); // timer type
     assertEquals(5, ((NamedList) nl.get("QUERYHANDLER./admin/authorization.clientErrors")).size());
 
