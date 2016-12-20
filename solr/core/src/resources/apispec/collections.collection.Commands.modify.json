@@ -21,7 +21,7 @@
     },
     "autoAddReplicas": {
       "type": "boolean",
-      "description": "When set to true, enables auto addition of replicas on shared file systems (such as HDFS). See https://cwiki.apache.org/confluence/display/solr/Running+Solr+on+HDFS for more details on settings and overrides.",
+      "description": "When set to true, enables auto addition of replicas on shared file systems (such as HDFS). See https://cwiki.apache.org/confluence/display/solr/Running+Solr+on+HDFS for more details on settings and overrides."
     },
     "replicationFactor": {
       "type": "string",

@@ -79,7 +79,7 @@
           "description": "Defines rules for where replicas should be located in a cluster.",
           "items": {
             "type": "string"
-          },
+          }
         },
         "snitch": {
           "type": "array",
@@ -87,7 +87,7 @@
           "description": "",
           "items": {
             "type": "string"
-          },
+          }
         },
         "properties": {
           "type": "object",
