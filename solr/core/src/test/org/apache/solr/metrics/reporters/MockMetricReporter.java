@@ -34,8 +34,8 @@ public class MockMetricReporter extends SolrMetricReporter {
   public boolean didClose = false;
   public boolean didValidate = false;
 
-  public MockMetricReporter(String registryName) {
-    super(registryName);
+  public MockMetricReporter(SolrMetricManager metricManager, String registryName) {
+    super(metricManager, registryName);
   }
 
   @Override
@@ -62,7 +62,7 @@ public class MockMetricReporter extends SolrMetricReporter {
   }
 
   public Metric reportMetric(String metricName) throws NoSuchElementException {
-    MetricRegistry registry = SolrMetricManager.registry(registryName);
+    MetricRegistry registry = metricManager.registry(registryName);
     Metric metric = registry.getMetrics().get(metricName);
     if (metric == null) {
       throw new NoSuchElementException("Metric was not found for metric name = " + metricName);

@@ -22,7 +22,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -36,7 +39,6 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
-import com.google.common.base.Preconditions;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
@@ -59,7 +61,9 @@ import org.slf4j.LoggerFactory;
  * names.</p>
  * <p>Solr uses several different registries for collecting metrics belonging to different groups, using
  * {@link org.apache.solr.core.SolrInfoMBean.Group} as the main name of the registry (plus the
- * above-mentioned prefix).</p>
+ * above-mentioned prefix). Instances of {@link SolrMetricManager} are created for each {@link org.apache.solr.core.CoreContainer},
+ * and most registries are local to each instance, with the exception of two global registries:
+ * <code>solr.jetty</code> and <code>solr.jvm</code>, which are shared between all {@link org.apache.solr.core.CoreContainer}-s</p>
  */
 public class SolrMetricManager {
 
@@ -67,12 +71,21 @@ public class SolrMetricManager {
 
   public static final String REGISTRY_NAME_PREFIX = "solr.";
 
-  private static final Map<String, Map<String, SolrMetricReporter>> reporters = new HashMap<>();
+  public static final String JETTY_REGISTRY = REGISTRY_NAME_PREFIX + SolrInfoMBean.Group.jetty.toString();
 
-  private static final Lock reportersLock = new ReentrantLock();
+  public static final String JVM_REGISTRY = REGISTRY_NAME_PREFIX + SolrInfoMBean.Group.jvm.toString();
 
-  // don't create instances of this class
-  private SolrMetricManager() { }
+  private final ConcurrentMap<String, MetricRegistry> registries = new ConcurrentHashMap<>();
+
+  // these reporters are per CoreContainer
+  private final Map<String, Map<String, SolrMetricReporter>> reporters = new HashMap<>();
+
+  // these reporters are per JVM
+  private static final Map<String, Map<String, SolrMetricReporter>> sharedReporters = new HashMap<>();
+
+  private final Lock reportersLock = new ReentrantLock();
+
+  public SolrMetricManager() { }
 
   /**
    * An implementation of {@link MetricFilter} that selects metrics
@@ -88,7 +101,7 @@ public class SolrMetricManager {
      *               name will match.
      */
     public PrefixFilter(String prefix) {
-      Preconditions.checkNotNull(prefix);
+      Objects.requireNonNull(prefix);
       this.prefix = prefix;
     }
 
@@ -125,8 +138,11 @@ public class SolrMetricManager {
   /**
    * Return a set of existing registry names.
    */
-  public static Set<String> registryNames() {
-    return SharedMetricRegistries.names();
+  public Set<String> registryNames() {
+    Set<String> set = new HashSet<>();
+    set.addAll(registries.keySet());
+    set.addAll(SharedMetricRegistries.names());
+    return Collections.unmodifiableSet(set);
   }
 
   /**
@@ -134,20 +150,40 @@ public class SolrMetricManager {
    * @param registry name of the registry
    * @return existing or newly created registry
    */
-  public static MetricRegistry registry(String registry) {
-    return SharedMetricRegistries.getOrCreate(overridableRegistryName(registry));
+  public MetricRegistry registry(String registry) {
+    registry = overridableRegistryName(registry);
+    if (JETTY_REGISTRY.equals(registry) || JVM_REGISTRY.equals(registry)) {
+      return SharedMetricRegistries.getOrCreate(registry);
+    } else {
+      final MetricRegistry existing = registries.get(registry);
+      if (existing == null) {
+        final MetricRegistry created = new MetricRegistry();
+        final MetricRegistry raced = registries.putIfAbsent(registry, created);
+        if (raced == null) {
+          return created;
+        } else {
+          return raced;
+        }
+      } else {
+        return existing;
+      }
+    }
   }
 
   /**
    * Remove a named registry.
    * @param registry name of the registry to remove
    */
-  public static void removeRegistry(String registry) {
+  public void removeRegistry(String registry) {
     // close any reporters for this registry first
     closeReporters(registry);
     // make sure we use a name with prefix, with overrides
     registry = overridableRegistryName(registry);
-    SharedMetricRegistries.remove(registry);
+    if (JETTY_REGISTRY.equals(registry) || JVM_REGISTRY.equals(registry)) {
+      SharedMetricRegistries.remove(registry);
+    } else {
+      registries.remove(registry);
+    }
   }
 
   /**
@@ -158,7 +194,7 @@ public class SolrMetricManager {
    * @param filter optional {@link MetricFilter} to select what metrics to move. If null
    *               then all metrics will be moved.
    */
-  public static void moveMetrics(String fromRegistry, String toRegistry, MetricFilter filter) {
+  public void moveMetrics(String fromRegistry, String toRegistry, MetricFilter filter) {
     MetricRegistry from = registry(fromRegistry);
     MetricRegistry to = registry(toRegistry);
     if (from == to) {
@@ -182,19 +218,23 @@ public class SolrMetricManager {
    * already exist.
    * @param registry registry name
    * @param metrics metric set to register
-   * @param skipExisting if true then already existing metrics with the same name will be kept.
+   * @param force if true then already existing metrics with the same name will be replaced.
    *                     When false and a metric with the same name already exists an exception
    *                     will be thrown.
+   * @param metricPath (optional) additional top-most metric name path elements
    * @throws Exception if a metric with this name already exists.
    */
-  public static void registerAll(String registry, MetricSet metrics, boolean skipExisting) throws Exception {
+  public void registerAll(String registry, MetricSet metrics, boolean force, String... metricPath) throws Exception {
     MetricRegistry metricRegistry = registry(registry);
-    Map<String, Metric> existingMetrics = metricRegistry.getMetrics();
-    for (Map.Entry<String, Metric> entry : metrics.getMetrics().entrySet()) {
-      if (skipExisting && existingMetrics.containsKey(entry.getKey())) {
-        continue;
+    synchronized (metricRegistry) {
+      Map<String, Metric> existingMetrics = metricRegistry.getMetrics();
+      for (Map.Entry<String, Metric> entry : metrics.getMetrics().entrySet()) {
+        String fullName = mkName(entry.getKey(), metricPath);
+        if (force && existingMetrics.containsKey(fullName)) {
+          metricRegistry.remove(fullName);
+        }
+        metricRegistry.register(fullName, entry.getValue());
       }
-      metricRegistry.register(entry.getKey(), entry.getValue());
     }
   }
 
@@ -202,7 +242,7 @@ public class SolrMetricManager {
    * Remove all metrics from a specified registry.
    * @param registry registry name
    */
-  public static void clearRegistry(String registry) {
+  public void clearRegistry(String registry) {
     registry(registry).removeMatching(MetricFilter.ALL);
   }
 
@@ -216,7 +256,7 @@ public class SolrMetricManager {
    *        with the prefix will be removed.
    * @return set of metrics names that have been removed.
    */
-  public static Set<String> clearMetrics(String registry, String... metricPath) {
+  public Set<String> clearMetrics(String registry, String... metricPath) {
     PrefixFilter filter;
     if (metricPath == null || metricPath.length == 0) {
       filter = new PrefixFilter("");
@@ -236,7 +276,7 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Meter}
    */
-  public static Meter meter(String registry, String metricName, String... metricPath) {
+  public Meter meter(String registry, String metricName, String... metricPath) {
     return registry(registry).meter(mkName(metricName, metricPath));
   }
 
@@ -248,7 +288,7 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Timer}
    */
-  public static Timer timer(String registry, String metricName, String... metricPath) {
+  public Timer timer(String registry, String metricName, String... metricPath) {
     return registry(registry).timer(mkName(metricName, metricPath));
   }
 
@@ -260,7 +300,7 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Counter}
    */
-  public static Counter counter(String registry, String metricName, String... metricPath) {
+  public Counter counter(String registry, String metricName, String... metricPath) {
     return registry(registry).counter(mkName(metricName, metricPath));
   }
 
@@ -272,7 +312,7 @@ public class SolrMetricManager {
    * @param metricPath (optional) additional top-most metric name path elements
    * @return existing or a newly created {@link Histogram}
    */
-  public static Histogram histogram(String registry, String metricName, String... metricPath) {
+  public Histogram histogram(String registry, String metricName, String... metricPath) {
     return registry(registry).histogram(mkName(metricName, metricPath));
   }
 
@@ -280,20 +320,22 @@ public class SolrMetricManager {
    * Register an instance of {@link Metric}.
    * @param registry registry name
    * @param metric metric instance
-   * @param skipExisting if true then already an existing metric with the same name will be kept.
+   * @param force if true then an already existing metric with the same name will be replaced.
    *                     When false and a metric with the same name already exists an exception
    *                     will be thrown.
    * @param metricName metric name, either final name or a fully-qualified name
    *                   using dotted notation
    * @param metricPath (optional) additional top-most metric name path elements
    */
-  public static void register(String registry, Metric metric, boolean skipExisting, String metricName, String... metricPath) {
+  public void register(String registry, Metric metric, boolean force, String metricName, String... metricPath) {
     MetricRegistry metricRegistry = registry(registry);
     String fullName = mkName(metricName, metricPath);
-    if (skipExisting && metricRegistry.getMetrics().containsKey(fullName)) {
-      return;
+    synchronized (metricRegistry) {
+      if (force && metricRegistry.getMetrics().containsKey(fullName)) {
+        metricRegistry.remove(fullName);
+      }
+      metricRegistry.register(fullName, metric);
     }
-    metricRegistry.register(fullName, metric);
   }
 
 
@@ -405,7 +447,7 @@ public class SolrMetricManager {
    * @param group selected group, not null
    * @param registryNames optional child registry name elements
    */
-  public static void loadReporters(PluginInfo[] pluginInfos, SolrResourceLoader loader, SolrInfoMBean.Group group, String... registryNames) {
+  public void loadReporters(PluginInfo[] pluginInfos, SolrResourceLoader loader, SolrInfoMBean.Group group, String... registryNames) {
     if (pluginInfos == null || pluginInfos.length == 0) {
       return;
     }
@@ -459,7 +501,7 @@ public class SolrMetricManager {
    * @param pluginInfo plugin configuration. Plugin "name" and "class" attributes are required.
    * @throws Exception if any argument is missing or invalid
    */
-  public static void loadReporter(String registry, SolrResourceLoader loader, PluginInfo pluginInfo) throws Exception {
+  public void loadReporter(String registry, SolrResourceLoader loader, PluginInfo pluginInfo) throws Exception {
     if (registry == null || pluginInfo == null || pluginInfo.name == null || pluginInfo.className == null) {
       throw new IllegalArgumentException("loadReporter called with missing arguments: " +
           "registry=" + registry + ", loader=" + loader + ", pluginInfo=" + pluginInfo);
@@ -470,8 +512,8 @@ public class SolrMetricManager {
         pluginInfo.className,
         SolrMetricReporter.class,
         new String[0],
-        new Class[] { String.class },
-        new Object[] { registry }
+        new Class[] { SolrMetricManager.class, String.class },
+        new Object[] { this, registry }
     );
     try {
       reporter.init(pluginInfo);
@@ -509,7 +551,7 @@ public class SolrMetricManager {
    * @param name reporter name
    * @return true if a named reporter existed and was closed.
    */
-  public static boolean closeReporter(String registry, String name) {
+  public boolean closeReporter(String registry, String name) {
     // make sure we use a name with prefix, with overrides
     registry = overridableRegistryName(registry);
     try {
@@ -546,7 +588,7 @@ public class SolrMetricManager {
    * @param registry registry name
    * @return names of closed reporters
    */
-  public static Set<String> closeReporters(String registry) {
+  public Set<String> closeReporters(String registry) {
     // make sure we use a name with prefix, with overrides
     registry = overridableRegistryName(registry);
     try {
@@ -583,7 +625,7 @@ public class SolrMetricManager {
    * @param registry registry name
    * @return map of reporters and their names, may be empty but never null
    */
-  public static Map<String, SolrMetricReporter> getReporters(String registry) {
+  public Map<String, SolrMetricReporter> getReporters(String registry) {
     // make sure we use a name with prefix, with overrides
     registry = overridableRegistryName(registry);
     try {

@@ -48,7 +48,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
 
   private String domain;
 
-  private SolrCoreMetricManager metricManager;
+  private SolrCoreMetricManager coreMetricManager;
+  private SolrMetricManager metricManager;
   private SolrJmxReporter reporter;
   private MBeanServer mBeanServer;
   private String reporterName;
@@ -60,11 +61,12 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     final SolrCore core = h.getCore();
     domain = core.getName();
 
-    metricManager = new SolrCoreMetricManager(core);
+    coreMetricManager = core.getCoreMetricManager();
+    metricManager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
     PluginInfo pluginInfo = createReporterPluginInfo();
-    SolrMetricManager.loadReporter(metricManager.getRegistryName(), metricManager.getCore().getResourceLoader(), pluginInfo);
+    metricManager.loadReporter(coreMetricManager.getRegistryName(), coreMetricManager.getCore().getResourceLoader(), pluginInfo);
 
-    Map<String, SolrMetricReporter> reporters = SolrMetricManager.getReporters(metricManager.getRegistryName());
+    Map<String, SolrMetricReporter> reporters = metricManager.getReporters(coreMetricManager.getRegistryName());
     assertTrue("reporters.size should be > 0, but was + " + reporters.size(), reporters.size() > 0);
     reporterName = pluginInfo.name;
     assertNotNull("reporter " + reporterName + " not present among " + reporters, reporters.get(reporterName));
@@ -95,12 +97,12 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
 
   @After
   public void afterTest() throws Exception {
-    SolrMetricManager.closeReporters(metricManager.getRegistryName());
+    metricManager.closeReporters(coreMetricManager.getRegistryName());
     Set<ObjectInstance> objects =
         mBeanServer.queryMBeans(ObjectName.getInstance(domain + ":*"), null);
     assertTrue(objects.isEmpty());
 
-    metricManager.close();
+    coreMetricManager.close();
     deleteCore();
   }
 
@@ -115,8 +117,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     int iterations = TestUtil.nextInt(random, 0, MAX_ITERATIONS);
     for (int i = 0; i < iterations; ++i) {
       Map<String, Counter> metrics = SolrMetricTestUtils.getRandomMetricsWithReplacements(random, registered);
-      SolrMetricProducer producer = SolrMetricTestUtils.getProducerOf(category, scope, metrics);
-      metricManager.registerMetricProducer(scope, producer);
+      SolrMetricProducer producer = SolrMetricTestUtils.getProducerOf(metricManager, category, scope, metrics);
+      coreMetricManager.registerMetricProducer(scope, producer);
       registered.putAll(metrics);
       //waitForListener();
       Set<ObjectInstance> objects = mBeanServer.queryMBeans(null, null);
@@ -133,8 +135,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     String scope = SolrMetricTestUtils.getRandomScope(random, true);
     SolrInfoMBean.Category category = SolrMetricTestUtils.getRandomCategory(random, true);
     Map<String, Counter> metrics = SolrMetricTestUtils.getRandomMetrics(random, true);
-    SolrMetricProducer producer = SolrMetricTestUtils.getProducerOf(category, scope, metrics);
-    metricManager.registerMetricProducer(scope, producer);
+    SolrMetricProducer producer = SolrMetricTestUtils.getProducerOf(metricManager, category, scope, metrics);
+    coreMetricManager.registerMetricProducer(scope, producer);
     Set<ObjectInstance> objects = mBeanServer.queryMBeans(null, null);
     assertEquals(metrics.size(), objects.stream().
         filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&
@@ -142,8 +144,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
 
     h.getCoreContainer().reload(h.getCore().getName());
     PluginInfo pluginInfo = createReporterPluginInfo();
-    SolrMetricManager.loadReporter(metricManager.getRegistryName(), metricManager.getCore().getResourceLoader(), pluginInfo);
-    metricManager.registerMetricProducer(scope, producer);
+    metricManager.loadReporter(coreMetricManager.getRegistryName(), coreMetricManager.getCore().getResourceLoader(), pluginInfo);
+    coreMetricManager.registerMetricProducer(scope, producer);
 
     objects = mBeanServer.queryMBeans(null, null);
     assertEquals(metrics.size(), objects.stream().

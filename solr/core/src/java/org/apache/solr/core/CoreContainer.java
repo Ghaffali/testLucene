@@ -33,7 +33,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Gauge;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import org.apache.http.auth.AuthSchemeProvider;
@@ -59,6 +59,7 @@ import org.apache.solr.handler.admin.CollectionsHandler;
 import org.apache.solr.handler.admin.ConfigSetsHandler;
 import org.apache.solr.handler.admin.CoreAdminHandler;
 import org.apache.solr.handler.admin.InfoHandler;
+import org.apache.solr.handler.admin.MetricsHandler;
 import org.apache.solr.handler.admin.SecurityConfHandler;
 import org.apache.solr.handler.admin.SecurityConfHandlerLocal;
 import org.apache.solr.handler.admin.SecurityConfHandlerZk;
@@ -66,7 +67,6 @@ import org.apache.solr.handler.admin.ZookeeperInfoHandler;
 import org.apache.solr.handler.component.ShardHandlerFactory;
 import org.apache.solr.logging.LogWatcher;
 import org.apache.solr.logging.MDCLoggingContext;
-import org.apache.solr.metrics.SolrCoreMetricManager;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.SolrRequestHandler;
@@ -89,6 +89,7 @@ import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PAT
 import static org.apache.solr.common.params.CommonParams.CONFIGSETS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CORES_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.INFO_HANDLER_PATH;
+import static org.apache.solr.common.params.CommonParams.METRICS_PATH;
 import static org.apache.solr.common.params.CommonParams.ZK_PATH;
 import static org.apache.solr.security.AuthenticationPlugin.AUTHENTICATION_PLUGIN_PROP;
 
@@ -159,6 +160,10 @@ public class CoreContainer {
   private SecurityPluginHolder<AuthenticationPlugin> authenticationPlugin;
 
   private BackupRepositoryFactory backupRepoFactory;
+
+  protected SolrMetricManager metricManager;
+
+  protected MetricsHandler metricsHandler;
 
   /**
    * This method instantiates a new instance of {@linkplain BackupRepository}.
@@ -427,6 +432,10 @@ public class CoreContainer {
     return pkiAuthenticationPlugin;
   }
 
+  public SolrMetricManager getMetricManager() {
+    return metricManager;
+  }
+
   //-------------------------------------------------------------------
   // Initialization / Cleanup
   //-------------------------------------------------------------------
@@ -467,6 +476,8 @@ public class CoreContainer {
 
     MDCLoggingContext.setNode(this);
 
+    metricManager = new SolrMetricManager();
+
     securityConfHandler = isZooKeeperAware() ? new SecurityConfHandlerZk(this) : new SecurityConfHandlerLocal(this);
     reloadSecurityProperties();
     this.backupRepoFactory = new BackupRepositoryFactory(cfg.getBackupRepositoryPlugins());
@@ -476,17 +487,33 @@ public class CoreContainer {
     infoHandler        = createHandler(INFO_HANDLER_PATH, cfg.getInfoHandlerClass(), InfoHandler.class);
     coreAdminHandler   = createHandler(CORES_HANDLER_PATH, cfg.getCoreAdminHandlerClass(), CoreAdminHandler.class);
     configSetsHandler = createHandler(CONFIGSETS_HANDLER_PATH, cfg.getConfigSetsHandlerClass(), ConfigSetsHandler.class);
+    metricsHandler = createHandler(METRICS_PATH, MetricsHandler.class.getName(), MetricsHandler.class);
     containerHandlers.put(AUTHZ_PATH, securityConfHandler);
-    securityConfHandler.initializeMetrics(SolrInfoMBean.Group.node.toString(), AUTHZ_PATH);
+    securityConfHandler.initializeMetrics(metricManager, SolrInfoMBean.Group.node.toString(), AUTHZ_PATH);
     containerHandlers.put(AUTHC_PATH, securityConfHandler);
     if(pkiAuthenticationPlugin != null)
       containerHandlers.put(PKIAuthenticationPlugin.PATH, pkiAuthenticationPlugin.getRequestHandler());
 
-    SolrMetricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.node);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.node);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.jvm);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.jetty);
+    metricManager.loadReporters(cfg.getMetricReporterPlugins(), loader, SolrInfoMBean.Group.http);
 
     coreConfigService = ConfigSetService.createConfigSetService(cfg, loader, zkSys.zkController);
 
     containerProperties.putAll(cfg.getSolrProperties());
+
+    // initialize gauges for reporting the number of cores
+    Gauge<Integer> loadedCores = () -> solrCores.getCores().size();
+    Gauge<Integer> lazyCores = () -> solrCores.getCoreNames().size() - solrCores.getCores().size();
+    Gauge<Integer> unloadedCores = () -> solrCores.getAllCoreNames().size() - solrCores.getCoreNames().size();
+
+    metricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
+        loadedCores, true, "loaded", "cores");
+    metricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
+        lazyCores, true, "lazy", "cores");
+    metricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
+        unloadedCores, true, "unloaded", "cores");
 
     // setup executor to load cores in parallel
     ExecutorService coreLoadExecutor = ExecutorUtil.newMDCAwareFixedThreadPool(
@@ -661,7 +688,9 @@ public class CoreContainer {
       }
     }
 
-    SolrMetricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node));
+    if (metricManager != null) {
+      metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node));
+    }
 
     // It should be safe to close the authorization plugin at this point.
     try {
@@ -1040,7 +1069,7 @@ public class CoreContainer {
     coresLocator.delete(this, cd);
 
     // delete metrics specific to this core
-    SolrMetricManager.removeRegistry(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, name));
+    metricManager.removeRegistry(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, name));
 
     if (core == null) {
       // transient core
@@ -1181,7 +1210,7 @@ public class CoreContainer {
       containerHandlers.put(path, (SolrRequestHandler)handler);
     }
     if (handler instanceof SolrMetricProducer) {
-      ((SolrMetricProducer)handler).initializeMetrics(SolrInfoMBean.Group.node.toString(), path);
+      ((SolrMetricProducer)handler).initializeMetrics(metricManager, SolrInfoMBean.Group.node.toString(), path);
     }
     return handler;
   }

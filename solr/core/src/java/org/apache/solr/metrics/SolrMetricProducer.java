@@ -28,10 +28,11 @@ public interface SolrMetricProducer extends SolrInfoMBean {
 
   /**
    * Initializes metrics specific to this producer
+   * @param manager an instance of {@link SolrMetricManager}
    * @param registry registry name where metrics are registered
    * @param scope scope of the metrics (eg. handler name) to separate metrics of
    *              instances of the same component executing in different contexts
    * @return registered (or existing) unqualified names of metrics specific to this producer.
    */
-  Collection<String> initializeMetrics(String registry, String scope);
+  Collection<String> initializeMetrics(SolrMetricManager manager, String registry, String scope);
 }

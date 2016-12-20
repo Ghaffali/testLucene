@@ -55,8 +55,8 @@ public class SolrJmxReporter extends SolrMetricReporter {
    *
    * @param registryName name of the registry to report
    */
-  public SolrJmxReporter(String registryName) {
-    super(registryName);
+  public SolrJmxReporter(SolrMetricManager metricManager, String registryName) {
+    super(metricManager, registryName);
     setDomain(registryName);
   }
 
@@ -99,7 +99,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
 
     JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain);
 
-    reporter = JmxReporter.forRegistry(SolrMetricManager.registry(registryName))
+    reporter = JmxReporter.forRegistry(metricManager.registry(registryName))
                           .registerWith(mBeanServer)
                           .inDomain(domain)
                           .createsObjectNamesWith(jmxObjectNameFactory)

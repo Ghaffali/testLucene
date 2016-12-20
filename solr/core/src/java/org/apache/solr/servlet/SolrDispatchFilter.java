@@ -47,14 +47,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.codahale.metrics.MetricRegistry;
-import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.jvm.BufferPoolMetricSet;
 import com.codahale.metrics.jvm.ClassLoadingGaugeSet;
 import com.codahale.metrics.jvm.FileDescriptorRatioGauge;
 import com.codahale.metrics.jvm.GarbageCollectorMetricSet;
 import com.codahale.metrics.jvm.MemoryUsageGaugeSet;
 import com.codahale.metrics.jvm.ThreadStatesGaugeSet;
+import org.apache.commons.io.FileCleaningTracker;
 import org.apache.commons.io.input.CloseShieldInputStream;
 import org.apache.commons.io.output.CloseShieldOutputStream;
 import org.apache.commons.lang.StringUtils;
@@ -74,6 +73,7 @@ import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.request.SolrRequestInfo;
 import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.PKIAuthenticationPlugin;
+import org.apache.solr.util.SolrFileCleaningTracker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -135,6 +135,8 @@ public class SolrDispatchFilter extends BaseSolrFilter {
   {
     log.trace("SolrDispatchFilter.init(): {}", this.getClass().getClassLoader());
 
+    SolrRequestParsers.fileCleaningTracker = new SolrFileCleaningTracker();
+    
     StartupLoggingUtils.checkLogDir();
     logWelcomeBanner();
     String muteConsole = System.getProperty(SOLR_LOG_MUTECONSOLE);
@@ -154,7 +156,6 @@ public class SolrDispatchFilter extends BaseSolrFilter {
         excludePatterns.add(Pattern.compile(element));
       }
     }
-    setupJvmMetrics();
     try {
       Properties extraProperties = (Properties) config.getServletContext().getAttribute(PROPERTIES_ATTRIBUTE);
       if (extraProperties == null)
@@ -166,6 +167,7 @@ public class SolrDispatchFilter extends BaseSolrFilter {
       this.cores = createCoreContainer(solrHome == null ? SolrResourceLoader.locateSolrHome() : Paths.get(solrHome),
                                        extraProperties);
       this.httpClient = cores.getUpdateShardHandler().getHttpClient();
+      setupJvmMetrics();
       log.debug("user.dir=" + System.getProperty("user.dir"));
     }
     catch( Throwable t ) {
@@ -182,15 +184,15 @@ public class SolrDispatchFilter extends BaseSolrFilter {
 
   private void setupJvmMetrics()  {
     MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
+    SolrMetricManager metricManager = cores.getMetricManager();
     try {
       String registry = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.jvm);
-      SolrMetricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true);
-      SolrMetricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true);
-      SolrMetricManager.registerAll(registry, new ClassLoadingGaugeSet(), true);
-      SolrMetricManager.register(registry, new FileDescriptorRatioGauge(), true, "fileDescriptorRatio");
-      SolrMetricManager.registerAll(registry, new GarbageCollectorMetricSet(), true);
-      SolrMetricManager.registerAll(registry, new MemoryUsageGaugeSet(), true);
-      SolrMetricManager.registerAll(registry, new ThreadStatesGaugeSet(), true); // todo should we use CachedThreadStatesGaugeSet instead?
+      metricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true, "bufferPools");
+      metricManager.registerAll(registry, new ClassLoadingGaugeSet(), true, "classLoading");
+      metricManager.register(registry, new FileDescriptorRatioGauge(), true, "fileDescriptorRatio");
+      metricManager.registerAll(registry, new GarbageCollectorMetricSet(), true, "gc");
+      metricManager.registerAll(registry, new MemoryUsageGaugeSet(), true, "memory");
+      metricManager.registerAll(registry, new ThreadStatesGaugeSet(), true, "threads"); // todo should we use CachedThreadStatesGaugeSet instead?
     } catch (Exception e) {
       log.warn("Error registering JVM metrics", e);
     }
@@ -269,6 +271,17 @@ public class SolrDispatchFilter extends BaseSolrFilter {
   
   @Override
   public void destroy() {
+    try {
+      FileCleaningTracker fileCleaningTracker = SolrRequestParsers.fileCleaningTracker;
+      if (fileCleaningTracker != null) {
+        fileCleaningTracker.exitWhenFinished();
+      }
+    } catch (Exception e) {
+      log.warn("Exception closing FileCleaningTracker", e);
+    } finally {
+      SolrRequestParsers.fileCleaningTracker = null;
+    }
+
     if (cores != null) {
       try {
         cores.shutdown();

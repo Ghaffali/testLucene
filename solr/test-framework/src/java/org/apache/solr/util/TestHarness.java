@@ -40,7 +40,6 @@ import org.apache.solr.core.NodeConfig;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrConfig;
 import org.apache.solr.core.SolrCore;
-import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.core.SolrXmlConfig;
 import org.apache.solr.handler.UpdateRequestHandler;
@@ -192,21 +191,17 @@ public class TestHarness extends BaseTestHarness {
         = new UpdateShardHandlerConfig(UpdateShardHandlerConfig.DEFAULT_MAXUPDATECONNECTIONS,
                                        UpdateShardHandlerConfig.DEFAULT_MAXUPDATECONNECTIONSPERHOST,
                                        30000, 30000);
-    // metric reporters
+    // universal default metric reporter
     Map<String,String> attributes = new HashMap<>();
-    attributes.put("group", SolrInfoMBean.Group.core.toString());
     attributes.put("name", "default");
     attributes.put("class", SolrJmxReporter.class.getName());
-    PluginInfo corePlugin = new PluginInfo("reporter", attributes, null, null);
-    attributes = new HashMap<>(attributes);
-    attributes.put("group", SolrInfoMBean.Group.node.toString());
-    PluginInfo nodePlugin = new PluginInfo("reporter", attributes, null, null);
+    PluginInfo defaultPlugin = new PluginInfo("reporter", attributes, null, null);
 
     return new NodeConfig.NodeConfigBuilder("testNode", loader)
         .setUseSchemaCache(Boolean.getBoolean("shareSchema"))
         .setCloudConfig(cloudConfig)
         .setUpdateShardHandlerConfig(updateShardHandlerConfig)
-        .setMetricReporterPlugins(new PluginInfo[] {corePlugin, nodePlugin})
+        .setMetricReporterPlugins(new PluginInfo[] {defaultPlugin})
         .build();
   }
 
