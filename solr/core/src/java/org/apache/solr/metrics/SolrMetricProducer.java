@@ -18,7 +18,6 @@ package org.apache.solr.metrics;
 
 import java.util.Collection;
 
-import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.core.SolrInfoMBean;
 
 /**

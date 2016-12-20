@@ -18,7 +18,6 @@ package org.apache.solr.metrics;
 
 import java.io.Closeable;
 
-import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.util.SolrPluginUtils;
 import org.apache.solr.util.plugin.PluginInfoInitialized;
