@@ -655,8 +655,6 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     // Reordering needs to happen using parallel threads
     ExecutorService threadpool = 
         ExecutorUtil.newMDCAwareFixedThreadPool(updates.size() + 1, new DefaultSolrThreadFactory(getTestName()));
-    long seed = random().nextLong(); // seed for randomization within the threads
-
     // re-order the last two updates for NONLEADER 0
     List<UpdateRequest> reorderedUpdates = new ArrayList<>(updates);
     Collections.swap(reorderedUpdates, 2, 3);
@@ -666,7 +664,8 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
       // pretend as this update is coming from the other non-leader, so that
       // the resurrection can happen from there (instead of the leader)
       update.setParam(DistributedUpdateProcessor.DISTRIB_FROM, ((HttpSolrClient)NONLEADERS.get(1)).getBaseURL());
-      AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, NONLEADERS.get(0), seed);
+      AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, NONLEADERS.get(0),
+                                                                         random().nextLong());
       updateResponses.add(threadpool.submit(task));
       // while we can't guarantee/trust what order the updates are executed in, since multiple threads
       // are involved, but we're trying to bias the thread scheduling to run them in the order submitted
@@ -736,11 +735,11 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     shardToJetty.get(SHARD1).get(1).jetty.getDebugFilter().addDelay(
         "Waiting for dependant update to timeout", 1, 6000);
 
-    long seed = random().nextLong(); // seed for randomization within the threads
     ExecutorService threadpool =
         ExecutorUtil.newMDCAwareFixedThreadPool(updates.size() + 1, new DefaultSolrThreadFactory(getTestName()));
     for (UpdateRequest update : updates) {
-      AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, cloudClient, seed);
+      AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, cloudClient,
+                                                                         random().nextLong());
       threadpool.submit(task);
 
       // while we can't guarantee/trust what order the updates are executed in, since multiple threads
@@ -794,7 +793,8 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
       threadpool =
           ExecutorUtil.newMDCAwareFixedThreadPool(updates.size() + 1, new DefaultSolrThreadFactory(getTestName()));
       for (UpdateRequest update : updates) {
-        AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, cloudClient, seed);
+        AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, cloudClient,
+                                                                           random().nextLong());
         threadpool.submit(task);
         
         // while we can't guarantee/trust what order the updates are executed in, since multiple threads
@@ -1048,7 +1048,8 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     ExecutorService threadpool =
         ExecutorUtil.newMDCAwareFixedThreadPool(updates.size() + 1, new DefaultSolrThreadFactory(getTestName()));
     for (UpdateRequest update : updates) {
-      AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, cloudClient, seed);
+      AsyncUpdateWithRandomCommit task = new AsyncUpdateWithRandomCommit(update, cloudClient,
+                                                                         random().nextLong());
       threadpool.submit(task);
 
       // while we can't guarantee/trust what order the updates are executed in, since multiple threads
