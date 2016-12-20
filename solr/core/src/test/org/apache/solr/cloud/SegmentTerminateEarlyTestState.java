@@ -17,8 +17,6 @@
 
 package org.apache.solr.cloud;
 
-//import java.time.ZoneOffset;
-//import java.time.ZonedDateTime; // nocommit
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
