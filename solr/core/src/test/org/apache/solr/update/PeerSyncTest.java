@@ -243,7 +243,6 @@ public class PeerSyncTest extends BaseDistributedSearchTestCase {
     validateQACResponse(docsAdded, qacResponse);
 
     // lets add some in-place updates
-    // v = 5000; // nocommit: dead code?
     add(client0, seenLeader, sdoc("id", "5000", "val_i_dvo", 0, "title", "mytitle", "_version_", 5000)); // full update
     docsAdded.add(5000);
     assertSync(client1, numVersions, true, shardsArr[0]);

@@ -914,8 +914,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
   }
 
   UpdateRequest simulatedDeleteRequest(String query, long version) throws SolrServerException, IOException {
-    // nocommit: why clients.get(0)? ... if we want LEADER why not just use LEADER ?
-    String baseUrl = getBaseUrl((HttpSolrClient)clients.get(0));
+    String baseUrl = getBaseUrl((HttpSolrClient)LEADER);
 
     UpdateRequest ur = new UpdateRequest();
     ur.deleteByQuery(query);
@@ -961,10 +960,8 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     ureq.add(doc);
     UpdateResponse resp;
     
-    synchronized (cloudClient) { // nocommit: WTF? do we need sync or not? if so why cloudClient?
-      // send updates to leader, to avoid SOLR-8733
-      resp = ureq.process(LEADER);
-    }
+    // send updates to leader, to avoid SOLR-8733
+    resp = ureq.process(LEADER);
     
     long returnedVersion = Long.parseLong(((NamedList)resp.getResponse().get("adds")).getVal(0).toString());
     assertTrue("Due to SOLR-8733, sometimes returned version is 0. Let us assert that we have successfully"

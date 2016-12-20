@@ -1295,18 +1295,12 @@ public class DistributedUpdateProcessor extends UpdateRequestProcessor {
         throw new SolrException(ErrorCode.SERVER_ERROR, "Can't find document with id=" + id + ", but fetching from leader "
             + "failed since we're not in cloud mode.");
       }
+      Replica leader;
       try {
-        // nocommit: do not use forceUpdateCollection here, per shalin's comments back in August...
-        
-        // Under no circumstances should we we calling `forceUpdateCollection` in the indexing code path.
-        // It is just too dangerous in the face of high indexing rates. Instead we should do what the
-        // DUP is already doing i.e. calling getLeaderRetry to figure out the current leader. If the
-        // current replica is partitioned from the leader then we have other mechanisms for taking care
-        // of it and the replica has no business trying to determine this.
-        zkController.getZkStateReader().forceUpdateCollection(cloudDesc.getCollectionName()); // nocommit
-      } catch (KeeperException | InterruptedException e1) { /* No worries if the force refresh failed */ }
-      Replica leader = zkController.getClusterState().
-          getCollection(cloudDesc.getCollectionName()).getLeader(cloudDesc.getShardId());
+        leader = zkController.getZkStateReader().getLeaderRetry(cloudDesc.getCollectionName(), cloudDesc.getShardId());
+      } catch (InterruptedException e) {
+        throw new SolrException(ErrorCode.SERVER_ERROR, "Exception during fetching from leader.", e);
+      }
       leaderUrl = leader.getCoreUrl();
     }
     
