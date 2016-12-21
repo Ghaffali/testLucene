@@ -91,10 +91,7 @@ public class V2HttpCall extends HttpSolrCall {
         if (api != null) {
           isCompositeApi = api instanceof CompositeApi;
           if (!isCompositeApi) {
-            solrReq = SolrRequestParsers.DEFAULT.parse(null, path, req);
-            solrReq.getContext().put(CoreContainer.class.getName(), cores);
-            requestType = AuthorizationContext.RequestType.ADMIN;
-            action = ADMIN;
+            initAdminRequest(path);
             return;
           }
         }
@@ -103,28 +100,36 @@ public class V2HttpCall extends HttpSolrCall {
       if ("c".equals(prefix) || "collections".equals(prefix)) {
         String collectionName = origCorename = corename = pieces.get(1);
         DocCollection collection = getDocCollection(collectionName);
-        if (collection == null)
-          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "no such collection or alias");
-
-        boolean isPreferLeader = false;
-        if (path.endsWith("/update") || path.contains("/update/")) {
-          isPreferLeader = true;
+        if (collection == null) {
+           if ( ! path.endsWith(ApiBag.INTROSPECT)) {
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "no such collection or alias");
+          }
+        } else {
+          boolean isPreferLeader = false;
+          if (path.endsWith("/update") || path.contains("/update/")) {
+            isPreferLeader = true;
+          }
+          core = getCoreByCollection(collection.getName(), isPreferLeader);
+          if (core == null) {
+            //this collection exists , but this node does not have a replica for that collection
+            //todo find a better way to compute remote
+            extractRemotePath(corename, origCorename, 0);
+            return;
+          }
         }
-        core = getCoreByCollection(collection.getName(), isPreferLeader);
-        if (core == null) {
-          //this collection exists , but this node does not have a replica for that collection
-          //todo find a better way to compute remote
-          extractRemotePath(corename, origCorename, 0);
-          return;
-        }
-
       } else if ("cores".equals(prefix)) {
         origCorename = corename = pieces.get(1);
         core = cores.getCore(corename);
       }
-      if (core == null)
-        throw new SolrException(SolrException.ErrorCode.NOT_FOUND, "no core retrieved for " + corename);
-
+      if (core == null) {
+        log.error(">> path: '" + path + "'");
+        if (path.endsWith(ApiBag.INTROSPECT)) {
+          initAdminRequest(path);
+          return;
+        } else {
+          throw new SolrException(SolrException.ErrorCode.NOT_FOUND, "no core retrieved for " + corename);
+        }
+      }
 
       this.path = path = path.substring(prefix.length() + pieces.get(1).length() + 2);
       Api apiInfo = getApiInfo(core.getRequestHandlers(), path, req.getMethod(), fullPath, parts);
@@ -149,6 +154,13 @@ public class V2HttpCall extends HttpSolrCall {
       if (api == null) action = PASSTHROUGH;
       if (solrReq != null) solrReq.getContext().put(CommonParams.PATH, path);
     }
+  }
+
+  private void initAdminRequest(String path) throws Exception {
+    solrReq = SolrRequestParsers.DEFAULT.parse(null, path, req);
+    solrReq.getContext().put(CoreContainer.class.getName(), cores);
+    requestType = AuthorizationContext.RequestType.ADMIN;
+    action = ADMIN;
   }
 
   protected void parseRequest() throws Exception {
@@ -185,6 +197,7 @@ public class V2HttpCall extends HttpSolrCall {
       // just try if any other method has this path
       api = requestHandlers.v2lookup(path, null, parts);
     }
+    log.error(">> api class: " + (api == null ? "null" : api.getClass().getSimpleName())); // nocommit
 
     if (api == null) {
       return getSubPathApi(requestHandlers, path, fullPath, new CompositeApi(null));
