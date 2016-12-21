@@ -54,6 +54,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Timer;
 import com.google.common.collect.MapMaker;
 import org.apache.commons.io.FileUtils;
@@ -211,6 +212,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   private final Counter newSearcherCounter;
   private final Counter newSearcherMaxReachedCounter;
   private final Counter newSearcherOtherErrorsCounter;
+  private final Gauge<Integer> onDeckSearchersGauge;
 
   public Date getStartTimeStamp() { return startTime; }
 
@@ -643,7 +645,8 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       dirFactory.initCoreContainer(getCoreDescriptor().getCoreContainer());
     }
     if (solrConfig.indexConfig.metrics) {
-      return new MetricsDirectoryFactory(metricManager.getRegistryName(), dirFactory);
+      return new MetricsDirectoryFactory(coreDescriptor.getCoreContainer().getMetricManager(),
+          coreMetricManager.getRegistryName(), dirFactory);
     } else {
       return dirFactory;
     }
@@ -850,9 +853,8 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     resourceLoader = config.getResourceLoader();
     this.solrConfig = config;
     this.configSetProperties = configSetProperties;
-
     // Initialize the metrics manager
-    this.metricManager = initMetricManager(config);
+    this.coreMetricManager = initCoreMetricManager(config);
 
     if (updateHandler == null) {
       directoryFactory = initDirectoryFactory();
@@ -870,17 +872,16 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
     checkVersionFieldExistsInSchema(schema, coreDescriptor);
 
-    // Initialize the metrics manager
-    this.coreMetricManager = initCoreMetricManager(config);
-
     SolrMetricManager metricManager = this.coreDescriptor.getCoreContainer().getMetricManager();
 
     // initialize searcher-related metrics
-    newSearcherCounter = metricManager.counter(coreMetricManager.getRegistryName(), "newSearcher");
-    newSearcherTimer = metricManager.timer(coreMetricManager.getRegistryName(), "newSearcherTime");
-    newSearcherWarmupTimer = metricManager.timer(coreMetricManager.getRegistryName(), "newSearcherWarmup");
-    newSearcherMaxReachedCounter = metricManager.counter(coreMetricManager.getRegistryName(), "newSearcherMaxReached");
-    newSearcherOtherErrorsCounter = metricManager.counter(coreMetricManager.getRegistryName(), "newSearcherErrors");
+    newSearcherCounter = metricManager.counter(coreMetricManager.getRegistryName(), "new", Category.SEARCHER.toString());
+    newSearcherTimer = metricManager.timer(coreMetricManager.getRegistryName(), "time", Category.SEARCHER.toString(), "new");
+    newSearcherWarmupTimer = metricManager.timer(coreMetricManager.getRegistryName(), "warmup", Category.SEARCHER.toString(), "new");
+    newSearcherMaxReachedCounter = metricManager.counter(coreMetricManager.getRegistryName(), "maxReached", Category.SEARCHER.toString(), "new");
+    newSearcherOtherErrorsCounter = metricManager.counter(coreMetricManager.getRegistryName(), "errors", Category.SEARCHER.toString(), "new");
+    onDeckSearchersGauge = () -> onDeckSearchers;
+    metricManager.register(coreMetricManager.getRegistryName(), onDeckSearchersGauge, true, "onDeck", Category.SEARCHER.toString());
 
     // Initialize JMX
     this.infoRegistry = initInfoRegistry(name, config);

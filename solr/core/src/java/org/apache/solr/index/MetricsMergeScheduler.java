@@ -8,13 +8,13 @@ import com.codahale.metrics.Timer;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.MergeScheduler;
 import org.apache.lucene.index.MergeTrigger;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.metrics.SolrMetricManager;
 
 /**
  * Decorator for {@link MergeScheduler} that adds metrics for monitoring merge operations.
  */
 public class MetricsMergeScheduler extends MergeScheduler {
-  private final String registry;
   private final MergeScheduler in;
 
   private final Meter mergeSegmentFlush;
@@ -25,17 +25,16 @@ public class MetricsMergeScheduler extends MergeScheduler {
   private final Counter mergeErrors;
   private final Timer mergeTimer;
 
-  public MetricsMergeScheduler(String registry, MergeScheduler in) {
-    this.registry = registry;
+  public MetricsMergeScheduler(SolrMetricManager metricManager, String registry, MergeScheduler in) {
     this.in = in;
-    mergeTimer = SolrMetricManager.timer(registry, "mergeTimer", "index");
-    mergeSegmentFlush = SolrMetricManager.meter(registry, "mergeSegmentFlush", "index");
-    mergeFullFlush = SolrMetricManager.meter(registry, "mergeFullFlush", "index");
-    mergeExplicit = SolrMetricManager.meter(registry, "mergeExplicit", "index");
+    mergeTimer = metricManager.timer(registry, "mergeTimer", SolrInfoMBean.Category.INDEX.toString());
+    mergeSegmentFlush = metricManager.meter(registry, "mergeSegmentFlush", SolrInfoMBean.Category.INDEX.toString());
+    mergeFullFlush = metricManager.meter(registry, "mergeFullFlush", SolrInfoMBean.Category.INDEX.toString());
+    mergeExplicit = metricManager.meter(registry, "mergeExplicit", SolrInfoMBean.Category.INDEX.toString());
     // FINISHED is a confusing name... make it less confusing
-    mergeFinished = SolrMetricManager.meter(registry, "mergeAfterMerge", "index");
-    mergeClosing = SolrMetricManager.meter(registry, "mergeClosing", "index");
-    mergeErrors = SolrMetricManager.counter(registry, "mergeErrors", "index");
+    mergeFinished = metricManager.meter(registry, "mergeAfterMerge", SolrInfoMBean.Category.INDEX.toString());
+    mergeClosing = metricManager.meter(registry, "mergeClosing", SolrInfoMBean.Category.INDEX.toString());
+    mergeErrors = metricManager.counter(registry, "mergeErrors", SolrInfoMBean.Category.INDEX.toString());
   }
 
   @Override

@@ -243,14 +243,18 @@ public class SolrIndexConfig implements MapSerializable {
     iwc.setSimilarity(schema.getSimilarity());
     MergePolicy mergePolicy = buildMergePolicy(schema);
     if (metrics) {
-      MetricsMergePolicy metricsMergePolicy = new MetricsMergePolicy(core.getMetricManager().getRegistryName(), mergePolicy);
+      MetricsMergePolicy metricsMergePolicy = new MetricsMergePolicy(
+          core.getCoreDescriptor().getCoreContainer().getMetricManager(),
+          core.getCoreMetricManager().getRegistryName(), mergePolicy);
       iwc.setMergePolicy(metricsMergePolicy);
     } else {
       iwc.setMergePolicy(mergePolicy);
     }
     MergeScheduler mergeScheduler = buildMergeScheduler(schema);
     if (metrics) {
-      MetricsMergeScheduler metricsMergeScheduler = new MetricsMergeScheduler(core.getMetricManager().getRegistryName(), mergeScheduler);
+      MetricsMergeScheduler metricsMergeScheduler = new MetricsMergeScheduler(
+          core.getCoreDescriptor().getCoreContainer().getMetricManager(),
+          core.getCoreMetricManager().getRegistryName(), mergeScheduler);
       iwc.setMergeScheduler(metricsMergeScheduler);
     } else {
       iwc.setMergeScheduler(mergeScheduler);

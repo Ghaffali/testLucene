@@ -10,6 +10,7 @@ import org.apache.lucene.index.MergePolicyWrapper;
 import org.apache.lucene.index.MergeTrigger;
 import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SegmentInfos;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.metrics.SolrMetricManager;
 
 /**
@@ -17,8 +18,6 @@ import org.apache.solr.metrics.SolrMetricManager;
  * adds metrics for reporting key operations using {@link org.apache.solr.metrics.SolrMetricManager}.
  */
 public class MetricsMergePolicy extends MergePolicyWrapper {
-
-  private final String registry;
 
   private final long sizeThresholdBytes;
 
@@ -35,17 +34,16 @@ public class MetricsMergePolicy extends MergePolicyWrapper {
    * @param registry registry name where metrics are registered.
    * @param in the wrapped {@link MergePolicy}
    */
-  public MetricsMergePolicy(String registry, MergePolicy in) {
+  public MetricsMergePolicy(SolrMetricManager metricManager, String registry, MergePolicy in) {
     super(in);
-    this.registry = registry;
     // XXX make this configurable
     sizeThresholdBytes = 1024 * 1024;
-    minorMerges = SolrMetricManager.meter(registry, "minorMerges", "index");
-    majorMerges = SolrMetricManager.meter(registry, "majorMerges", "index");
-    majorMergedDocs = SolrMetricManager.meter(registry, "majorMergedDocs", "index");
-    majorDeletedDocs = SolrMetricManager.meter(registry, "majorDeletedDocs", "index");
-    forcedMerges = SolrMetricManager.meter(registry, "forcedMerges", "index");
-    forcedDeletesMerges = SolrMetricManager.meter(registry, "forcedDeletesMerges", "index");
+    minorMerges = metricManager.meter(registry, "minorMerges", SolrInfoMBean.Category.INDEX.toString());
+    majorMerges = metricManager.meter(registry, "majorMerges", SolrInfoMBean.Category.INDEX.toString());
+    majorMergedDocs = metricManager.meter(registry, "majorMergedDocs", SolrInfoMBean.Category.INDEX.toString());
+    majorDeletedDocs = metricManager.meter(registry, "majorDeletedDocs", SolrInfoMBean.Category.INDEX.toString());
+    forcedMerges = metricManager.meter(registry, "forcedMerges", SolrInfoMBean.Category.INDEX.toString());
+    forcedDeletesMerges = metricManager.meter(registry, "forcedDeletesMerges", SolrInfoMBean.Category.INDEX.toString());
   }
 
   @Override
