@@ -18,6 +18,7 @@ package org.apache.solr.update;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -44,8 +45,6 @@ import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.index.DefaultMergePolicyFactory;
 import org.apache.solr.index.MergePolicyFactory;
 import org.apache.solr.index.MergePolicyFactoryArgs;
-import org.apache.solr.index.MetricsMergePolicy;
-import org.apache.solr.index.MetricsMergeScheduler;
 import org.apache.solr.index.SortingMergePolicy;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.util.SolrPluginUtils;
@@ -72,7 +71,6 @@ public class SolrIndexConfig implements MapSerializable {
   public final int maxBufferedDocs;
   public final int maxMergeDocs;
   public final int mergeFactor;
-  public final boolean metrics;
 
   public final double ramBufferSizeMB;
 
@@ -81,6 +79,7 @@ public class SolrIndexConfig implements MapSerializable {
   public final PluginInfo mergePolicyInfo;
   public final PluginInfo mergePolicyFactoryInfo;
   public final PluginInfo mergeSchedulerInfo;
+  public final PluginInfo metricsInfo;
   
   public final PluginInfo mergedSegmentWarmerInfo;
   
@@ -95,7 +94,6 @@ public class SolrIndexConfig implements MapSerializable {
     maxBufferedDocs = -1;
     maxMergeDocs = -1;
     mergeFactor = -1;
-    metrics = true;
     ramBufferSizeMB = 100;
     writeLockTimeout = -1;
     lockType = DirectoryFactory.LOCK_TYPE_NATIVE;
@@ -103,6 +101,8 @@ public class SolrIndexConfig implements MapSerializable {
     mergePolicyFactoryInfo = null;
     mergeSchedulerInfo = null;
     mergedSegmentWarmerInfo = null;
+    // enable coarse-grained metrics by default
+    metricsInfo = new PluginInfo("metrics", Collections.emptyMap(), null, null);
   }
   
   /**
@@ -143,12 +143,12 @@ public class SolrIndexConfig implements MapSerializable {
     maxBufferedDocs=solrConfig.getInt(prefix+"/maxBufferedDocs",def.maxBufferedDocs);
     maxMergeDocs=solrConfig.getInt(prefix+"/maxMergeDocs",def.maxMergeDocs);
     mergeFactor=solrConfig.getInt(prefix+"/mergeFactor",def.mergeFactor);
-    metrics= solrConfig.getBool(prefix+"/metrics", def.metrics);
     ramBufferSizeMB = solrConfig.getDouble(prefix+"/ramBufferSizeMB", def.ramBufferSizeMB);
 
     writeLockTimeout=solrConfig.getInt(prefix+"/writeLockTimeout", def.writeLockTimeout);
     lockType=solrConfig.get(prefix+"/lockType", def.lockType);
 
+    metricsInfo = getPluginInfo(prefix + "/metrics", solrConfig, def.metricsInfo);
     mergeSchedulerInfo = getPluginInfo(prefix + "/mergeScheduler", solrConfig, def.mergeSchedulerInfo);
     mergePolicyInfo = getPluginInfo(prefix + "/mergePolicy", solrConfig, def.mergePolicyInfo);
     mergePolicyFactoryInfo = getPluginInfo(prefix + "/mergePolicyFactory", solrConfig, def.mergePolicyFactoryInfo);
@@ -197,12 +197,14 @@ public class SolrIndexConfig implements MapSerializable {
         "maxBufferedDocs", maxBufferedDocs,
         "maxMergeDocs", maxMergeDocs,
         "mergeFactor", mergeFactor,
-        "metrics", metrics,
         "ramBufferSizeMB", ramBufferSizeMB,
         "writeLockTimeout", writeLockTimeout,
         "lockType", lockType,
         "infoStreamEnabled", infoStream != InfoStream.NO_OUTPUT);
     if(mergeSchedulerInfo != null) m.put("mergeScheduler",mergeSchedulerInfo);
+    if (metricsInfo != null) {
+      m.put("metrics", metricsInfo);
+    }
     if (mergePolicyInfo != null) {
       m.put("mergePolicy", mergePolicyInfo);
     } else if (mergePolicyFactoryInfo != null) {
@@ -242,23 +244,9 @@ public class SolrIndexConfig implements MapSerializable {
 
     iwc.setSimilarity(schema.getSimilarity());
     MergePolicy mergePolicy = buildMergePolicy(schema);
-    if (metrics) {
-      MetricsMergePolicy metricsMergePolicy = new MetricsMergePolicy(
-          core.getCoreDescriptor().getCoreContainer().getMetricManager(),
-          core.getCoreMetricManager().getRegistryName(), mergePolicy);
-      iwc.setMergePolicy(metricsMergePolicy);
-    } else {
-      iwc.setMergePolicy(mergePolicy);
-    }
+    iwc.setMergePolicy(mergePolicy);
     MergeScheduler mergeScheduler = buildMergeScheduler(schema);
-    if (metrics) {
-      MetricsMergeScheduler metricsMergeScheduler = new MetricsMergeScheduler(
-          core.getCoreDescriptor().getCoreContainer().getMetricManager(),
-          core.getCoreMetricManager().getRegistryName(), mergeScheduler);
-      iwc.setMergeScheduler(metricsMergeScheduler);
-    } else {
-      iwc.setMergeScheduler(mergeScheduler);
-    }
+    iwc.setMergeScheduler(mergeScheduler);
     iwc.setInfoStream(infoStream);
 
     if (mergePolicy instanceof SortingMergePolicy) {

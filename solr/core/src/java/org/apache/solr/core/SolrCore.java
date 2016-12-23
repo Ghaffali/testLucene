@@ -54,7 +54,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.codahale.metrics.Counter;
-import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Timer;
 import com.google.common.collect.MapMaker;
 import org.apache.commons.io.FileUtils;
@@ -212,7 +211,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   private final Counter newSearcherCounter;
   private final Counter newSearcherMaxReachedCounter;
   private final Counter newSearcherOtherErrorsCounter;
-  private final Gauge<Integer> onDeckSearchersGauge;
 
   public Date getStartTimeStamp() { return startTime; }
 
@@ -644,9 +642,11 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       dirFactory = new NRTCachingDirectoryFactory();
       dirFactory.initCoreContainer(getCoreDescriptor().getCoreContainer());
     }
-    if (solrConfig.indexConfig.metrics) {
-      return new MetricsDirectoryFactory(coreDescriptor.getCoreContainer().getMetricManager(),
+    if (solrConfig.indexConfig.metricsInfo != null && solrConfig.indexConfig.metricsInfo.isEnabled()) {
+      final DirectoryFactory factory = new MetricsDirectoryFactory(coreDescriptor.getCoreContainer().getMetricManager(),
           coreMetricManager.getRegistryName(), dirFactory);
+        factory.init(solrConfig.indexConfig.metricsInfo.initArgs);
+      return factory;
     } else {
       return dirFactory;
     }
@@ -880,8 +880,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     newSearcherWarmupTimer = metricManager.timer(coreMetricManager.getRegistryName(), "warmup", Category.SEARCHER.toString(), "new");
     newSearcherMaxReachedCounter = metricManager.counter(coreMetricManager.getRegistryName(), "maxReached", Category.SEARCHER.toString(), "new");
     newSearcherOtherErrorsCounter = metricManager.counter(coreMetricManager.getRegistryName(), "errors", Category.SEARCHER.toString(), "new");
-    onDeckSearchersGauge = () -> onDeckSearchers;
-    metricManager.register(coreMetricManager.getRegistryName(), onDeckSearchersGauge, true, "onDeck", Category.SEARCHER.toString());
 
     // Initialize JMX
     this.infoRegistry = initInfoRegistry(name, config);

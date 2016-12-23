@@ -38,7 +38,7 @@ import org.apache.solr.common.util.NamedList;
 public class MetricUtils {
 
   /**
-   * Adds metrics from a Timer to a NamedList, using well-known names.
+   * Adds metrics from a Timer to a NamedList, using well-known back-compat names.
    * @param lst The NamedList to add the metrics data to
    * @param timer The Timer to extract the metrics from
    */
@@ -102,31 +102,52 @@ public class MetricUtils {
   static NamedList histogramToNamedList(Histogram histogram) {
     NamedList response = new NamedList();
     Snapshot snapshot = histogram.getSnapshot();
-    response.add("requests", histogram.getCount());
-    response.add("minTime", nsToMs(snapshot.getMin()));
-    response.add("maxTime", nsToMs(snapshot.getMax()));
-    response.add("avgTimePerRequest", nsToMs(snapshot.getMean()));
-    response.add("medianRequestTime", nsToMs(snapshot.getMedian()));
-    response.add("75thPcRequestTime", nsToMs(snapshot.get75thPercentile()));
-    response.add("95thPcRequestTime", nsToMs(snapshot.get95thPercentile()));
-    response.add("99thPcRequestTime", nsToMs(snapshot.get99thPercentile()));
-    response.add("999thPcRequestTime", nsToMs(snapshot.get999thPercentile()));
+    response.add("count", histogram.getCount());
+    addSnapshot(response, snapshot, false);
     return response;
+  }
+
+  static double nsToMs(boolean convert, double value) {
+    if (convert) {
+      return nsToMs(value);
+    } else {
+      return value;
+    }
+  }
+
+  static final String MS = "_ms";
+  static final String NS = "";
+
+  static void addSnapshot(NamedList response, Snapshot snapshot, boolean ms) {
+    response.add("min" + (ms ? MS: NS), nsToMs(ms, snapshot.getMin()));
+    response.add("max" + (ms ? MS: NS), nsToMs(ms, snapshot.getMax()));
+    response.add("mean" + (ms ? MS: NS), nsToMs(ms, snapshot.getMean()));
+    response.add("median" + (ms ? MS: NS), nsToMs(ms, snapshot.getMedian()));
+    response.add("stddev" + (ms ? MS: NS), nsToMs(ms, snapshot.getStdDev()));
+    response.add("p75" + (ms ? MS: NS), nsToMs(ms, snapshot.get75thPercentile()));
+    response.add("p95" + (ms ? MS: NS), nsToMs(ms, snapshot.get95thPercentile()));
+    response.add("p99" + (ms ? MS: NS), nsToMs(ms, snapshot.get99thPercentile()));
+    response.add("p999" + (ms ? MS: NS), nsToMs(ms, snapshot.get999thPercentile()));
   }
 
   static NamedList timerToNamedList(Timer timer) {
     NamedList response = new NamedList();
-    addMetrics(response, timer);
+    response.add("count", timer.getCount());
+    response.add("meanRate", timer.getMeanRate());
+    response.add("1minRate", timer.getOneMinuteRate());
+    response.add("5minRate", timer.getFiveMinuteRate());
+    response.add("15minRate", timer.getFifteenMinuteRate());
+    addSnapshot(response, timer.getSnapshot(), true);
     return response;
   }
 
   static NamedList meterToNamedList(Meter meter) {
     NamedList response = new NamedList();
-    response.add("requests", meter.getCount());
-    response.add("avgRequestsPerSecond", meter.getMeanRate());
-    response.add("1minRateRequestsPerSecond", meter.getOneMinuteRate());
-    response.add("5minRateRequestsPerSecond", meter.getFiveMinuteRate());
-    response.add("15minRateRequestsPerSecond", meter.getFifteenMinuteRate());
+    response.add("count", meter.getCount());
+    response.add("meanRate", meter.getMeanRate());
+    response.add("1minRate", meter.getOneMinuteRate());
+    response.add("5minRate", meter.getFiveMinuteRate());
+    response.add("15minRate", meter.getFifteenMinuteRate());
     return response;
   }
 
@@ -138,7 +159,7 @@ public class MetricUtils {
 
   static NamedList counterToNamedList(Counter counter) {
     NamedList response = new NamedList();
-    response.add("requests", counter.getCount());
+    response.add("count", counter.getCount());
     return response;
   }
 }

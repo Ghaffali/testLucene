@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.solr.core;
 
 import java.io.IOException;
@@ -22,6 +38,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
   private final SolrMetricManager metricManager;
   private final String registry;
   private final DirectoryFactory in;
+  private boolean directoryDetails = false;
 
   public MetricsDirectoryFactory(SolrMetricManager metricManager, String registry, DirectoryFactory in) {
     this.metricManager = metricManager;
@@ -35,7 +52,17 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
 
   @Override
   public void init(NamedList args) {
-    in.init(args);
+    // should be already inited
+    // in.init(args);
+    if (args == null) {
+      return;
+    }
+    Boolean dd = args.getBooleanArg("directoryDetails");
+    if (dd != null) {
+      directoryDetails = dd;
+    } else {
+      directoryDetails = false;
+    }
   }
 
   @Override
@@ -64,7 +91,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
   @Override
   protected Directory create(String path, LockFactory lockFactory, DirContext dirContext) throws IOException {
     Directory dir = in.create(path, lockFactory, dirContext);
-    return new MetricsDirectory(metricManager, registry, dir);
+    return new MetricsDirectory(metricManager, registry, dir, directoryDetails);
   }
 
   @Override
@@ -111,7 +138,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     if (dir instanceof MetricsDirectory) {
       return dir;
     } else {
-      return new MetricsDirectory(metricManager, registry, dir);
+      return new MetricsDirectory(metricManager, registry, dir, directoryDetails);
     }
   }
 
@@ -143,20 +170,32 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
   private static final String OTHER = "other";
 
   public static class MetricsDirectory extends Directory {
-    private final String PREFIX = "index.directory.";
 
     private final Directory in;
     private final String registry;
     private final SolrMetricManager metricManager;
     private final Meter totalReads;
+    private final Histogram totalReadSizes;
     private final Meter totalWrites;
+    private final Histogram totalWriteSizes;
+    private final boolean directoryDetails;
 
-    public MetricsDirectory(SolrMetricManager metricManager, String registry, Directory in) throws IOException {
+    private final String PREFIX = SolrInfoMBean.Category.DIRECTORY.toString() + ".";
+
+    public MetricsDirectory(SolrMetricManager metricManager, String registry, Directory in, boolean directoryDetails) throws IOException {
       this.metricManager = metricManager;
       this.registry = registry;
       this.in = in;
+      this.directoryDetails = directoryDetails;
       this.totalReads = metricManager.meter(registry, "reads", SolrInfoMBean.Category.DIRECTORY.toString(), "total");
       this.totalWrites = metricManager.meter(registry, "writes", SolrInfoMBean.Category.DIRECTORY.toString(), "total");
+      if (directoryDetails) {
+        this.totalReadSizes = metricManager.histogram(registry, "readSizes", SolrInfoMBean.Category.DIRECTORY.toString(), "total");
+        this.totalWriteSizes = metricManager.histogram(registry, "writeSizes", SolrInfoMBean.Category.DIRECTORY.toString(), "total");
+      } else {
+        this.totalReadSizes = null;
+        this.totalWriteSizes = null;
+      }
     }
 
     public Directory getDelegate() {
@@ -179,6 +218,9 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     }
 
     private String getMetricName(String name, boolean output) {
+      if (!directoryDetails) {
+        return null;
+      }
       String lastName;
       if (name.startsWith(SEGMENTS)) {
         lastName = SEGMENTS;
@@ -205,7 +247,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     public IndexOutput createOutput(String name, IOContext context) throws IOException {
       IndexOutput output = in.createOutput(name, context);
       if (output != null) {
-        return new MetricsOutput(totalWrites, metricManager, registry, getMetricName(name, true), output);
+        return new MetricsOutput(totalWrites, totalWriteSizes, metricManager, registry, getMetricName(name, true), output);
       } else {
         return null;
       }
@@ -215,7 +257,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     public IndexOutput createTempOutput(String prefix, String suffix, IOContext context) throws IOException {
       IndexOutput output = in.createTempOutput(prefix, suffix, context);
       if (output != null) {
-        return new MetricsOutput(totalWrites, metricManager, registry, getMetricName(TEMP, true), output);
+        return new MetricsOutput(totalWrites, totalWriteSizes, metricManager, registry, getMetricName(TEMP, true), output);
       } else {
         return null;
       }
@@ -240,7 +282,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     public IndexInput openInput(String name, IOContext context) throws IOException {
       IndexInput input = in.openInput(name, context);
       if (input != null) {
-        return new MetricsInput(totalReads, metricManager, registry, getMetricName(name, false), input);
+        return new MetricsInput(totalReads, totalReadSizes, metricManager, registry, getMetricName(name, false), input);
       } else {
         return null;
       }
@@ -262,32 +304,48 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     private final Histogram histogram;
     private final Meter meter;
     private final Meter totalMeter;
+    private final Histogram totalHistogram;
+    private final boolean withDetails;
 
-    public MetricsOutput(Meter totalMeter, SolrMetricManager metricManager,
+    public MetricsOutput(Meter totalMeter, Histogram totalHistogram, SolrMetricManager metricManager,
                          String registry, String metricName, IndexOutput in) {
       super(in.toString(), in.getName());
       this.in = in;
       this.totalMeter = totalMeter;
-      String histName = metricName + "Sizes";
-      String meterName = metricName + "s";
-      this.histogram = metricManager.histogram(registry, histName);
-      this.meter = metricManager.meter(registry, meterName);
+      this.totalHistogram = totalHistogram;
+      if (metricName != null && totalHistogram != null) {
+        withDetails = true;
+        String histName = metricName + "Sizes";
+        String meterName = metricName + "s";
+        this.histogram = metricManager.histogram(registry, histName);
+        this.meter = metricManager.meter(registry, meterName);
+      } else {
+        withDetails = false;
+        this.histogram = null;
+        this.meter = null;
+      }
     }
 
     @Override
     public void writeByte(byte b) throws IOException {
       in.writeByte(b);
       totalMeter.mark();
-      meter.mark();
-      histogram.update(1);
+      if (withDetails) {
+        totalHistogram.update(1);
+        meter.mark();
+        histogram.update(1);
+      }
     }
 
     @Override
     public void writeBytes(byte[] b, int offset, int length) throws IOException {
       in.writeBytes(b, offset, length);
       totalMeter.mark(length);
-      meter.mark(length);
-      histogram.update(length);
+      if (withDetails) {
+        totalHistogram.update(length);
+        meter.mark(length);
+        histogram.update(length);
+      }
     }
 
     @Override
@@ -308,26 +366,42 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
 
   public static class MetricsInput extends IndexInput {
     private final IndexInput in;
+    private final Meter totalMeter;
+    private final Histogram totalHistogram;
     private final Histogram histogram;
     private final Meter meter;
-    private final Meter totalMeter;
+    private final boolean withDetails;
 
-    public MetricsInput(Meter totalMeter, SolrMetricManager metricManager, String registry, String metricName, IndexInput in) {
+    public MetricsInput(Meter totalMeter, Histogram totalHistogram, SolrMetricManager metricManager, String registry, String metricName, IndexInput in) {
       super(in.toString());
       this.in = in;
       this.totalMeter = totalMeter;
-      String histName = metricName + "Sizes";
-      String meterName = metricName + "s";
-      this.histogram = metricManager.histogram(registry, histName);
-      this.meter = metricManager.meter(registry, meterName);
+      this.totalHistogram = totalHistogram;
+      if (metricName != null && totalHistogram != null) {
+        withDetails = true;
+        String histName = metricName + "Sizes";
+        String meterName = metricName + "s";
+        this.histogram = metricManager.histogram(registry, histName);
+        this.meter = metricManager.meter(registry, meterName);
+      } else {
+        withDetails = false;
+        this.histogram = null;
+        this.meter = null;
+      }
     }
 
-    public MetricsInput(Meter totalMeter, Histogram histogram, Meter meter, IndexInput in) {
+    public MetricsInput(Meter totalMeter, Histogram totalHistogram, Histogram histogram, Meter meter, IndexInput in) {
       super(in.toString());
       this.in = in;
       this.totalMeter = totalMeter;
+      this.totalHistogram  = totalHistogram;
       this.histogram = histogram;
       this.meter = meter;
+      if (totalHistogram != null && meter != null && histogram != null) {
+        withDetails = true;
+      } else {
+        withDetails = false;
+      }
     }
 
     @Override
@@ -352,14 +426,14 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
 
     @Override
     public IndexInput clone() {
-      return new MetricsInput(totalMeter, histogram, meter, in.clone());
+      return new MetricsInput(totalMeter, totalHistogram, histogram, meter, in.clone());
     }
 
     @Override
     public IndexInput slice(String sliceDescription, long offset, long length) throws IOException {
       IndexInput slice = in.slice(sliceDescription, offset, length);
       if (slice != null) {
-        return new MetricsInput(totalMeter, histogram, meter, slice);
+        return new MetricsInput(totalMeter, totalHistogram, histogram, meter, slice);
       } else {
         return null;
       }
@@ -368,16 +442,22 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     @Override
     public byte readByte() throws IOException {
       totalMeter.mark();
-      meter.mark();
-      histogram.update(1);
+      if (withDetails) {
+        totalHistogram.update(1);
+        meter.mark();
+        histogram.update(1);
+      }
       return in.readByte();
     }
 
     @Override
     public void readBytes(byte[] b, int offset, int len) throws IOException {
       totalMeter.mark(len);
-      meter.mark(len);
-      histogram.update(len);
+      if (withDetails) {
+        totalHistogram.update(len);
+        meter.mark(len);
+        histogram.update(len);
+      }
       in.readBytes(b, offset, len);
     }
   }
