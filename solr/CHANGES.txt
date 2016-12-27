@@ -191,6 +191,10 @@ New Features
   of which are multi-valued. Example: http://localhost:8983/solr/admin/metrics?group=jvm,jetty&type=counter
   (shalin)
 
+* SOLR-9884: Add version to segments handler output (Steven Bower via Erick Erickson)
+
+* SOLR-9725: Substitute properties into JdbcDataSource configuration ( Jamie Jackson, Yuri Sashevsky via Mikhail Khludnev)
+
 Optimizations
 ----------------------
 * SOLR-9704: Facet Module / JSON Facet API: Optimize blockChildren facets that have
@@ -271,6 +275,14 @@ Bug Fixes
 * SOLR-1953: It may be possible for temporary files to accumulate until the Solr process is shut down.
   (Karl Wright, Mark Miller)
 
+* SOLR-9847: Stop blocking further schema updates while waiting for a pending update to propagate to other replicas.
+  This reduces the likelihood of a (time-limited) distributed deadlock during concurrent schema updates.
+  (Mark Miller, Steve Rowe)
+
+* SOLR-9760: Windows script doesn't need write permission (Alex Crome by Mikhail Khludnev)
+
+* SOLR-9699,SOLR-4668: fix exception from core status in parallel with core reload (Mikhail Khludnev)
+
 Other Changes
 ----------------------
 
@@ -318,6 +330,11 @@ Other Changes
 
 * SOLR-9874: Solr will reject CREATEALIAS requests if target collections don't exist (Tomás Fernández Löbbe)
 
+* SOLR-9878: fixing lazy logic for retrieving ReversedWildcardFilterFactory in SolrQueryParserBase (Mikhail Khludnev)
+
+* SOLR-9758: refactor preferLocalShards implementation (Christine Poerschke)
+
+* SOLR-9448: providing a test to workaround a differently named uniqueKey field (Mikhail Khludnev)
 
 ==================  6.3.0 ==================
 
