@@ -66,7 +66,7 @@ public class MetricUtils {
   }
 
   /**
-   * Returns a NamedList respresentation of the given metric registry. Only those metrics
+   * Returns a NamedList representation of the given metric registry. Only those metrics
    * are converted to NamedList which match at least one of the given MetricFilter instances.
    *
    * @param registry      the {@link MetricRegistry} to be converted to NamedList
@@ -103,10 +103,12 @@ public class MetricUtils {
     NamedList response = new NamedList();
     Snapshot snapshot = histogram.getSnapshot();
     response.add("count", histogram.getCount());
+    // non-time based values
     addSnapshot(response, snapshot, false);
     return response;
   }
 
+  // optionally convert ns to ms
   static double nsToMs(boolean convert, double value) {
     if (convert) {
       return nsToMs(value);
@@ -116,18 +118,37 @@ public class MetricUtils {
   }
 
   static final String MS = "_ms";
-  static final String NS = "";
 
+  static final String MIN = "min";
+  static final String MIN_MS = MIN + MS;
+  static final String MAX = "max";
+  static final String MAX_MS = MAX + MS;
+  static final String MEAN = "mean";
+  static final String MEAN_MS = MEAN + MS;
+  static final String MEDIAN = "median";
+  static final String MEDIAN_MS = MEDIAN + MS;
+  static final String STDDEV = "stddev";
+  static final String STDDEV_MS = STDDEV + MS;
+  static final String P75 = "p75";
+  static final String P75_MS = P75 + MS;
+  static final String P95 = "p95";
+  static final String P95_MS = P95 + MS;
+  static final String P99 = "p99";
+  static final String P99_MS = P99 + MS;
+  static final String P999 = "p999";
+  static final String P999_MS = P999 + MS;
+
+  // some snapshots represent time in ns, other snapshots represent raw values (eg. chunk size)
   static void addSnapshot(NamedList response, Snapshot snapshot, boolean ms) {
-    response.add("min" + (ms ? MS: NS), nsToMs(ms, snapshot.getMin()));
-    response.add("max" + (ms ? MS: NS), nsToMs(ms, snapshot.getMax()));
-    response.add("mean" + (ms ? MS: NS), nsToMs(ms, snapshot.getMean()));
-    response.add("median" + (ms ? MS: NS), nsToMs(ms, snapshot.getMedian()));
-    response.add("stddev" + (ms ? MS: NS), nsToMs(ms, snapshot.getStdDev()));
-    response.add("p75" + (ms ? MS: NS), nsToMs(ms, snapshot.get75thPercentile()));
-    response.add("p95" + (ms ? MS: NS), nsToMs(ms, snapshot.get95thPercentile()));
-    response.add("p99" + (ms ? MS: NS), nsToMs(ms, snapshot.get99thPercentile()));
-    response.add("p999" + (ms ? MS: NS), nsToMs(ms, snapshot.get999thPercentile()));
+    response.add((ms ? MIN_MS: MIN), nsToMs(ms, snapshot.getMin()));
+    response.add((ms ? MAX_MS: MAX), nsToMs(ms, snapshot.getMax()));
+    response.add((ms ? MEAN_MS : MEAN), nsToMs(ms, snapshot.getMean()));
+    response.add((ms ? MEDIAN_MS: MEDIAN), nsToMs(ms, snapshot.getMedian()));
+    response.add((ms ? STDDEV_MS: STDDEV), nsToMs(ms, snapshot.getStdDev()));
+    response.add((ms ? P75_MS: P75), nsToMs(ms, snapshot.get75thPercentile()));
+    response.add((ms ? P95_MS: P95), nsToMs(ms, snapshot.get95thPercentile()));
+    response.add((ms ? P99_MS: P99), nsToMs(ms, snapshot.get99thPercentile()));
+    response.add((ms ? P999_MS: P999), nsToMs(ms, snapshot.get999thPercentile()));
   }
 
   static NamedList timerToNamedList(Timer timer) {
@@ -137,6 +158,7 @@ public class MetricUtils {
     response.add("1minRate", timer.getOneMinuteRate());
     response.add("5minRate", timer.getFiveMinuteRate());
     response.add("15minRate", timer.getFifteenMinuteRate());
+    // time-based values in nanoseconds
     addSnapshot(response, timer.getSnapshot(), true);
     return response;
   }
