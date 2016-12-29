@@ -56,7 +56,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
    *   <li><code>directoryDetails</code> - (optional bool) when true then additional detailed metrics
    *   will be collected. These include eg. IO size histograms and per-file counters and histograms</li>
    * </ul>
-   * @param args
+   * @param args init args
    */
   @Override
   public void init(NamedList args) {
