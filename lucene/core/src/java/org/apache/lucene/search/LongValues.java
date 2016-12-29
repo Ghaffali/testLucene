@@ -14,29 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.search;
 
+package org.apache.lucene.search;
 
 import java.io.IOException;
 
-import org.apache.lucene.index.LeafReaderContext;
-
 /**
- * Base {@link FieldComparator} implementation that is used for all contexts.
- *
- * @lucene.experimental
+ * Per-segment, per-document long values, which can be calculated at search-time
  */
-public abstract class SimpleFieldComparator<T> extends FieldComparator<T> implements LeafFieldComparator {
+public abstract class LongValues {
 
-  /** This method is called before collecting <code>context</code>. */
-  protected abstract void doSetNextReader(LeafReaderContext context) throws IOException;
+  /**
+   * Get the long value for the current document
+   */
+  public abstract long longValue() throws IOException;
 
-  @Override
-  public final LeafFieldComparator getLeafComparator(LeafReaderContext context) throws IOException {
-    doSetNextReader(context);
-    return this;
-  }
+  /**
+   * Advance this instance to the given document id
+   * @return true if there is a value for this document
+   */
+  public abstract boolean advanceExact(int doc) throws IOException;
 
-  @Override
-  public void setScorer(Scorer scorer) throws IOException {}
 }

@@ -65,6 +65,9 @@ API Changes
 * LUCENE-7533: Classic query parser no longer allows autoGeneratePhraseQueries
   to be set to true when splitOnWhitespace is false (and vice-versa).
 
+* LUCENE-7607: LeafFieldComparator.setScorer and SimpleFieldComparator.setScorer
+  are declared as throwing IOException (Alan Woodward)
+
 New features
 
 * LUCENE-5867: Added BooleanSimilarity. (Robert Muir, Adrien Grand)
@@ -85,6 +88,11 @@ New features
   correct multi-token synonyms at search time.  See
   http://blog.mikemccandless.com/2012/04/lucenes-tokenstreams-are-actually.html
   for details. (Mike McCandless)
+
+* LUCENE-5325: Added LongValuesSource and DoubleValuesSource, intended as
+  type-safe replacements for ValueSource in the queries module.  These
+  expose per-segment LongValues or DoubleValues iterators, similar to the
+  existing DocValues iterator API. (Alan Woodward, Adrien Grand)
 
 Bug Fixes
 
@@ -207,6 +215,10 @@ Other
 
 * LUCENE-7599: Simplify TestRandomChains using Java's built-in Predicate and
   Function interfaces. (Ahmet Arslan via Adrien Grand)
+
+* LUCENE-7595: Improve RAMUsageTester in test-framework to estimate memory usage of
+  runtime classes and work with Java 9 EA (b148+). Disable static field heap usage
+  checker in LuceneTestCase.  (Uwe Schindler, Dawid Weiss)
 
 Build
 

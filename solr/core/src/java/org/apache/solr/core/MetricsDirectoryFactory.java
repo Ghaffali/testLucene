@@ -22,6 +22,7 @@ import java.util.Collection;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
@@ -177,7 +178,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
   private static final String TEMP = "temp";
   private static final String OTHER = "other";
 
-  public static class MetricsDirectory extends Directory {
+  public static class MetricsDirectory extends FilterDirectory {
 
     private final Directory in;
     private final String registry;
@@ -191,6 +192,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     private final String PREFIX = SolrInfoMBean.Category.DIRECTORY.toString() + ".";
 
     public MetricsDirectory(SolrMetricManager metricManager, String registry, Directory in, boolean directoryDetails) throws IOException {
+      super(in);
       this.metricManager = metricManager;
       this.registry = registry;
       this.in = in;
@@ -204,25 +206,6 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
         this.totalReadSizes = null;
         this.totalWriteSizes = null;
       }
-    }
-
-    public Directory getDelegate() {
-      return in;
-    }
-
-    @Override
-    public String[] listAll() throws IOException {
-      return in.listAll();
-    }
-
-    @Override
-    public void deleteFile(String name) throws IOException {
-      in.deleteFile(name);
-    }
-
-    @Override
-    public long fileLength(String name) throws IOException {
-      return in.fileLength(name);
     }
 
     private String getMetricName(String name, boolean output) {
@@ -272,21 +255,6 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     }
 
     @Override
-    public void sync(Collection<String> names) throws IOException {
-      in.sync(names);
-    }
-
-    @Override
-    public void rename(String source, String dest) throws IOException {
-      in.rename(source, dest);
-    }
-
-    @Override
-    public void syncMetaData() throws IOException {
-      in.syncMetaData();
-    }
-
-    @Override
     public IndexInput openInput(String name, IOContext context) throws IOException {
       IndexInput input = in.openInput(name, context);
       if (input != null) {
@@ -294,16 +262,6 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
       } else {
         return null;
       }
-    }
-
-    @Override
-    public Lock obtainLock(String name) throws IOException {
-      return in.obtainLock(name);
-    }
-
-    @Override
-    public void close() throws IOException {
-      in.close();
     }
   }
 
