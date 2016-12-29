@@ -249,7 +249,7 @@ public class ValidatingJsonMap implements Map<String, Object> {
   public static ValidatingJsonMap fromJSON(Reader s, String includeLocation) {
     try {
       ValidatingJsonMap map = (ValidatingJsonMap)getObjectBuilder(new JSONParser(s)).getObject();
-      handleIncludes(map, includeLocation);
+      handleIncludes(map, includeLocation, 4);
       return map;
     } catch (IOException e) {
       throw new RuntimeException();
@@ -260,17 +260,21 @@ public class ValidatingJsonMap implements Map<String, Object> {
    * In the given map, recursively replace "#include":"resource-name" with the key/value pairs 
    * parsed from the resource at {location}/{resource-name}.json
    */
-  private static void handleIncludes(ValidatingJsonMap map, String location) {
+  private static void handleIncludes(ValidatingJsonMap map, String location, int maxDepth) {
     final String loc = location == null ? "" // trim trailing slash
-        : (location.endsWith("/") ? location.substring(0, location.length() - 1) : location); 
-    String resourceToInclude = (String)map.get(INCLUDE);
+        : (location.endsWith("/") ? location.substring(0, location.length() - 1) : location);
+    String resourceToInclude = (String) map.get(INCLUDE);
     if (resourceToInclude != null) {
       ValidatingJsonMap includedMap = parse(loc + "/" + resourceToInclude + RESOURCE_EXTENSION, loc);
       map.remove(INCLUDE);
       map.putAll(includedMap);
     }
-    map.entrySet().stream().filter(e->e.getValue() instanceof Map).map(Map.Entry::getValue)
-        .forEach(m->handleIncludes((ValidatingJsonMap)m, loc));
+    if (maxDepth > 0) {
+      map.entrySet().stream()
+          .filter(e -> e.getValue() instanceof Map)
+          .map(Map.Entry::getValue)
+          .forEach(m -> handleIncludes((ValidatingJsonMap) m, loc, maxDepth - 1));
+    }
   }
 
   public static ValidatingJsonMap getDeepCopy(Map map, int maxDepth, boolean mutable) {
