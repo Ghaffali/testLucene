@@ -122,9 +122,6 @@ public class TestIndexingPerformance extends AbstractSolrTestCase {
 
     //discard all the changes
     updateHandler.rollback(new RollbackUpdateCommand(req));
-    try {
-      Thread.sleep(10000000);
-    } catch (Exception e) {}
 
     req.close();
   }

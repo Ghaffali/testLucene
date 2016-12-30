@@ -26,16 +26,16 @@ import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexInput;
 import org.apache.lucene.store.IndexOutput;
-import org.apache.lucene.store.Lock;
 import org.apache.lucene.store.LockFactory;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.util.plugin.SolrCoreAware;
 
 /**
  * An implementation of {@link DirectoryFactory} that decorates provided factory by
  * adding metrics for directory IO operations.
  */
-public class MetricsDirectoryFactory extends DirectoryFactory {
+public class MetricsDirectoryFactory extends DirectoryFactory implements SolrCoreAware {
   private final SolrMetricManager metricManager;
   private final String registry;
   private final DirectoryFactory in;
@@ -132,6 +132,46 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
   }
 
   @Override
+  public boolean isSharedStorage() {
+    return in.isSharedStorage();
+  }
+
+  @Override
+  public boolean isAbsolute(String path) {
+    return in.isAbsolute(path);
+  }
+
+  @Override
+  public boolean searchersReserveCommitPoints() {
+    return in.searchersReserveCommitPoints();
+  }
+
+  @Override
+  public String getDataHome(CoreDescriptor cd) throws IOException {
+    return in.getDataHome(cd);
+  }
+
+  @Override
+  public long size(Directory directory) throws IOException {
+    return in.size(directory);
+  }
+
+  @Override
+  public long size(String path) throws IOException {
+    return in.size(path);
+  }
+
+  @Override
+  public Collection<SolrInfoMBean> offerMBeans() {
+    return in.offerMBeans();
+  }
+
+  @Override
+  public void cleanupOldIndexDirectories(String dataDirPath, String currentIndexDirPath) {
+    in.cleanupOldIndexDirectories(dataDirPath, currentIndexDirPath);
+  }
+
+  @Override
   public void remove(String path, boolean afterCoreClose) throws IOException {
     in.remove(path, afterCoreClose);
   }
@@ -142,6 +182,11 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
   }
 
   @Override
+  public void move(Directory fromDir, Directory toDir, String fileName, IOContext ioContext) throws IOException {
+    in.move(fromDir, toDir, fileName, ioContext);
+  }
+
+  @Override
   public Directory get(String path, DirContext dirContext, String rawLockType) throws IOException {
     Directory dir = in.get(path, dirContext, rawLockType);
     if (dir instanceof MetricsDirectory) {
@@ -149,6 +194,31 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     } else {
       return new MetricsDirectory(metricManager, registry, dir, directoryDetails);
     }
+  }
+
+  @Override
+  public void renameWithOverwrite(Directory dir, String fileName, String toName) throws IOException {
+    super.renameWithOverwrite(dir, fileName, toName);
+  }
+
+  @Override
+  public String normalize(String path) throws IOException {
+    return in.normalize(path);
+  }
+
+  @Override
+  protected boolean deleteOldIndexDirectory(String oldDirPath) throws IOException {
+    return in.deleteOldIndexDirectory(oldDirPath);
+  }
+
+  @Override
+  public void initCoreContainer(CoreContainer cc) {
+    in.initCoreContainer(cc);
+  }
+
+  @Override
+  protected Directory getBaseDir(Directory dir) {
+    return in.getBaseDir(dir);
   }
 
   @Override
@@ -166,6 +236,13 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
   }
 
   @Override
+  public void inform(SolrCore core) {
+    if (in instanceof  SolrCoreAware) {
+      ((SolrCoreAware)in).inform(core);
+    }
+  }
+
+  @Override
   public void release(Directory dir) throws IOException {
     // unwrap
     if (dir instanceof MetricsDirectory) {
@@ -173,6 +250,8 @@ public class MetricsDirectoryFactory extends DirectoryFactory {
     }
     in.release(dir);
   }
+
+
 
   private static final String SEGMENTS = "segments_";
   private static final String TEMP = "temp";
