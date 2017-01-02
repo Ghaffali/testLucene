@@ -253,7 +253,9 @@ public class MetricsDirectoryFactory extends DirectoryFactory implements SolrCor
 
 
 
-  private static final String SEGMENTS = "segments_";
+  private static final String SEGMENTS = "segments";
+  private static final String SEGMENTS_PREFIX = "segments_";
+  private static final String PENDING_SEGMENTS_PREFIX = "pending_segments_";
   private static final String TEMP = "temp";
   private static final String OTHER = "other";
 
@@ -292,7 +294,7 @@ public class MetricsDirectoryFactory extends DirectoryFactory implements SolrCor
         return null;
       }
       String lastName;
-      if (name.startsWith(SEGMENTS)) {
+      if (name.startsWith(SEGMENTS_PREFIX) || name.startsWith(PENDING_SEGMENTS_PREFIX)) {
         lastName = SEGMENTS;
       } else {
         int pos = name.lastIndexOf('.');

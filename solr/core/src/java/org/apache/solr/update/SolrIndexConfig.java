@@ -148,7 +148,12 @@ public class SolrIndexConfig implements MapSerializable {
     writeLockTimeout=solrConfig.getInt(prefix+"/writeLockTimeout", def.writeLockTimeout);
     lockType=solrConfig.get(prefix+"/lockType", def.lockType);
 
-    metricsInfo = getPluginInfo(prefix + "/metrics", solrConfig, def.metricsInfo);
+    List<PluginInfo> infos = solrConfig.readPluginInfos(prefix + "/metrics", false, false);
+    if (infos.isEmpty()) {
+      metricsInfo = def.metricsInfo;
+    } else {
+      metricsInfo = infos.get(0);
+    }
     mergeSchedulerInfo = getPluginInfo(prefix + "/mergeScheduler", solrConfig, def.mergeSchedulerInfo);
     mergePolicyInfo = getPluginInfo(prefix + "/mergePolicy", solrConfig, def.mergePolicyInfo);
     mergePolicyFactoryInfo = getPluginInfo(prefix + "/mergePolicyFactory", solrConfig, def.mergePolicyFactoryInfo);
