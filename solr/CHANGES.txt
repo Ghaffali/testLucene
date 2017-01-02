@@ -202,6 +202,14 @@ New Features
 * SOLR-9897: Add hl.requireFieldMatch toggle support when using the UnifiedHighlighter.  Defaults to false like the
   other highlighters that support this. (David Smiley)
 
+* SOLR-9905: Add NullStream to isolate the performance of the ExportWriter (Joel Bernstein)
+
+* SOLR-9891: Add mkroot command to bin/solr and bin/solr.cmd (Erick Erickson)
+
+* SOLR-9668,SOLR-7197: introduce cursorMark='true' in SolrEntityProcessor (Yegor Kozlov, Raveendra Yerraguntl via Mikhail Khludnev)
+
+* SOLR-9684: Add schedule Streaming Expression (Joel Bernstein)
+
 Optimizations
 ----------------------
 * SOLR-9704: Facet Module / JSON Facet API: Optimize blockChildren facets that have
@@ -295,6 +303,10 @@ Bug Fixes
   index.properties are durable in the face of a crash. (Pushkar Raste, Chris de Kok, Cao Manh Dat, Mark Miller)
 
 * SOLR-9901: Implement move in HdfsDirectoryFactory. (Mark Miller)
+
+* SOLR-9900: fix false positives on range queries with ReversedWildcardFilterFactory (Yonik Seeley via Mikhail Khludnev)
+
+* SOLR-9495: AIOBE with confusing message for incomplete sort spec in Streaming Expression (Gus Heck, Joel Bernstein)
 
 Other Changes
 ----------------------
