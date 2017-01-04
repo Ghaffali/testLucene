@@ -1560,7 +1560,7 @@ public static final int VERSION_IDX = 1;
 
             // should currently be a List<Oper,Ver,Doc/Id>
             List entry = (List) o;
-
+            log.info("HELLO: "+entry);
             operationAndFlags = (Integer) entry.get(UpdateLog.FLAGS_IDX);
             int oper = operationAndFlags & OPERATION_MASK;
             long version = (Long) entry.get(UpdateLog.VERSION_IDX);

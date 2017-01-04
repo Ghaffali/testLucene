@@ -155,30 +155,23 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                 Map<Integer, DocInfo> newCommittedModel;
                 long version;
 
-                // nocommit: dual sync blocks w/non-synced commits in between is not thread safe
-                // nocommit: see jira comments for bad scenerio
                 synchronized (TestStressInPlaceUpdates.this) {
                   // take a snapshot of the model
                   // this is safe to do w/o synchronizing on the model because it's a ConcurrentHashMap
                   newCommittedModel = new HashMap<>(model);  
                   version = snapshotCount++;
-                }
 
-                int chosenClientIndex = rand.nextInt(clients.size());
+                  int chosenClientIndex = rand.nextInt(clients.size());
 
-                if (rand.nextInt(100) < softCommitPercent) {
-                  log.info("softCommit start");
-                  clients.get(chosenClientIndex).commit(true, true, true);
-                  log.info("softCommit end");
-                } else {
-                  log.info("hardCommit start");
-                  clients.get(chosenClientIndex).commit();
-                  log.info("hardCommit end");
-                }
-
-                // nocommit: dual sync blocks w/non-synced commits in between is not thread safe
-                // nocommit: see jira comments for bad scenerio
-                synchronized (TestStressInPlaceUpdates.this) {
+                  if (rand.nextInt(100) < softCommitPercent) {
+                    log.info("softCommit start");
+                    clients.get(chosenClientIndex).commit(true, true, true);
+                    log.info("softCommit end");
+                  } else {
+                    log.info("hardCommit start");
+                    clients.get(chosenClientIndex).commit();
+                    log.info("hardCommit end");
+                  }
 
                   // install this model snapshot only if it's newer than the current one
                   if (version >= committedModelClock) {

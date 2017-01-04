@@ -20,6 +20,8 @@ package org.apache.solr.search;
 import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
 
 import org.noggit.ObjectBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.schema.IndexSchema;
@@ -32,6 +34,7 @@ import org.junit.Test;
 
 import java.io.File;
 import java.io.RandomAccessFile;
+import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayDeque;
@@ -48,6 +51,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
 
 public class TestRecovery extends SolrTestCaseJ4 {
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   // means that we've seen the leader and have version info (i.e. we are a non-leader replica)
   private static String FROM_LEADER = DistribPhase.FROMLEADER.toString(); 
@@ -94,9 +98,6 @@ public class TestRecovery extends SolrTestCaseJ4 {
 
   @Test
   public void testLogReplay() throws Exception {
-    // nocommit: we also need testing that replay works correctly when mixing in-place updates + deletes
-    // nocommit: both deletes by id, and DBQ (against pre/post in-place updates values)
-    // nocommit: see longer jira comment about this method
     
     try {
 
@@ -1118,6 +1119,134 @@ public class TestRecovery extends SolrTestCaseJ4 {
     }
   }
 
+  @Test
+  public void testLogReplayWithInPlaceUpdatesAndDeletes() throws Exception {
+    try {
+
+      DirectUpdateHandler2.commitOnClose = false;
+      final Semaphore logReplay = new Semaphore(0);
+      final Semaphore logReplayFinish = new Semaphore(0);
+
+      UpdateLog.testing_logReplayHook = () -> {
+        try {
+          assertTrue(logReplay.tryAcquire(timeout, TimeUnit.SECONDS));
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      };
+
+      UpdateLog.testing_logReplayFinishHook = () -> logReplayFinish.release();
+
+
+      clearIndex();
+      assertU(commit());
+
+      Deque<Long> versions = new ArrayDeque<>();
+      versions.addFirst(addAndGetVersion(sdoc("id", "A1"), null));
+      
+      // DBQ of updated document using id
+      versions.addFirst(addAndGetVersion(sdoc("id", "A2", "val_i_dvo", "1"), null));
+      versions.addFirst(addAndGetVersion(sdoc("id", "A2", "val_i_dvo", map("set", 2)), null)); // in-place update
+      versions.addFirst(deleteByQueryAndGetVersion("id:A2", null));
+
+      // DBQ of updated document using updated value
+      versions.addFirst(addAndGetVersion(sdoc("id", "A3", "val_i_dvo", "101"), null));
+      versions.addFirst(addAndGetVersion(sdoc("id", "A3", "val_i_dvo", map("set", 102)), null)); // in-place update
+      versions.addFirst(deleteByQueryAndGetVersion("val_i_dvo:102", null));
+
+      // DBQ using an intermediate update value (shouldn't delete anything)
+      versions.addFirst(addAndGetVersion(sdoc("id", "A4", "val_i_dvo", "200"), null));
+      versions.addFirst(addAndGetVersion(sdoc("id", "A4", "val_i_dvo", map("inc", "1")), null)); // in-place update
+      versions.addFirst(addAndGetVersion(sdoc("id", "A4", "val_i_dvo", map("inc", "1")), null)); // in-place update
+      versions.addFirst(deleteByQueryAndGetVersion("val_i_dvo:201", null));
+
+      // DBI of updated document
+      versions.addFirst(addAndGetVersion(sdoc("id", "A5", "val_i_dvo", "300"), null));
+      versions.addFirst(addAndGetVersion(sdoc("id", "A5", "val_i_dvo", map("inc", "1")), null)); // in-place update
+      versions.addFirst(addAndGetVersion(sdoc("id", "A5", "val_i_dvo", map("inc", "1")), null)); // in-place update
+      versions.addFirst(deleteAndGetVersion("A5", null));
+      
+      assertJQ(req("q","*:*"),"/response/numFound==0");
+      
+
+      assertJQ(req("qt","/get", "getVersions",""+versions.size()) ,"/versions==" + versions);
+
+      h.close();
+      createCore();
+      // Clearing the updatelog as it would happen after a fresh node restart
+      h.getCore().getUpdateHandler().getUpdateLog().deleteAll();
+
+      // Solr should kick this off now
+      // h.getCore().getUpdateHandler().getUpdateLog().recoverFromLog();
+
+      // verify that previous close didn't do a commit
+      // recovery should be blocked by our hook
+      assertJQ(req("q","*:*") ,"/response/numFound==0");
+
+      // make sure we can still access versions after a restart
+      assertJQ(req("qt","/get", "getVersions",""+versions.size()),"/versions==" + versions);
+
+      // unblock recovery
+      logReplay.release(1000);
+
+      // make sure we can still access versions during recovery
+      assertJQ(req("qt","/get", "getVersions",""+versions.size()),"/versions==" + versions);
+
+      // wait until recovery has finished
+      assertTrue(logReplayFinish.tryAcquire(timeout, TimeUnit.SECONDS));
+      assertJQ(req("q","val_i_dvo:202") ,"/response/numFound==1"); // assert that in-place update is retained
+
+      assertJQ(req("q","*:*") ,"/response/numFound==2");
+      assertJQ(req("q","id:A2") ,"/response/numFound==0");
+      assertJQ(req("q","id:A3") ,"/response/numFound==0");
+      assertJQ(req("q","id:A4") ,"/response/numFound==1");
+      assertJQ(req("q","id:A5") ,"/response/numFound==0");
+
+      // make sure we can still access versions after recovery
+      assertJQ(req("qt","/get", "getVersions",""+versions.size()) ,"/versions==" + versions);
+
+      assertU(adoc("id","A10"));
+
+      h.close();
+      createCore();
+      // Solr should kick this off now
+      // h.getCore().getUpdateHandler().getUpdateLog().recoverFromLog();
+
+      // wait until recovery has finished
+      assertTrue(logReplayFinish.tryAcquire(timeout, TimeUnit.SECONDS));
+      assertJQ(req("q","*:*") ,"/response/numFound==3");
+      assertJQ(req("q","id:A2") ,"/response/numFound==0");
+      assertJQ(req("q","id:A3") ,"/response/numFound==0");
+      assertJQ(req("q","id:A4") ,"/response/numFound==1");
+      assertJQ(req("q","id:A5") ,"/response/numFound==0");
+      assertJQ(req("q","id:A10"),"/response/numFound==1");
+      
+      // no updates, so insure that recovery does not run
+      h.close();
+      int permits = logReplay.availablePermits();
+      createCore();
+      // Solr should kick this off now
+      // h.getCore().getUpdateHandler().getUpdateLog().recoverFromLog();
+
+      assertJQ(req("q","*:*") ,"/response/numFound==3");
+      assertJQ(req("q","val_i_dvo:202") ,"/response/numFound==1"); // assert that in-place update is retained
+      assertJQ(req("q","id:A2") ,"/response/numFound==0");
+      assertJQ(req("q","id:A3") ,"/response/numFound==0");
+      assertJQ(req("q","id:A4") ,"/response/numFound==1");
+      assertJQ(req("q","id:A5") ,"/response/numFound==0");
+      assertJQ(req("q","id:A10"),"/response/numFound==1");
+      Thread.sleep(100);
+      assertEquals(permits, logReplay.availablePermits()); // no updates, so insure that recovery didn't run
+
+      assertEquals(UpdateLog.State.ACTIVE, h.getCore().getUpdateHandler().getUpdateLog().getState());
+
+    } finally {
+      DirectUpdateHandler2.commitOnClose = true;
+      UpdateLog.testing_logReplayHook = null;
+      UpdateLog.testing_logReplayFinishHook = null;
+    }
+
+  }
 
   // NOTE: replacement must currently be same size
   private static void findReplace(byte[] from, byte[] to, byte[] data) {

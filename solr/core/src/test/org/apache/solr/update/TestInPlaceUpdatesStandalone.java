@@ -20,6 +20,7 @@ package org.apache.solr.update;
 
 import static org.junit.internal.matchers.StringContains.containsString;
 import static org.apache.solr.update.UpdateLogTest.buildAddUpdateCommand;
+import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -31,6 +32,7 @@ import java.util.Set;
 
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.util.TestUtil;
+import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.embedded.EmbeddedSolrServer;
 import org.apache.solr.common.SolrDocument;
@@ -40,10 +42,10 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
+import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
-import org.apache.solr.search.TestRTGBase;
 import org.apache.solr.update.processor.AtomicUpdateDocumentMerger;
 import org.apache.solr.util.RefCounted;
 import org.junit.Before;
@@ -54,10 +56,7 @@ import org.junit.Test;
 /**
  * Tests the in-place updates (docValues updates) for a standalone Solr instance.
  */
-public class TestInPlaceUpdatesStandalone extends TestRTGBase {
-  // nocommit: why is this class extending TestRTGBase?
-  // nocommit: it doesn't seem to use any features of that baseclass (and was subclassing SolrTestCaseJ4 in previous patches)
-
+public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
   private static SolrClient client;
 
   @BeforeClass
@@ -90,8 +89,8 @@ public class TestInPlaceUpdatesStandalone extends TestRTGBase {
   }
 
   @Before
-  public void deleteAllAndCommit() {
-    clearIndex();
+  public void deleteAllAndCommit() throws Exception {
+    deleteByQueryAndGetVersion("*:*", params("_version_", Long.toString(-Long.MAX_VALUE), DISTRIB_UPDATE_PARAM, DistribPhase.FROMLEADER.toString()));
     assertU(commit("softCommit", "false"));
   }
 
