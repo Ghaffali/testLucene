@@ -1138,6 +1138,9 @@ public class AtomicUpdatesTest extends SolrTestCaseJ4 {
   }
 
   public void testFieldsWithDefaultValuesWhenAtomicUpdatesAgainstTlog() {
+    // nocommit: all of these assumptions/assertions work for stored ints...
+    // nocommit: ...but DVO atomic updates against tlog are losing other schema defaults
+    
     for (String fieldToUpdate : Arrays.asList("field_to_update_i1", "field_to_update_i_dvo")) {
       clearIndex();
       
