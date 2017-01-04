@@ -40,6 +40,7 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import com.codahale.metrics.Gauge;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.lucene.util.BytesRef;
 import org.apache.solr.common.SolrException;
@@ -50,6 +51,8 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestInfo;
@@ -185,6 +188,11 @@ public class UpdateLog implements PluginInfoInitialized {
   protected volatile boolean cancelApplyBufferUpdate;
   List<Long> startingVersions;
   int startingOperation;  // last operation in the logs on startup
+
+  // metrics
+  protected Gauge<Integer> bufferingDocsGauge;
+  protected Gauge<Integer> replayLogsCountGauge;
+  protected Gauge<Long> replayDocsCountGauge;
 
   public static class LogPtr {
     final long pointer;
@@ -333,7 +341,42 @@ public class UpdateLog implements PluginInfoInitialized {
       }
 
     }
-
+    SolrMetricManager metricManager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
+    String registry = core.getCoreMetricManager().getRegistryName();
+    bufferingDocsGauge = () -> {
+      if (tlog == null) {
+        System.err.println("no tlog");
+        return 0;
+      } else if (state == State.APPLYING_BUFFERED) {
+        System.err.println("APPLYING_BUFFERED: " + recoveryInfo + ", tlog " + tlog.numRecords);
+        return tlog.numRecords() - recoveryInfo.adds - recoveryInfo.deleteByQuery - recoveryInfo.deletes;
+      } else if (state == State.BUFFERING) {
+        System.err.println("BUFFERING: " + tlog.numRecords());
+        return tlog.numRecords();
+      } else {
+        return 0;
+      }
+    };
+    replayLogsCountGauge = () -> logs.size();
+    replayDocsCountGauge = () -> {
+      if (state == State.REPLAYING) {
+        synchronized(this) {
+          long processed = recoveryInfo.adds + recoveryInfo.deletes + recoveryInfo.deleteByQuery;
+          long totalDocs = 0;
+          for (TransactionLog log : logs) {
+            totalDocs += log.numRecords();
+          }
+          System.err.println("REPLAYING: " + totalDocs + " - " + processed);
+          return totalDocs - processed;
+        }
+      } else {
+        System.err.println("not REPLAYING");
+        return 0L;
+      }
+    };
+    metricManager.register(registry, bufferingDocsGauge, true, "buffering.docs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
+    metricManager.register(registry, bufferingDocsGauge, true, "replying.logs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
+    metricManager.register(registry, bufferingDocsGauge, true, "replying.docs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
   }
 
   /**
