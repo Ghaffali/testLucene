@@ -29,6 +29,7 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
 import static org.junit.internal.matchers.StringContains.containsString;
 
 public class UpdateLogTest extends SolrTestCaseJ4 {
@@ -157,17 +158,28 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
   }
 
   @Test
-  public void testApplyPartialUpdatesWithDBQ() { // nocommit: missleading name?
-
-    // nocommit: no in-place updates happening in this test?
- 
+  public void testApplyPartialUpdatesWithDelete() throws Exception {
     ulogAdd(ulog, null, sdoc("id", "1", "title_s", "title1", "val1_i_dvo", "1", "_version_", "100"));
-    ulogAdd(ulog, 100L, sdoc("id", "1", "val1_i_dvo", "2", "_version_", "101"));
-    ulogAdd(ulog, 101L, sdoc("id", "1", "val1_i_dvo", "3", "_version_", "102"));
-    ulogDelete(ulog, "1", 200L, true); // dbq, "id:1"
-    assertNull(ulog.lookup(DOC_1_INDEXED_ID));
-
-    // nocommit: need more rigerous assertions about expected behavior after DBQ (new RT searcher?)
+    ulogAdd(ulog, 100L, sdoc("id", "1", "val1_i_dvo", "2", "_version_", "101")); // in-place update
+    ulogAdd(ulog, 101L, sdoc("id", "1", "val1_i_dvo", "3", "_version_", "102")); // in-place update
+    
+    // sanity check that the update log has one document, and RTG returns the document
+    assertEquals(1, ulog.map.size());
+    assertJQ(req("qt","/get", "id","1"), "=={'doc':{\"id\":\"1\", \"val1_i_dvo\":3, \"_version_\":102, \"title_s\":\"title1\"}}");
+    
+    boolean dbq = random().nextBoolean();
+    ulogDelete(ulog, "1", 200L, dbq); // delete id:1 document
+    if (dbq) {
+      assertNull(ulog.lookup(DOC_1_INDEXED_ID)); // any DBQ clears out the ulog, so this document shouldn't exist
+      assertEquals(0, ulog.map.size());
+      assertTrue(String.valueOf(ulog.prevMap), ulog.prevMap == null || ulog.prevMap.size() == 0);
+      assertTrue(String.valueOf(ulog.prevMap2), ulog.prevMap2 == null || ulog.prevMap2.size() == 0);
+      // verify that the document is deleted, by doing an RTG call
+      assertJQ(req("qt","/get", "id","1"), "=={'doc':null}");
+    } else { // dbi
+      List entry = ((List)ulog.lookup(DOC_1_INDEXED_ID));
+      assertEquals(UpdateLog.DELETE, (int)entry.get(UpdateLog.FLAGS_IDX) & UpdateLog.OPERATION_MASK);
+    }
   }
 
   /**
