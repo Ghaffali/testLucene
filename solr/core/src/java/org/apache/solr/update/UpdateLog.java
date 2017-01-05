@@ -41,6 +41,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.lucene.util.BytesRef;
 import org.apache.solr.common.SolrException;
@@ -190,9 +191,12 @@ public class UpdateLog implements PluginInfoInitialized {
   int startingOperation;  // last operation in the logs on startup
 
   // metrics
-  protected Gauge<Integer> bufferingDocsGauge;
+  protected Gauge<Integer> bufferedOpsGauge;
   protected Gauge<Integer> replayLogsCountGauge;
-  protected Gauge<Long> replayDocsCountGauge;
+  protected Gauge<Long> replayBytesGauge;
+  protected Gauge<Integer> stateGauge;
+  protected Meter applyingBufferedOpsMeter;
+  protected Meter replayOpsMeter;
 
   public static class LogPtr {
     final long pointer;
@@ -343,40 +347,40 @@ public class UpdateLog implements PluginInfoInitialized {
     }
     SolrMetricManager metricManager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
     String registry = core.getCoreMetricManager().getRegistryName();
-    bufferingDocsGauge = () -> {
+    bufferedOpsGauge = () -> {
       if (tlog == null) {
-        System.err.println("no tlog");
         return 0;
       } else if (state == State.APPLYING_BUFFERED) {
-        System.err.println("APPLYING_BUFFERED: " + recoveryInfo + ", tlog " + tlog.numRecords);
-        return tlog.numRecords() - recoveryInfo.adds - recoveryInfo.deleteByQuery - recoveryInfo.deletes;
+        // numRecords counts header as a record
+        return tlog.numRecords() - 1 - recoveryInfo.adds - recoveryInfo.deleteByQuery - recoveryInfo.deletes - recoveryInfo.errors;
       } else if (state == State.BUFFERING) {
-        System.err.println("BUFFERING: " + tlog.numRecords());
-        return tlog.numRecords();
+        // numRecords counts header as a record
+        return tlog.numRecords() - 1;
       } else {
         return 0;
       }
     };
     replayLogsCountGauge = () -> logs.size();
-    replayDocsCountGauge = () -> {
+    replayBytesGauge = () -> {
       if (state == State.REPLAYING) {
         synchronized(this) {
-          long processed = recoveryInfo.adds + recoveryInfo.deletes + recoveryInfo.deleteByQuery;
-          long totalDocs = 0;
+          long totalBytesToProcess = 0;
           for (TransactionLog log : logs) {
-            totalDocs += log.numRecords();
+            totalBytesToProcess += log.getLogSize();
           }
-          System.err.println("REPLAYING: " + totalDocs + " - " + processed);
-          return totalDocs - processed;
+          return totalBytesToProcess;
         }
       } else {
-        System.err.println("not REPLAYING");
         return 0L;
       }
     };
-    metricManager.register(registry, bufferingDocsGauge, true, "buffering.docs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
-    metricManager.register(registry, bufferingDocsGauge, true, "replying.logs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
-    metricManager.register(registry, bufferingDocsGauge, true, "replying.docs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
+    metricManager.register(registry, bufferedOpsGauge, true, "ops", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "buffered");
+    metricManager.register(registry, replayLogsCountGauge, true, "logs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "replay", "remaining");
+    metricManager.register(registry, replayBytesGauge, true, "bytes", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "replay", "remaining");
+    applyingBufferedOpsMeter = metricManager.meter(registry, "ops", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "applying_buffered");
+    replayOpsMeter = metricManager.meter(registry, "ops", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "replay");
+    stateGauge = () -> state.ordinal();
+    metricManager.register(registry, stateGauge, true, "state", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
   }
 
   /**
@@ -1469,6 +1473,13 @@ public class UpdateLog implements PluginInfoInitialized {
             if (rsp.getException() != null) {
               loglog.error("REPLAY_ERR: Exception replaying log", rsp.getException());
               throw rsp.getException();
+            }
+            if (state == State.REPLAYING) {
+              replayOpsMeter.mark();
+            } else if (state == State.APPLYING_BUFFERED) {
+              applyingBufferedOpsMeter.mark();
+            } else {
+              // XXX should not happen?
             }
           } catch (IOException ex) {
             recoveryInfo.errors++;
