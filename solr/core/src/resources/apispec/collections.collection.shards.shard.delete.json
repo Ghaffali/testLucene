@@ -8,6 +8,20 @@
     "paths": [
       "/collections/{collection}/shards/{shard}",
       "/c/{collection}/shards/{shard}"
-    ]
+    ],
+    "params":{
+      "deleteInstanceDir":{
+        "type": "boolean",
+        "description":"By default Solr will delete the entire instanceDir of each replica that is deleted. Set this to false to prevent the instance directory from being deleted."
+      },
+      "deleteDataDir":{
+        "type":"boolean",
+        "description":"y default Solr will delete the dataDir of each replica that is deleted. Set this to false to prevent the data directory from being deleted."
+      },
+      "async": {
+        "type": "string",
+        "description": "Defines a request ID that can be used to track this action after it's submitted. The action will be processed asynchronously when this is defined. This command can be long-running, so running it asynchronously is recommended."
+      }
+    }
   }
 }
