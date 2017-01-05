@@ -14,19 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.metrics;
+package org.apache.solr.client.solrj.io.ops;
 
 /**
- * Used by objects that expose metrics through {@link SolrCoreMetricManager}.
+ *  A BooleanOperation returns true or false for each tuple that it evaluates. The HavingStream applies a BooleanOperation to
+ *  determine which tuples to emit.
  */
-public interface SolrMetricProducer {
 
-  /**
-   * Initializes metrics specific to this producer
-   * @param manager an instance of {@link SolrMetricManager}
-   * @param registry registry name where metrics are registered
-   * @param scope scope of the metrics (eg. handler name) to separate metrics of
-   *              instances of the same component executing in different contexts
-   */
-  void initializeMetrics(SolrMetricManager manager, String registry, String scope);
+public interface BooleanOperation extends StreamOperation {
+  public abstract boolean evaluate();
 }
