@@ -38,7 +38,8 @@
           "type": "string",
           "description": "Defines a request ID that can be used to track this action after it's submitted. The action will be processed asynchronously when this is defined. This command can be long-running, so running it asynchronously is recommended."
         }
-      }
+      },
+      "required":["shard"]
     },
     "create": {
       "type":"object",
@@ -64,7 +65,8 @@
           "type": "string",
           "description": "Defines a request ID that can be used to track this action after it's submitted. The action will be processed asynchronously when this is defined."
         }
-      }
+      },
+      "required":["shard"]
     },
     "add-replica": {
       "documentation":"https://cwiki.apache.org/confluence/display/solr/Collections+API#CollectionsAPI-api_addreplica",
@@ -101,7 +103,8 @@
           "type": "string",
           "description": "Defines a request ID that can be used to track this action after it's submitted. The action will be processed asynchronously when this is defined."
         }
-      }
+      },
+      "required":["shard"]
     }
   }
 }
