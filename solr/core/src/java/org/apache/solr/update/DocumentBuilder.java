@@ -115,7 +115,8 @@ public class DocumentBuilder {
    * 
    * @param doc SolrInputDocument from which the document has to be built
    * @param schema Schema instance
-   * @param forInPlaceUpdate Whether the output document would be used for an in-place update or not.
+   * @param forInPlaceUpdate Whether the output document would be used for an in-place update or not. When this is true,
+   *        default fields values and copy fields targets are not populated.
    * @return Built Lucene document
 
    */

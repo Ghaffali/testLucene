@@ -45,7 +45,6 @@ import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.cloud.CloudDescriptor;
 import org.apache.solr.cloud.ZkController;
 import org.apache.solr.common.SolrDocument;
-import org.apache.solr.common.SolrDocumentBase;
 import org.apache.solr.common.SolrDocumentList;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
@@ -232,21 +231,19 @@ public class RealTimeGetComponent extends SearchComponent
                  break;
                }
 
-               SolrDocument doc = toSolrDoc((SolrInputDocument)entry.get(entry.size()-1), core.getLatestSchema(), oper == UpdateLog.UPDATE_INPLACE);
-               if (oper == UpdateLog.UPDATE_INPLACE) {
+               SolrDocument doc;
+               if (oper == UpdateLog.ADD) {
+                 doc = toSolrDoc((SolrInputDocument)entry.get(entry.size()-1), core.getLatestSchema());
+               } else if (oper == UpdateLog.UPDATE_INPLACE) {
                  assert entry.size() == 5;
                  // For in-place update case, we have obtained the partial document till now. We need to
                  // resolve it to a full document to be returned to the user.
-                 doc = (SolrDocument) resolveFullDocument(core, idBytes.get(), rsp.getReturnFields(), doc, entry, null);
+                 doc = resolveFullDocument(core, idBytes.get(), rsp.getReturnFields(), (SolrInputDocument)entry.get(entry.size()-1), entry, null);
                  if (doc == null) {
                    break; // document has been deleted as the resolve was going on
                  }
-                 // Since the partial doc from the tlog was obtained and resolved without ever having populated all
-                 // the defaults and the copy fields before, we need to do it before returning. The call to toSolrDoc()
-                 // here achieves that.
-                 // nocommit: Is it possible to refactor these methods cleanly so that this double conversion (SD->SID->(Document->)SD)
-                 // nocommit: can be avoided?
-                 doc = toSolrDoc(toSolrInputDocument(doc, core.getLatestSchema()), core.getLatestSchema(), false);
+               } else {
+                 throw new SolrException(ErrorCode.INVALID_STATE, "Expected ADD or UPDATE_INPLACE. Got: " + oper);
                }
                if (transformer!=null) {
                  transformer.transform(doc, -1, 0); // unknown docID
@@ -376,7 +373,7 @@ public class RealTimeGetComponent extends SearchComponent
    *          after the resolving began)
    */
   private static SolrDocument resolveFullDocument(SolrCore core, BytesRef idBytes,
-                                           ReturnFields returnFields, SolrDocumentBase partialDoc, List logEntry, Set<String> onlyTheseFields) throws IOException {
+                                           ReturnFields returnFields, SolrInputDocument partialDoc, List logEntry, Set<String> onlyTheseFields) throws IOException {
     if (idBytes == null || logEntry.size() != 5) {
       throw new SolrException(ErrorCode.INVALID_STATE, "Either Id field not present in partial document or log entry doesn't have previous version.");
     }
@@ -402,11 +399,7 @@ public class RealTimeGetComponent extends SearchComponent
     } else { // i.e. lastPrevPointer==0
       assert lastPrevPointer == 0;
       // We have successfully resolved the document based off the tlogs
-      if (partialDoc instanceof SolrInputDocument) {
-        return toSolrDoc((SolrInputDocument)partialDoc, core.getLatestSchema(), false); // last param is false since this is no longer meant to be a partial doc
-      } else {
-        return (SolrDocument)partialDoc;
-      }
+      return toSolrDoc(partialDoc, core.getLatestSchema());
     }
   }
 
@@ -452,7 +445,7 @@ public class RealTimeGetComponent extends SearchComponent
    *         document doesn't exist in the index.
    */
   private static SolrDocument mergePartialDocWithFullDocFromIndex(SolrCore core, BytesRef idBytes, ReturnFields returnFields,
-		  Set<String> onlyTheseFields, SolrDocumentBase partialDoc) throws IOException {
+		  Set<String> onlyTheseFields, SolrInputDocument partialDoc) throws IOException {
     RefCounted<SolrIndexSearcher> searcherHolder = core.getRealtimeSearcher(); //Searcher();
     try {
       // now fetch last document from index, and merge partialDoc on top of it
@@ -488,7 +481,7 @@ public class RealTimeGetComponent extends SearchComponent
         return doc;
       }
       for (String fieldName: (Iterable<String>) partialDoc.getFieldNames()) {
-        doc.setField(fieldName.toString(), partialDoc.get(fieldName));  // since partial doc will only contain single valued fields, this is fine
+        doc.setField(fieldName.toString(), partialDoc.getFieldValue(fieldName));  // since partial doc will only contain single valued fields, this is fine
       }
 
       return doc;
@@ -533,12 +526,11 @@ public class RealTimeGetComponent extends SearchComponent
               try {
                 // For in-place update case, we have obtained the partial document till now. We need to
                 // resolve it to a full document to be returned to the user.
-                doc = toSolrInputDocument(
-                    resolveFullDocument(core, idBytes, new SolrReturnFields(), doc, entry, onlyTheseNonStoredDVs),
-                    core.getLatestSchema());
-                if (doc == null) {
+                SolrDocument sdoc = resolveFullDocument(core, idBytes, new SolrReturnFields(), doc, entry, onlyTheseNonStoredDVs);
+                if (sdoc == null) {
                   return DELETED;
                 }
+                doc = toSolrInputDocument(sdoc, core.getLatestSchema());
                 return doc;
               } catch (IOException ex) {
                 throw new SolrException(ErrorCode.SERVER_ERROR, "Error while resolving full document. ", ex);
@@ -714,9 +706,9 @@ public class RealTimeGetComponent extends SearchComponent
    * Converts a SolrInputDocument to SolrDocument, using an IndexSchema instance. 
    * @lucene.experimental
    */
-  public static SolrDocument toSolrDoc(SolrInputDocument sdoc, IndexSchema schema, boolean isThisAPartialDoc) {
+  public static SolrDocument toSolrDoc(SolrInputDocument sdoc, IndexSchema schema) {
     // TODO: do something more performant than this double conversion
-    Document doc = DocumentBuilder.toDocument(sdoc, schema, isThisAPartialDoc);
+    Document doc = DocumentBuilder.toDocument(sdoc, schema, false);
 
     // copy the stored fields only
     Document out = new Document();
