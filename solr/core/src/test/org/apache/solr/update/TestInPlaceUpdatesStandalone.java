@@ -22,9 +22,11 @@ import static org.junit.internal.matchers.StringContains.containsString;
 import static org.apache.solr.update.UpdateLogTest.buildAddUpdateCommand;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -41,6 +43,7 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
+import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
@@ -49,6 +52,8 @@ import org.apache.solr.util.RefCounted;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+
+import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
 
 
 /**
@@ -70,8 +75,12 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
 
     // validate that the schema was not changed to an unexpected state
     IndexSchema schema = h.getCore().getLatestSchema();
-    for (String fieldName : Arrays.asList("_version_", "inplace_updatable_float", "inplace_l_dvo",
-        "inplace_updateable_with_default", "inplace_updateable_without_default")) {
+    for (String fieldName : Arrays.asList("_version_",
+                                          "inplace_l_dvo",
+                                          "inplace_updatable_float",
+                                          "inplace_updatable_int", 
+                                          "inplace_updatable_float_with_default",
+                                          "inplace_updatable_int_with_default")) {
       // these fields must only be using docValues to support inplace updates
       SchemaField field = schema.getField(fieldName);
       assertTrue(field.toString(),
@@ -87,9 +96,18 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
     client = new EmbeddedSolrServer(h.getCoreContainer(), h.coreName);
   }
 
+  @Override
+  public void clearIndex() {
+
+  }
+  
   @Before
   public void deleteAllAndCommit() throws Exception {
-    clearIndex();
+    // workaround for SOLR-9934
+    // we need to ensure that all low level IndexWriter metadata (about docvalue fields) is also deleted
+    deleteByQueryAndGetVersion("*:*", params("_version_", Long.toString(-Long.MAX_VALUE), DISTRIB_UPDATE_PARAM, DistribPhase.FROMLEADER.toString()));
+    // nocommit: if SOLR-9934 is committed before this branch is merged, replace above line with simple call to clearIndex(); 
+    
     assertU(commit("softCommit", "false"));
   }
 
@@ -982,40 +1000,53 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
   public void testComputeInPlaceUpdateableFields() throws Exception {
     Set<String> inPlaceUpdatedFields = new HashSet<String>();
 
-    // In-place updateable field updated before it exists SHOULD NOT BE in-place updated:
-    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
-                                                    "inplace_updateable_without_default", map("set", 10)));
-    assertFalse(inPlaceUpdatedFields.contains("inplace_updateable_without_default"));
+    // these asserts should hold true regardless of type, or wether the field has a default
+    List<String> fieldsToCheck = Arrays.asList("inplace_updatable_float",
+                                               "inplace_updatable_int",
+                                               "inplace_updatable_float_with_default",
+                                               "inplace_updatable_int_with_default");
+    Collections.shuffle(fieldsToCheck, random()); // ... and regardless of order checked
+    for (String field : fieldsToCheck) {
+      // In-place updateable field updated before it exists SHOULD NOT BE in-place updated:
+      inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
+                                                                     field, map("set", 10)));
+      assertFalse(field, inPlaceUpdatedFields.contains(field));
+      
+      // In-place updateable field updated after it exists SHOULD BE in-place updated:
+      addAndGetVersion(sdoc("id", "1", field, "0"), params()); // setting up the dv
+      inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
+                                                                     field, map("set", 10)));
+      assertTrue(field, inPlaceUpdatedFields.contains(field));
 
-    // In-place updateable field updated after it exists SHOULD BE in-place updated:
-    addAndGetVersion(sdoc("id", "1", "inplace_updateable_without_default", "0"), params()); // setting up the dv
-    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
-                                                    "inplace_updateable_without_default", map("set", 10)));
-    assertTrue(inPlaceUpdatedFields.contains("inplace_updateable_without_default"));
+      inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
+                                                                     field, map("inc", 10)));
+      assertTrue(field, inPlaceUpdatedFields.contains(field));
 
-    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
-                                                    "inplace_updateable_without_default", map("inc", 10)));
-    assertTrue(inPlaceUpdatedFields.contains("inplace_updateable_without_default"));
-    
-    // Updating an in-place updateable field (with a default) for the first time.
-    // DV for it should have been already created when first document was indexed,
-    // since it has a default value
-    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
-                                                    "inplace_updateable_with_default", map("set", 10)));
-    assertTrue(inPlaceUpdatedFields.contains("inplace_updateable_with_default"));
-    
+      final String altFieldWithDefault = field.contains("float") ?
+        "inplace_updatable_int_with_default" : "inplace_updatable_int_with_default";
+      
+      // Updating an in-place updatable field (with a default) for the first time.
+      // DV for it should have been already created when first document was indexed (above),
+      // since it has a default value
+      inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
+                                                                     altFieldWithDefault, map("set", 10)));
+      assertTrue(field + " -> " + altFieldWithDefault, inPlaceUpdatedFields.contains(altFieldWithDefault));
+      
+      deleteAllAndCommit();
+    }
+  
     // Non in-place updates
     addAndGetVersion(sdoc("id", "1", "stored_i", "0"), params()); // setting up the dv
     assertTrue("stored field updated",
                callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L, "stored_i", map("inc", 1))).isEmpty());
     
-    assertTrue("No map means full document update",
+    assertTrue("full document update",
                callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
-                                        "inplace_updateable_with_default", "100")).isEmpty());
+                                        "inplace_updatable_int_with_default", "100")).isEmpty());
   
     assertTrue("non existent dynamic dv field updated first time",
                callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
-                                        "new_updateable_int_i_dvo", map("set", 10))).isEmpty());
+                                        "new_updatable_int_i_dvo", map("set", 10))).isEmpty());
     
     // After adding a full document with the dynamic dv field, in-place update should work
     addAndGetVersion(sdoc("id", "2", "new_updateable_int_i_dvo", "0"), params()); // setting up the dv

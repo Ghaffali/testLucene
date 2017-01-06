@@ -16,21 +16,28 @@
  limitations under the License.
  -->
 <schema name="inplace-updates" version="1.6">
+  <!-- nocommit: the entire code base (configs & java) needs to be searched for "updatEable"
+       nocommit: and all usages need to be replaced with the correct spelling:  "updatable"
+       nocommit: (this isn't a schema specific concern, just needed a file to track it so i don't forget)
+  -->
+  
   <uniqueKey>id</uniqueKey>
   <field name="id" type="string" indexed="true" stored="true" docValues="true"/>
   <field name="_version_" type="long" indexed="false" stored="false"  docValues="true" />
-  
+
   <!-- specific schema fields for dv in-place updates -->
-  <!-- nocommit: most tests should be able to pass w/o these fields having default="0" -->
-  <!-- nocommit: if any tests that actaully depend/use the the default field value,
-       nocommit: then they should be changed to use a new field, with a non-0 default,
+  <!-- nocommit: tests should be able to pass w/o these fields having default="0" -->
+  <!-- nocommit: if any tests that actually depend/use the the default field value,
+       nocommit: then they should be changed to use inplace_updatable_float_with_def
+       nocommit: (or inplace_updatable_int_with_def) and assume the non-0 default value
        nocommit: so we don't risk confusion with an *implicit* (in code) default of 0 -->
   <field name="inplace_updatable_float" type="float" indexed="false" stored="false" docValues="true" default="0"/>
   <field name="inplace_updatable_int"   type="int"   indexed="false" stored="false" docValues="true" default="0"/>
 
-  <!-- To be used only in a single test, TestInPlaceUpdatesStandalone#testComputeInPlaceUpdateableFields() -->
-  <field name="inplace_updateable_without_default" type="float" indexed="false" stored="false" docValues="true"/>
-  <field name="inplace_updateable_with_default"    type="float" indexed="false" stored="false" docValues="true" default="0"/>
+  <field name="inplace_updatable_float_with_default"
+         type="float" indexed="false" stored="false" docValues="true" default="42.0"/>
+  <field name="inplace_updatable_int_with_default"
+         type="int"   indexed="false" stored="false" docValues="true" default="666"/>
 
   <!-- dynamic fields which *ONLY* use docValues so they can be updated in place -->
   <dynamicField name="*_i_dvo" multiValued="false" type="int"   docValues="true" indexed="false" stored="false"/>
