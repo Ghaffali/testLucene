@@ -238,6 +238,13 @@ public class RealTimeGetComponent extends SearchComponent
                  // For in-place update case, we have obtained the partial document till now. We need to
                  // resolve it to a full document to be returned to the user.
                  doc = (SolrDocument) resolveFullDocument(core, idBytes.get(), rsp.getReturnFields(), doc, entry, null);
+
+                 // Since the partial doc from the tlog was obtained and resolved without ever having populated all
+                 // the defaults and the copy fields before, we need to do it before returning. The call to toSolrDoc()
+                 // here achieves that.
+                 // nocommit: Is it possible to refactor these methods cleanly so that this double conversion (SD->SID->(Document->)SD)
+                 // nocommit: can be avoided?
+                 doc = toSolrDoc(toSolrInputDocument(doc, core.getLatestSchema()), core.getLatestSchema(), false);
                  if (doc == null) {
                    break;
                  }
