@@ -54,6 +54,7 @@ import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestInfo;
@@ -75,7 +76,7 @@ import static org.apache.solr.update.processor.DistributingUpdateProcessorFactor
 
 
 /** @lucene.experimental */
-public class UpdateLog implements PluginInfoInitialized {
+public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
   private static final long STATUS_TIME = TimeUnit.NANOSECONDS.convert(60, TimeUnit.SECONDS);
   public static String LOG_FILENAME_PATTERN = "%s.%019d";
   public static String TLOG_NAME="tlog";
@@ -345,8 +346,11 @@ public class UpdateLog implements PluginInfoInitialized {
       }
 
     }
-    SolrMetricManager metricManager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
-    String registry = core.getCoreMetricManager().getRegistryName();
+    core.getCoreMetricManager().registerMetricProducer(SolrInfoMBean.Category.TLOG.toString(), this);
+  }
+
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
     bufferedOpsGauge = () -> {
       if (tlog == null) {
         return 0;
@@ -363,24 +367,18 @@ public class UpdateLog implements PluginInfoInitialized {
     replayLogsCountGauge = () -> logs.size();
     replayBytesGauge = () -> {
       if (state == State.REPLAYING) {
-        synchronized(this) {
-          long totalBytesToProcess = 0;
-          for (TransactionLog log : logs) {
-            totalBytesToProcess += log.getLogSize();
-          }
-          return totalBytesToProcess;
-        }
+        return getTotalLogsSize();
       } else {
         return 0L;
       }
     };
-    metricManager.register(registry, bufferedOpsGauge, true, "ops", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "buffered");
-    metricManager.register(registry, replayLogsCountGauge, true, "logs", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "replay", "remaining");
-    metricManager.register(registry, replayBytesGauge, true, "bytes", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "replay", "remaining");
-    applyingBufferedOpsMeter = metricManager.meter(registry, "ops", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "applying_buffered");
-    replayOpsMeter = metricManager.meter(registry, "ops", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog", "replay");
+    manager.register(registry, bufferedOpsGauge, true, "ops", scope, "buffered");
+    manager.register(registry, replayLogsCountGauge, true, "logs", scope, "replay", "remaining");
+    manager.register(registry, replayBytesGauge, true, "bytes", scope, "replay", "remaining");
+    applyingBufferedOpsMeter = manager.meter(registry, "ops", scope, "applying_buffered");
+    replayOpsMeter = manager.meter(registry, "ops", scope, "replay");
     stateGauge = () -> state.ordinal();
-    metricManager.register(registry, stateGauge, true, "state", SolrInfoMBean.Category.UPDATEHANDLER.toString(), "tlog");
+    manager.register(registry, stateGauge, true, "state", scope);
   }
 
   /**
