@@ -1121,6 +1121,8 @@ public class TestRecovery extends SolrTestCaseJ4 {
 
   @Test
   public void testLogReplayWithInPlaceUpdatesAndDeletes() throws Exception {
+    // nocommit: Fails due to SOLR-9941
+
     try {
 
       DirectUpdateHandler2.commitOnClose = false;
@@ -1173,8 +1175,6 @@ public class TestRecovery extends SolrTestCaseJ4 {
 
       h.close();
       createCore();
-      // Clearing the updatelog as it would happen after a fresh node restart
-      h.getCore().getUpdateHandler().getUpdateLog().deleteAll();
 
       // Solr should kick this off now
       // h.getCore().getUpdateHandler().getUpdateLog().recoverFromLog();
