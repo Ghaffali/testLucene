@@ -108,13 +108,11 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     // sanity check no one broke the assumptions we make about our schema
     checkExpectedSchemaField(map("name", "inplace_updatable_int",
         "type","int",
-        "default","0",              // nocommit: we have no reason to depend on this
         "stored",Boolean.FALSE,
         "indexed",Boolean.FALSE,
         "docValues",Boolean.TRUE));
     checkExpectedSchemaField(map("name", "inplace_updatable_float",
         "type","float",
-        "default","0",              // nocommit: we have no reason to depend on this
         "stored",Boolean.FALSE,
         "indexed",Boolean.FALSE,
         "docValues",Boolean.TRUE));
@@ -246,11 +244,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
       ids.add(id);
     }
       
-    // nocommit: is it definitely safe to use "true" here?
-    // nocommit: once the default="0" from the schema is removed, then some docs won't have an init value,
-    // nocommit: will that mean the docid will change on 1st set? if so: it will break luceneDocids asserts
-    // nocommit: we can switch to false to ensure every doc starts with a value if need be
-    buildRandomIndex(101.0F, true, ids);
+    buildRandomIndex(101.0F, false, ids);
     
     List<Integer> luceneDocids = new ArrayList<>(numDocs);
     List<Float> valuesList = new ArrayList<Float>(numDocs);
@@ -399,6 +393,13 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
 
     currentVersion = buildRandomIndex(100).get(0);
     assertTrue(currentVersion > version);
+
+    // do an initial (non-inplace) update to ensure both the float & int fields we care about have (any) value
+    // that way all subsequent atomic updates will be inplace
+    currentVersion = addDocAndGetVersion("id", 100,
+                                         "inplace_updatable_float", map("set", random().nextFloat()),
+                                         "inplace_updatable_int", map("set", random().nextInt()));
+    LEADER.commit();
     
     // get the internal docids of id=100 document from the three replicas
     List<Integer> docids = getInternalDocIds("100");

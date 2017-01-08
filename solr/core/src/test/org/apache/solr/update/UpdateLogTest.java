@@ -166,11 +166,8 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
     // sanity check that the update log has one document, and RTG returns the document
     assertEquals(1, ulog.map.size());
     assertJQ(req("qt","/get", "id","1")
-             , "=={'doc':{ 'id':'1', 'val1_i_dvo':3, "
+             , "=={'doc':{ 'id':'1', 'val1_i_dvo':3, '_version_':102, 'title_s':'title1', "
              // fields with default values
-             + "'_version_':102, 'title_s':'title1', "
-             + "'copyfield1_src__both_updateable':0, 'inplace_updatable_float':0.0,"
-             + "'copyfield2_src__only_src_updatable':0, 'inplace_updatable_int':0, "
              + "'inplace_updatable_int_with_default':666, 'inplace_updatable_float_with_default':42.0}}");
     
     boolean dbq = random().nextBoolean();

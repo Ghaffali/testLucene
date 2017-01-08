@@ -26,13 +26,8 @@
   <field name="_version_" type="long" indexed="false" stored="false"  docValues="true" />
 
   <!-- specific schema fields for dv in-place updates -->
-  <!-- nocommit: tests should be able to pass w/o these fields having default="0" -->
-  <!-- nocommit: if any tests that actually depend/use the the default field value,
-       nocommit: then they should be changed to use inplace_updatable_float_with_def
-       nocommit: (or inplace_updatable_int_with_def) and assume the non-0 default value
-       nocommit: so we don't risk confusion with an *implicit* (in code) default of 0 -->
-  <field name="inplace_updatable_float" type="float" indexed="false" stored="false" docValues="true" default="0"/>
-  <field name="inplace_updatable_int"   type="int"   indexed="false" stored="false" docValues="true" default="0"/>
+  <field name="inplace_updatable_float" type="float" indexed="false" stored="false" docValues="true" />
+  <field name="inplace_updatable_int"   type="int"   indexed="false" stored="false" docValues="true" />
 
   <field name="inplace_updatable_float_with_default"
          type="float" indexed="false" stored="false" docValues="true" default="42.0"/>
@@ -55,11 +50,11 @@
   <copyField source="id" dest="id_field_copy_that_does_not_support_in_place_update_s"/>
   
   <!-- copyfield1: src and dest are both updatable -->
-  <field name="copyfield1_src__both_updateable" type="int" indexed="false" stored="false" docValues="true" default="0"/>
+  <field name="copyfield1_src__both_updateable" type="int" indexed="false" stored="false" docValues="true" />
   <copyField source="copyfield1_src__both_updateable" dest="copyfield1_dest__both_updatable_i_dvo"/>
 
   <!-- copyfield2: src is updatable but dest is not -->
-  <field name="copyfield2_src__only_src_updatable" type="int" indexed="false" stored="false" docValues="true" default="0"/>
+  <field name="copyfield2_src__only_src_updatable" type="int" indexed="false" stored="false" docValues="true" />
   <copyField source="copyfield2_src__only_src_updatable" dest="copyfield2_dest__only_src_updatable_i"/>
     
 

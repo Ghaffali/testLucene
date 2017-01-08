@@ -113,9 +113,9 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
 
   @Test
   public void testUpdatingDocValues() throws Exception {
-    long version1 = addAndGetVersion(sdoc("id", "1", "title_s", "first"), null);
-    long version2 = addAndGetVersion(sdoc("id", "2", "title_s", "second"), null);
-    long version3 = addAndGetVersion(sdoc("id", "3", "title_s", "third"), null);
+    long version1 = addAndGetVersion(sdoc("id", "1", "title_s", "first", "inplace_updatable_float", 41), null);
+    long version2 = addAndGetVersion(sdoc("id", "2", "title_s", "second", "inplace_updatable_float", 42), null);
+    long version3 = addAndGetVersion(sdoc("id", "3", "title_s", "third", "inplace_updatable_float", 43), null);
     assertU(commit("softCommit", "false"));
     assertQ(req("q", "*:*"), "//*[@numFound='3']");
 
@@ -281,7 +281,7 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
 
   @Test
   public void testUpdateTwoDifferentFields() throws Exception {
-    long version1 = addAndGetVersion(sdoc("id", "1", "title_s", "first"), null);
+    long version1 = addAndGetVersion(sdoc("id", "1", "title_s", "first", "inplace_updatable_float", 42), null);
     assertU(commit("softCommit", "false"));
     assertQ(req("q", "*:*"), "//*[@numFound='1']");
 
@@ -1057,13 +1057,28 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
                                                     "new_updateable_int_i_dvo", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("new_updateable_int_i_dvo"));
 
+    // for copy fields, regardless of wether the source & target support inplace updates,
+    // it won't be inplace if the DVs don't exist yet...
+    assertTrue("inplace fields should be empty when doc has no copyfield src values yet",
+               callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
+                                                       "copyfield1_src__both_updateable", map("set", 1),
+                                                       "copyfield2_src__only_src_updatable", map("set", 2))).isEmpty());
+
+    // now add a doc that *does* have the src field for each copyfield...
+    addAndGetVersion(sdoc("id", "3",
+                          "copyfield1_src__both_updateable", -13,
+                          "copyfield2_src__only_src_updatable", -15), params()); 
+    if (random().nextBoolean()) {
+      assertU(commit("softCommit", "false"));
+    }
+    
     // If a supported dv field has a copyField target which is supported, it should be an in-place update
-    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "3", "_version_", 42L,
                                                     "copyfield1_src__both_updateable", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.contains("copyfield1_src__both_updateable"));
 
     // If a supported dv field has a copyField target which is not supported, it should not be an in-place update
-    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "1", "_version_", 42L,
+    inPlaceUpdatedFields = callComputeInPlaceUpdateableFields(sdoc("id", "3", "_version_", 42L,
                                                     "copyfield2_src__only_src_updatable", map("set", 10)));
     assertTrue(inPlaceUpdatedFields.isEmpty());
   }
