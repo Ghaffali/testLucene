@@ -150,7 +150,7 @@ public class AtomicUpdateDocumentMerger {
    * 
    * @return Return a set of fields that can be in-place updated.
    */
-  public static Set<String> computeInPlaceUpdateableFields(AddUpdateCommand cmd) throws IOException {
+  public static Set<String> computeInPlaceUpdatableFields(AddUpdateCommand cmd) throws IOException {
     SolrInputDocument sdoc = cmd.getSolrInputDocument();
     IndexSchema schema = cmd.getReq().getSchema();
     

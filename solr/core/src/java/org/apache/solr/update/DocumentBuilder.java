@@ -47,7 +47,7 @@ public class DocumentBuilder {
    * @param forInPlaceUpdate Whether the field is to be added for in-place update. If true,
    *        only numeric docValues based fields are added to the document. This can be true
    *        when constructing a Lucene document for writing an in-place update, and we don't need
-   *        presence of non-updateable fields (non NDV) in such a document.
+   *        presence of non-updatable fields (non NDV) in such a document.
    */
   private static void addField(Document doc, SchemaField field, Object val, float boost, 
       boolean forInPlaceUpdate) {

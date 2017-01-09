@@ -16,10 +16,6 @@
  limitations under the License.
  -->
 <schema name="inplace-updates" version="1.6">
-  <!-- nocommit: the entire code base (configs & java) needs to be searched for "updatEable"
-       nocommit: and all usages need to be replaced with the correct spelling:  "updatable"
-       nocommit: (this isn't a schema specific concern, just needed a file to track it so i don't forget)
-  -->
   
   <uniqueKey>id</uniqueKey>
   <field name="id" type="string" indexed="true" stored="true" docValues="true"/>
@@ -46,12 +42,12 @@
   
   <!-- Copy fields -->
   
-  <!-- The id field  has a non in-place updateable copy target, but in-place updates should still work. -->
+  <!-- The id field  has a non in-place updatable copy target, but in-place updates should still work. -->
   <copyField source="id" dest="id_field_copy_that_does_not_support_in_place_update_s"/>
   
   <!-- copyfield1: src and dest are both updatable -->
-  <field name="copyfield1_src__both_updateable" type="int" indexed="false" stored="false" docValues="true" />
-  <copyField source="copyfield1_src__both_updateable" dest="copyfield1_dest__both_updatable_i_dvo"/>
+  <field name="copyfield1_src__both_updatable" type="int" indexed="false" stored="false" docValues="true" />
+  <copyField source="copyfield1_src__both_updatable" dest="copyfield1_dest__both_updatable_i_dvo"/>
 
   <!-- copyfield2: src is updatable but dest is not -->
   <field name="copyfield2_src__only_src_updatable" type="int" indexed="false" stored="false" docValues="true" />
