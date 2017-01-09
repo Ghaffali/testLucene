@@ -1121,7 +1121,6 @@ public class TestRecovery extends SolrTestCaseJ4 {
 
   @Test
   public void testLogReplayWithInPlaceUpdatesAndDeletes() throws Exception {
-    // nocommit: Fails due to SOLR-9941
 
     try {
 
@@ -1196,7 +1195,7 @@ public class TestRecovery extends SolrTestCaseJ4 {
       assertTrue(logReplayFinish.tryAcquire(timeout, TimeUnit.SECONDS));
       assertJQ(req("q","val_i_dvo:202") ,"/response/numFound==1"); // assert that in-place update is retained
 
-      assertJQ(req("q","*:*") ,"/response/numFound==2");
+      assertJQ(req("q","*:*") ,"/response/numFound==2");     // nocommit: Fails due to SOLR-9941
       assertJQ(req("q","id:A2") ,"/response/numFound==0");
       assertJQ(req("q","id:A3") ,"/response/numFound==0");
       assertJQ(req("q","id:A4") ,"/response/numFound==1");
