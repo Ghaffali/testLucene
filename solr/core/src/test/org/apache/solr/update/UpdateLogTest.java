@@ -43,8 +43,6 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
   @BeforeClass
   public static void beforeClass() throws Exception {
 
-    // nocommit: does this test need to randomize between diff schema/fields used?
-    
     initCore("solrconfig-tlog.xml", "schema-inplace-updates.xml");
 
     try (SolrQueryRequest req = req()) {
