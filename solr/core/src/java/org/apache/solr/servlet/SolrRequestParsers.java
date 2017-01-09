@@ -245,6 +245,11 @@ public class SolrRequestParsers
         }
         return Collections.EMPTY_MAP;
       }
+
+      @Override
+      public HttpSolrCall getHttpSolrCall() {
+        return httpSolrCall;
+      }
     };
     if( streams != null && streams.size() > 0 ) {
       q.setContentStreams( streams );

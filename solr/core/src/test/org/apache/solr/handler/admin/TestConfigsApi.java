@@ -18,14 +18,11 @@
 package org.apache.solr.handler.admin;
 
 
-import java.util.Collection;
-import java.util.Collections;
 import java.util.Map;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
-import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.zookeeper.KeeperException;
@@ -51,7 +48,7 @@ public class TestConfigsApi extends SolrTestCaseJ4 {
         rsp.add(ZkNodeProps.class.getName(), new ZkNodeProps(result));
       }
     };
-    ApiBag apiBag = new ApiBag();
+    ApiBag apiBag = new ApiBag(false);
     for (Api api : handler.getApis()) apiBag.register(api, EMPTY_MAP);
     compareOutput(apiBag, "/cluster/configs/sample", DELETE, null, null,
         "{name :sample, operation:delete}");

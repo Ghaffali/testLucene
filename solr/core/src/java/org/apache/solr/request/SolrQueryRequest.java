@@ -21,6 +21,7 @@ import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.servlet.HttpSolrCall;
 import org.apache.solr.util.CommandOperation;
 import org.apache.solr.util.RTimerTree;
 
@@ -116,6 +117,10 @@ public interface SolrQueryRequest extends AutoCloseable {
 
   default String getHttpMethod() {
     return (String) getContext().get("httpMethod");
+  }
+
+  default HttpSolrCall getHttpSolrCall() {
+    return null;
   }
 }
 

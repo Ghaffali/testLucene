@@ -28,6 +28,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
@@ -54,9 +56,14 @@ import static org.apache.solr.common.util.ValidatingJsonMap.NOT_NULL;
 import static org.apache.solr.common.util.StrUtils.formatString;
 
 public class ApiBag {
+  private final boolean isCoreSpecific;
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, PathTrie<Api>> apis = new ConcurrentHashMap<>();
+
+  public ApiBag(boolean isCoreSpecific) {
+    this.isCoreSpecific = isCoreSpecific;
+  }
 
   public synchronized void register(Api api, Map<String, String> nameSubstitutes) {
     try {
@@ -74,7 +81,7 @@ public class ApiBag {
 
   private void validateAndRegister(Api api, Map<String, String> nameSubstitutes) {
     ValidatingJsonMap spec = api.getSpec();
-    Api introspect = new IntrospectApi(api);
+    Api introspect = new IntrospectApi(api, isCoreSpecific);
     List<String> methods = spec.getList("methods", ENUM_OF, SUPPORTED_METHODS);
     for (String method : methods) {
       PathTrie<Api> registry = apis.get(method);
@@ -109,10 +116,12 @@ public class ApiBag {
 
   public static class IntrospectApi extends  Api {
     Api baseApi;
+    final boolean isCoreSpecific;
 
-    protected IntrospectApi( Api base) {
+    protected IntrospectApi(Api base, boolean isCoreSpecific) {
       super(EMPTY_SPEC);
       this.baseApi = base;
+      this.isCoreSpecific = isCoreSpecific;
     }
 
     public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
@@ -120,7 +129,7 @@ public class ApiBag {
       String cmd = req.getParams().get("command");
       ValidatingJsonMap result = null;
       if (cmd == null) {
-        result = baseApi.getSpec();
+        result = isCoreSpecific ? ValidatingJsonMap.getDeepCopy(baseApi.getSpec(), 5, true) : baseApi.getSpec();
       } else {
         ValidatingJsonMap specCopy = ValidatingJsonMap.getDeepCopy(baseApi.getSpec(), 5, true);
         ValidatingJsonMap commands = specCopy.getMap("commands", null);
@@ -129,6 +138,17 @@ public class ApiBag {
           specCopy.put("commands", Collections.singletonMap(cmd, m));
         }
         result = specCopy;
+      }
+      if (isCoreSpecific) {
+        List<String> pieces = req.getHttpSolrCall() == null ? null : ((V2HttpCall) req.getHttpSolrCall()).pieces;
+        if (pieces != null) {
+          String prefix = "/" + pieces.get(0) + "/" + pieces.get(1);
+          List<String> paths = result.getMap("url", NOT_NULL).getList("paths", NOT_NULL);
+          result.getMap("url", NOT_NULL).put("paths",
+              paths.stream()
+                  .map(s -> prefix + s)
+                  .collect(Collectors.toList()));
+        }
       }
       List l = (List) rsp.getValues().get("spec");
       if (l == null) rsp.getValues().add("spec", l = new ArrayList());

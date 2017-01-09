@@ -287,6 +287,6 @@ public class BlobHandler extends RequestHandlerBase implements PluginInfoInitial
 
   @Override
   public Collection<Api> getApis() {
-    return ApiBag.wrapRequestHandlers(this, "system.blob", "system.blob.upload");
+    return ApiBag.wrapRequestHandlers(this, "core.system.blob", "core.system.blob.upload");
   }
 }

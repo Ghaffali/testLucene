@@ -63,7 +63,7 @@ import static org.apache.solr.util.PathTrie.getPathSegments;
 public class V2HttpCall extends HttpSolrCall {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private Api api;
-  private List<String> pieces;
+  List<String> pieces;
   private String prefix;
   HashMap<String, String> parts = new HashMap<>();
   static final Set<String> knownPrefixes = ImmutableSet.of("cluster", "node", "collections", "cores", "c");

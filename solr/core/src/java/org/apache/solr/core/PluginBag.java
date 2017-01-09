@@ -74,7 +74,7 @@ public class PluginBag<T> implements AutoCloseable {
    * Pass needThreadSafety=true if plugins can be added and removed concurrently with lookups.
    */
   public PluginBag(Class<T> klass, SolrCore core, boolean needThreadSafety) {
-    this.apiBag = klass == SolrRequestHandler.class ? new ApiBag() : null;
+    this.apiBag = klass == SolrRequestHandler.class ? new ApiBag(core != null) : null;
     this.core = core;
     this.klass = klass;
     // TODO: since reads will dominate writes, we could also think about creating a new instance of a map each time it changes.

@@ -43,7 +43,7 @@ public class TestCoreAdminApis extends SolrTestCaseJ4 {
     CoreContainer mockCC = getCoreContainerMock(calls, new HashMap<>());
 
     CoreAdminHandler  coreAdminHandler = new CoreAdminHandler(mockCC);
-    ApiBag apiBag = new ApiBag();
+    ApiBag apiBag = new ApiBag(false);
     for (Api api : coreAdminHandler.getApis()) {
       apiBag.register(api, Collections.EMPTY_MAP);
     }

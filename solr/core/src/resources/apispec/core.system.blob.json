@@ -9,12 +9,12 @@
       "/blob",
       "/blob/{name}",
       "/blob/{name}/{version}"
-    ]
-  },
-  "params": {
-    "wt": {
-      "type":"string",
-      "description": "Use the value 'filestream' to get the file content. Use other response writers (such as xml, or json) to fetch only the metadata."
+    ],
+    "params": {
+      "wt": {
+        "type":"string",
+        "description": "Use the value 'filestream' to get the file content. Use other response writers (such as xml, or json) to fetch only the metadata."
+      }
     }
   }
 }
