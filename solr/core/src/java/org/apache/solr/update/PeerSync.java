@@ -95,6 +95,7 @@ public class PeerSync implements SolrMetricProducer {
   // metrics
   private Timer syncTime;
   private Counter syncErrors;
+  private Counter syncSkipped;
 
   // comparator that sorts by absolute value, putting highest first
   public static Comparator<Long> absComparator = (o1, o2) -> {
@@ -163,6 +164,7 @@ public class PeerSync implements SolrMetricProducer {
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
     syncTime = manager.timer(registry, "time", scope);
     syncErrors = manager.counter(registry, "errors", scope);
+    syncSkipped = manager.counter(registry, "skipped", scope);
   }
 
   /** optional list of updates we had before possibly receiving new updates */
@@ -224,9 +226,11 @@ public class PeerSync implements SolrMetricProducer {
    */
   public PeerSyncResult sync() {
     if (ulog == null) {
+      syncErrors.inc();
       return PeerSyncResult.failure();
     }
     MDCLoggingContext.setCore(core);
+    Timer.Context timerContext = null;
     try {
       log.info(msg() + "START replicas=" + replicas + " nUpdates=" + nUpdates);
       
@@ -237,10 +241,13 @@ public class PeerSync implements SolrMetricProducer {
       }
       // check if we already in sync to begin with 
       if(doFingerprint && alreadyInSync()) {
+        syncSkipped.inc();
         return PeerSyncResult.success();
       }
-      
-      
+
+      // measure only when actual sync is performed
+      timerContext = syncTime.time();
+
       // Fire off the requests before getting our own recent updates (for better concurrency)
       // This also allows us to avoid getting updates we don't need... if we got our updates and then got their updates,
       // they would
@@ -258,6 +265,7 @@ public class PeerSync implements SolrMetricProducer {
       if (startingVersions != null) {
         if (startingVersions.size() == 0) {
           log.warn("no frame of reference to tell if we've missed updates");
+          syncErrors.inc();
           return PeerSyncResult.failure();
         }
         Collections.sort(startingVersions, absComparator);
@@ -273,6 +281,7 @@ public class PeerSync implements SolrMetricProducer {
         if (Math.abs(startingVersions.get(0)) < smallestNewUpdate) {
           log.warn(msg()
               + "too many updates received since start - startingUpdates no longer overlaps with our currentUpdates");
+          syncErrors.inc();
           return PeerSyncResult.failure();
         }
         
@@ -301,10 +310,12 @@ public class PeerSync implements SolrMetricProducer {
             if (srsp.getException() == null)  {
               List<Long> otherVersions = (List<Long>)srsp.getSolrResponse().getResponse().get("versions");
               if (otherVersions != null && !otherVersions.isEmpty())  {
+                syncErrors.inc();
                 return PeerSyncResult.failure(true);
               }
             }
           }
+          syncErrors.inc();
           return PeerSyncResult.failure(false);
         }
       }
@@ -320,6 +331,7 @@ public class PeerSync implements SolrMetricProducer {
         if (!success) {
           log.info(msg() + "DONE. sync failed");
           shardHandler.cancelAll();
+          syncErrors.inc();
           return PeerSyncResult.failure();
         }
       }
@@ -334,8 +346,14 @@ public class PeerSync implements SolrMetricProducer {
       }
 
       log.info(msg() + "DONE. sync " + (success ? "succeeded" : "failed"));
+      if (!success) {
+        syncErrors.inc();
+      }
       return success ?  PeerSyncResult.success() : PeerSyncResult.failure();
     } finally {
+      if (timerContext != null) {
+        timerContext.close();
+      }
       MDCLoggingContext.clear();
     }
   }
