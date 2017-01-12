@@ -59,10 +59,25 @@
     },
     "add-initparams": {
       "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name by which it is added, so that it can be updated by name"
+        }
+      },
       "additionalProperties": true
     },
     "update-initparams": {
       "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name by which it is added"
+        }
+      },
+      "required": [
+        "name"
+      ],
       "additionalProperties": true
     },
     "delete-initparams": {
@@ -92,7 +107,10 @@
       "#include": "core.config.Commands.generic"
     },
     "delete-queryparser": {
-      "type": "string",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
       "description": "Deletes one or more query parsers, using the name given when the query parser was created. Define more than one query parser by separating the list of names with commas."
     },
     "add-valuesourceparser": {
@@ -149,10 +167,28 @@
     },
     "add-listener": {
       "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name by which it is added, so that it can be updated by name"
+        }
+      },
+      "required": [
+        "name"
+      ],
       "additionalProperties": true
     },
     "update-listener": {
       "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name by which it is added"
+        }
+      },
+      "required": [
+        "name"
+      ],
       "additionalProperties": true
     },
     "delete-listener": {
