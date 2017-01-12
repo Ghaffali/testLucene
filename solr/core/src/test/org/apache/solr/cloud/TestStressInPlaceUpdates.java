@@ -36,6 +36,7 @@ import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.client.solrj.response.UpdateResponse;
+import org.apache.solr.common.SolrDocument;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
@@ -83,7 +84,9 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
 
   private void initModel(int ndocs) {
     for (int i = 0; i < ndocs; i++) {
-      model.put(i, new DocInfo(0l, 0, 0));
+      // seed versions w/-1 so "from scratch" adds/updates will fail optimistic concurrency checks
+      // if some other thread beats us to adding the id
+      model.put(i, new DocInfo(-1L, 0, 0));
     }
     committedModel.putAll(model);
   }
@@ -102,7 +105,7 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
     final int softCommitPercent = 30 + random().nextInt(75); // what percent of the commits are soft
     final int deletePercent = 4 + random().nextInt(25);
     final int deleteByQueryPercent = random().nextInt(8);
-    final int ndocs = 5 + (random().nextBoolean() ? random().nextInt(25) : random().nextInt(200));
+    final int ndocs = atLeast(5);
     int nWriteThreads = 5 + random().nextInt(25);
     int fullUpdatePercent = 5 + random().nextInt(50);
 
@@ -209,7 +212,7 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
               if (oper < commitPercent + deletePercent + deleteByQueryPercent) {
                 log.info("deleting id {}: {}",id,info);
                 
-                long returnedVersion;
+                Long returnedVersion = null;
 
                 try {
                   final boolean dbq = (oper >= commitPercent + deletePercent);
@@ -221,15 +224,24 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                       || e.getMessage() != null && e.getMessage().contains("Conflict")) {
                     // Its okay for a leader to reject a concurrent request
                     log.warn("Conflict during partial update, rejected id=" + id + ", " + e);
-                    returnedVersion = -1;
+                    returnedVersion = null;
                   } else throw e;
                 }
 
-                // only update model if the version is newer
+                // only update model if update had no conflict & the version is newer
                 synchronized (model) {
                   DocInfo currInfo = model.get(id);
-                  if (Math.abs(returnedVersion) > Math.abs(currInfo.version)) {
-                    model.put(id, new DocInfo(returnedVersion, 0, 0));
+                  if (null != returnedVersion &&
+                      (Math.abs(returnedVersion.longValue()) > Math.abs(currInfo.version))) {
+
+                    // nocommit: CHANGE TO THIS...
+                    //
+                    // Preserve the values from the old model in the deleted doc.
+                    // This way the values will always be increasing if/when the doc is re-added, and the 
+                    // read threads can always assert that if a doc is found with a newer version then expected
+                    // then the field values must be greater then the ones expected.
+
+                    model.put(id, new DocInfo(returnedVersion.longValue(), 0, 0));
                   }
                 }
                 
@@ -240,7 +252,7 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                 long nextVal2 = val2;
 
                 int addOper = rand.nextInt(100);
-                long returnedVersion;
+                Long returnedVersion;
                 if (addOper < fullUpdatePercent || info.version <= 0) { // if document was never indexed or was deleted
                   // FULL UPDATE
                   nextVal1 = Primes.nextPrime(val1 + 1);
@@ -254,7 +266,7 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                         || e.getMessage() != null && e.getMessage().contains("Conflict")) {
                       // Its okay for a leader to reject a concurrent request
                       log.warn("Conflict during partial update, rejected id=" + id + ", " + e);
-                      returnedVersion = Integer.MIN_VALUE;
+                      returnedVersion = null;
                     } else throw e;
                   }
                 } else {
@@ -268,20 +280,20 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                         || e.getMessage() != null && e.getMessage().contains("Conflict")) {
                       // Its okay for a leader to reject a concurrent request
                       log.warn("Conflict during full update, rejected id=" + id + ", " + e);
-                      returnedVersion = -1;
                     } else if (e.getMessage() != null && e.getMessage().contains("Document not found for update.") 
                         && e.getMessage().contains("id="+id)) {
                       log.warn("Attempting a partial update for a recently deleted document, rejected id=" + id + ", " + e);
-                      returnedVersion = Integer.MIN_VALUE;
                     } else throw e;
+                    returnedVersion = null;
                   }
                 }
 
-                // only update model if the version is newer
+                // only update model if update had no conflict & the version is newer
                 synchronized (model) {
                   DocInfo currInfo = model.get(id);
-                  if (returnedVersion > currInfo.version) {
-                    model.put(id, new DocInfo(returnedVersion, nextVal1, nextVal2));
+                  if (null != returnedVersion &&
+                      (Math.abs(returnedVersion.longValue()) > Math.abs(currInfo.version))) {
+                    model.put(id, new DocInfo(returnedVersion.longValue(), nextVal1, nextVal2));
                   }
 
                 }
@@ -301,7 +313,6 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
 
       threads.add(thread);
 
-      // nocommit: need a final pass over the model to check every doc
     }
 
     // Read threads
@@ -321,13 +332,13 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
               // so when querying, we should first check the model, and then the index
 
               boolean realTime = rand.nextInt(100) < percentRealtimeQuery;
-              DocInfo info;
+              DocInfo expected;
 
               if (realTime) {
-                info = model.get(id);
+                expected = model.get(id);
               } else {
                 synchronized (TestStressInPlaceUpdates.this) {
-                  info = committedModel.get(id);
+                  expected = committedModel.get(id);
                 }
               }
 
@@ -352,29 +363,42 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
               if (response.getResults().size() == 0) {
                 // there's no info we can get back with a delete, so not much we can check without further synchronization
               } else if (response.getResults().size() == 1) {
-                assertNotNull("Realtime=" + realTime + ", Response is: " + response + ", model: " + info,
-                    response.getResults().get(0).get("val2_l_dvo"));
-                assertNotNull("Realtime=" + realTime + ", Response is: " + response.getResults().get(0) + ", model: " + info + ", client="+((HttpSolrClient)clients.get(clientId)).getBaseURL()+", leaderClient="+((HttpSolrClient)leaderClient).getBaseURL(),
-                    response.getResults().get(0).get("val1_i_dvo"));
+                final SolrDocument actual = response.getResults().get(0);
+                final String msg = "Realtime=" + realTime + ", expected=" + expected + ", actual=" + actual;
+                assertNotNull(msg, actual);
 
-                Object obj1 = response.getResults().get(0).getFirstValue("val1_i_dvo");
-                int val1 = (Integer) obj1;
-                Object obj2 = response.getResults().get(0).getFirstValue("val2_l_dvo");
-                long val2 = (Long) obj2;
-                Object objVer = response.getResults().get(0).getFirstValue("_version_");
-                long foundVer = (Long) objVer;
+                final Long foundVersion = (Long) actual.getFieldValue("_version_");
+                assertNotNull(msg, foundVersion);
+                assertTrue(msg + "... solr doc has non-positive version???",
+                           0 < foundVersion.longValue());
+                final Integer intVal = (Integer) actual.getFieldValue("val1_i_dvo");
+                assertNotNull(msg, intVal);
+                
+                final Long longVal = (Long) actual.getFieldValue("val2_l_dvo");
+                assertNotNull(msg, longVal);
 
+                assertTrue(msg + " ...solr returned older version then model. " +
+                           "should not be possible given the order of operations in writer threads",
+                           Math.abs(expected.version) <= foundVersion.longValue());
 
-                if (!(val1 == 0 && val2 == 0 || val2 % val1 == 0)) {
-                  assertTrue("Vals are: " + val1 + ", " + val2 + ", id=" + id + ", clientId=" + clients.get(clientId) + ", Doc retrived is: " + response.toString(),
-                      val1 == 0 && val2 == 0 || val2 % val1 == 0);
-
+                if (foundVersion.longValue() == expected.version) {
+                  assertEquals(msg, expected.intFieldValue, intVal.intValue());
+                  assertEquals(msg, expected.longFieldValue, longVal.longValue());
                 }
-                if (foundVer < Math.abs(info.version)
-                    || (foundVer == info.version && (val1 != info.intFieldValue || val2 != info.longFieldValue))) {    // if the version matches, the val must
-                  log.error("Realtime=" + realTime + ", ERROR, id=" + id + " found=" + response + " model=" + info + ", client="+((HttpSolrClient)clients.get(clientId)).getBaseURL()+", leaderClient="+((HttpSolrClient)leaderClient).getBaseURL());
-                  assertTrue("Realtime=" + realTime + ", ERROR, id=" + id + " found=" + response + " model=" + info, false);
-                }
+
+                // Some things we can assert about any Doc returned from solr,
+                // even if it's newer then our (expected) model information...
+
+                assertTrue(msg + " ...how did a doc in solr get a non positive intVal?",
+                           0 < intVal);
+                assertTrue(msg + " ...how did a doc in solr get a non positive longVal?",
+                           0 < longVal);
+                assertEquals(msg + " ...intVal and longVal in solr doc are internally (modulo) inconsistent w/eachother",
+                             0, (longVal % intVal));
+
+                // nocommit: for expected.version < foundVersion, assert expected.values < doc.values
+                // nocommit: (see previous nocommit in writer thread)
+                
               } else {
                 fail(String.format(Locale.ENGLISH, "There were more than one result: {}", response));
               }
@@ -397,6 +421,91 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
     for (Thread thread : threads) {
       thread.join();
     }
+
+    { // final pass over uncommitted model with RTG
+
+      for (SolrClient client : clients) {
+        for (Map.Entry<Integer,DocInfo> entry : model.entrySet()) {
+          final Integer id = entry.getKey();
+          final DocInfo expected = entry.getValue();
+          final SolrDocument actual = client.getById(id.toString());
+
+          String msg = "RTG: " + id + "=" + expected;
+          if (null == actual) {
+            // a deleted or non-existent document
+            // sanity check of the model agrees...
+            assertTrue(msg + " is deleted/non-existent in Solr, but model has non-neg version",
+                       expected.version < 0);
+            // nocommit: (see related nocommit in writer thread about updating model for deletes)
+            // nocommit: if deleted deleted docs preserve old model and never have 0,0 values, change asserts...
+            assertEquals(msg + " is deleted/non-existent in Solr", expected.intFieldValue, 0);
+            assertEquals(msg + " is deleted/non-existent in Solr", expected.longFieldValue, 0);
+            // nocommit: ...to this...
+            // assertEquals(msg + " is deleted/non-existent in Solr, but model has inconsistent (modulo) values",
+            //             0, (expected.longFieldValue % expected.intFieldValue));
+          } else {
+            msg = msg + " <==VS==> " + actual;
+            assertEquals(msg, expected.intFieldValue, actual.getFieldValue("val1_i_dvo"));
+            assertEquals(msg, expected.longFieldValue, actual.getFieldValue("val2_l_dvo"));
+            assertEquals(msg, expected.version, actual.getFieldValue("_version_"));
+            assertTrue(msg + " doc exists in solr, but version is negative???",
+                       0 < expected.version);
+          }
+        }
+      }
+    }
+    
+    { // do a final search and compare every result with the model
+      
+      // nocommit: START: better way to check the original committedModel????
+      // nocommit: do we really need to wait for shards to catchup, or is this just a red herring for another bug?
+      waitForThingsToLevelOut(30); // NOTE: this does an automatic commit...
+      committedModel = new HashMap<>(model);
+      // nocommit: END
+
+      // first, prune the model of any docs that have negative versions
+      // ie: were never actually added, or were ultimately deleted.
+      for (int i = 0; i < ndocs; i++) {
+        DocInfo info = committedModel.get(i);
+        if (info.version < 0) {
+          // first, a quick sanity check of the model itself...
+
+          // nocommit: (see related nocommit in writer thread about updating model for deletes)
+          // nocommit: if deleted deleted docs preserve old model and never have 0,0 values, change asserts...
+          assertEquals("Inconsistent int value in model for deleted doc" + i + "=" + info,
+                       0, info.intFieldValue);
+          assertEquals("Inconsistent long value in model for deleted doc" + i + "=" + info,
+                       0L, info.longFieldValue);
+          // nocommit: ...to this...
+          // assertEquals("Inconsistent (modulo) values in model for deleted doc" + i + "=" + info,
+          //             0, (info.longFieldValue % info.intFieldValue));
+
+          committedModel.remove(i);
+        }
+      }
+
+      for (SolrClient client : clients) {
+        QueryResponse rsp = client.query(params("q","*:*", "sort", "id asc", "rows", ndocs+""));
+        for (SolrDocument actual : rsp.getResults()) {
+          final Integer id = Integer.parseInt(actual.getFieldValue("id").toString());
+          final DocInfo expected = committedModel.get(id); 
+          
+          assertNotNull("Doc found but missing/deleted from model: " + actual, expected);
+          
+          final String msg = "Search: " + id + "=" + expected + " <==VS==> " + actual;
+          assertEquals(msg, expected.intFieldValue, actual.getFieldValue("val1_i_dvo"));
+          assertEquals(msg, expected.longFieldValue, actual.getFieldValue("val2_l_dvo"));
+          assertEquals(msg, expected.version, actual.getFieldValue("_version_"));
+          assertTrue(msg + " doc exists in solr, but version is negative???",
+                     0 < expected.version);
+
+          // also sanity check the model (which we already know matches the doc)
+          assertEquals("Inconsistent (modulo) values in model for id " + id + "=" + expected,
+                       0, (expected.longFieldValue % expected.intFieldValue));
+        }
+        assertEquals(committedModel.size(), rsp.getResults().getNumFound());
+      }
+    }
   }
 
   /**
@@ -408,6 +517,7 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
     long longFieldValue;
 
     public DocInfo(long version, int val1, long val2) {
+      assert version != 0; // must either be real positive version, or negative deleted version/indicator
       this.version = version;
       this.intFieldValue = val1;
       this.longFieldValue = val2;
