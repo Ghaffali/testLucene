@@ -233,14 +233,6 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                   DocInfo currInfo = model.get(id);
                   if (null != returnedVersion &&
                       (Math.abs(returnedVersion.longValue()) > Math.abs(currInfo.version))) {
-
-                    // nocommit: CHANGE TO THIS...
-                    //
-                    // Preserve the values from the old model in the deleted doc.
-                    // This way the values will always be increasing if/when the doc is re-added, and the 
-                    // read threads can always assert that if a doc is found with a newer version then expected
-                    // then the field values must be greater then the ones expected.
-
                     model.put(id, new DocInfo(returnedVersion.longValue(), 0, 0));
                   }
                 }
@@ -396,8 +388,20 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                 assertEquals(msg + " ...intVal and longVal in solr doc are internally (modulo) inconsistent w/eachother",
                              0, (longVal % intVal));
 
-                // nocommit: for expected.version < foundVersion, assert expected.values < doc.values
-                // nocommit: (see previous nocommit in writer thread)
+                // NOTE: when foundVersion is greater then the version read from the model,
+                // it's not possible to make any assertions about the field values in solr relative to the
+                // field values in the model -- ie: we can *NOT* assert expected.longFieldVal <= doc.longVal
+                //
+                // it's tempting to think that this would be possible if we changed our model to preserve the
+                // "old" valuess when doing a delete, but that's still no garuntee because of how oportunistic
+                // concurrency works with negative versions:  When adding a doc, we can assert that it must not
+                // exist with version<0, but we can't assert that the *reason* it doesn't exist was because of
+                // a delete with the specific version of "-42".
+                // So a wrtier thread might (1) prep to add a doc for the first time with "intValue=1,_version_=-1",
+                // and that add may succeed and (2) return some version X which is put in the model.  but
+                // inbetween #1 and #2 other threads may have added & deleted the doc repeatedly, updating
+                // the model with intValue=7,_version_=-42, and a reader thread might meanwhile read from the
+                // model before #2 and expect intValue=5, but get intValue=1 from solr (with a greater version)
                 
               } else {
                 fail(String.format(Locale.ENGLISH, "There were more than one result: {}", response));
@@ -436,13 +440,8 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
             // sanity check of the model agrees...
             assertTrue(msg + " is deleted/non-existent in Solr, but model has non-neg version",
                        expected.version < 0);
-            // nocommit: (see related nocommit in writer thread about updating model for deletes)
-            // nocommit: if deleted deleted docs preserve old model and never have 0,0 values, change asserts...
             assertEquals(msg + " is deleted/non-existent in Solr", expected.intFieldValue, 0);
             assertEquals(msg + " is deleted/non-existent in Solr", expected.longFieldValue, 0);
-            // nocommit: ...to this...
-            // assertEquals(msg + " is deleted/non-existent in Solr, but model has inconsistent (modulo) values",
-            //             0, (expected.longFieldValue % expected.intFieldValue));
           } else {
             msg = msg + " <==VS==> " + actual;
             assertEquals(msg, expected.intFieldValue, actual.getFieldValue("val1_i_dvo"));
@@ -469,16 +468,10 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
         DocInfo info = committedModel.get(i);
         if (info.version < 0) {
           // first, a quick sanity check of the model itself...
-
-          // nocommit: (see related nocommit in writer thread about updating model for deletes)
-          // nocommit: if deleted deleted docs preserve old model and never have 0,0 values, change asserts...
           assertEquals("Inconsistent int value in model for deleted doc" + i + "=" + info,
                        0, info.intFieldValue);
           assertEquals("Inconsistent long value in model for deleted doc" + i + "=" + info,
                        0L, info.longFieldValue);
-          // nocommit: ...to this...
-          // assertEquals("Inconsistent (modulo) values in model for deleted doc" + i + "=" + info,
-          //             0, (info.longFieldValue % info.intFieldValue));
 
           committedModel.remove(i);
         }
