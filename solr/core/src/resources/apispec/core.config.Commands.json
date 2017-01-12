@@ -199,10 +199,10 @@
       }
     },
     "add-runtimelib": {
-      "#include": "core.config.Commands.addRuntimeLib"
+      "#include": "core.config.Commands.runtimeLib"
     },
     "update-runtimelib": {
-      "#include": "core.config.Commands.updateRuntimeLib"
+      "#include": "core.config.Commands.runtimeLib"
     },
     "delete-runtimelib": {
       "type":"array",
