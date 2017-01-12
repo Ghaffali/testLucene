@@ -7,7 +7,7 @@
   "url": {
     "paths": [
       "/cores",
-      "/cores/{core}/status"
+      "/cores/{core}"
     ],
     "params": {
       "indexInfo": {
