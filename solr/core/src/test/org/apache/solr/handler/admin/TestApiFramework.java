@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.SolrTestCaseJ4;
+import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.V2HttpCall.CompositeApi;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.common.params.MapSolrParams;
@@ -35,12 +36,15 @@ import org.apache.solr.handler.PingRequestHandler;
 import org.apache.solr.handler.SchemaHandler;
 import org.apache.solr.handler.SolrConfigHandler;
 import org.apache.solr.request.LocalSolrQueryRequest;
+import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestHandler;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.V2HttpCall;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.util.PathTrie;
 
+import static org.apache.solr.api.ApiBag.EMPTY_SPEC;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
 import static org.apache.solr.common.params.CommonParams.COLLECTIONS_HANDLER_PATH;
 import static org.apache.solr.common.params.CommonParams.CONFIGSETS_HANDLER_PATH;
@@ -138,7 +142,23 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     ));
 
   }
+  public void testTrailingTemplatePaths(){
+    PathTrie<Api> registry =  new PathTrie<>();
+    Api api = new Api(EMPTY_SPEC) {
+      @Override
+      public void call(SolrQueryRequest req, SolrQueryResponse rsp) {
 
+      }
+    };
+    Api intropsect = new ApiBag.IntrospectApi(api,false);
+    ApiBag.registerIntrospect(Collections.emptyMap(),registry,"/c/.system/blob/{name}",intropsect);
+    ApiBag.registerIntrospect(Collections.emptyMap(), registry, "/c/.system/{x}/{name}", intropsect);
+    assertEquals(intropsect, registry.lookup("/c/.system/blob/random_string/_introspect", new HashMap<>()));
+    assertEquals(intropsect, registry.lookup("/c/.system/blob/_introspect", new HashMap<>()));
+    assertEquals(intropsect, registry.lookup("/c/.system/_introspect", new HashMap<>()));
+    assertEquals(intropsect, registry.lookup("/c/.system/v1/_introspect", new HashMap<>()));
+    assertEquals(intropsect, registry.lookup("/c/.system/v1/v2/_introspect", new HashMap<>()));
+  }
   private SolrQueryResponse invoke(PluginBag<SolrRequestHandler> reqHandlers, String path,
                                    String fullPath, SolrRequest.METHOD method,
                                    CoreContainer mockCC) {

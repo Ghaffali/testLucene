@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Lists;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.common.util.Utils;
@@ -109,16 +110,34 @@ public class ApiBag {
       verifyCommands(api.getSpec());
       for (String path : paths) {
         registry.insert(path, nameSubstitutes, api);
-        registry.insert(path + INTROSPECT, nameSubstitutes, introspect);
+        registerIntrospect(nameSubstitutes, registry, path, introspect);
       }
     }
+  }
+
+  public static void registerIntrospect(Map<String, String> nameSubstitutes, PathTrie<Api> registry, String path, Api introspect) {
+    List<String> l = PathTrie.getPathSegments(path);
+    registerIntrospect(l, registry, nameSubstitutes, introspect);
+    int lastIdx = l.size() - 1;
+    for (int i = lastIdx; i >= 0; i--) {
+      String itemAt = l.get(i);
+      if (PathTrie.templateName(itemAt) == null) break;
+      l.remove(i);
+      registerIntrospect(l, registry, nameSubstitutes, introspect);
+    }
+  }
+
+  static void registerIntrospect(List<String> l, PathTrie<Api> registry, Map<String, String> substitutes, Api introspect) {
+    ArrayList<String> copy = new ArrayList<>(l);
+    copy.add("_introspect");
+    registry.insert(copy, substitutes, introspect);
   }
 
   public static class IntrospectApi extends  Api {
     Api baseApi;
     final boolean isCoreSpecific;
 
-    protected IntrospectApi(Api base, boolean isCoreSpecific) {
+    public IntrospectApi(Api base, boolean isCoreSpecific) {
       super(EMPTY_SPEC);
       this.baseApi = base;
       this.isCoreSpecific = isCoreSpecific;

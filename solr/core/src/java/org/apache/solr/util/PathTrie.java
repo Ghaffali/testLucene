@@ -42,6 +42,10 @@ public class PathTrie<T> {
 
   public void insert(String path, Map<String, String> replacements, T o) {
     List<String> parts = getPathSegments(path);
+    insert(parts,replacements, o);
+  }
+
+  public void insert(List<String> parts, Map<String, String> replacements, T o) {
     if (parts.isEmpty()) {
       root.obj = o;
       return;
