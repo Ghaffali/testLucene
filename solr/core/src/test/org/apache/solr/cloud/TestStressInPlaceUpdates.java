@@ -1,4 +1,3 @@
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -210,22 +209,25 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
               if (rand.nextBoolean()) Thread.yield();
 
               if (oper < commitPercent + deletePercent + deleteByQueryPercent) {
-                log.info("deleting id {}: {}",id,info);
+                final boolean dbq = (oper >= commitPercent + deletePercent);
+                final String delType = dbq ? "DBI": "DBQ";
+                log.info("{} id {}: {}", delType, id, info);
                 
                 Long returnedVersion = null;
 
                 try {
-                  final boolean dbq = (oper >= commitPercent + deletePercent);
                   returnedVersion = deleteDocAndGetVersion(Integer.toString(id), params("_version_", Long.toString(info.version)), dbq);
-                  log.info((dbq? "DBI": "DBQ")+": Deleting id=" + id + "], version=" + info.version 
-                      + ".  Returned version=" + returnedVersion);
+                  log.info(delType + ": Deleting id=" + id + ", version=" + info.version 
+                           + ".  Returned version=" + returnedVersion);
                 } catch (RuntimeException e) {
                   if (e.getMessage() != null && e.getMessage().contains("version conflict")
                       || e.getMessage() != null && e.getMessage().contains("Conflict")) {
                     // Its okay for a leader to reject a concurrent request
-                    log.warn("Conflict during partial update, rejected id=" + id + ", " + e);
+                    log.warn("Conflict during {}, rejected id={}, {}", delType, id, e);
                     returnedVersion = null;
-                  } else throw e;
+                  } else {
+                    throw e;
+                  }
                 }
 
                 // only update model if update had no conflict & the version is newer
@@ -257,9 +259,11 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                     if (e.getMessage() != null && e.getMessage().contains("version conflict")
                         || e.getMessage() != null && e.getMessage().contains("Conflict")) {
                       // Its okay for a leader to reject a concurrent request
-                      log.warn("Conflict during partial update, rejected id=" + id + ", " + e);
+                      log.warn("Conflict during full update, rejected id={}, {}", id, e);
                       returnedVersion = null;
-                    } else throw e;
+                    } else {
+                      throw e;
+                    }
                   }
                 } else {
                   // PARTIAL
@@ -271,11 +275,13 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
                     if (e.getMessage() != null && e.getMessage().contains("version conflict")
                         || e.getMessage() != null && e.getMessage().contains("Conflict")) {
                       // Its okay for a leader to reject a concurrent request
-                      log.warn("Conflict during full update, rejected id=" + id + ", " + e);
+                      log.warn("Conflict during partial update, rejected id={}, {}", id, e);
                     } else if (e.getMessage() != null && e.getMessage().contains("Document not found for update.") 
-                        && e.getMessage().contains("id="+id)) {
-                      log.warn("Attempting a partial update for a recently deleted document, rejected id=" + id + ", " + e);
-                    } else throw e;
+                               && e.getMessage().contains("id="+id)) {
+                      log.warn("Attempted a partial update for a recently deleted document, rejected id={}, {}", id, e);
+                    } else {
+                      throw e;
+                    }
                     returnedVersion = null;
                   }
                 }
@@ -455,12 +461,17 @@ public class TestStressInPlaceUpdates extends AbstractFullDistribZkTestBase {
     }
     
     { // do a final search and compare every result with the model
+
+      // because commits don't provide any sort of concrete versioning (or optimistic concurrency constraints)
+      // there's no way to garuntee that our committedModel matches what was in Solr at the time of the last commit.
+      // It's possible other threads made additional writes to solr before the commit was processed, but after
+      // the committedModel variable was assigned it's new value.
+      //
+      // what we can do however, is commit all completed updates, and *then* compare solr search results
+      // against the (new) committed model....
       
-      // nocommit: START: better way to check the original committedModel????
-      // nocommit: do we really need to wait for shards to catchup, or is this just a red herring for another bug?
-      waitForThingsToLevelOut(30); // NOTE: this does an automatic commit...
+      waitForThingsToLevelOut(30); // NOTE: this does an automatic commit for us & ensures replicas are up to date
       committedModel = new HashMap<>(model);
-      // nocommit: END
 
       // first, prune the model of any docs that have negative versions
       // ie: were never actually added, or were ultimately deleted.
