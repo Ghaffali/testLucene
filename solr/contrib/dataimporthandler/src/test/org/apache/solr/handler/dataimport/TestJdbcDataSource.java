@@ -35,11 +35,13 @@ import java.util.Properties;
 
 import javax.sql.DataSource;
 
+import org.apache.lucene.util.Constants;
 import org.apache.solr.handler.dataimport.JdbcDataSource.ResultSetIterator;
 import org.easymock.EasyMock;
 import org.easymock.IMocksControl;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
@@ -68,6 +70,11 @@ public class TestJdbcDataSource extends AbstractDataImportHandlerTestCase {
   Properties props = new Properties();
 
   String sysProp = System.getProperty("java.naming.factory.initial");
+  
+  @BeforeClass
+  public static void beforeClass() throws Exception {
+    assumeFalse("SOLR-9893: EasyMock does not work with Java 9", Constants.JRE_IS_MINIMUM_JAVA9);
+  }
 
   @Override
   @Before
@@ -80,6 +87,7 @@ public class TestJdbcDataSource extends AbstractDataImportHandlerTestCase {
     driver = mockControl.createMock(Driver.class);
     dataSource = mockControl.createMock(DataSource.class);
     connection = mockControl.createMock(Connection.class);
+    props.clear();
   }
 
   @Override
@@ -139,20 +147,33 @@ public class TestJdbcDataSource extends AbstractDataImportHandlerTestCase {
   }
 
   @Test
-  public void testRetrieveFromJndiWithCredentialsWithEncryptedPwd() throws Exception {
+  public void testRetrieveFromJndiWithCredentialsEncryptedAndResolved() throws Exception {
     MockInitialContextFactory.bind("java:comp/env/jdbc/JndiDB", dataSource);
-
+    
+    String user = "Fred";
+    String plainPassword = "MyPassword";
+    String encryptedPassword = "U2FsdGVkX18QMjY0yfCqlfBMvAB4d3XkwY96L7gfO2o=";
+    String propsNamespace = "exampleNamespace";
+    
     props.put(JdbcDataSource.JNDI_NAME, "java:comp/env/jdbc/JndiDB");
-    props.put("user", "Fred");
-    props.put("encryptKeyFile", createEncryptionKeyFile());
-    props.put("password", "U2FsdGVkX18QMjY0yfCqlfBMvAB4d3XkwY96L7gfO2o=");
-    props.put("holdability", "HOLD_CURSORS_OVER_COMMIT");
-    EasyMock.expect(dataSource.getConnection("Fred", "MyPassword")).andReturn(
-        connection);
+    
+    props.put("user", "${" +propsNamespace +".user}");
+    props.put("encryptKeyFile", "${" +propsNamespace +".encryptKeyFile}");
+    props.put("password", "${" +propsNamespace +".password}");
+    
+    EasyMock.expect(dataSource.getConnection(user, plainPassword)).andReturn(
+             connection);
+    
+    Map<String,Object> values = new HashMap<>();
+    values.put("user", user);
+    values.put("encryptKeyFile", createEncryptionKeyFile());
+    values.put("password", encryptedPassword);
+    context.getVariableResolver().addNamespace(propsNamespace, values);
+    
     jdbcDataSource.init(context, props);
 
     connection.setAutoCommit(false);
-    connection.setHoldability(1);
+    //connection.setHoldability(1);
 
     mockControl.replay();
 
@@ -167,10 +188,11 @@ public class TestJdbcDataSource extends AbstractDataImportHandlerTestCase {
   public void testRetrieveFromJndiWithCredentialsWithEncryptedAndResolvedPwd() throws Exception {
     MockInitialContextFactory.bind("java:comp/env/jdbc/JndiDB", dataSource);
 
-    props.put(JdbcDataSource.JNDI_NAME, "java:comp/env/jdbc/JndiDB");
-    props.put("user", "Fred");
-    props.put("encryptKeyFile", "${foo.bar}");
-    props.put("password", "U2FsdGVkX18QMjY0yfCqlfBMvAB4d3XkwY96L7gfO2o=");
+    Properties properties = new Properties();
+    properties.put(JdbcDataSource.JNDI_NAME, "java:comp/env/jdbc/JndiDB");
+    properties.put("user", "Fred");
+    properties.put("encryptKeyFile", "${foo.bar}");
+    properties.put("password", "U2FsdGVkX18QMjY0yfCqlfBMvAB4d3XkwY96L7gfO2o=");
     EasyMock.expect(dataSource.getConnection("Fred", "MyPassword")).andReturn(
         connection);
     
@@ -178,7 +200,7 @@ public class TestJdbcDataSource extends AbstractDataImportHandlerTestCase {
     values.put("bar", createEncryptionKeyFile());
     context.getVariableResolver().addNamespace("foo", values);
     
-    jdbcDataSource.init(context, props);
+    jdbcDataSource.init(context, properties);
     
     connection.setAutoCommit(false);
 

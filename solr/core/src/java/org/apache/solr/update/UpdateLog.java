@@ -42,6 +42,8 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Meter;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.lucene.util.BytesRef;
 import org.apache.solr.common.SolrDocumentBase;
@@ -53,6 +55,9 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestInfo;
@@ -74,7 +79,7 @@ import static org.apache.solr.update.processor.DistributingUpdateProcessorFactor
 
 
 /** @lucene.experimental */
-public class UpdateLog implements PluginInfoInitialized {
+public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
   private static final long STATUS_TIME = TimeUnit.NANOSECONDS.convert(60, TimeUnit.SECONDS);
   public static String LOG_FILENAME_PATTERN = "%s.%019d";
   public static String TLOG_NAME="tlog";
@@ -101,7 +106,20 @@ public class UpdateLog implements PluginInfoInitialized {
       }
     }
   }
-  public enum State { REPLAYING, BUFFERING, APPLYING_BUFFERED, ACTIVE }
+
+  // NOTE: when adding new states make sure to keep existing numbers, because external metrics
+  // monitoring may depend on these values being stable.
+  public enum State { REPLAYING(0), BUFFERING(1), APPLYING_BUFFERED(2), ACTIVE(3);
+    private final int value;
+
+    State(final int value) {
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
+    }
+  }
 
   public static final int ADD = 0x01;
   public static final int DELETE = 0x02;
@@ -211,6 +229,14 @@ public static final int VERSION_IDX = 1;
   protected volatile boolean cancelApplyBufferUpdate;
   List<Long> startingVersions;
   int startingOperation;  // last operation in the logs on startup
+
+  // metrics
+  protected Gauge<Integer> bufferedOpsGauge;
+  protected Gauge<Integer> replayLogsCountGauge;
+  protected Gauge<Long> replayBytesGauge;
+  protected Gauge<Integer> stateGauge;
+  protected Meter applyingBufferedOpsMeter;
+  protected Meter replayOpsMeter;
 
   public static class LogPtr {
     final long pointer;
@@ -378,7 +404,34 @@ public static final int VERSION_IDX = 1;
       }
 
     }
+    core.getCoreMetricManager().registerMetricProducer(SolrInfoMBean.Category.TLOG.toString(), this);
+  }
 
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    bufferedOpsGauge = () -> {
+      if (tlog == null) {
+        return 0;
+      } else if (state == State.APPLYING_BUFFERED) {
+        // numRecords counts header as a record
+        return tlog.numRecords() - 1 - recoveryInfo.adds - recoveryInfo.deleteByQuery - recoveryInfo.deletes - recoveryInfo.errors;
+      } else if (state == State.BUFFERING) {
+        // numRecords counts header as a record
+        return tlog.numRecords() - 1;
+      } else {
+        return 0;
+      }
+    };
+    replayLogsCountGauge = () -> logs.size();
+    replayBytesGauge = () -> getTotalLogsSize();
+
+    manager.register(registry, bufferedOpsGauge, true, "ops", scope, "buffered");
+    manager.register(registry, replayLogsCountGauge, true, "logs", scope, "replay", "remaining");
+    manager.register(registry, replayBytesGauge, true, "bytes", scope, "replay", "remaining");
+    applyingBufferedOpsMeter = manager.meter(registry, "ops", scope, "applyingBuffered");
+    replayOpsMeter = manager.meter(registry, "ops", scope, "replay");
+    stateGauge = () -> state.getValue();
+    manager.register(registry, stateGauge, true, "state", scope);
   }
 
   /**
@@ -1028,6 +1081,12 @@ public static final int VERSION_IDX = 1;
     versionInfo.blockUpdates();
     try {
       state = State.REPLAYING;
+
+      // The deleteByQueries and oldDeletes lists
+      // would've been populated by items from the logs themselves (which we
+      // will replay now). So lets clear them out here before the replay.
+      deleteByQueries.clear();
+      oldDeletes.clear();
     } finally {
       versionInfo.unblockUpdates();
     }
@@ -1610,9 +1669,16 @@ public static final int VERSION_IDX = 1;
               loglog.error("REPLAY_ERR: Exception replaying log", rsp.getException());
               throw rsp.getException();
             }
+            if (state == State.REPLAYING) {
+              replayOpsMeter.mark();
+            } else if (state == State.APPLYING_BUFFERED) {
+              applyingBufferedOpsMeter.mark();
+            } else {
+              // XXX should not happen?
+            }
           } catch (IOException ex) {
             recoveryInfo.errors++;
-            loglog.warn("REYPLAY_ERR: IOException reading log", ex);
+            loglog.warn("REPLAY_ERR: IOException reading log", ex);
             // could be caused by an incomplete flush if recovering from log
           } catch (ClassCastException cl) {
             recoveryInfo.errors++;
@@ -1623,7 +1689,7 @@ public static final int VERSION_IDX = 1;
               throw ex;
             }
             recoveryInfo.errors++;
-            loglog.warn("REYPLAY_ERR: IOException reading log", ex);
+            loglog.warn("REPLAY_ERR: IOException reading log", ex);
             // could be caused by an incomplete flush if recovering from log
           } catch (Exception ex) {
             recoveryInfo.errors++;

@@ -29,6 +29,9 @@ API Changes
 
 Bug Fixes
 
+* LUCENE-7626: IndexWriter will no longer accept broken token offsets
+  (Mike McCandless)
+
 Improvements
 
 * LUCENE-7489: Better storage of sparse doc-values fields with the default
@@ -48,6 +51,10 @@ Optimizations
 * LUCENE-7519: Add optimized APIs to compute browse-only top level
   facets (Mike McCandless)
 
+* LUCENE-7589: Numeric doc values now have the ability to encode blocks of
+  values using different numbers of bits per value if this proves to save
+  storage. (Adrien Grand)
+
 Other
 
 * LUCENE-7328: Remove LegacyNumericEncoding from GeoPointField. (Nick Knize)
@@ -61,11 +68,67 @@ API Changes
 * LUCENE-7533: Classic query parser no longer allows autoGeneratePhraseQueries
   to be set to true when splitOnWhitespace is false (and vice-versa).
 
+* LUCENE-7607: LeafFieldComparator.setScorer and SimpleFieldComparator.setScorer
+  are declared as throwing IOException (Alan Woodward)
+
+* LUCENE-7617: Collector construction for two-pass grouping queries is
+  abstracted into a new Grouper class, which can be passed as a constructor
+  parameter to GroupingSearch.  The abstract base classes for the different
+  grouping Collectors are renamed to remove the Abstract* prefix.
+  (Alan Woodward, Martijn van Groningen)
+
+* LUCENE-7609: The expressions module now uses the DoubleValuesSource API, and 
+  no longer depends on the queries module.  Expression#getValueSource() is
+  replaced with Expression#getDoubleValuesSource(). (Alan Woodward, Adrien
+  Grand)
+
+* LUCENE-7610: The facets module now uses the DoubleValuesSource API, and
+  methods that take ValueSource parameters are deprecated (Alan Woodward)
+
+* LUCENE-7611: DocumentValueSourceDictionary now takes a LongValuesSource
+  as a parameter, and the ValueSource equivalent is deprecated (Alan Woodward)
+
+* LUCENE-7624: TermsQuery has been renamed as TermInSetQuery and moved to core.
+  (Alan Woodward)
+
 New features
 
 * LUCENE-5867: Added BooleanSimilarity. (Robert Muir, Adrien Grand)
 
 * LUCENE-7466: Added AxiomaticSimilarity. (Peilin Yang via Tommaso Teofili)
+
+* LUCENE-7590: Added DocValuesStatsCollector to compute statistics on DocValues
+  fields. (Shai Erera)
+
+* LUCENE-7587: The new FacetQuery and MultiFacetQuery helper classes
+  make it simpler to execute drill down when drill sideways counts are
+  not needed (Emmanuel Keller via Mike McCandless)
+
+* LUCENE-6664: A new SynonymGraphFilter outputs a correct graph
+  structure for multi-token synonyms, separating out a
+  FlattenGraphFilter that is hardwired into the current
+  SynonymFilter.  This finally makes it possible to implement
+  correct multi-token synonyms at search time.  See
+  http://blog.mikemccandless.com/2012/04/lucenes-tokenstreams-are-actually.html
+  for details. (Mike McCandless)
+
+* LUCENE-5325: Added LongValuesSource and DoubleValuesSource, intended as
+  type-safe replacements for ValueSource in the queries module.  These
+  expose per-segment LongValues or DoubleValues iterators, similar to the
+  existing DocValues iterator API. (Alan Woodward, Adrien Grand)
+
+* LUCENE-7603: Graph token streams are now handled accurately by query
+  parsers, by enumerating all paths and creating the corresponding
+  query/ies as sub-clauses (Matt Weber via Mike McCandless)
+
+* LUCENE-7588: DrillSideways can now run queries concurrently, and
+  supports an IndexSearcher using an executor service to run each query
+  concurrently across all segments in the index (Emmanuel Keller via
+  Mike McCandless)
+
+* LUCENE-7627: Added .intersect methods to SortedDocValues and 
+  SortedSetDocValues to allow filtering their TermsEnums with a
+  CompiledAutomaton (Alan Woodward, Mike McCandless)
 
 Bug Fixes
 
@@ -97,6 +160,16 @@ Bug Fixes
 * LUCENE-7570: IndexWriter may deadlock if a commit is running while
   there are too many merges running and one of the merges hits a
   tragic exception (Joey Echeverria via Mike McCandless)
+
+* LUCENE-7594: Fixed point range queries on floating-point types to recommend
+  using helpers for exclusive bounds that are consistent with Double.compare.
+  (Adrien Grand, Dawid Weiss)
+
+* LUCENE-7606: Normalization with CustomAnalyzer would only apply the last
+  token filter. (Adrien Grand)
+
+* LUCENE-7612: Removed an unused dependency from the suggester to the misc
+  module. (Alan Woodward)
 
 Improvements
 
@@ -138,6 +211,27 @@ Improvements
   necessarily refer to that field (AKA requireFieldMatch==false). Disabled by default.
   See UH get/setFieldMatcher. (Jim Ferenczi via David Smiley)
 
+* LUCENE-7592: If the segments file is truncated, we now throw
+  CorruptIndexException instead of the more confusing EOFException
+  (Mike Drob via Mike McCandless)
+
+* LUCENE-6989: Make MMapDirectory's unmap hack work with Java 9 EA (b150+):
+  Unmapping uses new sun.misc.Unsafe#invokeCleaner(ByteBuffer).
+  Java 9 now needs same permissions like Java 8;
+  RuntimePermission("accessClassInPackage.jdk.internal.ref")
+  is no longer needed. Support for older Java 9 builds was removed.
+  (Uwe Schindler)
+
+* LUCENE-7401: Changed the way BKD trees pick the split dimension in order to
+  ensure all dimensions are indexed. (Adrien Grand)
+
+* LUCENE-7614: Complex Phrase Query parser ignores double quotes around single token 
+  prefix, wildcard, range queries (Mikhail Khludnev)
+
+* LUCENE-7620: Added LengthGoalBreakIterator, a wrapper around another B.I. to skip breaks
+  that would create Passages that are too short.  Only for use with the UnifiedHighlighter
+  (and probably PostingsHighlighter).  (David Smiley)
+
 Optimizations
 
 * LUCENE-7568: Optimize merging when index sorting is used but the
@@ -151,6 +245,13 @@ Optimizations
   writing to disk, giving a small speedup in points-heavy use cases.
   (Mike McCandless)
 
+* LUCENE-7572: Doc values queries now cache their hash code. (Adrien Grand)
+
+* LUCENE-7579: Segments are now also sorted during flush, and merging
+  on a sorted index is substantially faster by using some of the same
+  bulk merge optimizations that non-sorted merging uses (Jim Ferenczi
+  via Mike McCandless)
+
 Other
 
 * LUCENE-7546: Fixed references to benchmark wikipedia data and the Jenkins line-docs file
@@ -158,8 +259,15 @@ Other
 
 * LUCENE-7534: fix smokeTestRelease.py to run on Cygwin (Mikhail Khludnev)
 
-* LUCENE-7559: UnifiedHighlighter: Make Passage more exposed to allow passage creation to
-  be customized. (David Smiley)
+* LUCENE-7559: UnifiedHighlighter: Make Passage and OffsetsEnum more exposed to allow
+  passage creation to be customized. (David Smiley)
+
+* LUCENE-7599: Simplify TestRandomChains using Java's built-in Predicate and
+  Function interfaces. (Ahmet Arslan via Adrien Grand)
+
+* LUCENE-7595: Improve RAMUsageTester in test-framework to estimate memory usage of
+  runtime classes and work with Java 9 EA (b148+). Disable static field heap usage
+  checker in LuceneTestCase.  (Uwe Schindler, Dawid Weiss)
 
 Build
 
@@ -169,6 +277,9 @@ Build
   Lucene and Solr DOAP RDF files into the Git source repository under
   dev-tools/doap/ and then pulling release dates from those files, rather than
   from JIRA. (Mano Kovacs, hossman, Steve Rowe)
+  
+* LUCENE-7596: Update Groovy to version 2.4.8 to allow building with Java 9
+  build 148+. Also update JGit version for working-copy checks. (Uwe Schindler)
 
 ======================= Lucene 6.3.0 =======================
 

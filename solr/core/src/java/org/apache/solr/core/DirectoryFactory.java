@@ -19,13 +19,16 @@ package org.apache.solr.core;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.NoSuchFileException;
 import java.util.Collection;
 import java.util.Collections;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
@@ -182,6 +185,20 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
   public void move(Directory fromDir, Directory toDir, String fileName, IOContext ioContext) throws IOException {
     toDir.copyFrom(fromDir, fileName, fileName, ioContext);
     fromDir.deleteFile(fileName);
+  }
+  
+  // sub classes perform an atomic rename if possible, otherwise fall back to delete + rename
+  // this is important to support for index roll over durability after crashes
+  public void renameWithOverwrite(Directory dir, String fileName, String toName) throws IOException {
+    try {
+      dir.deleteFile(toName);
+    } catch (FileNotFoundException | NoSuchFileException e) {
+
+    } catch (Exception e) {
+      log.error("Exception deleting file", e);
+    }
+
+    dir.rename(fileName, toName);
   }
   
   /**
@@ -355,5 +372,15 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
   
   public void initCoreContainer(CoreContainer cc) {
     this.coreContainer = cc;
+  }
+  
+  // special hack to work with FilterDirectory
+  protected Directory getBaseDir(Directory dir) {
+    Directory baseDir = dir;
+    while (baseDir instanceof FilterDirectory) {
+      baseDir = ((FilterDirectory)baseDir).getDelegate();
+    } 
+    
+    return baseDir;
   }
 }

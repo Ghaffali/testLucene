@@ -43,7 +43,6 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
-import org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
@@ -52,8 +51,6 @@ import org.apache.solr.util.RefCounted;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-
-import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
 
 
 /**
@@ -96,18 +93,9 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
     client = new EmbeddedSolrServer(h.getCoreContainer(), h.coreName);
   }
 
-  @Override
-  public void clearIndex() {
-
-  }
-  
   @Before
   public void deleteAllAndCommit() throws Exception {
-    // workaround for SOLR-9934
-    // we need to ensure that all low level IndexWriter metadata (about docvalue fields) is also deleted
-    deleteByQueryAndGetVersion("*:*", params("_version_", Long.toString(-Long.MAX_VALUE), DISTRIB_UPDATE_PARAM, DistribPhase.FROMLEADER.toString()));
-    // nocommit: if SOLR-9934 is committed before this branch is merged, replace above line with simple call to clearIndex(); 
-    
+    clearIndex();
     assertU(commit("softCommit", "false"));
   }
 
