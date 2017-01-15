@@ -244,7 +244,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
       ids.add(id);
     }
       
-    buildRandomIndex(101.0F, false, ids);
+    buildRandomIndex(101.0F, ids);
     
     List<Integer> luceneDocids = new ArrayList<>(numDocs);
     List<Float> valuesList = new ArrayList<Float>(numDocs);
@@ -724,7 +724,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     commit();
     
     float inplace_updatable_float = 1F;
-    buildRandomIndex(inplace_updatable_float, false, Collections.singletonList(1));
+    buildRandomIndex(inplace_updatable_float, Collections.singletonList(1));
 
     float newinplace_updatable_float = 100F;
     List<UpdateRequest> updates = new ArrayList<>();
@@ -972,27 +972,24 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
 
   /**
    * Convinience method variant that never uses <code>initFloat</code>
-   * @see #buildRandomIndex(Float,boolean,List)
+   * @see #buildRandomIndex(Float,List)
    */
   protected List<Long> buildRandomIndex(Integer... specialIds) throws Exception {
-    return buildRandomIndex(null, false, Arrays.asList(specialIds));
+    return buildRandomIndex(null, Arrays.asList(specialIds));
   }
                                         
   /** 
    * Helper method to build a randomized index with the fields needed for all test methods in this class.
-   * At a minimum, this index will contain 1 doc per "special" (non-negative) document id.  These special documents will be added with the <code>initFloat</code> specified in the "inplace_updatable_float" based on the <code>useFloatRandomly</code> param.
+   * At a minimum, this index will contain 1 doc per "special" (non-negative) document id.  These special documents will be added with the <code>initFloat</code> specified in the "inplace_updatable_float" field.
    *
    * A random number of documents (with negative ids) will be indexed in between each of the 
    * "special" documents, as well as before/after the first/last special document.
    *
-   * @param initFloat Value to use in the "inplace_updatable_float" for some of the special documents, based on the <code>useFloatRandomly</code> param; will never be used if null
-   * @param useFloatRandomly  If false, all special docs will get the <code>initFloat</code> value; if true, only a random subset of the special docs will get a value.
+   * @param initFloat Value to use in the "inplace_updatable_float" for the special documents; will never be used if null
    * @param specialIds The ids to use for the special documents, all values must be non-negative
    * @return the versions of each of the specials document returned when indexing it
    */
-  protected List<Long> buildRandomIndex(Float initFloat, boolean useFloatRandomly,
-                                        List<Integer> specialIds) throws Exception {
-    // nocommit: optimize away the useFloatRandomly param if it winds up being false in all callers
+  protected List<Long> buildRandomIndex(Float initFloat, List<Integer> specialIds) throws Exception {
     
     int id = -1; // used for non special docs
     final int numPreDocs = rarely() ? TestUtil.nextInt(random(),0,9) : atLeast(10);
@@ -1002,7 +999,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     }
     final List<Long> versions = new ArrayList<>(specialIds.size());
     for (int special : specialIds) {
-      if (null == initFloat || (useFloatRandomly && random().nextBoolean()) ) {
+      if (null == initFloat) {
         versions.add(addDocAndGetVersion("id", special, "title_s", "title" + special, "id_i", special));
       } else {
         versions.add(addDocAndGetVersion("id", special, "title_s", "title" + special, "id_i", special,
@@ -1032,7 +1029,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     commit();
     
     float inplace_updatable_float = 1F;
-    buildRandomIndex(inplace_updatable_float, false, Collections.singletonList(1));
+    buildRandomIndex(inplace_updatable_float, Collections.singletonList(1));
 
     List<UpdateRequest> updates = new ArrayList<>();
     updates.add(regularUpdateRequest("id", 1, "id_i", 1, "inplace_updatable_float", 12, "title_s", "mytitle"));
