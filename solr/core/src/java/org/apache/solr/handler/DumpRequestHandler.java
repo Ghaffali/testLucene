@@ -41,10 +41,10 @@ public class DumpRequestHandler extends RequestHandlerBase
   {
     // Show params
     rsp.add( "params", req.getParams().toNamedList() );
-    String[] parts = req.getParams().getParams("urlPart");
+    String[] parts = req.getParams().getParams("urlTemplateValues");
     if (parts != null && parts.length > 0) {
       Map map = new LinkedHashMap<>();
-      rsp.getValues().add("urlPart", map);
+      rsp.getValues().add("urlTemplateValues", map);
       for (String part : parts) {
         map.put(part, req.getPathTemplateValues().get(part));
       }

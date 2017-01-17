@@ -40,10 +40,10 @@ import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.DumpRequestHandler;
 import org.apache.solr.handler.TestBlobHandler;
 import org.apache.solr.handler.TestSolrConfigHandlerConcurrent;
-import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.search.SolrCache;
+import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestBase;
 import org.apache.solr.util.RestTestHarness;
 import org.eclipse.jetty.servlet.ServletHolder;
@@ -790,20 +790,15 @@ public class TestSolrConfigHandler extends RestTestBase {
         "org.apache.solr.handler.DumpRequestHandler",
         10);
     RESTfulServerProvider oldProvider = restTestHarness.getServerProvider();
-    restTestHarness.setServerProvider(new RESTfulServerProvider() {
-      @Override
-      public String getBaseURL() {
-        return jetty.getBaseUrl().toString() + "/v2/cores/" + DEFAULT_TEST_CORENAME;
-      }
-    });
+    restTestHarness.setServerProvider(() -> jetty.getBaseUrl().toString() + "/v2/cores/" + DEFAULT_TEST_CORENAME);
 
     Map rsp = TestSolrConfigHandler.testForResponseElement(
         harness,
         null,
-        "/something/part1_Value/fixed/part2_Value?urlPart=part1&urlPart=part2",
+        "/something/part1_Value/fixed/part2_Value?urlTemplateValues=part1&urlTemplateValues=part2",
         null,
-        Arrays.asList("urlPart"),
-        (PredicateWithErrMsg) new PredicateWithErrMsg() {
+        Arrays.asList("urlTemplateValues"),
+        new PredicateWithErrMsg() {
           @Override
           public String test(Object o) {
             if (o instanceof Map) {
