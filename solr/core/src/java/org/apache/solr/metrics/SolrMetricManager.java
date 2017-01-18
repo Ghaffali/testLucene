@@ -39,9 +39,13 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
+import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.PluginInfo;
+import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
+import org.apache.solr.metrics.reporters.solr.SolrReplicaReporter;
+import org.apache.solr.util.plugin.SolrCoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -522,9 +526,10 @@ public class SolrMetricManager {
    * @param registry reporter is associated with this registry
    * @param loader loader to use when creating an instance of the reporter
    * @param pluginInfo plugin configuration. Plugin "name" and "class" attributes are required.
+   * @return instance of newly created and registered reporter
    * @throws Exception if any argument is missing or invalid
    */
-  public void loadReporter(String registry, SolrResourceLoader loader, PluginInfo pluginInfo) throws Exception {
+  public SolrMetricReporter loadReporter(String registry, SolrResourceLoader loader, PluginInfo pluginInfo) throws Exception {
     if (registry == null || pluginInfo == null || pluginInfo.name == null || pluginInfo.className == null) {
       throw new IllegalArgumentException("loadReporter called with missing arguments: " +
           "registry=" + registry + ", loader=" + loader + ", pluginInfo=" + pluginInfo);
@@ -535,14 +540,19 @@ public class SolrMetricManager {
         pluginInfo.className,
         SolrMetricReporter.class,
         new String[0],
-        new Class[] { SolrMetricManager.class, String.class },
-        new Object[] { this, registry }
+        new Class[]{SolrMetricManager.class, String.class},
+        new Object[]{this, registry}
     );
     try {
       reporter.init(pluginInfo);
     } catch (IllegalStateException e) {
       throw new IllegalArgumentException("reporter init failed: " + pluginInfo, e);
     }
+    registerReporter(registry, pluginInfo.name, reporter);
+    return reporter;
+  }
+
+  private void registerReporter(String registry, String name, SolrMetricReporter reporter) throws Exception {
     try {
       if (!reportersLock.tryLock(10, TimeUnit.SECONDS)) {
         throw new Exception("Could not obtain lock to modify reporters registry: " + registry);
@@ -556,12 +566,12 @@ public class SolrMetricManager {
         perRegistry = new HashMap<>();
         reporters.put(registry, perRegistry);
       }
-      SolrMetricReporter oldReporter = perRegistry.get(pluginInfo.name);
+      SolrMetricReporter oldReporter = perRegistry.get(name);
       if (oldReporter != null) { // close it
-        log.info("Replacing existing reporter '" + pluginInfo.name + "' in registry '" + registry + "': " + oldReporter.toString());
+        log.info("Replacing existing reporter '" + name + "' in registry '" + registry + "': " + oldReporter.toString());
         oldReporter.close();
       }
-      perRegistry.put(pluginInfo.name, reporter);
+      perRegistry.put(name, reporter);
 
     } finally {
       reportersLock.unlock();
@@ -670,6 +680,27 @@ public class SolrMetricManager {
       }
     } finally {
       reportersLock.unlock();
+    }
+  }
+
+  public void loadReplicaReporter(SolrCore core, String leaderRegistryName, String registryName) {
+    // don't load for non-cloud cores
+    if (leaderRegistryName == null) {
+      return;
+    }
+    // load even for non-leader replicas, as their status may change unexpectedly
+    Map<String, String> attrs = new HashMap<>();
+    attrs.put("name", "replica");
+    attrs.put("class", SolrReplicaReporter.class.getName());
+    NamedList initArgs = new NamedList();
+    initArgs.add(SolrReplicaReporter.LEADER_REGISTRY, leaderRegistryName);
+    initArgs.add("period", 5);
+    PluginInfo pluginInfo = new PluginInfo("reporter", attrs, initArgs, null);
+    try {
+      SolrMetricReporter reporter = loadReporter(registryName, core.getResourceLoader(), pluginInfo);
+      ((SolrReplicaReporter)reporter).setCore(core);
+    } catch (Exception e) {
+      log.warn("Could not load shard reporter, pluginInfo=" + pluginInfo, e);
     }
   }
 }

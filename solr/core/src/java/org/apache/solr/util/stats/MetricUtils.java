@@ -33,11 +33,36 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.metrics.AggregateMetric;
 
 /**
  * Metrics specific utility functions.
  */
 public class MetricUtils {
+
+  static final String MS = "_ms";
+
+  static final String MIN = "min";
+  static final String MIN_MS = MIN + MS;
+  static final String MAX = "max";
+  static final String MAX_MS = MAX + MS;
+  static final String MEAN = "mean";
+  static final String MEAN_MS = MEAN + MS;
+  static final String MEDIAN = "median";
+  static final String MEDIAN_MS = MEDIAN + MS;
+  static final String STDDEV = "stddev";
+  static final String STDDEV_MS = STDDEV + MS;
+  static final String P75 = "p75";
+  static final String P75_MS = P75 + MS;
+  static final String P95 = "p95";
+  static final String P95_MS = P95 + MS;
+  static final String P99 = "p99";
+  static final String P99_MS = P99 + MS;
+  static final String P999 = "p999";
+  static final String P999_MS = P999 + MS;
+
+  static final String VALUES = "values";
+
 
   /**
    * Adds metrics from a Timer to a NamedList, using well-known back-compat names.
@@ -77,9 +102,11 @@ public class MetricUtils {
    *                           included in the output
    * @param mustMatchFilter a {@link MetricFilter}.
    *                        A metric <em>must</em> match this filter to be included in the output.
+   * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
    * @return a {@link NamedList}
    */
-  public static NamedList toNamedList(MetricRegistry registry, List<MetricFilter> shouldMatchFilters, MetricFilter mustMatchFilter) {
+  public static NamedList toNamedList(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
+                                      MetricFilter mustMatchFilter, boolean skipHistograms) {
     NamedList response = new NamedList();
     Map<String, Metric> metrics = registry.getMetrics();
     SortedSet<String> names = registry.getNames();
@@ -99,12 +126,31 @@ public class MetricUtils {
         response.add(n, meterToNamedList(meter));
       } else if (metric instanceof Timer) {
         Timer timer = (Timer) metric;
-        response.add(n, timerToNamedList(timer));
+        response.add(n, timerToNamedList(timer, skipHistograms));
       } else if (metric instanceof Histogram) {
-        Histogram histogram = (Histogram) metric;
-        response.add(n, histogramToNamedList(histogram));
+        if (!skipHistograms) {
+          Histogram histogram = (Histogram) metric;
+          response.add(n, histogramToNamedList(histogram));
+        }
+      } else if (metric instanceof AggregateMetric) {
+        response.add(n, aggregateMetricToNamedList((AggregateMetric)metric));
       }
     });
+    return response;
+  }
+
+  static NamedList aggregateMetricToNamedList(AggregateMetric metric) {
+    NamedList response = new NamedList();
+    response.add("count", metric.size());
+    response.add(MAX, metric.getMax());
+    response.add(MIN, metric.getMin());
+    response.add(MEAN, metric.getMean());
+    response.add(STDDEV, metric.getStdDev());
+    if (!metric.isEmpty()) {
+      NamedList values = new NamedList();
+      response.add(VALUES, values);
+      metric.getValues().forEach((k, v) -> values.add(k, v));
+    }
     return response;
   }
 
@@ -126,27 +172,6 @@ public class MetricUtils {
     }
   }
 
-  static final String MS = "_ms";
-
-  static final String MIN = "min";
-  static final String MIN_MS = MIN + MS;
-  static final String MAX = "max";
-  static final String MAX_MS = MAX + MS;
-  static final String MEAN = "mean";
-  static final String MEAN_MS = MEAN + MS;
-  static final String MEDIAN = "median";
-  static final String MEDIAN_MS = MEDIAN + MS;
-  static final String STDDEV = "stddev";
-  static final String STDDEV_MS = STDDEV + MS;
-  static final String P75 = "p75";
-  static final String P75_MS = P75 + MS;
-  static final String P95 = "p95";
-  static final String P95_MS = P95 + MS;
-  static final String P99 = "p99";
-  static final String P99_MS = P99 + MS;
-  static final String P999 = "p999";
-  static final String P999_MS = P999 + MS;
-
   // some snapshots represent time in ns, other snapshots represent raw values (eg. chunk size)
   static void addSnapshot(NamedList response, Snapshot snapshot, boolean ms) {
     response.add((ms ? MIN_MS: MIN), nsToMs(ms, snapshot.getMin()));
@@ -160,15 +185,17 @@ public class MetricUtils {
     response.add((ms ? P999_MS: P999), nsToMs(ms, snapshot.get999thPercentile()));
   }
 
-  static NamedList timerToNamedList(Timer timer) {
+  static NamedList timerToNamedList(Timer timer, boolean skipHistograms) {
     NamedList response = new NamedList();
     response.add("count", timer.getCount());
     response.add("meanRate", timer.getMeanRate());
     response.add("1minRate", timer.getOneMinuteRate());
     response.add("5minRate", timer.getFiveMinuteRate());
     response.add("15minRate", timer.getFifteenMinuteRate());
-    // time-based values in nanoseconds
-    addSnapshot(response, timer.getSnapshot(), true);
+    if (!skipHistograms) {
+      // time-based values in nanoseconds
+      addSnapshot(response, timer.getSnapshot(), true);
+    }
     return response;
   }
 

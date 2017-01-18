@@ -141,7 +141,7 @@ public class JmxMonitoredMap<K, V> extends
       }
       server = newServer;
     }
-    registryName = SolrCoreMetricManager.createRegistryName(null, coreName);
+    registryName = SolrCoreMetricManager.createRegistryName(false, null, null, null, coreName);
     nameFactory = new JmxObjectNameFactory(REPORTER_NAME + coreHashCode, registryName);
   }
 
