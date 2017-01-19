@@ -36,7 +36,7 @@ public class MetricUtilsTest extends SolrTestCaseJ4 {
       timer.update(Math.abs(random().nextInt()) + 1, TimeUnit.NANOSECONDS);
     }
     // obtain timer metrics
-    NamedList lst = MetricUtils.timerToNamedList(timer, false);
+    NamedList lst = new NamedList(MetricUtils.timerToMap(timer, false));
     // check that expected metrics were obtained
     assertEquals(14, lst.size());
     final Snapshot snapshot = timer.getSnapshot();

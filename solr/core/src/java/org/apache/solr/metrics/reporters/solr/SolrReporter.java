@@ -19,7 +19,9 @@ package org.apache.solr.metrics.reporters.solr;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -36,6 +38,10 @@ import org.apache.http.client.HttpClient;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.io.SolrClientCache;
+import org.apache.solr.client.solrj.request.UpdateRequest;
+import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.JavaBinCodec;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.handler.admin.MetricsCollectorHandler;
@@ -58,6 +64,8 @@ public class SolrReporter extends ScheduledReporter {
     private MetricFilter filter;
     private String handler;
     private boolean skipHistograms;
+    private boolean cloudClient;
+    private SolrParams params;
 
     public static Builder forRegistry(MetricRegistry registry) {
       return new Builder(registry);
@@ -69,6 +77,28 @@ public class SolrReporter extends ScheduledReporter {
       this.durationUnit = TimeUnit.MILLISECONDS;
       this.filter = MetricFilter.ALL;
       this.skipHistograms = false;
+      this.cloudClient = false;
+      this.params = null;
+    }
+
+    /**
+     * Additional {@link SolrParams} to add to every request.
+     * @param params additional params
+     * @return {@code this}
+     */
+    public Builder withSolrParams(SolrParams params) {
+      this.params = params;
+      return this;
+    }
+    /**
+     * If true then use {@link org.apache.solr.client.solrj.impl.CloudSolrClient} for communication.
+     * Default is false.
+     * @param cloudClient use CloudSolrClient when true, {@link org.apache.solr.client.solrj.impl.HttpSolrClient} otherwise.
+     * @return {@code this}
+     */
+    public Builder cloudClient(boolean cloudClient) {
+      this.cloudClient = cloudClient;
+      return this;
     }
 
     /**
@@ -157,10 +187,14 @@ public class SolrReporter extends ScheduledReporter {
      * @return configured instance of reporter
      */
     public SolrReporter build(HttpClient client, Supplier<String> urlProvider) {
-      return new SolrReporter(client, urlProvider, registry, handler, id, group, rateUnit, durationUnit, filter, skipHistograms);
+      return new SolrReporter(client, urlProvider, registry, handler, id, group, rateUnit, durationUnit,
+          filter, params, skipHistograms, cloudClient);
     }
 
   }
+
+  public static final String REPORTER_ID = "solrReporterId";
+  public static final String GROUP_ID = "solrGroupId";
 
   private String id;
   private String group;
@@ -170,10 +204,13 @@ public class SolrReporter extends ScheduledReporter {
   private List<MetricFilter> filters;
   private MetricRegistry visibleRegistry;
   private boolean skipHistograms;
+  private boolean cloudClient;
+  private ModifiableSolrParams params;
+  private Map<String, Object> metadata;
 
   public SolrReporter(HttpClient httpClient, Supplier<String> urlProvider, MetricRegistry registry, String handler,
                       String id, String group, TimeUnit rateUnit, TimeUnit durationUnit, MetricFilter filter,
-                      boolean skipHistograms) {
+                      SolrParams params, boolean skipHistograms, boolean cloudClient) {
     super(registry, "solr-reporter", filter, rateUnit, durationUnit);
     this.urlProvider = urlProvider;
     this.id = id;
@@ -190,6 +227,19 @@ public class SolrReporter extends ScheduledReporter {
     }
     this.filters = Collections.singletonList(filter);
     this.skipHistograms = skipHistograms;
+    this.cloudClient = cloudClient;
+    this.params = new ModifiableSolrParams();
+    this.params.set(REPORTER_ID, id);
+    this.params.set(GROUP_ID, group);
+    // allow overrides to take precedence
+    if (params != null) {
+      this.params.add(params);
+    }
+    metadata = new HashMap<>();
+    metadata.put(REPORTER_ID, id);
+    if (group != null) {
+      metadata.put(GROUP_ID, group);
+    }
   }
 
   @Override
@@ -199,14 +249,18 @@ public class SolrReporter extends ScheduledReporter {
     if (url == null) {
       return;
     }
-    NamedList nl = MetricUtils.toNamedList(visibleRegistry, filters, MetricFilter.ALL, skipHistograms);
-    NamedList report = new NamedList();
-    report.add("id", id);
-    report.add("group", group);
-    report.add("values", nl);
-    JavaBinCodec codec = new JavaBinCodec();
-    SolrClient solr = clientCache.getHttpSolrClient(url);
-    MetricsReportRequest req = new MetricsReportRequest(handler, null, report);
+
+    SolrClient solr;
+    if (cloudClient) {
+      solr = clientCache.getCloudSolrClient(url);
+    } else {
+      solr = clientCache.getHttpSolrClient(url);
+    }
+    UpdateRequest req = new UpdateRequest(handler);
+    req.setParams(params);
+    MetricUtils.toSolrInputDocuments(visibleRegistry, filters, MetricFilter.ALL,
+        skipHistograms, metadata, doc -> req.add(doc));
+
     try {
       solr.request(req);
     } catch (SolrServerException sse) {

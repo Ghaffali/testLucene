@@ -79,7 +79,7 @@ public class MetricsHandler extends RequestHandlerBase implements PermissionName
     NamedList response = new NamedList();
     for (String registryName : requestedRegistries) {
       MetricRegistry registry = metricManager.registry(registryName);
-      response.add(registryName, MetricUtils.toNamedList(registry, metricFilters, mustMatchFilter, false));
+      response.add(registryName, MetricUtils.toNamedList(registry, metricFilters, mustMatchFilter, false, null));
     }
     rsp.getValues().add("metrics", response);
   }

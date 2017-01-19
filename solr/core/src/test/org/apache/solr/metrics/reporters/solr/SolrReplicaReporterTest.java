@@ -14,6 +14,6 @@ public class SolrReplicaReporterTest extends AbstractFullDistribZkTestBase {
   @Test
   public void test() throws Exception {
     printLayout();
-    //Thread.sleep(10000000);
+    Thread.sleep(10000000);
   }
 }

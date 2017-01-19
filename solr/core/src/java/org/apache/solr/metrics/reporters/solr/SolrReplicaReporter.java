@@ -30,7 +30,7 @@ import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricReporter;
 
 /**
- *
+ * This class reports selected metrics from replicas to a shard leader.
  */
 public class SolrReplicaReporter extends SolrMetricReporter {
   public static final String LEADER_REGISTRY = "leaderRegistry";
@@ -96,6 +96,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
         .withHandler(handler)
         .filter(filter)
         .withId(id)
+        .cloudClient(false) // we want to send reports specifically to a selected leader instance
         .withGroup(leaderRegistry)
         .build(core.getCoreDescriptor().getCoreContainer().getUpdateShardHandler().getHttpClient(), new LeaderUrlSupplier(core));
 
