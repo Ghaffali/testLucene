@@ -37,8 +37,8 @@
 
   <!-- dynamic fields that must *NOT* support in place updates -->
   <dynamicField name="*_s" type="string" indexed="true" stored="true"/>
-  <dynamicField name="*_i" type="int"    indexed="true" stored="true"/>
-  <dynamicField name="*_l" type="long"   indexed="true" stored="true"/>
+  <dynamicField name="*_i" type="int"    indexed="true" stored="true" docValues="true"/>
+  <dynamicField name="*_l" type="long"   indexed="true" stored="true" docValues="true"/>
   
   <!-- Copy fields -->
   
