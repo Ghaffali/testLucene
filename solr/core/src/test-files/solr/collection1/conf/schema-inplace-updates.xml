@@ -60,8 +60,8 @@
   
 
   <fieldType name="string" class="solr.StrField" multiValued="false" indexed="false" stored="false" docValues="false" />
-  <fieldType name="long" class="solr.TrieLongField" multiValued="false" indexed="false" stored="false" docValues="false"/>
-  <fieldType name="float" class="solr.TrieFloatField" multiValued="false" indexed="false" stored="false" docValues="false"/>
-  <fieldType name="int" class="solr.TrieIntField" multiValued="false" indexed="false" stored="false" docValues="false"/>
+  <fieldType name="long" class="solr.${solr.tests.longClassName}" multiValued="false" indexed="false" stored="false" docValues="false"/>
+  <fieldType name="float" class="solr.${solr.tests.floatClassName}" multiValued="false" indexed="false" stored="false" docValues="false"/>
+  <fieldType name="int" class="solr.${solr.tests.intClassName}" multiValued="false" indexed="false" stored="false" docValues="false"/>
 
 </schema>

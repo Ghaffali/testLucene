@@ -48,6 +48,7 @@ import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.update.processor.AtomicUpdateDocumentMerger;
 import org.apache.solr.util.RefCounted;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -61,7 +62,11 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
 
   @BeforeClass
   public static void beforeClass() throws Exception {
-    
+    System.setProperty("solr.tests.intClassName", random().nextBoolean()? "TrieIntField": "IntPointField");
+    System.setProperty("solr.tests.longClassName", random().nextBoolean()? "TrieLongField": "LongPointField");
+    System.setProperty("solr.tests.floatClassName", random().nextBoolean()? "TrieFloatField": "FloatPointField");
+    System.setProperty("solr.tests.doubleClassName", random().nextBoolean()? "TrieDoubleField": "DoublePointField");
+
     initCore("solrconfig-tlog.xml", "schema-inplace-updates.xml");
 
     // sanity check that autocommits are disabled
@@ -91,6 +96,14 @@ public class TestInPlaceUpdatesStandalone extends SolrTestCaseJ4 {
 
     // Don't close this client, it would shutdown the CoreContainer
     client = new EmbeddedSolrServer(h.getCoreContainer(), h.coreName);
+  }
+
+  @After
+  public void after() {
+    System.clearProperty("solr.tests.intClassName");
+    System.clearProperty("solr.tests.longClassName");
+    System.clearProperty("solr.tests.floatClassName");
+    System.clearProperty("solr.tests.doubleClassName");
   }
 
   @Before

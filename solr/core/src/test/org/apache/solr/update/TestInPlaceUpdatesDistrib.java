@@ -57,6 +57,7 @@ import org.apache.solr.index.LogDocMergePolicyFactory;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.zookeeper.KeeperException;
+import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -71,7 +72,11 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
 
   @BeforeClass
   public static void beforeSuperClass() throws Exception {
-    
+    System.setProperty("solr.tests.intClassName", random().nextBoolean()? "TrieIntField": "IntPointField");
+    System.setProperty("solr.tests.longClassName", random().nextBoolean()? "TrieLongField": "LongPointField");
+    System.setProperty("solr.tests.floatClassName", random().nextBoolean()? "TrieFloatField": "FloatPointField");
+    System.setProperty("solr.tests.doubleClassName", random().nextBoolean()? "TrieDoubleField": "DoublePointField");
+
     schemaString = "schema-inplace-updates.xml";
     configString = "solrconfig-tlog.xml";
 
@@ -87,6 +92,14 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     assertEquals(-1, h.getCore().getSolrConfig().getUpdateHandlerInfo().autoSoftCommmitMaxTime);
     assertEquals(-1, h.getCore().getSolrConfig().getUpdateHandlerInfo().autoCommmitMaxDocs);
     assertEquals(-1, h.getCore().getSolrConfig().getUpdateHandlerInfo().autoSoftCommmitMaxDocs);
+  }
+  
+  @After
+  public void after() {
+    System.clearProperty("solr.tests.intClassName");
+    System.clearProperty("solr.tests.longClassName");
+    System.clearProperty("solr.tests.floatClassName");
+    System.clearProperty("solr.tests.doubleClassName");
   }
 
   public TestInPlaceUpdatesDistrib() throws Exception {

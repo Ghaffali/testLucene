@@ -27,6 +27,7 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.handler.component.RealTimeGetComponent;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.update.processor.DistributedUpdateProcessor;
+import org.junit.After;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -42,6 +43,10 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
 
   @BeforeClass
   public static void beforeClass() throws Exception {
+    System.setProperty("solr.tests.intClassName", random().nextBoolean()? "TrieIntField": "IntPointField");
+    System.setProperty("solr.tests.longClassName", random().nextBoolean()? "TrieLongField": "LongPointField");
+    System.setProperty("solr.tests.floatClassName", random().nextBoolean()? "TrieFloatField": "FloatPointField");
+    System.setProperty("solr.tests.doubleClassName", random().nextBoolean()? "TrieDoubleField": "DoublePointField");
 
     initCore("solrconfig-tlog.xml", "schema-inplace-updates.xml");
 
@@ -51,6 +56,14 @@ public class UpdateLogTest extends SolrTestCaseJ4 {
       ((DirectUpdateHandler2) uhandler).getCommitTracker().setOpenSearcher(false);
       ulog = uhandler.getUpdateLog();
     }
+  }
+
+  @After
+  public void after() {
+    System.clearProperty("solr.tests.intClassName");
+    System.clearProperty("solr.tests.longClassName");
+    System.clearProperty("solr.tests.floatClassName");
+    System.clearProperty("solr.tests.doubleClassName");
   }
 
   @Test
