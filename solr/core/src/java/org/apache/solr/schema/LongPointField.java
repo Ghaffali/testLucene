@@ -58,7 +58,7 @@ public class LongPointField extends PointField implements LongValueFieldType {
   }
 
   @Override
-  public Query getRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
+  public Query getPointRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
       boolean maxInclusive) {
     long actualMin, actualMax;
     if (min == null) {

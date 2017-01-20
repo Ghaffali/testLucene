@@ -54,7 +54,7 @@ public class FloatPointField extends PointField implements FloatValueFieldType {
   }
 
   @Override
-  public Query getRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
+  public Query getPointRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
       boolean maxInclusive) {
     float actualMin, actualMax;
     if (min == null) {

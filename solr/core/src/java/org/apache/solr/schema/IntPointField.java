@@ -58,7 +58,7 @@ public class IntPointField extends PointField implements IntValueFieldType {
   }
 
   @Override
-  public Query getRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
+  public Query getPointRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
       boolean maxInclusive) {
     int actualMin, actualMax;
     if (min == null) {
@@ -89,7 +89,7 @@ public class IntPointField extends PointField implements IntValueFieldType {
   public Object toObject(IndexableField f) {
     final Number val = f.numericValue();
     if (val != null) {
-      return val;
+      return val.intValue();
     } else {
       throw new AssertionError("Unexpected state. Field: '" + f + "'");
     }

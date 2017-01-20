@@ -54,7 +54,7 @@ public class DoublePointField extends PointField implements DoubleValueFieldType
   }
 
   @Override
-  public Query getRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
+  public Query getPointRangeQuery(QParser parser, SchemaField field, String min, String max, boolean minInclusive,
       boolean maxInclusive) {
     double actualMin, actualMax;
     if (min == null) {
