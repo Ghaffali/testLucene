@@ -326,7 +326,7 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
     
     synchronized Set<String> getFieldNames() {
-      return nameToNumber.keySet();
+      return Collections.unmodifiableSet(nameToNumber.keySet());
     }
     
     synchronized void clear() {

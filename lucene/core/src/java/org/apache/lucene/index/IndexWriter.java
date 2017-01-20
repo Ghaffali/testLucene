@@ -1789,7 +1789,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * of the index.
    */
   public Set<String> getFieldNames() {
-    return globalFieldNumberMap.getFieldNames();
+    return Collections.unmodifiableSet(globalFieldNumberMap.getFieldNames());
   }
 
   final String newSegmentName() {
