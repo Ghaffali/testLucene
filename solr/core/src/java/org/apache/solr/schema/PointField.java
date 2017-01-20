@@ -27,7 +27,7 @@ import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.StoredField;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.queries.function.ValueSource;
-import org.apache.lucene.search.DocValuesRangeQuery;
+import org.apache.lucene.search.MatchNoDocsQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SortedSetSelector;
 import org.apache.lucene.util.BytesRef;
@@ -162,21 +162,21 @@ public abstract class PointField extends PrimitiveFieldType {
     
     switch (getType()) {
       case INTEGER:
-          return DocValuesRangeQuery.newLongRange(field.getName(),
+          return numericDocValuesRangeQuery(field.getName(),
                 min == null ? null : (long) Integer.parseInt(min),
                 max == null ? null : (long) Integer.parseInt(max),
                 minInclusive, maxInclusive);
       case FLOAT:
           return getRangeQueryForFloatDoubleDocValues(field, min, max, minInclusive, maxInclusive);
       case LONG:
-          return DocValuesRangeQuery.newLongRange(field.getName(),
+          return numericDocValuesRangeQuery(field.getName(),
                 min == null ? null : Long.parseLong(min),
                 max == null ? null : Long.parseLong(max),
                 minInclusive, maxInclusive);
       case DOUBLE:
           return getRangeQueryForFloatDoubleDocValues(field, min, max, minInclusive, maxInclusive);
       case DATE:
-          return DocValuesRangeQuery.newLongRange(field.getName(),
+          return numericDocValuesRangeQuery(field.getName(),
                 min == null ? null : DateMathParser.parseMath(null, min).getTime(),
                 max == null ? null : DateMathParser.parseMath(null, max).getTime(),
                 minInclusive, maxInclusive);
@@ -223,14 +223,43 @@ public abstract class PointField extends PrimitiveFieldType {
     } else { // If both max and min are negative (or -0d), then issue range query with max and min reversed
       if ((minVal == null || minVal.doubleValue() < 0d || minBits == minusZeroBits) &&
           (maxVal != null && (maxVal.doubleValue() < 0d || maxBits == minusZeroBits))) {
-        query = DocValuesRangeQuery.newLongRange
+        query = numericDocValuesRangeQuery
             (fieldName, maxBits, (min == null ? negativeInfinityBits : minBits), maxInclusive, minInclusive);
       } else { // If both max and min are positive, then issue range query
-        query = DocValuesRangeQuery.newLongRange
+        query = numericDocValuesRangeQuery
             (fieldName, minBits, (max == null ? positiveInfinityBits : maxBits), minInclusive, maxInclusive);
       }
     }
     return query;
+  }
+
+  private static Query numericDocValuesRangeQuery(
+      String field,
+      Number lowerValue, Number upperValue,
+      boolean lowerInclusive, boolean upperInclusive) {
+
+    long actualLowerValue = Long.MIN_VALUE;
+    if (lowerValue != null) {
+      actualLowerValue = lowerValue.longValue();
+      if (lowerInclusive == false) {
+        if (actualLowerValue == Long.MAX_VALUE) {
+          return new MatchNoDocsQuery();
+        }
+        ++actualLowerValue;
+      }
+    }
+
+    long actualUpperValue = Long.MAX_VALUE;
+    if (upperValue != null) {
+      actualUpperValue = upperValue.longValue();
+      if (upperInclusive == false) {
+        if (actualUpperValue == Long.MIN_VALUE) {
+          return new MatchNoDocsQuery();
+        }
+        --actualUpperValue;
+      }
+    }
+    return NumericDocValuesField.newRangeQuery(field, actualLowerValue, actualUpperValue);
   }
 
   @Override
