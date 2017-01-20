@@ -126,6 +126,9 @@ Other Changes
 ----------------------
 * SOLR-9980: Expose configVersion in core admin status (Jessica Cheng Mallet via Tomás Fernández Löbbe)
 
+* SOLR-9996: Fixing NullPointerException failure by TestManagedSchemaThreadSafety 
+  adding check for Zookeeper session expiration (Steve Rowe, Mikhail Khludnev)
+
 ==================  6.4.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
