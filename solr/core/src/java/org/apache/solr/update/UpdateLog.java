@@ -843,8 +843,6 @@ public static final int VERSION_IDX = 1;
   synchronized public long applyPartialUpdates(BytesRef id, long prevPointer, long prevVersion,
       Set<String> onlyTheseFields, SolrDocumentBase latestPartialDoc) {
     
-    // nocommit: need additional eyeballs (besides ishan & hoss) on the synchronization in this method/class
-    
     SolrInputDocument partialUpdateDoc = null;
 
     List<TransactionLog> lookupLogs = Arrays.asList(tlog, prevMapLog, prevMapLog2);
