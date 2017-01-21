@@ -45,6 +45,10 @@ public class FloatPointField extends PointField implements FloatValueFieldType {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  public FloatPointField() {
+    type = NumberType.FLOAT;
+  }
+
   @Override
   public Object toNativeType(Object val) {
     if (val == null) return null;
@@ -178,10 +182,5 @@ public class FloatPointField extends PointField implements FloatValueFieldType {
   @Override
   protected StoredField getStoredField(SchemaField sf, Object value) {
     return new StoredField(sf.getName(), (Float) this.toNativeType(value));
-  }
-  
-  @Override
-  public PointTypes getType() {
-    return PointTypes.FLOAT;
   }
 }

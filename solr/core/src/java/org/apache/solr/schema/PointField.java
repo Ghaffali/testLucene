@@ -53,15 +53,7 @@ import org.slf4j.LoggerFactory;
  * {@code DocValues} are supported for single-value cases ({@code NumericDocValues}).
  * {@code FieldCache} is not supported for {@code PointField}s, so sorting, faceting, etc on these fields require the use of {@code docValues="true"} in the schema.
  */
-public abstract class PointField extends PrimitiveFieldType {
-  
-  public enum PointTypes {
-    INTEGER,
-    LONG,
-    FLOAT,
-    DOUBLE,
-    DATE
-  }
+public abstract class PointField extends NumericFieldType {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -121,11 +113,6 @@ public abstract class PointField extends PrimitiveFieldType {
     return false;
   }
 
-  /**
-   * @return the type of this field
-   */
-  public abstract PointTypes getType();
-  
   @Override
   public abstract Query getSetQuery(QParser parser, SchemaField field, Collection<String> externalVals);
 
@@ -152,114 +139,6 @@ public abstract class PointField extends PrimitiveFieldType {
     } else {
       return getPointRangeQuery(parser, field, min, max, minInclusive, maxInclusive);
     }
-  }
-
-  // TODO: This is derived from TrieField's getRangeQuery. The DocValues part should be refactored
-  // so that the same code can be re-used in both places
-  protected Query getDocValuesRangeQuery(QParser parser, SchemaField field, String min, String max,
-      boolean minInclusive, boolean maxInclusive) {
-    assert field.hasDocValues() && !field.multiValued();
-    
-    switch (getType()) {
-      case INTEGER:
-          return numericDocValuesRangeQuery(field.getName(),
-                min == null ? null : (long) Integer.parseInt(min),
-                max == null ? null : (long) Integer.parseInt(max),
-                minInclusive, maxInclusive);
-      case FLOAT:
-          return getRangeQueryForFloatDoubleDocValues(field, min, max, minInclusive, maxInclusive);
-      case LONG:
-          return numericDocValuesRangeQuery(field.getName(),
-                min == null ? null : Long.parseLong(min),
-                max == null ? null : Long.parseLong(max),
-                minInclusive, maxInclusive);
-      case DOUBLE:
-          return getRangeQueryForFloatDoubleDocValues(field, min, max, minInclusive, maxInclusive);
-      case DATE:
-          return numericDocValuesRangeQuery(field.getName(),
-                min == null ? null : DateMathParser.parseMath(null, min).getTime(),
-                max == null ? null : DateMathParser.parseMath(null, max).getTime(),
-                minInclusive, maxInclusive);
-      default:
-        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Unknown type for point field");
-    }
-  }
-  
-  private static long FLOAT_NEGATIVE_INFINITY_BITS = (long)Float.floatToIntBits(Float.NEGATIVE_INFINITY);
-  private static long DOUBLE_NEGATIVE_INFINITY_BITS = Double.doubleToLongBits(Double.NEGATIVE_INFINITY);
-  private static long FLOAT_POSITIVE_INFINITY_BITS = (long)Float.floatToIntBits(Float.POSITIVE_INFINITY);
-  private static long DOUBLE_POSITIVE_INFINITY_BITS = Double.doubleToLongBits(Double.POSITIVE_INFINITY);
-  private static long FLOAT_MINUS_ZERO_BITS = (long)Float.floatToIntBits(-0f);
-  private static long DOUBLE_MINUS_ZERO_BITS = Double.doubleToLongBits(-0d);
-  private static long FLOAT_ZERO_BITS = (long)Float.floatToIntBits(0f);
-  private static long DOUBLE_ZERO_BITS = Double.doubleToLongBits(0d);
-
-  // TODO: This is derived from TrieField's getRangeQuery. The DocValues part should be refactored
-  // so that the same code can be re-used in both places
-  private Query getRangeQueryForFloatDoubleDocValues(SchemaField sf, String min, String max, boolean minInclusive, boolean maxInclusive) {
-    Query query;
-    String fieldName = sf.getName();
-
-    Number minVal = min == null ? null : getType() == PointTypes.FLOAT ? Float.parseFloat(min): Double.parseDouble(min);
-    Number maxVal = max == null ? null : getType() == PointTypes.FLOAT ? Float.parseFloat(max): Double.parseDouble(max);
-    
-    Long minBits = 
-        min == null ? null : getType() == PointTypes.FLOAT ? (long) Float.floatToIntBits(minVal.floatValue()): Double.doubleToLongBits(minVal.doubleValue());
-    Long maxBits = 
-        max == null ? null : getType() == PointTypes.FLOAT ? (long) Float.floatToIntBits(maxVal.floatValue()): Double.doubleToLongBits(maxVal.doubleValue());
-    
-    long negativeInfinityBits = getType() == PointTypes.FLOAT ? FLOAT_NEGATIVE_INFINITY_BITS : DOUBLE_NEGATIVE_INFINITY_BITS;
-    long positiveInfinityBits = getType() == PointTypes.FLOAT ? FLOAT_POSITIVE_INFINITY_BITS : DOUBLE_POSITIVE_INFINITY_BITS;
-    long minusZeroBits = getType() == PointTypes.FLOAT ? FLOAT_MINUS_ZERO_BITS : DOUBLE_MINUS_ZERO_BITS;
-    long zeroBits = getType() == PointTypes.FLOAT ? FLOAT_ZERO_BITS : DOUBLE_ZERO_BITS;
-    
-    // If min is negative (or -0d) and max is positive (or +0d), then issue a FunctionRangeQuery
-    if ((minVal == null || minVal.doubleValue() < 0d || minBits == minusZeroBits) && 
-        (maxVal == null || (maxVal.doubleValue() > 0d || maxBits == zeroBits))) {
-
-      ValueSource vs = getValueSource(sf, null);
-      query = new FunctionRangeQuery(new ValueSourceRangeFilter(vs, min, max, minInclusive, maxInclusive));
-
-    } else { // If both max and min are negative (or -0d), then issue range query with max and min reversed
-      if ((minVal == null || minVal.doubleValue() < 0d || minBits == minusZeroBits) &&
-          (maxVal != null && (maxVal.doubleValue() < 0d || maxBits == minusZeroBits))) {
-        query = numericDocValuesRangeQuery
-            (fieldName, maxBits, (min == null ? negativeInfinityBits : minBits), maxInclusive, minInclusive);
-      } else { // If both max and min are positive, then issue range query
-        query = numericDocValuesRangeQuery
-            (fieldName, minBits, (max == null ? positiveInfinityBits : maxBits), minInclusive, maxInclusive);
-      }
-    }
-    return query;
-  }
-
-  private static Query numericDocValuesRangeQuery(
-      String field,
-      Number lowerValue, Number upperValue,
-      boolean lowerInclusive, boolean upperInclusive) {
-
-    long actualLowerValue = Long.MIN_VALUE;
-    if (lowerValue != null) {
-      actualLowerValue = lowerValue.longValue();
-      if (lowerInclusive == false) {
-        if (actualLowerValue == Long.MAX_VALUE) {
-          return new MatchNoDocsQuery();
-        }
-        ++actualLowerValue;
-      }
-    }
-
-    long actualUpperValue = Long.MAX_VALUE;
-    if (upperValue != null) {
-      actualUpperValue = upperValue.longValue();
-      if (upperInclusive == false) {
-        if (actualUpperValue == Long.MIN_VALUE) {
-          return new MatchNoDocsQuery();
-        }
-        --actualUpperValue;
-      }
-    }
-    return NumericDocValuesField.newRangeQuery(field, actualLowerValue, actualUpperValue);
   }
 
   @Override

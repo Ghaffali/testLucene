@@ -44,6 +44,10 @@ public class LongPointField extends PointField implements LongValueFieldType {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  public LongPointField() {
+    type = NumberType.LONG;
+  }
+
   @Override
   public Object toNativeType(Object val) {
     if (val == null) return null;
@@ -177,10 +181,5 @@ public class LongPointField extends PointField implements LongValueFieldType {
   @Override
   protected StoredField getStoredField(SchemaField sf, Object value) {
     return new StoredField(sf.getName(), (Long) this.toNativeType(value));
-  }
-
-  @Override
-  public PointTypes getType() {
-    return PointTypes.LONG;
   }
 }
