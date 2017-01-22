@@ -109,14 +109,14 @@ public class TestManagedSchemaThreadSafety extends SolrTestCaseJ4 {
 
     final String configsetName = "managed-config";//
 
-    try (SolrZkClient client = new SuspendingZkClient(zkServer.getZkHost(), 30)) {
+    try (SolrZkClient client = new SuspendingZkClient(zkServer.getZkHost(), 30000)) {
       // we can pick any to load configs, I suppose, but here we check
       client.upConfig(configset("cloud-managed-upgrade"), configsetName);
     }
 
     ExecutorService executor = ExecutorUtil.newMDCAwareCachedThreadPool("threadpool");
     
-    try (SolrZkClient raceJudge = new SuspendingZkClient(zkServer.getZkHost(), 30)) {
+    try (SolrZkClient raceJudge = new SuspendingZkClient(zkServer.getZkHost(), 30000)) {
 
       ZkController zkController = createZkController(raceJudge);
 
