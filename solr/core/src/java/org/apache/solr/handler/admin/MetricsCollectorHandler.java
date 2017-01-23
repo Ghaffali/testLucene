@@ -22,13 +22,11 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.codahale.metrics.MetricRegistry;
-import org.apache.solr.client.solrj.io.stream.metrics.Metric;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStream;
-import org.apache.solr.common.util.JavaBinCodec;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.loader.ContentStreamLoader;
@@ -90,7 +88,7 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
 
   @Override
   public void handleRequestBody(SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
-    log.info("#### " + req.toString());
+    //log.info("#### " + req.toString());
     for (ContentStream cs : req.getContentStreams()) {
       if (cs.getContentType() == null) {
         log.warn("Missing content type - ignoring");
@@ -100,14 +98,14 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       if (loader == null) {
         throw new SolrException(SolrException.ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Unsupported content type for stream: " + cs.getSourceInfo() + ", contentType=" + cs.getContentType());
       }
-      String id = req.getParams().get(SolrReporter.REPORTER_ID);
+      String reporterId = req.getParams().get(SolrReporter.REPORTER_ID);
       String group = req.getParams().get(SolrReporter.GROUP_ID);
-      if (id == null || group == null) {
+      if (reporterId == null || group == null) {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Missing " + SolrReporter.REPORTER_ID +
             " or " + SolrReporter.GROUP_ID + " in request params: " + req.getParamString());
       }
       MetricRegistry registry = metricManager.registry(group);
-      loader.load(req, rsp, cs, new MetricUpdateProcessor(registry, id, group));
+      loader.load(req, rsp, cs, new MetricUpdateProcessor(registry, reporterId, group));
     }
   }
 
@@ -118,13 +116,13 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
 
   private static class MetricUpdateProcessor extends UpdateRequestProcessor {
     private final MetricRegistry registry;
-    private final String id;
+    private final String reporterId;
     private final String group;
 
-    public MetricUpdateProcessor(MetricRegistry registry, String id, String group) {
+    public MetricUpdateProcessor(MetricRegistry registry, String reporterId, String group) {
       super(null);
       this.registry = registry;
-      this.id = id;
+      this.reporterId = reporterId;
       this.group = group;
     }
 
@@ -134,7 +132,7 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       if (doc == null) {
         return;
       }
-      String metricName = (String)doc.getFieldValue("name");
+      String metricName = (String)doc.getFieldValue(MetricUtils.NAME);
       if (metricName == null) {
         log.warn("Missing metric 'name' field in document, skipping: " + doc);
         return;
@@ -145,13 +143,22 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       doc.remove(SolrReporter.GROUP_ID);
       // remaining fields should only contain numeric values
       doc.forEach(f -> {
-        String key = MetricRegistry.name(metricName, f.getName());
-        AggregateMetric metric = (AggregateMetric)registry.getMetrics().get(key);
-        if (metric == null) {
-          metric = new AggregateMetric();
-          registry.register(key, metric);
+        if (f.getFirstValue() instanceof Number) {
+          String key = MetricRegistry.name(metricName, f.getName());
+          AggregateMetric metric = (AggregateMetric)registry.getMetrics().get(key);
+          if (metric == null) {
+            metric = new AggregateMetric();
+            registry.register(key, metric);
+          }
+          Object o = f.getFirstValue();
+          if (o != null && (o instanceof Number)) {
+            metric.set(reporterId, ((Number)o).doubleValue());
+          } else {
+            // silently discard
+          }
+        } else {
+          // silently discard
         }
-        metric.set(id, ((Number)f.getFirstValue()).doubleValue());
       });
     }
 

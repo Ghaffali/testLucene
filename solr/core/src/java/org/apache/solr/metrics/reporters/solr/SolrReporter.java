@@ -262,6 +262,7 @@ public class SolrReporter extends ScheduledReporter {
         skipHistograms, metadata, doc -> req.add(doc));
 
     try {
+      //log.info("%%% sending to " + url + ": " + req.getParams());
       solr.request(req);
     } catch (SolrServerException sse) {
       log.warn("Error sending metric report", sse);

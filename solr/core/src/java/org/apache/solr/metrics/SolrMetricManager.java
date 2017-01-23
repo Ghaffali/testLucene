@@ -45,6 +45,7 @@ import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.metrics.reporters.solr.SolrReplicaReporter;
+import org.apache.solr.metrics.reporters.solr.SolrReporter;
 import org.apache.solr.util.plugin.SolrCoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -693,7 +694,7 @@ public class SolrMetricManager {
     attrs.put("name", "replica");
     attrs.put("class", SolrReplicaReporter.class.getName());
     NamedList initArgs = new NamedList();
-    initArgs.add(SolrReplicaReporter.LEADER_REGISTRY, leaderRegistryName);
+    initArgs.add(SolrReporter.GROUP_ID, leaderRegistryName);
     initArgs.add("period", 5);
     PluginInfo pluginInfo = new PluginInfo("reporter", attrs, initArgs, null);
     try {

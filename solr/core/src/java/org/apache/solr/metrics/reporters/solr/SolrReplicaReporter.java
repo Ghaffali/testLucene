@@ -17,6 +17,7 @@
 package org.apache.solr.metrics.reporters.solr;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -26,22 +27,26 @@ import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.handler.admin.MetricsCollectorHandler;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricReporter;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class reports selected metrics from replicas to a shard leader.
  */
 public class SolrReplicaReporter extends SolrMetricReporter {
-  public static final String LEADER_REGISTRY = "leaderRegistry";
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public static final String[] METRICS = {
+  public static final String[] DEFAULT_METRICS = {
     "TLOG", "REPLICATION", "INDEX"
   };
 
-  private String leaderRegistry;
-  private String handler;
+  private String solrGroupId;
+  private String handler = MetricsCollectorHandler.HANDLER_PATH;
   private int period = 60;
+  private String[] metrics = DEFAULT_METRICS;
 
   private SolrReporter reporter;
 
@@ -56,8 +61,8 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     super(metricManager, registryName);
   }
 
-  public void setLeaderRegistry(String leaderRegistry) {
-    this.leaderRegistry = leaderRegistry;
+  public void setSolrGroupId(String solrGroupId) {
+    this.solrGroupId = solrGroupId;
   }
 
   public void setHandler(String handler) {
@@ -66,6 +71,16 @@ public class SolrReplicaReporter extends SolrMetricReporter {
 
   public void setPeriod(int period) {
     this.period = period;
+  }
+
+  public void setMetrics(String prefixList) {
+    if (prefixList == null || prefixList.isEmpty()) {
+      return;
+    }
+    String[] newMetrics = prefixList.split("[\\s,]+");
+    if (newMetrics.length > 0) {
+      metrics = newMetrics;
+    }
   }
 
   @Override
@@ -87,9 +102,14 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     if (reporter != null) {
       reporter.close();
     }
+    if (core.getCoreDescriptor().getCloudDescriptor() == null) {
+      // not a cloud core
+      log.warn("Not initializing replica reporter for non-cloud core " + core.getName());
+      return;
+    }
     // our id is nodeName
     String id = core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName();
-    MetricFilter filter = new SolrMetricManager.PrefixFilter(METRICS);
+    MetricFilter filter = new SolrMetricManager.PrefixFilter(metrics);
     reporter = SolrReporter.Builder.forRegistry(metricManager.registry(registryName))
         .convertRatesTo(TimeUnit.SECONDS)
         .convertDurationsTo(TimeUnit.MILLISECONDS)
@@ -97,7 +117,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
         .filter(filter)
         .withId(id)
         .cloudClient(false) // we want to send reports specifically to a selected leader instance
-        .withGroup(leaderRegistry)
+        .withGroup(solrGroupId)
         .build(core.getCoreDescriptor().getCoreContainer().getUpdateShardHandler().getHttpClient(), new LeaderUrlSupplier(core));
 
     reporter.start(period, TimeUnit.SECONDS);

@@ -3,6 +3,7 @@ package org.apache.solr.metrics;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import com.codahale.metrics.Metric;
 
@@ -10,10 +11,45 @@ import com.codahale.metrics.Metric;
  * This class is used for keeping several partial named values and providing useful statistics over them.
  */
 public class AggregateMetric implements Metric {
-  private final Map<String, Double> values = new ConcurrentHashMap<>();
+
+  /**
+   * Simple class to represent current value and how many times it was set.
+   */
+  public static class Update {
+    public Number value;
+    public final AtomicInteger updateCount = new AtomicInteger();
+
+    public Update(Number value) {
+      update(value);
+    }
+
+    public void update(Number value) {
+      this.value = value;
+      updateCount.incrementAndGet();
+    }
+
+    @Override
+    public String toString() {
+      return "Update{" +
+          "value=" + value +
+          ", updateCount=" + updateCount +
+          '}';
+    }
+  }
+
+  private final Map<String, Update> values = new ConcurrentHashMap<>();
 
   public void set(String name, double value) {
-    values.put(name, value);
+    final Update existing = values.get(name);
+    if (existing == null) {
+      final Update created = new Update(value);
+      final Update raced = values.putIfAbsent(name, created);
+      if (raced != null) {
+        raced.update(value);
+      }
+    } else {
+      existing.update(value);
+    }
   }
 
   public void clear(String name) {
@@ -32,7 +68,7 @@ public class AggregateMetric implements Metric {
     return values.isEmpty();
   }
 
-  public Map<String, Double> getValues() {
+  public Map<String, Update> getValues() {
     return Collections.unmodifiableMap(values);
   }
 
@@ -42,13 +78,13 @@ public class AggregateMetric implements Metric {
       return 0;
     }
     Double res = null;
-    for (Double d : values.values()) {
+    for (Update u : values.values()) {
       if (res == null) {
-        res = d;
+        res = u.value.doubleValue();
         continue;
       }
-      if (d > res) {
-        res = d;
+      if (u.value.doubleValue() > res) {
+        res = u.value.doubleValue();
       }
     }
     return res;
@@ -59,13 +95,13 @@ public class AggregateMetric implements Metric {
       return 0;
     }
     Double res = null;
-    for (Double d : values.values()) {
+    for (Update u : values.values()) {
       if (res == null) {
-        res = d;
+        res = u.value.doubleValue();
         continue;
       }
-      if (d < res) {
-        res = d;
+      if (u.value.doubleValue() < res) {
+        res = u.value.doubleValue();
       }
     }
     return res;
@@ -76,8 +112,8 @@ public class AggregateMetric implements Metric {
       return 0;
     }
     double total = 0;
-    for (Double d : values.values()) {
-      total += d;
+    for (Update u : values.values()) {
+      total += u.value.doubleValue();
     }
     return total / values.size();
   }
@@ -89,8 +125,8 @@ public class AggregateMetric implements Metric {
     }
     final double mean = getMean();
     double sum = 0;
-    for (Double d : values.values()) {
-      final double diff = d - mean;
+    for (Update u : values.values()) {
+      final double diff = u.value.doubleValue() - mean;
       sum += diff * diff;
     }
     final double variance = sum / (size - 1);
