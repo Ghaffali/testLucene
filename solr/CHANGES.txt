@@ -74,9 +74,16 @@ Optimizations
 * SOLR-9584: Support Solr being proxied with another endpoint than default /solr, by using relative links
   in AdminUI javascripts (Yun Jie Zhou via janhoy)
 
+* SOLR-9996: Unstored IntPointField returns Long type (Ishan Chattopadhyaya)
+
 Other Changes
 ----------------------
 * SOLR-8396: Add support for PointFields in Solr (Ishan Chattopadhyaya, Tomás Fernández Löbbe)
+
+* SOLR-10011: Refactor PointField & TrieField to now have a common base class, NumericFieldType. The
+  TrieField.TrieTypes and PointField.PointTypes are now consolidated to NumericFieldType.NumberType. This
+  refactoring also fixes a bug whereby PointFields were not using DocValues for range queries for
+  indexed=false, docValues=true fields.
 
 ==================  6.5.0 ==================
 
@@ -113,6 +120,8 @@ Bug Fixes
   about when index version changes (hossman)
 
 * SOLR-9979: Macro expansion should not be done in shard requests (Tomás Fernández Löbbe)
+
+* SOLR-9114: NPE using TermVectorComponent, MoreLikeThisComponent in combination with ExactStatsCache (Cao Manh Dat, Varun Thacker)
 
 Optimizations
 ----------------------

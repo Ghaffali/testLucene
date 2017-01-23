@@ -59,6 +59,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
     doTestIntPointFieldExactQuery("number_p_i", false);
     doTestIntPointFieldExactQuery("number_p_i_mv", false);
     doTestIntPointFieldExactQuery("number_p_i_ni_dv", false);
+    doTestIntPointFieldExactQuery("number_p_i_ni_ns_dv", false);
     // uncomment once MultiValued docValues are supported in PointFields
     //    doTestIntPointFieldExactQuery("number_p_i_ni_mv_dv", false);
   }
@@ -74,6 +75,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
   @Test
   public void testIntPointFieldRangeQuery() throws Exception {
     doTestIntPointFieldRangeQuery("number_p_i", "int", false);
+    doTestIntPointFieldRangeQuery("number_p_i_ni_ns_dv", "int", false);
   }
   
   @Test
@@ -235,6 +237,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
     doTestFloatPointFieldExactQuery("number_p_d");
     doTestFloatPointFieldExactQuery("number_p_d_mv");
     doTestFloatPointFieldExactQuery("number_p_d_ni_dv");
+    doTestFloatPointFieldExactQuery("number_p_d_ni_ns_dv");
     // TODO enable once MuultiValued docValues are supported with PointFields
 //    doTestFloatPointFieldExactQuery("number_p_d_ni_mv_dv");
   }
@@ -258,6 +261,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
   @Test
   public void testDoublePointFieldRangeQuery() throws Exception {
     doTestFloatPointFieldRangeQuery("number_p_d", "double", true);
+    doTestFloatPointFieldRangeQuery("number_p_d_ni_ns_dv", "double", true);
   }
   
   @Test
@@ -457,6 +461,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
     doTestFloatPointFieldExactQuery("number_p_f");
     doTestFloatPointFieldExactQuery("number_p_f_mv");
     doTestFloatPointFieldExactQuery("number_p_f_ni_dv");
+    doTestFloatPointFieldExactQuery("number_p_f_ni_ns_dv");
 //    doTestFloatPointFieldExactQuery("number_p_f_ni_mv_dv");
   }
   
@@ -479,6 +484,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
   @Test
   public void testFloatPointFieldRangeQuery() throws Exception {
     doTestFloatPointFieldRangeQuery("number_p_f", "float", false);
+    doTestFloatPointFieldRangeQuery("number_p_f_ni_ns_dv", "float", false);
   }
   
   @Test
@@ -551,6 +557,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
     doTestIntPointFieldExactQuery("number_p_l", true);
     doTestIntPointFieldExactQuery("number_p_l_mv", true);
     doTestIntPointFieldExactQuery("number_p_l_ni_dv", true);
+    doTestIntPointFieldExactQuery("number_p_l_ni_ns_dv", true);
 //    doTestIntPointFieldExactQuery("number_p_i_ni_mv_dv", true);
   }
   
@@ -565,6 +572,7 @@ public class TestPointFields extends SolrTestCaseJ4 {
   @Test
   public void testLongPointFieldRangeQuery() throws Exception {
     doTestIntPointFieldRangeQuery("number_p_l", "long", true);
+    doTestIntPointFieldRangeQuery("number_p_l_ni_ns_dv", "long", true);
   }
   
   @Test
@@ -785,6 +793,13 @@ public class TestPointFields extends SolrTestCaseJ4 {
     for (int i=0; i < values.length; i++) {
       assertU(adoc("id", String.valueOf(i), field, values[i]));
     }
+    // Check using RTG
+    if (Boolean.getBoolean("enable.update.log")) {
+      for (int i = 0; i < values.length; i++) {
+        assertQ(req("qt", "/get", "id", String.valueOf(i)),
+            "//doc/" + type + "[@name='" + field + "'][.='" + values[i] + "']");
+      }
+    }
     assertU(commit());
     String[] expected = new String[values.length + 1];
     expected[0] = "//*[@numFound='" + values.length + "']"; 
@@ -792,6 +807,14 @@ public class TestPointFields extends SolrTestCaseJ4 {
       expected[i] = "//result/doc[" + i + "]/" + type + "[@name='" + field + "'][.='" + values[i-1] + "']";
     }
     assertQ(req("q", "*:*", "fl", "id, " + field, "rows", String.valueOf(values.length)), expected);
+
+    // Check using RTG
+    if (Boolean.getBoolean("enable.update.log")) {
+      for (int i = 0; i < values.length; i++) {
+        assertQ(req("qt", "/get", "id", String.valueOf(i)),
+            "//doc/" + type + "[@name='" + field + "'][.='" + values[i] + "']");
+      }
+    }
   }
 
   private void doTestIntPointFieldRangeQuery(String fieldName, String type, boolean testLong) throws Exception {
