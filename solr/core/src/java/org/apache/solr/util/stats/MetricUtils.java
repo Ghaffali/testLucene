@@ -221,7 +221,12 @@ public class MetricUtils {
     if (!metric.isEmpty()) {
       Map<String, Object> values = new LinkedHashMap<>();
       response.put(VALUES, values);
-      metric.getValues().forEach((k, v) -> values.put(k, v));
+      metric.getValues().forEach((k, v) -> {
+        Map<String, Object> map = new LinkedHashMap<>();
+        map.put("value", v.value);
+        map.put("updateCount", v.updateCount.get());
+        values.put(k, map);
+      });
     }
     return response;
   }

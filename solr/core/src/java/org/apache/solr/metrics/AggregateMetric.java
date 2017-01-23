@@ -39,7 +39,7 @@ public class AggregateMetric implements Metric {
 
   private final Map<String, Update> values = new ConcurrentHashMap<>();
 
-  public void set(String name, double value) {
+  public void set(String name, Number value) {
     final Update existing = values.get(name);
     if (existing == null) {
       final Update created = new Update(value);
