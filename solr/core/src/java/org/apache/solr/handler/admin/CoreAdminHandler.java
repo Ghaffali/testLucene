@@ -123,13 +123,6 @@ public class CoreAdminHandler extends RequestHandlerBase implements PermissionNa
     return Boolean.TRUE;
   }
 
-  @Override
-  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
-    super.initializeMetrics(manager, registryName, scope);
-    parallelExecutor = MetricUtils.instrumentedExecutorService(parallelExecutor, manager.registry(registryName),
-        SolrMetricManager.mkName("parallelCoreAdminExecutor", getCategory().name(),scope, "threadPool"));
-  }
-
   /**
    * The instance of CoreContainer this handler handles. This should be the CoreContainer instance that created this
    * handler.
@@ -282,11 +275,6 @@ public class CoreAdminHandler extends RequestHandlerBase implements PermissionNa
   @Override
   public String getDescription() {
     return "Manage Multiple Solr Cores";
-  }
-
-  @Override
-  public Category getCategory() {
-    return Category.ADMIN;
   }
 
   @Override
