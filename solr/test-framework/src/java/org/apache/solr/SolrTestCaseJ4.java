@@ -132,6 +132,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
+import static org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
+import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
+
 import static java.util.Objects.requireNonNull;
 
 /**
@@ -164,11 +167,18 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   public static final String SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICYFACTORY = "solr.tests.useMergePolicyFactory";
   @Deprecated // remove solr.tests.useMergePolicy use with SOLR-8668
   public static final String SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICY = "solr.tests.useMergePolicy";
+  
+  /**
+   * The system property {@code "solr.tests.preferPointFields"} can be used to make tests use PointFields when possible. 
+   * PointFields will only be used if the schema used by the tests uses "${solr.tests.TYPEClass}" when defining fields. 
+   * If this environment variable is not set, those tests will use PointFields 50% of the times and TrieFields the rest.
+   */
+  public static final boolean PREFER_POINT_FIELDS = Boolean.getBoolean("solr.tests.preferPointFields");
 
   private static String coreName = DEFAULT_TEST_CORENAME;
 
   public static int DEFAULT_CONNECTION_TIMEOUT = 60000;  // default socket connection timeout in ms
-
+  
   protected void writeCoreProperties(Path coreDirectory, String corename) throws IOException {
     Properties props = new Properties();
     props.setProperty("name", corename);
@@ -210,6 +220,19 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   public @interface SuppressObjectReleaseTracker {
     /** Point to JIRA entry. */
     public String bugUrl();
+  }
+  
+  /**
+   * Annotation for test classes that want to disable PointFields.
+   * PointFields will otherwise randomly used by some schemas.
+   */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public @interface SuppressPointFields {
+    /** Point to JIRA entry. */
+    public String bugUrl() default "None";
   }
   
   // these are meant to be accessed sequentially, but are volatile just to ensure any test
@@ -416,10 +439,12 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     lrf = h.getRequestFactory("standard", 0, 20, CommonParams.VERSION, "2.2");
   }
   
-  /** sets system properties based on 
+  /** 
+   * Sets system properties to allow generation of random configurations of
+   * solrconfig.xml and schema.xml. 
+   * Sets properties used on  
    * {@link #newIndexWriterConfig(org.apache.lucene.analysis.Analyzer)}
-   * 
-   * configs can use these system properties to vary the indexwriter settings
+   *  and base schema.xml (Point Fields)
    */
   public static void newRandomConfig() {
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -435,6 +460,20 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
       mergeSchedulerClass = "org.apache.lucene.index.ConcurrentMergeScheduler";
     }
     System.setProperty("solr.tests.mergeScheduler", mergeSchedulerClass);
+    if (RandomizedContext.current().getTargetClass().isAnnotationPresent(SuppressPointFields.class)
+        || (!PREFER_POINT_FIELDS && random().nextBoolean())) {
+      log.info("Using TrieFields");
+      System.setProperty("solr.tests.intClass", "int");
+      System.setProperty("solr.tests.longClass", "long");
+      System.setProperty("solr.tests.doubleClass", "double");
+      System.setProperty("solr.tests.floatClass", "float");
+    } else {
+      log.info("Using PointFields");
+      System.setProperty("solr.tests.intClass", "pint");
+      System.setProperty("solr.tests.longClass", "plong");
+      System.setProperty("solr.tests.doubleClass", "pdouble");
+      System.setProperty("solr.tests.floatClass", "pfloat");
+    }
   }
 
   public static Throwable getWrappedException(Throwable e) {
@@ -1148,9 +1187,24 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     @Override
     public String toString() { return xml; }
   }
-  
+
+  /**
+   * Does a low level delete of all docs in the index. 
+   *
+   * The behavior of this method is slightly different then doing a normal <code>*:*</code> DBQ because it
+   * takes advantage of internal methods to ensure all index data is wiped, regardless of optimistic 
+   * concurrency version constraints -- making it suitable for tests that create synthetic versions, 
+   * and/or require a completely pristine index w/o any field metdata.
+   *
+   * @see #deleteByQueryAndGetVersion
+   */
   public void clearIndex() {
-    assertU(delQ("*:*"));
+    try {
+      deleteByQueryAndGetVersion("*:*", params("_version_", Long.toString(-Long.MAX_VALUE),
+                                               DISTRIB_UPDATE_PARAM,DistribPhase.FROMLEADER.toString()));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /** Send JSON update commands */
@@ -1948,7 +2002,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     SolrDocument solrDocument1 = (SolrDocument) expected;
     SolrDocument solrDocument2 = (SolrDocument) actual;
 
-    if(solrDocument1.getFieldNames().size() != solrDocument1.getFieldNames().size()) {
+    if(solrDocument1.getFieldNames().size() != solrDocument2.getFieldNames().size()) {
       return false;
     }
 

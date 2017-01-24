@@ -45,12 +45,13 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.FilterCollector;
 import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
-import org.apache.lucene.search.grouping.AbstractAllGroupHeadsCollector;
+import org.apache.lucene.search.grouping.AllGroupHeadsCollector;
 import org.apache.lucene.search.grouping.term.TermAllGroupsCollector;
 import org.apache.lucene.search.grouping.term.TermGroupFacetCollector;
 import org.apache.lucene.util.BytesRef;
@@ -281,7 +282,7 @@ public class SimpleFacets {
       } else {
         return base;
       }
-      AbstractAllGroupHeadsCollector allGroupHeadsCollector = grouping.getCommands().get(0).createAllGroupCollector();
+      AllGroupHeadsCollector allGroupHeadsCollector = grouping.getCommands().get(0).createAllGroupCollector();
       searcher.search(base.getTopFilter(), allGroupHeadsCollector);
       return new BitDocSet(allGroupHeadsCollector.retrieveGroupHeads(searcher.maxDoc()));
     } else {
@@ -410,6 +411,10 @@ public class SimpleFacets {
     
     NamedList<Integer> counts;
     SchemaField sf = searcher.getSchema().getField(field);
+    if (sf.getType().isPointField() && !sf.hasDocValues()) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, 
+          "Can't facet on a PointField without docValues");
+    }
     FieldType ft = sf.getType();
 
     // determine what type of faceting method to use
@@ -578,6 +583,10 @@ public class SimpleFacets {
    static FacetMethod selectFacetMethod(SchemaField field, FacetMethod method, Integer mincount) {
 
      FieldType type = field.getType();
+     if (type.isPointField()) {
+       // Only FCS is supported for PointFields for now
+       return FacetMethod.FCS;
+     }
 
      /*The user did not specify any preference*/
      if (method == null) {
@@ -649,21 +658,10 @@ public class SimpleFacets {
     BytesRef prefixBytesRef = prefix != null ? new BytesRef(prefix) : null;
     final TermGroupFacetCollector collector = TermGroupFacetCollector.createTermGroupFacetCollector(groupField, field, multiToken, prefixBytesRef, 128);
     
-    SchemaField sf = searcher.getSchema().getFieldOrNull(groupField);
-    
-    if (sf != null && sf.hasDocValues() == false && sf.multiValued() == false && sf.getType().getNumericType() != null) {
-      // it's a single-valued numeric field: we must currently create insanity :(
-      // there isn't a GroupedFacetCollector that works on numerics right now...
-      searcher.search(base.getTopFilter(), new FilterCollector(collector) {
-        @Override
-        public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
-          LeafReader insane = Insanity.wrapInsanity(context.reader(), groupField);
-          return in.getLeafCollector(insane.getContext());
-        }
-      });
-    } else {
-      searcher.search(base.getTopFilter(), collector);
-    }
+    Collector groupWrapper = getInsanityWrapper(groupField, collector);
+    Collector fieldWrapper = getInsanityWrapper(field, groupWrapper);
+    // When GroupedFacetCollector can handle numerics we can remove the wrapped collectors
+    searcher.search(base.getTopFilter(), fieldWrapper);
     
     boolean orderByCount = sort.equals(FacetParams.FACET_SORT_COUNT) || sort.equals(FacetParams.FACET_SORT_COUNT_LEGACY);
     TermGroupFacetCollector.GroupedFacetResult result 
@@ -690,6 +688,23 @@ public class SimpleFacets {
     }
 
     return facetCounts;
+  }
+  
+  private Collector getInsanityWrapper(final String field, Collector collector) {
+    SchemaField sf = searcher.getSchema().getFieldOrNull(field);
+    if (sf != null && !sf.hasDocValues() && !sf.multiValued() && sf.getType().getNumericType() != null) {
+      // it's a single-valued numeric field: we must currently create insanity :(
+      // there isn't a GroupedFacetCollector that works on numerics right now...
+      return new FilterCollector(collector) {
+        @Override
+        public LeafCollector getLeafCollector(LeafReaderContext context) throws IOException {
+          LeafReader insane = Insanity.wrapInsanity(context.reader(), field);
+          return in.getLeafCollector(insane.getContext());
+        }
+      };
+    } else {
+      return collector;
+    }
   }
 
 
@@ -803,12 +818,20 @@ public class SimpleFacets {
    * @param terms a list of term values (in the specified field) to compute the counts for 
    */
   protected NamedList<Integer> getListedTermCounts(String field, final ParsedParams parsed, List<String> terms) throws IOException {
-    FieldType ft = searcher.getSchema().getFieldType(field);
+    SchemaField sf = searcher.getSchema().getField(field);
+    FieldType ft = sf.getType();
     NamedList<Integer> res = new NamedList<>();
-    for (String term : terms) {
-      String internal = ft.toInternal(term);
-      int count = searcher.numDocs(new TermQuery(new Term(field, internal)), parsed.docs);
-      res.add(term, count);
+    if (ft.isPointField()) {
+      for (String term : terms) {
+        int count = searcher.numDocs(ft.getFieldQuery(null, sf, term), parsed.docs);
+        res.add(term, count);
+      }
+    } else {
+      for (String term : terms) {
+        String internal = ft.toInternal(term);
+        int count = searcher.numDocs(new TermQuery(new Term(field, internal)), parsed.docs);
+        res.add(term, count);
+      }
     }
     return res;    
   }
@@ -841,7 +864,7 @@ public class SimpleFacets {
   public NamedList<Integer> getFacetTermEnumCounts(SolrIndexSearcher searcher, DocSet docs, String field, int offset, int limit, int mincount, boolean missing, 
                                       String sort, String prefix, String contains, boolean ignoreCase, boolean intersectsCheck)
     throws IOException {
-
+    
     /* :TODO: potential optimization...
     * cache the Terms with the highest docFreq and try them first
     * don't enum if we get our max from them
@@ -857,10 +880,12 @@ public class SimpleFacets {
       fastForRandomSet = new HashDocSet(sset.getDocs(), 0, sset.size());
     }
 
-
     IndexSchema schema = searcher.getSchema();
-    LeafReader r = searcher.getSlowAtomicReader();
     FieldType ft = schema.getFieldType(field);
+    assert !ft.isPointField(): "Point Fields don't support enum method";
+    
+    LeafReader r = searcher.getSlowAtomicReader();
+    
 
     boolean sortByCount = sort.equals("count") || sort.equals("true");
     final int maxsize = limit>=0 ? offset+limit : Integer.MAX_VALUE-1;
@@ -1074,6 +1099,9 @@ public class SimpleFacets {
       SchemaField schemaField = searcher.getCore().getLatestSchema().getField(parsed.facetValue);
       if (parsed.params.getBool(GroupParams.GROUP_FACET, false)) {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Interval Faceting can't be used with " + GroupParams.GROUP_FACET);
+      }
+      if (schemaField.getType().isPointField() && !schemaField.hasDocValues()) {
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Can't use interval faceting on a PointField without docValues");
       }
       
       SimpleOrderedMap<Integer> fieldResults = new SimpleOrderedMap<Integer>();

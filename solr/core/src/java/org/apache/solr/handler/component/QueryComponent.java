@@ -185,6 +185,11 @@ public class QueryComponent extends SearchComponent
       }
 
       rb.setSortSpec( parser.getSortSpec(true) );
+      for (SchemaField sf:rb.getSortSpec().getSchemaFields()) {
+        if (sf != null && sf.getType().isPointField() && !sf.hasDocValues()) {
+          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,"Can't sort on a point field without docValues");
+        }
+      }
       rb.setQparser(parser);
 
       final String cursorStr = rb.req.getParams().get(CursorMarkParams.CURSOR_MARK_PARAM);
@@ -255,23 +260,23 @@ public class QueryComponent extends SearchComponent
     final SortSpec groupSortSpec = searcher.weightSortSpec(sortSpec, Sort.RELEVANCE);
 
     // groupSort defaults to sort
-    String sortWithinGroupStr = params.get(GroupParams.GROUP_SORT);
+    String withinGroupSortStr = params.get(GroupParams.GROUP_SORT);
     //TODO: move weighting of sort
-    final SortSpec sortSpecWithinGroup;
-    if (sortWithinGroupStr != null) {
-      SortSpec parsedSortSpecWithinGroup = SortSpecParsing.parseSortSpec(sortWithinGroupStr, req);
-      sortSpecWithinGroup = searcher.weightSortSpec(parsedSortSpecWithinGroup, Sort.RELEVANCE);
+    final SortSpec withinGroupSortSpec;
+    if (withinGroupSortStr != null) {
+      SortSpec parsedWithinGroupSortSpec = SortSpecParsing.parseSortSpec(withinGroupSortStr, req);
+      withinGroupSortSpec = searcher.weightSortSpec(parsedWithinGroupSortSpec, Sort.RELEVANCE);
     } else {
-      sortSpecWithinGroup = new SortSpec(
+      withinGroupSortSpec = new SortSpec(
           groupSortSpec.getSort(),
           groupSortSpec.getSchemaFields(),
           groupSortSpec.getCount(),
           groupSortSpec.getOffset());
     }
-    sortSpecWithinGroup.setOffset(params.getInt(GroupParams.GROUP_OFFSET, 0));
-    sortSpecWithinGroup.setCount(params.getInt(GroupParams.GROUP_LIMIT, 1));
+    withinGroupSortSpec.setOffset(params.getInt(GroupParams.GROUP_OFFSET, 0));
+    withinGroupSortSpec.setCount(params.getInt(GroupParams.GROUP_LIMIT, 1));
 
-    groupingSpec.setSortSpecWithinGroup(sortSpecWithinGroup);
+    groupingSpec.setWithinGroupSortSpec(withinGroupSortSpec);
     groupingSpec.setGroupSortSpec(groupSortSpec);
 
     String formatStr = params.get(GroupParams.GROUP_FORMAT, Grouping.Format.grouped.name());
@@ -335,11 +340,21 @@ public class QueryComponent extends SearchComponent
       List<String> idArr = StrUtils.splitSmart(ids, ",", true);
       int[] luceneIds = new int[idArr.size()];
       int docs = 0;
-      for (int i=0; i<idArr.size(); i++) {
-        int id = searcher.getFirstMatch(
-                new Term(idField.getName(), idField.getType().toInternal(idArr.get(i))));
-        if (id >= 0)
-          luceneIds[docs++] = id;
+      if (idField.getType().isPointField()) {
+        for (int i=0; i<idArr.size(); i++) {
+          int id = searcher.search(
+              idField.getType().getFieldQuery(null, idField, idArr.get(i)), 1).scoreDocs[0].doc;
+          if (id >= 0) {
+            luceneIds[docs++] = id;
+          }
+        }
+      } else {
+        for (int i=0; i<idArr.size(); i++) {
+          int id = searcher.getFirstMatch(
+                  new Term(idField.getName(), idField.getType().toInternal(idArr.get(i))));
+          if (id >= 0)
+            luceneIds[docs++] = id;
+        }
       }
 
       DocListAndSet res = new DocListAndSet();
@@ -1367,6 +1382,11 @@ public class QueryComponent extends SearchComponent
   @Override
   public String getDescription() {
     return "query";
+  }
+
+  @Override
+  public Category getCategory() {
+    return Category.QUERY;
   }
 
   @Override

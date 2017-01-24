@@ -251,6 +251,11 @@ public class SchemaHandler extends RequestHandlerBase implements SolrCoreAware, 
   }
 
   @Override
+  public Category getCategory() {
+    return Category.ADMIN;
+  }
+
+  @Override
   public void inform(SolrCore core) {
     isImmutableConfigSet = SolrConfigHandler.getImmutable(core);
   }

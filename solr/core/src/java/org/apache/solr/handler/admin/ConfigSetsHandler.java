@@ -168,8 +168,12 @@ public class ConfigSetsHandler extends RequestHandlerBase {
   public String getDescription() {
     return "Manage SolrCloud ConfigSets";
   }
+  @Override
+  public Category getCategory() {
+    return Category.ADMIN;
+  }
 
-  public enum ConfigSetOperation {
+  enum ConfigSetOperation {
     CREATE_OP(CREATE) {
       @Override
       Map<String, Object> call(SolrQueryRequest req, SolrQueryResponse rsp, ConfigSetsHandler h) throws Exception {

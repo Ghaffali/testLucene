@@ -104,6 +104,11 @@ public class InfoHandler extends RequestHandlerBase  {
     return "System Information";
   }
 
+  @Override
+  public Category getCategory() {
+    return Category.ADMIN;
+  }
+
   protected PropertiesRequestHandler getPropertiesHandler() {
     return (PropertiesRequestHandler) handlers.get("properties");
 

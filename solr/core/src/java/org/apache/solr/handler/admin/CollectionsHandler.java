@@ -346,6 +346,11 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
     return "Manage SolrCloud Collections";
   }
 
+  @Override
+  public Category getCategory() {
+    return Category.ADMIN;
+  }
+
   public static final String SYSTEM_COLL = ".system";
 
   private static void createSysConfigSet(CoreContainer coreContainer) throws KeeperException, InterruptedException {
@@ -357,9 +362,11 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
     try {
       String path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/schema.xml";
       byte[] data = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("SystemCollectionSchema.xml"));
+      assert data != null && data.length > 0;
       cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
       path = ZkStateReader.CONFIGS_ZKNODE + "/" + SYSTEM_COLL + "/solrconfig.xml";
       data = IOUtils.toByteArray(Thread.currentThread().getContextClassLoader().getResourceAsStream("SystemCollectionSolrConfig.xml"));
+      assert data != null && data.length > 0;
       cmdExecutor.ensureExists(path, data, CreateMode.PERSISTENT, zk);
     } catch (IOException e) {
       throw new SolrException(ErrorCode.SERVER_ERROR, e);
@@ -447,7 +454,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
       return null;
     }),
     CREATEALIAS_OP(CREATEALIAS, (req, rsp, h) -> {
-      final String aliasName = SolrIdentifierValidator.validateAliasName(req.getParams().get(NAME));
+      SolrIdentifierValidator.validateAliasName(req.getParams().get(NAME));
       return req.getParams().required().getAll(null, NAME, "collections");
     }),
     DELETEALIAS_OP(DELETEALIAS, (req, rsp, h) -> req.getParams().required().getAll(null, NAME)),

@@ -172,6 +172,11 @@ public abstract class SecurityConfHandler extends RequestHandlerBase implements 
     return "Edit or read security configuration";
   }
 
+  @Override
+  public Category getCategory() {
+    return Category.ADMIN;
+  }
+
   /**
    * Gets security.json from source
    */

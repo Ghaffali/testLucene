@@ -1032,15 +1032,19 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     }
   }
 
-  /** Confirms that the incoming index sort (if any) matches the existing index sort (if any).  This is unfortunately just best effort,
-   *  because it could be the old index only has flushed segments. */
-  private void validateIndexSort() {
+  /** Confirms that the incoming index sort (if any) matches the existing index sort (if any).
+   *  This is unfortunately just best effort, because it could be the old index only has unsorted flushed segments built
+   *  before {@link Version#LUCENE_6_5_0} (flushed segments are sorted in Lucene 7.0).  */
+  private void validateIndexSort() throws CorruptIndexException {
     Sort indexSort = config.getIndexSort();
     if (indexSort != null) {
       for(SegmentCommitInfo info : segmentInfos) {
         Sort segmentIndexSort = info.info.getIndexSort();
         if (segmentIndexSort != null && indexSort.equals(segmentIndexSort) == false) {
           throw new IllegalArgumentException("cannot change previous indexSort=" + segmentIndexSort + " (from segment=" + info + ") to new indexSort=" + indexSort);
+        } else if (segmentIndexSort == null && info.info.getVersion().onOrAfter(Version.LUCENE_6_5_0)) {
+          // Flushed segments are not sorted if they were built with a version prior to 6.5.0
+          throw new CorruptIndexException("segment not sorted with indexSort=" + segmentIndexSort, info.info.toString());
         }
       }
     }
@@ -1619,6 +1623,9 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     if (!globalFieldNumberMap.contains(field, DocValuesType.NUMERIC)) {
       throw new IllegalArgumentException("can only update existing numeric-docvalues fields!");
     }
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException("cannot update docvalues field involved in the index sort, field=" + field + ", sort=" + config.getIndexSort());
+    }
     try {
       long seqNo = docWriter.updateDocValues(new NumericDocValuesUpdate(term, field, value));
       if (seqNo < 0) {
@@ -1712,6 +1719,9 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       }
       if (!globalFieldNumberMap.contains(f.name(), dvType)) {
         throw new IllegalArgumentException("can only update existing docvalues fields! field=" + f.name() + ", type=" + dvType);
+      }
+      if (config.getIndexSortFields().contains(f.name())) {
+        throw new IllegalArgumentException("cannot update docvalues field involved in the index sort, field=" + f.name() + ", sort=" + config.getIndexSort());
       }
       switch (dvType) {
         case NUMERIC:
@@ -2946,11 +2956,16 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   @Override
   public final long prepareCommit() throws IOException {
     ensureOpen();
-    pendingSeqNo = prepareCommitInternal(config.getMergePolicy());
+    boolean[] doMaybeMerge = new boolean[1];
+    pendingSeqNo = prepareCommitInternal(doMaybeMerge);
+    // we must do this outside of the commitLock else we can deadlock:
+    if (doMaybeMerge[0]) {
+      maybeMerge(config.getMergePolicy(), MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);      
+    }
     return pendingSeqNo;
   }
 
-  private long prepareCommitInternal(MergePolicy mergePolicy) throws IOException {
+  private long prepareCommitInternal(boolean[] doMaybeMerge) throws IOException {
     startCommitTime = System.nanoTime();
     synchronized(commitLock) {
       ensureOpen(false);
@@ -3057,7 +3072,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       boolean success = false;
       try {
         if (anySegmentsFlushed) {
-          maybeMerge(mergePolicy, MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);
+          doMaybeMerge[0] = true;
         }
         startCommit(toCommit);
         success = true;
@@ -3178,6 +3193,10 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       infoStream.message("IW", "commit: start");
     }
 
+    boolean[] doMaybeMerge = new boolean[1];
+
+    long seqNo;
+
     synchronized(commitLock) {
       ensureOpen(false);
 
@@ -3185,13 +3204,11 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         infoStream.message("IW", "commit: enter lock");
       }
 
-      long seqNo;
-
       if (pendingCommit == null) {
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "commit: now prepare");
         }
-        seqNo = prepareCommitInternal(mergePolicy);
+        seqNo = prepareCommitInternal(doMaybeMerge);
       } else {
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "commit: already prepared");
@@ -3200,9 +3217,14 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       }
 
       finishCommit();
-
-      return seqNo;
     }
+
+    // we must do this outside of the commitLock else we can deadlock:
+    if (doMaybeMerge[0]) {
+      maybeMerge(mergePolicy, MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);      
+    }
+    
+    return seqNo;
   }
 
   private final void finishCommit() throws IOException {
