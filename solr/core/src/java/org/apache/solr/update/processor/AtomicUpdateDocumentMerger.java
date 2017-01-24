@@ -168,7 +168,7 @@ public class AtomicUpdateDocumentMerger {
       }
       Object fieldValue = sdoc.getField(fieldName).getValue();
       if (! (fieldValue instanceof Map) ) {
-        // not even an atomic update, definitely not an in-place update
+        // not an in-place update if there are fields that are not maps
         return Collections.emptySet();
       }
       // else it's a atomic update map...
@@ -194,7 +194,7 @@ public class AtomicUpdateDocumentMerger {
         return Collections.emptySet();
       } 
 
-      // if this field has copy target which is not supported for in place, then false
+      // if this field has copy target which is not supported for in place, then empty
       for (CopyField copyField: schema.getCopyFieldsList(fieldName)) {
         if (!isSupportedFieldForInPlaceUpdate(copyField.getDestination()))
           return Collections.emptySet();
