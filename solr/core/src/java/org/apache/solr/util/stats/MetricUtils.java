@@ -16,7 +16,6 @@
  */
 package org.apache.solr.util.stats;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -46,7 +45,7 @@ import org.apache.solr.metrics.AggregateMetric;
  */
 public class MetricUtils {
 
-  public static final String NAME = "name";
+  public static final String METRIC_NAME = "metric";
   public static final String VALUES = "values";
 
   static final String MS = "_ms";
@@ -61,6 +60,7 @@ public class MetricUtils {
   static final String MEDIAN_MS = MEDIAN + MS;
   static final String STDDEV = "stddev";
   static final String STDDEV_MS = STDDEV + MS;
+  static final String SUM = "sum";
   static final String P75 = "p75";
   static final String P75_MS = P75 + MS;
   static final String P95 = "p95";
@@ -115,9 +115,10 @@ public class MetricUtils {
    */
   public static NamedList toNamedList(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                       MetricFilter mustMatchFilter, boolean skipHistograms,
+                                      boolean skipAggregateValues,
                                       Map<String, Object> metadata) {
     NamedList result = new NamedList();
-    toNamedMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, (k, v) -> {
+    toNamedMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, (k, v) -> {
       result.add(k, new NamedList(v));
     });
     if (metadata != null && !metadata.isEmpty()) {
@@ -144,9 +145,11 @@ public class MetricUtils {
    */
   public static List<SolrInputDocument> toSolrInputDocuments(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                                              MetricFilter mustMatchFilter, boolean skipHistograms,
+                                                             boolean skipAggregateValues,
                                                              Map<String, Object> metadata) {
     List<SolrInputDocument> result = new LinkedList<>();
-    toSolrInputDocuments(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, metadata, doc -> {
+    toSolrInputDocuments(registry, shouldMatchFilters, mustMatchFilter, skipHistograms,
+        skipAggregateValues, metadata, doc -> {
       result.add(doc);
     });
     return result;
@@ -154,11 +157,12 @@ public class MetricUtils {
 
   public static void toSolrInputDocuments(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                           MetricFilter mustMatchFilter, boolean skipHistograms,
+                                          boolean skipAggregateValues,
                                           Map<String, Object> metadata, Consumer<SolrInputDocument> consumer) {
     boolean addMetadata = metadata != null && !metadata.isEmpty();
-    toNamedMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, (k, v) -> {
+    toNamedMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, (k, v) -> {
       SolrInputDocument doc = new SolrInputDocument();
-      doc.setField(NAME, k);
+      doc.setField(METRIC_NAME, k);
       toSolrInputDocument(null, doc, v);
       if (addMetadata) {
         toSolrInputDocument(null, doc, metadata);
@@ -179,7 +183,7 @@ public class MetricUtils {
   }
 
   public static void toNamedMaps(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
-                MetricFilter mustMatchFilter, boolean skipHistograms,
+                MetricFilter mustMatchFilter, boolean skipHistograms, boolean skipAggregateValues,
                 BiConsumer<String, Map<String, Object>> consumer) {
     Map<String, Metric> metrics = registry.getMetrics();
     SortedSet<String> names = registry.getNames();
@@ -206,19 +210,20 @@ public class MetricUtils {
               consumer.accept(n, histogramToMap(histogram));
             }
           } else if (metric instanceof AggregateMetric) {
-            consumer.accept(n, aggregateMetricToMap((AggregateMetric)metric));
+            consumer.accept(n, aggregateMetricToMap((AggregateMetric)metric, skipAggregateValues));
           }
         });
   }
 
-  static Map<String, Object> aggregateMetricToMap(AggregateMetric metric) {
+  static Map<String, Object> aggregateMetricToMap(AggregateMetric metric, boolean skipAggregateValues) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", metric.size());
     response.put(MAX, metric.getMax());
     response.put(MIN, metric.getMin());
     response.put(MEAN, metric.getMean());
     response.put(STDDEV, metric.getStdDev());
-    if (!metric.isEmpty()) {
+    response.put(SUM, metric.getSum());
+    if (!(metric.isEmpty() || skipAggregateValues)) {
       Map<String, Object> values = new LinkedHashMap<>();
       response.put(VALUES, values);
       metric.getValues().forEach((k, v) -> {

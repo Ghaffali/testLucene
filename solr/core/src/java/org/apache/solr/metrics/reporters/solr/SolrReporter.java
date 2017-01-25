@@ -16,35 +16,37 @@
  */
 package org.apache.solr.metrics.reporters.solr;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricFilter;
-import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.ScheduledReporter;
 import com.codahale.metrics.Timer;
 import org.apache.http.client.HttpClient;
 import org.apache.solr.client.solrj.SolrClient;
-import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.io.SolrClientCache;
 import org.apache.solr.client.solrj.request.UpdateRequest;
-import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.JavaBinCodec;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.handler.admin.MetricsCollectorHandler;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.util.stats.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,28 +57,72 @@ import org.slf4j.LoggerFactory;
 public class SolrReporter extends ScheduledReporter {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  public static final String REGISTRY_ID = "_registry_";
+  public static final String REPORTER_ID = "_reporter_";
+  public static final String GROUP_ID = "_group_";
+  public static final String LABEL_ID = "_label_";
+
+
+  /**
+   * Specification of what registries and what metrics to send.
+   */
+  public static final class Specification {
+    public String groupPattern;
+    public String labelPattern;
+    public String registryPattern;
+    public Set<String> metricPatterns = new HashSet<>();
+
+    /**
+     * Create a specification
+     * @param groupPattern logical group for these metrics. This is used in {@link MetricsCollectorHandler} to select
+     *              the target registry for metrics to aggregate. It may contain back-references to capture groups from
+     *                     {@code registryPattern}
+     * @param labelPattern name of this group of metrics. This is used in {@link MetricsCollectorHandler} to prefix
+     *              metric names. May be null or empty. It may contain back-references to capture groups from
+     *                     {@code registryPattern}.
+     * @param registryPattern pattern for selecting matching registries, see {@link SolrMetricManager#registryNames(String...)}
+     * @param metricPatterns patterns for selecting matching metrics, see {@link SolrMetricManager.RegexFilter}
+     */
+    public Specification(String groupPattern, String labelPattern, String registryPattern, Collection<String> metricPatterns) {
+      this.groupPattern = groupPattern;
+      this.labelPattern = labelPattern;
+      this.registryPattern = registryPattern;
+      if (metricPatterns != null) {
+        this.metricPatterns.addAll(metricPatterns);
+      }
+    }
+  }
+
   public static class Builder {
-    private final MetricRegistry registry;
-    private String id;
-    private String group;
+    private final SolrMetricManager metricManager;
+    private final List<Specification> metrics;
+    private String reporterId;
     private TimeUnit rateUnit;
     private TimeUnit durationUnit;
-    private MetricFilter filter;
     private String handler;
     private boolean skipHistograms;
+    private boolean skipAggregateValues;
     private boolean cloudClient;
     private SolrParams params;
 
-    public static Builder forRegistry(MetricRegistry registry) {
-      return new Builder(registry);
+    /**
+     * Create a builder for SolrReporter.
+     * @param metricManager metric manager that is the source of metrics
+     * @param metrics patterns to select registries, see {@link SolrMetricManager#registryNames(String...)},
+     *                and the corresponding metrics prefixes, see {@link org.apache.solr.metrics.SolrMetricManager.PrefixFilter}.
+     * @return builder
+     */
+    public static Builder forRegistries(SolrMetricManager metricManager, List<Specification> metrics) {
+      return new Builder(metricManager, metrics);
     }
 
-    private Builder(MetricRegistry registry) {
-      this.registry = registry;
+    private Builder(SolrMetricManager metricManager, List<Specification> metrics) {
+      this.metricManager = metricManager;
+      this.metrics = metrics;
       this.rateUnit = TimeUnit.SECONDS;
       this.durationUnit = TimeUnit.MILLISECONDS;
-      this.filter = MetricFilter.ALL;
       this.skipHistograms = false;
+      this.skipAggregateValues = false;
       this.cloudClient = false;
       this.params = null;
     }
@@ -113,6 +159,16 @@ public class SolrReporter extends ScheduledReporter {
     }
 
     /**
+     * Individual values from {@link org.apache.solr.metrics.AggregateMetric} may not be worth to report.
+     * @param skipAggregateValues
+     * @return {@code this}
+     */
+    public Builder skipAggregateValues(boolean skipAggregateValues) {
+      this.skipAggregateValues = skipAggregateValues;
+      return this;
+    }
+
+    /**
      * Handler name to use at the remote end.
      *
      * @param handler handler name, eg. "/admin/metricsCollector"
@@ -126,22 +182,11 @@ public class SolrReporter extends ScheduledReporter {
     /**
      * Use this id to identify metrics from this instance.
      *
-     * @param id
+     * @param reporterId
      * @return {@code this}
      */
-    public Builder withId(String id) {
-      this.id = id;
-      return this;
-    }
-
-    /**
-     * Use this id to identify a logical group of reports.
-     *
-     * @param group
-     * @return {@code this}
-     */
-    public Builder withGroup(String group) {
-      this.group = group;
+    public Builder withReporterId(String reporterId) {
+      this.reporterId = reporterId;
       return this;
     }
 
@@ -168,17 +213,6 @@ public class SolrReporter extends ScheduledReporter {
     }
 
     /**
-     * Only report metrics which match the given filter.
-     *
-     * @param filter a {@link MetricFilter}
-     * @return {@code this}
-     */
-    public Builder filter(MetricFilter filter) {
-      this.filter = filter;
-      return this;
-    }
-
-    /**
      * Build it.
      * @param client an instance of {@link HttpClient} to be used for making calls.
      * @param urlProvider function that returns the base URL of Solr instance to target. May return
@@ -187,59 +221,78 @@ public class SolrReporter extends ScheduledReporter {
      * @return configured instance of reporter
      */
     public SolrReporter build(HttpClient client, Supplier<String> urlProvider) {
-      return new SolrReporter(client, urlProvider, registry, handler, id, group, rateUnit, durationUnit,
-          filter, params, skipHistograms, cloudClient);
+      return new SolrReporter(client, urlProvider, metricManager, metrics, handler, reporterId, rateUnit, durationUnit,
+          params, skipHistograms, skipAggregateValues, cloudClient);
     }
 
   }
 
-  public static final String REPORTER_ID = "solrReporterId";
-  public static final String GROUP_ID = "solrGroupId";
-
-  private String id;
-  private String group;
+  private String reporterId;
   private String handler;
   private Supplier<String> urlProvider;
   private SolrClientCache clientCache;
-  private List<MetricFilter> filters;
-  private MetricRegistry visibleRegistry;
+  private List<CompiledSpecification> specs;
+  private SolrMetricManager metricManager;
   private boolean skipHistograms;
+  private boolean skipAggregateValues;
   private boolean cloudClient;
   private ModifiableSolrParams params;
   private Map<String, Object> metadata;
 
-  public SolrReporter(HttpClient httpClient, Supplier<String> urlProvider, MetricRegistry registry, String handler,
-                      String id, String group, TimeUnit rateUnit, TimeUnit durationUnit, MetricFilter filter,
-                      SolrParams params, boolean skipHistograms, boolean cloudClient) {
-    super(registry, "solr-reporter", filter, rateUnit, durationUnit);
+  private static final class CompiledSpecification {
+    String group;
+    String label;
+    Pattern registryPattern;
+    MetricFilter filter;
+
+    CompiledSpecification(Specification spec) throws PatternSyntaxException {
+      this.group = spec.groupPattern;
+      this.label = spec.labelPattern;
+      this.registryPattern = Pattern.compile(spec.registryPattern);
+      this.filter = new SolrMetricManager.RegexFilter(spec.metricPatterns);
+    }
+  }
+
+  public SolrReporter(HttpClient httpClient, Supplier<String> urlProvider, SolrMetricManager metricManager,
+                      List<Specification> metrics, String handler,
+                      String reporterId, TimeUnit rateUnit, TimeUnit durationUnit,
+                      SolrParams params, boolean skipHistograms, boolean skipAggregateValues, boolean cloudClient) {
+    super(null, "solr-reporter", MetricFilter.ALL, rateUnit, durationUnit);
+    this.metricManager = metricManager;
     this.urlProvider = urlProvider;
-    this.id = id;
-    this.group = group;
+    this.reporterId = reporterId;
     if (handler == null) {
       handler = MetricsCollectorHandler.HANDLER_PATH;
     }
     this.handler = handler;
     this.clientCache = new SolrClientCache(httpClient);
-    // the one in superclass is invisible... :(
-    this.visibleRegistry = registry;
-    if (filter == null) {
-      filter = MetricFilter.ALL;
-    }
-    this.filters = Collections.singletonList(filter);
+    this.specs = new ArrayList<>();
+    metrics.forEach(spec -> {
+      MetricFilter filter = new SolrMetricManager.RegexFilter(spec.metricPatterns);
+      try {
+        CompiledSpecification cs = new CompiledSpecification(spec);
+        specs.add(cs);
+      } catch (PatternSyntaxException e) {
+        log.warn("Skipping spec with invalid registryPattern: " + spec.registryPattern, e);
+      }
+    });
     this.skipHistograms = skipHistograms;
+    this.skipAggregateValues = skipAggregateValues;
     this.cloudClient = cloudClient;
     this.params = new ModifiableSolrParams();
-    this.params.set(REPORTER_ID, id);
-    this.params.set(GROUP_ID, group);
+    this.params.set(REPORTER_ID, reporterId);
     // allow overrides to take precedence
     if (params != null) {
       this.params.add(params);
     }
     metadata = new HashMap<>();
-    metadata.put(REPORTER_ID, id);
-    if (group != null) {
-      metadata.put(GROUP_ID, group);
-    }
+    metadata.put(REPORTER_ID, reporterId);
+  }
+
+  @Override
+  public void close() {
+    clientCache.close();
+    super.close();
   }
 
   @Override
@@ -258,16 +311,40 @@ public class SolrReporter extends ScheduledReporter {
     }
     UpdateRequest req = new UpdateRequest(handler);
     req.setParams(params);
-    MetricUtils.toSolrInputDocuments(visibleRegistry, filters, MetricFilter.ALL,
-        skipHistograms, metadata, doc -> req.add(doc));
+    specs.forEach(spec -> {
+      Set<String> registryNames = metricManager.registryNames(spec.registryPattern);
+      registryNames.forEach(registryName -> {
+        String label = spec.label;
+        if (label != null && label.indexOf('$') != -1) {
+          // label with back-references
+          Matcher m = spec.registryPattern.matcher(registryName);
+          label = m.replaceFirst(label);
+        }
+        final String effectiveLabel = label;
+        String group = spec.group;
+        if (group.indexOf('$') != -1) {
+          // group with back-references
+          Matcher m = spec.registryPattern.matcher(registryName);
+          group = m.replaceFirst(group);
+        }
+        final String effectiveGroup = group;
+        MetricUtils.toSolrInputDocuments(metricManager.registry(registryName), Collections.singletonList(spec.filter), MetricFilter.ALL,
+            skipHistograms, skipAggregateValues, metadata, doc -> {
+              doc.setField(REGISTRY_ID, registryName);
+              doc.setField(GROUP_ID, effectiveGroup);
+              if (effectiveLabel != null) {
+                doc.setField(LABEL_ID, effectiveLabel);
+              }
+              req.add(doc);
+            });
+      });
+    });
 
     try {
       //log.info("%%% sending to " + url + ": " + req.getParams());
       solr.request(req);
-    } catch (SolrServerException sse) {
-      log.warn("Error sending metric report", sse);
-    } catch (IOException ioe) {
-      log.warn("Error sending metric report", ioe);
+    } catch (Exception e) {
+      log.debug("Error sending metric report", e.toString());
     }
 
   }

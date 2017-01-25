@@ -79,7 +79,7 @@ public class MetricUtilsTest extends SolrTestCaseJ4 {
     am.set("bar", 1);
     am.set("bar", 2);
     MetricUtils.toNamedMaps(registry, Collections.singletonList(MetricFilter.ALL), MetricFilter.ALL,
-        false, (k, v) -> {
+        false, false, (k, v) -> {
       if (k.startsWith("counter")) {
         assertEquals(1L, v.get("count"));
       } else if (k.startsWith("timer")) {

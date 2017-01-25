@@ -542,6 +542,10 @@ public class CoreContainer {
     metricManager.register(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node),
         unloadedCores, true, "unloaded",SolrInfoMBean.Category.CONTAINER.toString(), "cores");
 
+    if (isZooKeeperAware()) {
+      metricManager.loadNodeReporter(this, this.getZkController().getNodeName());
+    }
+
     // setup executor to load cores in parallel
     ExecutorService coreLoadExecutor = MetricUtils.instrumentedExecutorService(
         ExecutorUtil.newMDCAwareFixedThreadPool(
@@ -665,10 +669,16 @@ public class CoreContainer {
     isShutDown = true;
 
     ExecutorUtil.shutdownAndAwaitTermination(coreContainerWorkExecutor);
+    if (metricManager != null) {
+      metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node));
+    }
 
     if (isZooKeeperAware()) {
       cancelCoreRecoveries();
-      zkSys.zkController.publishNodeAsDown(zkSys.zkController.getNodeName()); 
+      zkSys.zkController.publishNodeAsDown(zkSys.zkController.getNodeName());
+      if (metricManager != null) {
+        metricManager.closeReporters(SolrMetricManager.overridableRegistryName(zkSys.zkController.getNodeName()));
+      }
     }
 
     try {
@@ -716,10 +726,6 @@ public class CoreContainer {
           zkSys.close();
         }
       }
-    }
-
-    if (metricManager != null) {
-      metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.node));
     }
 
     // It should be safe to close the authorization plugin at this point.

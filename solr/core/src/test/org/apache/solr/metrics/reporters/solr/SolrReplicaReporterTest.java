@@ -86,5 +86,8 @@ public class SolrReplicaReporterTest extends AbstractFullDistribZkTestBase {
             metricManager.registryNames().contains(registryName));
       }
     }
+    SolrMetricManager metricManager = controlJetty.getCoreContainer().getMetricManager();
+    assertTrue(metricManager.registryNames().contains("solr.overseer"));
+    Map<String, Metric> metrics = metricManager.registry("solr.overseer").getMetrics();
   }
 }

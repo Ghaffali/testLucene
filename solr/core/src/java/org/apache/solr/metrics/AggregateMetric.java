@@ -16,14 +16,14 @@ public class AggregateMetric implements Metric {
    * Simple class to represent current value and how many times it was set.
    */
   public static class Update {
-    public Number value;
+    public Object value;
     public final AtomicInteger updateCount = new AtomicInteger();
 
-    public Update(Number value) {
+    public Update(Object value) {
       update(value);
     }
 
-    public void update(Number value) {
+    public void update(Object value) {
       this.value = value;
       updateCount.incrementAndGet();
     }
@@ -39,7 +39,7 @@ public class AggregateMetric implements Metric {
 
   private final Map<String, Update> values = new ConcurrentHashMap<>();
 
-  public void set(String name, Number value) {
+  public void set(String name, Object value) {
     final Update existing = values.get(name);
     if (existing == null) {
       final Update created = new Update(value);
@@ -79,12 +79,16 @@ public class AggregateMetric implements Metric {
     }
     Double res = null;
     for (Update u : values.values()) {
-      if (res == null) {
-        res = u.value.doubleValue();
+      if (!(u.value instanceof Number)) {
         continue;
       }
-      if (u.value.doubleValue() > res) {
-        res = u.value.doubleValue();
+      Number n = (Number)u.value;
+      if (res == null) {
+        res = n.doubleValue();
+        continue;
+      }
+      if (n.doubleValue() > res) {
+        res = n.doubleValue();
       }
     }
     return res;
@@ -96,12 +100,16 @@ public class AggregateMetric implements Metric {
     }
     Double res = null;
     for (Update u : values.values()) {
-      if (res == null) {
-        res = u.value.doubleValue();
+      if (!(u.value instanceof Number)) {
         continue;
       }
-      if (u.value.doubleValue() < res) {
-        res = u.value.doubleValue();
+      Number n = (Number)u.value;
+      if (res == null) {
+        res = n.doubleValue();
+        continue;
+      }
+      if (n.doubleValue() < res) {
+        res = n.doubleValue();
       }
     }
     return res;
@@ -113,7 +121,11 @@ public class AggregateMetric implements Metric {
     }
     double total = 0;
     for (Update u : values.values()) {
-      total += u.value.doubleValue();
+      if (!(u.value instanceof Number)) {
+        continue;
+      }
+      Number n = (Number)u.value;
+      total += n.doubleValue();
     }
     return total / values.size();
   }
@@ -125,12 +137,36 @@ public class AggregateMetric implements Metric {
     }
     final double mean = getMean();
     double sum = 0;
+    int count = 0;
     for (Update u : values.values()) {
-      final double diff = u.value.doubleValue() - mean;
+      if (!(u.value instanceof Number)) {
+        continue;
+      }
+      count++;
+      Number n = (Number)u.value;
+      final double diff = n.doubleValue() - mean;
       sum += diff * diff;
     }
-    final double variance = sum / (size - 1);
+    if (count < 2) {
+      return 0;
+    }
+    final double variance = sum / (count - 1);
     return Math.sqrt(variance);
+  }
+
+  public double getSum() {
+    if (values.isEmpty()) {
+      return 0;
+    }
+    double res = 0;
+    for (Update u : values.values()) {
+      if (!(u.value instanceof Number)) {
+        continue;
+      }
+      Number n = (Number)u.value;
+      res += n.doubleValue();
+    }
+    return res;
   }
 
   @Override
@@ -139,7 +175,9 @@ public class AggregateMetric implements Metric {
         "size=" + size() +
         ", max=" + getMax() +
         ", min=" + getMin() +
+        ", mean=" + getMean() +
         ", stddev=" + getStdDev() +
+        ", sum=" + getSum() +
         ", values=" + values +
         '}';
   }

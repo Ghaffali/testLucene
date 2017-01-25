@@ -56,11 +56,11 @@ import org.slf4j.LoggerFactory;
 public class MetricsCollectorHandler extends RequestHandlerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public static final String HANDLER_PATH = "/admin/metricsCollector";
+  public static final String HANDLER_PATH = "/admin/metrics/collector";
 
   private final CoreContainer coreContainer;
   private final SolrMetricManager metricManager;
-  private final Map<String, ContentStreamLoader> registry = new HashMap<>();
+  private final Map<String, ContentStreamLoader> loaders = new HashMap<>();
   private SolrParams params;
 
   public MetricsCollectorHandler(final CoreContainer coreContainer) {
@@ -77,35 +77,32 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
     } else {
       params = new ModifiableSolrParams();
     }
-    registry.put("application/xml", new XMLLoader().init(params) );
-    registry.put("application/json", new JsonLoader().init(params) );
-    registry.put("application/csv", new CSVLoader().init(params) );
-    registry.put("application/javabin", new JavabinLoader().init(params) );
-    registry.put("text/csv", registry.get("application/csv") );
-    registry.put("text/xml", registry.get("application/xml") );
-    registry.put("text/json", registry.get("application/json"));
+    loaders.put("application/xml", new XMLLoader().init(params) );
+    loaders.put("application/json", new JsonLoader().init(params) );
+    loaders.put("application/csv", new CSVLoader().init(params) );
+    loaders.put("application/javabin", new JavabinLoader().init(params) );
+    loaders.put("text/csv", loaders.get("application/csv") );
+    loaders.put("text/xml", loaders.get("application/xml") );
+    loaders.put("text/json", loaders.get("application/json"));
   }
 
   @Override
   public void handleRequestBody(SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
+    if (coreContainer == null || coreContainer.isShutDown()) {
+      // silently drop request
+      return;
+    }
     //log.info("#### " + req.toString());
     for (ContentStream cs : req.getContentStreams()) {
       if (cs.getContentType() == null) {
         log.warn("Missing content type - ignoring");
         continue;
       }
-      ContentStreamLoader loader = registry.get(cs.getContentType());
+      ContentStreamLoader loader = loaders.get(cs.getContentType());
       if (loader == null) {
         throw new SolrException(SolrException.ErrorCode.UNSUPPORTED_MEDIA_TYPE, "Unsupported content type for stream: " + cs.getSourceInfo() + ", contentType=" + cs.getContentType());
       }
-      String reporterId = req.getParams().get(SolrReporter.REPORTER_ID);
-      String group = req.getParams().get(SolrReporter.GROUP_ID);
-      if (reporterId == null || group == null) {
-        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Missing " + SolrReporter.REPORTER_ID +
-            " or " + SolrReporter.GROUP_ID + " in request params: " + req.getParamString());
-      }
-      MetricRegistry registry = metricManager.registry(group);
-      loader.load(req, rsp, cs, new MetricUpdateProcessor(registry, reporterId, group));
+      loader.load(req, rsp, cs, new MetricUpdateProcessor(metricManager));
     }
   }
 
@@ -115,15 +112,11 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
   }
 
   private static class MetricUpdateProcessor extends UpdateRequestProcessor {
-    private final MetricRegistry registry;
-    private final String reporterId;
-    private final String group;
+    private final SolrMetricManager metricManager;
 
-    public MetricUpdateProcessor(MetricRegistry registry, String reporterId, String group) {
+    public MetricUpdateProcessor(SolrMetricManager metricManager) {
       super(null);
-      this.registry = registry;
-      this.reporterId = reporterId;
-      this.group = group;
+      this.metricManager = metricManager;
     }
 
     @Override
@@ -132,39 +125,49 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       if (doc == null) {
         return;
       }
-      String metricName = (String)doc.getFieldValue(MetricUtils.NAME);
+      String metricName = (String)doc.getFieldValue(MetricUtils.METRIC_NAME);
       if (metricName == null) {
-        log.warn("Missing metric 'name' field in document, skipping: " + doc);
+        log.warn("Missing metric " + MetricUtils.METRIC_NAME + " field in document, skipping: " + doc);
         return;
       }
-      doc.remove(MetricUtils.NAME);
-      // already known
-      doc.remove(SolrReporter.REPORTER_ID);
+      doc.remove(MetricUtils.METRIC_NAME);
+      // XXX we could modify keys by using this original registry name
+      doc.remove(SolrReporter.REGISTRY_ID);
+      String groupId = (String)doc.getFieldValue(SolrReporter.GROUP_ID);
+      if (groupId == null) {
+        log.warn("Missing metric " + SolrReporter.GROUP_ID + " field in document, skipping: " + doc);
+        return;
+      }
       doc.remove(SolrReporter.GROUP_ID);
-      // remaining fields should only contain numeric values
+      String reporterId = (String)doc.getFieldValue(SolrReporter.REPORTER_ID);
+      if (reporterId == null) {
+        log.warn("Missing metric " + SolrReporter.REPORTER_ID + " field in document, skipping: " + doc);
+        return;
+      }
+      doc.remove(SolrReporter.REPORTER_ID);
+      String labelId = (String)doc.getFieldValue(SolrReporter.LABEL_ID);
+      doc.remove(SolrReporter.LABEL_ID);
       doc.forEach(f -> {
-        if (f.getFirstValue() instanceof Number) {
-          String key = MetricRegistry.name(metricName, f.getName());
-          AggregateMetric metric = (AggregateMetric)registry.getMetrics().get(key);
-          if (metric == null) {
-            metric = new AggregateMetric();
-            registry.register(key, metric);
-          }
-          Object o = f.getFirstValue();
-          if (o != null && (o instanceof Number)) {
-            metric.set(reporterId, ((Number)o).doubleValue());
-          } else {
-            // silently discard
-          }
+        String key = MetricRegistry.name(labelId, metricName, f.getName());
+        MetricRegistry registry = metricManager.registry(groupId);
+        AggregateMetric metric = (AggregateMetric)registry.getMetrics().get(key);
+        if (metric == null) {
+          metric = new AggregateMetric();
+          registry.register(key, metric);
+        }
+        Object o = f.getFirstValue();
+        if (o != null) {
+          metric.set(reporterId, o);
         } else {
-          // silently discard
+          // remove missing values
+          metric.clear(reporterId);
         }
       });
     }
 
     @Override
     public void processDelete(DeleteUpdateCommand cmd) throws IOException {
-      super.processDelete(cmd);
+      throw new UnsupportedOperationException("processDelete");
     }
 
     @Override

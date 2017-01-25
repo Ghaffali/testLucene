@@ -18,10 +18,11 @@ package org.apache.solr.metrics.reporters.solr;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-import com.codahale.metrics.MetricFilter;
 import org.apache.solr.cloud.CloudDescriptor;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -40,10 +41,10 @@ public class SolrReplicaReporter extends SolrMetricReporter {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   public static final String[] DEFAULT_METRICS = {
-    "TLOG", "REPLICATION", "INDEX", "UPDATE./update/", "QUERY./select"
+    "TLOG.*", "REPLICATION.*", "INDEX.flush.*", "INDEX.merge.major.*", "UPDATE\\./update/.*", "QUERY\\./select.*"
   };
 
-  private String solrGroupId;
+  private String groupId;
   private String handler = MetricsCollectorHandler.HANDLER_PATH;
   private int period = 60;
   private String[] metrics = DEFAULT_METRICS;
@@ -61,8 +62,8 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     super(metricManager, registryName);
   }
 
-  public void setSolrGroupId(String solrGroupId) {
-    this.solrGroupId = solrGroupId;
+  public void setGroupId(String groupId) {
+    this.groupId = groupId;
   }
 
   public void setHandler(String handler) {
@@ -107,17 +108,17 @@ public class SolrReplicaReporter extends SolrMetricReporter {
       log.warn("Not initializing replica reporter for non-cloud core " + core.getName());
       return;
     }
-    // our id is nodeName
+    // our id is coreNodeName
     String id = core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName();
-    MetricFilter filter = new SolrMetricManager.PrefixFilter(metrics);
-    reporter = SolrReporter.Builder.forRegistry(metricManager.registry(registryName))
+    SolrReporter.Specification spec = new SolrReporter.Specification(groupId, null, registryName, Arrays.asList(metrics));
+    reporter = SolrReporter.Builder.forRegistries(metricManager, Collections.singletonList(spec))
         .convertRatesTo(TimeUnit.SECONDS)
         .convertDurationsTo(TimeUnit.MILLISECONDS)
         .withHandler(handler)
-        .filter(filter)
-        .withId(id)
+        .withReporterId(id)
         .cloudClient(false) // we want to send reports specifically to a selected leader instance
-        .withGroup(solrGroupId)
+        .skipAggregateValues(true) // we don't want to transport details of aggregates
+        .skipHistograms(true) // we don't want to transport histograms
         .build(core.getCoreDescriptor().getCoreContainer().getUpdateShardHandler().getHttpClient(), new LeaderUrlSupplier(core));
 
     reporter.start(period, TimeUnit.SECONDS);
