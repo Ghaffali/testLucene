@@ -123,7 +123,11 @@ public class TestApiFramework extends SolrTestCaseJ4 {
     SolrQueryResponse rsp = invoke(containerHandlers, null, "/collections/_introspect", GET, mockCC);
 
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(
-        "/spec[0]/methods[0]", "POST"));
+        "/spec[0]/methods[0]", "DELETE",
+        "/spec[1]/methods[0]", "POST",
+        "/spec[2]/methods[0]", "GET"
+
+    ));
 
     rsp = invoke(coreHandlers, "/schema/_introspect", "/collections/hello/schema/_introspect", GET, mockCC);
     assertConditions(rsp.getValues().asMap(2), Utils.makeMap(

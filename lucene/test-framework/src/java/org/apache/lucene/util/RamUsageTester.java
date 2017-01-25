@@ -160,10 +160,7 @@ public final class RamUsageTester {
                   Collections.emptyMap(), stack);
               needsReflection = false;
             } else if (ob instanceof Iterable) {
-              final List<Object> values = StreamSupport.stream(((Iterable<?>) ob).spliterator(), false)
-                  .collect(Collectors.toList());
-              totalSize += accumulator.accumulateArray(ob, cachedInfo.alignedShallowInstanceSize + RamUsageEstimator.NUM_BYTES_ARRAY_HEADER, values, stack);
-              needsReflection = false;
+              final List<Object> values = null;
             }  else if (ob instanceof Map) {
               final List<Object> values = ((Map<?,?>) ob).entrySet().stream()
                   .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
