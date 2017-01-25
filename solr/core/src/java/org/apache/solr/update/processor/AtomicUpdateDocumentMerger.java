@@ -156,9 +156,15 @@ public class AtomicUpdateDocumentMerger {
     
     final SchemaField uniqueKeyField = schema.getUniqueKeyField();
     final String uniqueKeyFieldName = null == uniqueKeyField ? null : uniqueKeyField.getName();
-    
+
     final Set<String> candidateFields = new HashSet<>();
 
+    // if _version_ field is not supported for in-place update, bail out early
+    SchemaField versionField = schema.getFieldOrNull(DistributedUpdateProcessor.VERSION_FIELD);
+    if (versionField == null || !isSupportedFieldForInPlaceUpdate(versionField)) {
+      return Collections.emptySet();
+    }
+    
     // first pass, check the things that are virtually free,
     // and bail out early if anything is obviously not a valid in-place update
     for (String fieldName : sdoc.getFieldNames()) {
