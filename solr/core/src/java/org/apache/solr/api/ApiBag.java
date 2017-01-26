@@ -28,15 +28,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Lists;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.common.util.Utils;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.core.PluginBag;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.request.SolrQueryRequest;
@@ -52,9 +50,9 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.client.solrj.SolrRequest.SUPPORTED_METHODS;
 import static org.apache.solr.common.params.CommonParams.NAME;
+import static org.apache.solr.common.util.StrUtils.formatString;
 import static org.apache.solr.common.util.ValidatingJsonMap.ENUM_OF;
 import static org.apache.solr.common.util.ValidatingJsonMap.NOT_NULL;
-import static org.apache.solr.common.util.StrUtils.formatString;
 
 public class ApiBag {
   private final boolean isCoreSpecific;

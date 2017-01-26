@@ -59,7 +59,7 @@ import static org.apache.solr.servlet.SolrDispatchFilter.Action.PASSTHROUGH;
 import static org.apache.solr.servlet.SolrDispatchFilter.Action.PROCESS;
 import static org.apache.solr.util.PathTrie.getPathSegments;
 
-
+// class that handle the '/v2' path
 public class V2HttpCall extends HttpSolrCall {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private Api api;
@@ -197,7 +197,6 @@ public class V2HttpCall extends HttpSolrCall {
       // just try if any other method has this path
       api = requestHandlers.v2lookup(path, null, parts);
     }
-    log.error(">> api class: " + (api == null ? "null" : api.getClass().getSimpleName())); // nocommit
 
     if (api == null) {
       return getSubPathApi(requestHandlers, path, fullPath, new CompositeApi(null));

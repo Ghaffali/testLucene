@@ -30,7 +30,6 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.codec.binary.Base64;
-import org.apache.solr.api.SpecProvider;
 import org.apache.solr.common.util.ValidatingJsonMap;
 
 import org.apache.solr.util.CommandOperation;

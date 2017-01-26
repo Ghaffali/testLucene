@@ -27,15 +27,32 @@ import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.util.CommandOperation;
 
-import static org.apache.solr.client.solrj.SolrRequest.METHOD.*;
-import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.NODEAPIS;
-import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.NODEINVOKE;
-import static org.apache.solr.handler.admin.CoreAdminOperation.*;
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
+import static org.apache.solr.client.solrj.SolrRequest.METHOD.POST;
 import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.CORES_COMMANDS;
 import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.CORES_STATUS;
+import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.NODEAPIS;
+import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.NODEINVOKE;
 import static org.apache.solr.handler.admin.CoreAdminHandlerApi.EndPoint.PER_CORE_COMMANDS;
+import static org.apache.solr.handler.admin.CoreAdminOperation.CREATE_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.FORCEPREPAREFORLEADERSHIP_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.INVOKE_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.MERGEINDEXES_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.OVERSEEROP_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.PREPRECOVERY_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.REJOINLEADERELECTION_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.RELOAD_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.RENAME_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.REQUESTAPPLYUPDATES_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.REQUESTBUFFERUPDATES_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.REQUESTRECOVERY_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.REQUESTSTATUS_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.REQUESTSYNCSHARD_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.SPLIT_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.STATUS_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.SWAP_OP;
+import static org.apache.solr.handler.admin.CoreAdminOperation.UNLOAD_OP;
 
 public class CoreAdminHandlerApi extends BaseHandlerApiSupport {
   private final CoreAdminHandler handler;

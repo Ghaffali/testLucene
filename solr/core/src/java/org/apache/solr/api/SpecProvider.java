@@ -1,4 +1,3 @@
-package org.apache.solr.api;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
@@ -16,7 +15,7 @@ package org.apache.solr.api;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+package org.apache.solr.api;
 import org.apache.solr.common.util.ValidatingJsonMap;
 
 public interface SpecProvider {

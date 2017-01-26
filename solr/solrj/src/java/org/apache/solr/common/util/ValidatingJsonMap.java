@@ -33,15 +33,13 @@ import java.util.Set;
 import org.apache.solr.common.SolrException;
 import org.noggit.JSONParser;
 import org.noggit.ObjectBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableSet;
 
 public class ValidatingJsonMap implements Map<String, Object> {
-  private static final Logger log = LoggerFactory.getLogger(ValidatingJsonMap.class);
+
   private static final String INCLUDE = "#include";
   private static final String RESOURCE_EXTENSION = ".json";
   public static final PredicateWithErrMsg<Object> NOT_NULL = o -> {
@@ -320,11 +318,7 @@ public class ValidatingJsonMap implements Map<String, Object> {
     try {
       map = fromJSON(is, includeLocation);
     } catch (Exception e) {
-      log.error("Error in JSON : " + resourceName, e);
-      if (e instanceof RuntimeException) {
-        throw e;
-      }
-      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, e);
+      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,"Error in JSON : " + resourceName, e);
     }
     if (map == null) throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Empty value for " + resourceName);
 

@@ -27,15 +27,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
 
-import com.google.common.collect.ImmutableSet;
-import org.apache.solr.common.SolrException;
-import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.common.util.Utils;
-import org.apache.solr.common.util.ValidatingJsonMap;
-
-import org.apache.solr.util.CommandOperation;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.SpecProvider;
+import org.apache.solr.common.util.ValidatingJsonMap;
+import org.apache.solr.util.CommandOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

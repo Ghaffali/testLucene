@@ -24,7 +24,6 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.handler.admin.ConfigSetsHandler.ConfigSetOperation;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.util.CommandOperation;
 
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.DELETE;
 import static org.apache.solr.client.solrj.SolrRequest.METHOD.GET;
