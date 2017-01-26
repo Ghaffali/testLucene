@@ -77,6 +77,11 @@ API Changes
 * LUCENE-7643: Replaced doc-values queries in lucene/sandbox with factory
   methods on the *DocValuesField classes. (Adrien Grand)
 
+* LUCENE-7659: Added a IndexWriter#getFieldNames() method (experimental) to return
+  all field names as visible from the IndexWriter. This would be useful for
+  IndexWriter#updateDocValues() calls, to prevent calling with non-existent
+  docValues fields (Ishan Chattopadhyaya, Adrien Grand, Mike McCandless)
+
 New Features
 
 * LUCENE-7623: Add FunctionScoreQuery and FunctionMatchQuery (Alan Woodward,
@@ -117,6 +122,17 @@ Build
   (Uwe Schindler)
 
 * LUCENE-7653: Update randomizedtesting to version 2.5.0. (Dawid Weiss)
+
+======================= Lucene 6.4.1 =======================
+
+Bug Fixes
+
+* LUCENE-7657: Fixed potential memory leak in the case that a (Span)TermQuery
+  with a TermContext is cached. (Adrien Grand)
+
+* LUCENE-7647: Made stored fields reclaim native memory more aggressively when
+  configured with BEST_COMPRESSION. This could otherwise result in out-of-memory
+  issues. (Adrien Grand)
 
 ======================= Lucene 6.4.0 =======================
 
