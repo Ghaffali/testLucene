@@ -445,7 +445,7 @@ public class RealTimeGetComponent extends SearchComponent
    *         document doesn't exist in the index.
    */
   private static SolrDocument mergePartialDocWithFullDocFromIndex(SolrCore core, BytesRef idBytes, ReturnFields returnFields,
-		  Set<String> onlyTheseFields, SolrInputDocument partialDoc) throws IOException {
+             Set<String> onlyTheseFields, SolrInputDocument partialDoc) throws IOException {
     RefCounted<SolrIndexSearcher> searcherHolder = core.getRealtimeSearcher(); //Searcher();
     try {
       // now fetch last document from index, and merge partialDoc on top of it
