@@ -77,7 +77,7 @@ public class SolrCoreMetricManager implements Closeable {
     PluginInfo[] pluginInfos = nodeConfig.getMetricReporterPlugins();
     metricManager.loadReporters(pluginInfos, core.getResourceLoader(), SolrInfoMBean.Group.core, registryName);
     if (cloudMode) {
-      metricManager.loadReplicaReporter(core, leaderRegistryName, registryName);
+      metricManager.loadReplicaReporters(pluginInfos, core, leaderRegistryName, registryName);
     }
   }
 

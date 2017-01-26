@@ -46,17 +46,14 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.MetricSet;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.Timer;
-import org.apache.solr.cloud.ZkController;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
-import org.apache.solr.metrics.reporters.solr.SolrNodeReporter;
+import org.apache.solr.metrics.reporters.solr.SolrOverseerReporter;
 import org.apache.solr.metrics.reporters.solr.SolrReplicaReporter;
-import org.apache.solr.metrics.reporters.solr.SolrReporter;
-import org.apache.solr.util.plugin.SolrCoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -802,45 +799,114 @@ public class SolrMetricManager {
     }
   }
 
-  public void loadReplicaReporter(SolrCore core, String leaderRegistryName, String registryName) {
+  private List<PluginInfo> prepareCloudPlugins(PluginInfo[] pluginInfos, String group, String className,
+                                                      Map<String, String> defaultAttributes,
+                                                      Map<String, Object> defaultInitArgs,
+                                                      PluginInfo defaultPlugin) {
+    List<PluginInfo> result = new ArrayList<>();
+    if (pluginInfos == null) {
+      pluginInfos = new PluginInfo[0];
+    }
+    for (PluginInfo info : pluginInfos) {
+      String groupAttr = info.attributes.get("group");
+      if (!group.equals(groupAttr)) {
+        continue;
+      }
+      info = preparePlugin(info, className, defaultAttributes, defaultInitArgs);
+      if (info != null) {
+        result.add(info);
+      }
+    }
+    if (result.isEmpty()) {
+      defaultPlugin = preparePlugin(defaultPlugin, className, defaultAttributes, defaultInitArgs);
+      if (defaultPlugin != null) {
+        result.add(defaultPlugin);
+      }
+    }
+    return result;
+  }
+
+  private PluginInfo preparePlugin(PluginInfo info, String className, Map<String, String> defaultAttributes,
+                                   Map<String, Object> defaultInitArgs) {
+    if (info == null) {
+      return null;
+    }
+    String classNameAttr = info.attributes.get("class");
+    if (className != null) {
+      if (classNameAttr != null && !className.equals(classNameAttr)) {
+        log.warn("Conflicting class name attributes, expected " + className + " but was " + classNameAttr + ", skipping " + info);
+        return null;
+      }
+    }
+
+    Map<String, String> attrs = new HashMap<>(info.attributes);
+    defaultAttributes.forEach((k, v) -> {
+      if (!attrs.containsKey(k)) {
+        attrs.put(k, v);
+      }
+    });
+    attrs.put("class", className);
+    Map<String, Object> initArgs = new HashMap<>();
+    if (info.initArgs != null) {
+      initArgs.putAll(info.initArgs.asMap(10));
+    }
+    defaultInitArgs.forEach((k, v) -> {
+      if (!initArgs.containsKey(k)) {
+        initArgs.put(k, v);
+      }
+    });
+    return new PluginInfo(info.type, attrs, new NamedList(initArgs), null);
+  }
+
+  public void loadReplicaReporters(PluginInfo[] pluginInfos, SolrCore core, String leaderRegistryName, String registryName) {
     // don't load for non-cloud cores
     if (leaderRegistryName == null) {
       return;
     }
-    // load even for non-leader replicas, as their status may change unexpectedly
+    // prepare default plugin if none present in the config
     Map<String, String> attrs = new HashMap<>();
-    attrs.put("name", "replica");
-    attrs.put("class", SolrReplicaReporter.class.getName());
-    NamedList initArgs = new NamedList();
-    initArgs.add("groupId", leaderRegistryName);
-    initArgs.add("period", 5);
-    PluginInfo pluginInfo = new PluginInfo("reporter", attrs, initArgs, null);
-    try {
-      SolrMetricReporter reporter = loadReporter(registryName, core.getResourceLoader(), pluginInfo);
-      ((SolrReplicaReporter)reporter).setCore(core);
-    } catch (Exception e) {
-      log.warn("Could not load shard reporter, pluginInfo=" + pluginInfo, e);
+    attrs.put("name", "replicaDefault");
+    attrs.put("group", "replica");
+    Map<String, Object> initArgs = new HashMap<>();
+    initArgs.put("groupId", leaderRegistryName);
+    initArgs.put("period", 30);
+    PluginInfo defaultPlugin = new PluginInfo("reporter", attrs, new NamedList(), null);
+
+    // collect infos and normalize
+    List<PluginInfo> infos = prepareCloudPlugins(pluginInfos, "replica", SolrReplicaReporter.class.getName(),
+        attrs, initArgs, defaultPlugin);
+    for (PluginInfo info : infos) {
+      try {
+        SolrMetricReporter reporter = loadReporter(registryName, core.getResourceLoader(), info);
+        ((SolrReplicaReporter)reporter).setCore(core);
+      } catch (Exception e) {
+        log.warn("Could not load shard reporter, pluginInfo=" + info, e);
+      }
     }
   }
 
-  public void loadNodeReporter(CoreContainer cc, String nodeName) {
+  public void loadOverseerReporters(PluginInfo[] pluginInfos, CoreContainer cc) {
     // don't load for non-cloud instances
     if (!cc.isZooKeeperAware()) {
       return;
     }
     // load even for non-leader replicas, as their status may change unexpectedly
     Map<String, String> attrs = new HashMap<>();
-    attrs.put("name", "node");
-    attrs.put("class", SolrNodeReporter.class.getName());
-    NamedList initArgs = new NamedList();
-    initArgs.add("period", 5);
-    PluginInfo pluginInfo = new PluginInfo("reporter", attrs, initArgs, null);
-    String registryName = overridableRegistryName(nodeName);
-    try {
-      SolrMetricReporter reporter = loadReporter(registryName, cc.getResourceLoader(), pluginInfo);
-      ((SolrNodeReporter)reporter).setCoreContainer(cc);
-    } catch (Exception e) {
-      log.warn("Could not load node reporter, pluginInfo=" + pluginInfo, e);
+    attrs.put("name", "overseerDefault");
+    attrs.put("group", "overseer");
+    Map<String, Object> initArgs = new HashMap<>();
+    initArgs.put("period", 30);
+    PluginInfo defaultPlugin = new PluginInfo("reporter", attrs, new NamedList(), null);
+    List<PluginInfo> infos = prepareCloudPlugins(pluginInfos, "overseer", SolrOverseerReporter.class.getName(),
+        attrs, initArgs, defaultPlugin);
+    String registryName = getRegistryName(SolrInfoMBean.Group.overseer);
+    for (PluginInfo info : infos) {
+      try {
+        SolrMetricReporter reporter = loadReporter(registryName, cc.getResourceLoader(), info);
+        ((SolrOverseerReporter)reporter).setCoreContainer(cc);
+      } catch (Exception e) {
+        log.warn("Could not load node reporter, pluginInfo=" + info, e);
+      }
     }
   }
 

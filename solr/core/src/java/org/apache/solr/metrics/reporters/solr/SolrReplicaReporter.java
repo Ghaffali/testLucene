@@ -74,6 +74,11 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     this.period = period;
   }
 
+  // for unit tests
+  public int getPeriod() {
+    return period;
+  }
+
   public void setMetrics(String prefixList) {
     if (prefixList == null || prefixList.isEmpty()) {
       return;
@@ -87,7 +92,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
   @Override
   protected void validate() throws IllegalStateException {
     if (period < 1) {
-      throw new IllegalStateException("Period must be greater than 0");
+      log.info("Turning off replica reporter, period=" + period);
     }
     // start in inform(...) only when core is available
   }
@@ -95,7 +100,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
   @Override
   public void close() throws IOException {
     if (reporter != null) {
-      reporter.close();;
+      reporter.close();
     }
   }
 
@@ -106,6 +111,9 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     if (core.getCoreDescriptor().getCloudDescriptor() == null) {
       // not a cloud core
       log.warn("Not initializing replica reporter for non-cloud core " + core.getName());
+      return;
+    }
+    if (period < 1) { // don't start it
       return;
     }
     // our id is coreNodeName

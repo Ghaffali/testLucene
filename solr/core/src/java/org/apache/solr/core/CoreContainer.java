@@ -543,7 +543,7 @@ public class CoreContainer {
         unloadedCores, true, "unloaded",SolrInfoMBean.Category.CONTAINER.toString(), "cores");
 
     if (isZooKeeperAware()) {
-      metricManager.loadNodeReporter(this, this.getZkController().getNodeName());
+      metricManager.loadOverseerReporters(cfg.getMetricReporterPlugins(), this);
     }
 
     // setup executor to load cores in parallel
@@ -677,7 +677,7 @@ public class CoreContainer {
       cancelCoreRecoveries();
       zkSys.zkController.publishNodeAsDown(zkSys.zkController.getNodeName());
       if (metricManager != null) {
-        metricManager.closeReporters(SolrMetricManager.overridableRegistryName(zkSys.zkController.getNodeName()));
+        metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoMBean.Group.overseer));
       }
     }
 

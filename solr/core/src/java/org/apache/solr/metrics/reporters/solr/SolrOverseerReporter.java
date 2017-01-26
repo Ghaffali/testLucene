@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-public class SolrNodeReporter extends SolrMetricReporter {
+public class SolrOverseerReporter extends SolrMetricReporter {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   public static final String OVERSEER_GROUP = SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.overseer.toString());
@@ -62,7 +62,7 @@ public class SolrNodeReporter extends SolrMetricReporter {
    * @param metricManager metric manager
    * @param registryName  unlike in other reporters, this is the node id
    */
-  public SolrNodeReporter(SolrMetricManager metricManager, String registryName) {
+  public SolrOverseerReporter(SolrMetricManager metricManager, String registryName) {
     super(metricManager, registryName);
   }
 
@@ -74,10 +74,15 @@ public class SolrNodeReporter extends SolrMetricReporter {
     this.period = period;
   }
 
+  // for unit tests
+  public int getPeriod() {
+    return period;
+  }
+
   @Override
   protected void validate() throws IllegalStateException {
     if (period < 1) {
-      throw new IllegalStateException("Period must be greater than 0");
+      log.info("Turning off node reporter, period=" + period);
     }
     // start in setCoreContainer(...)
   }
@@ -92,6 +97,9 @@ public class SolrNodeReporter extends SolrMetricReporter {
   public void setCoreContainer(CoreContainer cc) {
     // start reporter only in cloud mode
     if (!cc.isZooKeeperAware()) {
+      return;
+    }
+    if (period < 1) { // don't start it
       return;
     }
     HttpClient httpClient = cc.getUpdateShardHandler().getHttpClient();

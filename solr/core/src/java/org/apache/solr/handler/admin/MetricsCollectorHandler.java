@@ -150,11 +150,7 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       doc.forEach(f -> {
         String key = MetricRegistry.name(labelId, metricName, f.getName());
         MetricRegistry registry = metricManager.registry(groupId);
-        AggregateMetric metric = (AggregateMetric)registry.getMetrics().get(key);
-        if (metric == null) {
-          metric = new AggregateMetric();
-          registry.register(key, metric);
-        }
+        AggregateMetric metric = getOrRegister(registry, key, new AggregateMetric());
         Object o = f.getFirstValue();
         if (o != null) {
           metric.set(reporterId, o);
@@ -163,6 +159,24 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
           metric.clear(reporterId);
         }
       });
+    }
+
+    private AggregateMetric getOrRegister(MetricRegistry registry, String name, AggregateMetric add) {
+      AggregateMetric existing = (AggregateMetric)registry.getMetrics().get(name);
+      if (existing != null) {
+        return existing;
+      }
+      try {
+        registry.register(name, add);
+        return add;
+      } catch (IllegalArgumentException e) {
+        // someone added before us
+        existing = (AggregateMetric)registry.getMetrics().get(name);
+        if (existing == null) { // now, that is weird...
+          throw new IllegalArgumentException("Inconsistent metric status, " + name);
+        }
+        return existing;
+      }
     }
 
     @Override
