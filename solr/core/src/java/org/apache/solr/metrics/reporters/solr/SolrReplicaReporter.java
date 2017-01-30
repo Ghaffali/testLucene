@@ -41,7 +41,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   public static final String[] DEFAULT_METRICS = {
-    "TLOG.*", "REPLICATION.*", "INDEX.flush.*", "INDEX.merge.major.*", "UPDATE\\./update/.*", "QUERY\\./select.*"
+    "TLOG.*", "REPLICATION.*", "INDEX.flush.*", "INDEX.merge.major.*", "UPDATE\\./update/.*requests", "QUERY\\./select.*requests"
   };
 
   private String groupId;

@@ -35,12 +35,18 @@ public class SolrOverseerReporter extends SolrMetricReporter {
   public static final List<SolrReporter.Specification> DEFAULT_METRICS = new ArrayList<SolrReporter.Specification>() {{
     add(new SolrReporter.Specification(OVERSEER_GROUP, "jetty",
         SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.jetty.toString()),
-        Collections.singleton(".*\\.mean"))); // all metrics
+        Collections.emptySet())); // all metrics
     add(new SolrReporter.Specification(OVERSEER_GROUP, "jvm",
         SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.jvm.toString()),
-        Collections.emptySet())); // all metrics
-    add(new SolrReporter.Specification(OVERSEER_GROUP, "node", SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.node.toString()),
-        Collections.emptySet())); // all metrics
+        new HashSet<String>() {{
+          add("memory\\.total\\..*");
+          add("memory\\.heap\\..*");
+          add("os\\.SystemLoadAverage");
+          add("threads\\.count");
+        }})); // all metrics
+    // XXX anything interesting here?
+    //add(new SolrReporter.Specification(OVERSEER_GROUP, "node", SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.node.toString()),
+    //    Collections.emptySet())); // all metrics
     add(new SolrReporter.Specification(OVERSEER_GROUP, "leader.$1", "solr\\.core\\.(.*)\\.leader",
         new HashSet<String>(){{
           add("UPDATE\\./update/.*");
