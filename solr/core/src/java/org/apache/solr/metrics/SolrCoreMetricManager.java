@@ -186,6 +186,17 @@ public class SolrCoreMetricManager implements Closeable {
     }
   }
 
+  public static String createRegistryName(SolrCore aCore, String coreName) {
+    CloudDescriptor cd = aCore.getCoreDescriptor().getCloudDescriptor();
+    return createRegistryName(
+        cd != null,
+        cd != null ? cd.getCollectionName() : null,
+        cd != null ? cd.getShardId() : null,
+        cd != null ? cd.getCoreNodeName() : null,
+        coreName
+        );
+  }
+
   public static String createLeaderRegistryName(boolean cloud, String collectionName, String shardName) {
     if (cloud) {
       return createRegistryName(cloud, collectionName, shardName, "leader", null);

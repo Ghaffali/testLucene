@@ -1231,7 +1231,7 @@ public class CoreContainer {
     try (SolrCore core = getCore(name)) {
       if (core != null) {
         String oldRegistryName = core.getCoreMetricManager().getRegistryName();
-        String newRegistryName = SolrCoreMetricManager.createRegistryName(core.getCoreDescriptor().getCollectionName(), toName);
+        String newRegistryName = SolrCoreMetricManager.createRegistryName(core, toName);
         metricManager.swapRegistries(oldRegistryName, newRegistryName);
         registerCore(toName, core, true, false);
         SolrCore old = solrCores.remove(name);
