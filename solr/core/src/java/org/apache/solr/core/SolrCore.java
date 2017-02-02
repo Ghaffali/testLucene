@@ -1100,7 +1100,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
   private Map<String,SolrInfoMBean> initInfoRegistry(String name, SolrConfig config) {
     if (config.jmxConfig.enabled) {
-      return new JmxMonitoredMap<String, SolrInfoMBean>(name, String.valueOf(this.hashCode()), config.jmxConfig);
+      return new JmxMonitoredMap<String, SolrInfoMBean>(name, coreMetricManager.getRegistryName(), String.valueOf(this.hashCode()), config.jmxConfig);
     } else  {
       log.debug("JMX monitoring not detected for core: " + name);
       return new ConcurrentHashMap<>();

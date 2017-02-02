@@ -93,9 +93,10 @@ public class JmxMonitoredMap<K, V> extends
 
   private final String registryName;
 
-  public JmxMonitoredMap(String coreName, String coreHashCode,
+  public JmxMonitoredMap(String coreName, String coreHashCode, String registryName,
                          final JmxConfiguration jmxConfig) {
     this.coreHashCode = coreHashCode;
+    this.registryName = registryName;
     jmxRootName = (null != jmxConfig.rootName ?
                    jmxConfig.rootName
                    : ("solr" + (null != coreName ? "/" + coreName : "")));
@@ -117,7 +118,6 @@ public class JmxMonitoredMap<K, V> extends
 
       if (servers == null || servers.isEmpty()) {
         server = null;
-        registryName = null;
         nameFactory = null;
         log.debug("No JMX servers found, not exposing Solr information with JMX.");
         return;
@@ -141,7 +141,6 @@ public class JmxMonitoredMap<K, V> extends
       }
       server = newServer;
     }
-    registryName = SolrCoreMetricManager.createRegistryName(false, null, null, null, coreName);
     nameFactory = new JmxObjectNameFactory(REPORTER_NAME + coreHashCode, registryName);
   }
 
