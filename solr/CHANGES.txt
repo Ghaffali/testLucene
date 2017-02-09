@@ -87,7 +87,7 @@ Other Changes
 * SOLR-10011: Refactor PointField & TrieField to now have a common base class, NumericFieldType. The
   TrieField.TrieTypes and PointField.PointTypes are now consolidated to NumericFieldType.NumberType. This
   refactoring also fixes a bug whereby PointFields were not using DocValues for range queries for
-  indexed=false, docValues=true fields.
+  indexed=false, docValues=true fields. (Ishan Chattopadhyaya, Tomás Fernández Löbbe)
 
 ==================  6.5.0 ==================
 
@@ -126,6 +126,11 @@ New Features
 
 * SOLR-7955: Auto create .system collection on first request if it does not exist (noble)
 
+* SOLR-10087: StreamHandler now supports registering custom streaming expressions from the blob store (Kevin Risden)
+
+* SOLR-9997: Enable configuring SolrHttpClientBuilder via java system property. (Hrishikesh Gadre via Mark Miller)
+
+* SOLR-9912: Add facet.excludeTerms parameter support. (Jonny Marks, David Smiley, Christine Poerschke)
 
 Bug Fixes
 ----------------------
@@ -140,6 +145,8 @@ Bug Fixes
 * SOLR-9114: NPE using TermVectorComponent, MoreLikeThisComponent in combination with ExactStatsCache (Cao Manh Dat, Varun Thacker)
 
 * SOLR-10049: Collection deletion leaves behind the snapshot metadata (Hrishikesh Gadre via yonik)
+
+* SOLR-10083: Fix instanceof check in ConstDoubleSource.equals (Pushkar Raste via Christine Poerschke)
 
 Optimizations
 ----------------------
@@ -161,6 +168,19 @@ Other Changes
   adding check for Zookeeper session expiration (Steve Rowe, Mikhail Khludnev)
 
 * SOLR-10043: Reduce logging of pre-start log rotation (janhoy)
+
+* SOLR-10018: Increase the default hl.maxAnalyzedChars to 51200 for the Unified & Postings Highlighter so that all
+  highlighters now have this same default. (David Smiley)
+  
+* SOLR-6246: Added tests to check that the changes in LUCENE-7564 and LUCENE-7670 
+  enable AnalyzingInfixSuggester and BlendedInfixSuggester to play nicely with core reload.  
+  SolrSuggester.build() now throws SolrCoreState.CoreIsClosedException when interrupted
+  by a core reload/shutdown. (Steve Rowe)
+
+* SOLR-9800: Factor out FacetComponent.newSimpleFacets method. (Jonny Marks via Christine Poerschke)
+
+* SOLR-9914: SimpleFacets: refactor "contains" check into "SubstringBytesRefFilter" class.
+  (Jonny Marks, David Smiley, Christine Poerschke)
 
 ==================  6.4.1 ==================
 
@@ -1944,6 +1964,23 @@ Other Changes
 
 * SOLR-8904: DateUtil in SolrJ moved to the extraction contrib as ExtractionDateUtil.  Obsolete methods were removed.
   (David Smiley)
+
+======================= 5.5.4 =======================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.6
+Jetty 9.3.14.v20161028
+
+
+(No Changes)
+
 
 ======================= 5.5.3 =======================
 
