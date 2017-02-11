@@ -37,7 +37,7 @@ public class SolrReplicaReporterTest extends AbstractFullDistribZkTestBase {
         jettys.get(0).getCoreContainer().getZkController().getZkStateReader(), false);
     printLayout();
     // wait for at least two reports
-    Thread.sleep(10000);
+    Thread.sleep(30000);
     ClusterState state = jettys.get(0).getCoreContainer().getZkController().getClusterState();
     for (JettySolrRunner jetty : jettys) {
       CoreContainer cc = jetty.getCoreContainer();
