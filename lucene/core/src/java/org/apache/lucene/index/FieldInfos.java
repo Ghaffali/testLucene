@@ -20,6 +20,7 @@ package org.apache.lucene.index;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
@@ -326,9 +327,9 @@ public class FieldInfos implements Iterable<FieldInfo> {
     }
     
     synchronized Set<String> getFieldNames() {
-      return Collections.unmodifiableSet(nameToNumber.keySet());
+      return Collections.unmodifiableSet(new HashSet<String>(nameToNumber.keySet()));
     }
-    
+
     synchronized void clear() {
       numberToName.clear();
       nameToNumber.clear();

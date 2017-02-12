@@ -77,6 +77,17 @@ API Changes
 * LUCENE-7643: Replaced doc-values queries in lucene/sandbox with factory
   methods on the *DocValuesField classes. (Adrien Grand)
 
+* LUCENE-7659: Added a IndexWriter#getFieldNames() method (experimental) to return
+  all field names as visible from the IndexWriter. This would be useful for
+  IndexWriter#updateDocValues() calls, to prevent calling with non-existent
+  docValues fields (Ishan Chattopadhyaya, Adrien Grand, Mike McCandless)
+
+* LUCENE-6959: Removed ToParentBlockJoinCollector in favour of
+  ParentChildrenBlockJoinQuery, that can return the matching children documents per
+  parent document. This query should be executed for each matching parent document
+  after the main query has been executed. (Adrien Grand, Martijn van Groningen,
+  Mike McCandless)
+
 New Features
 
 * LUCENE-7623: Add FunctionScoreQuery and FunctionMatchQuery (Alan Woodward,
@@ -87,10 +98,25 @@ New Features
   proximity queries at search time will produce correct results (Mike
   McCandless)
 
+* LUCENE-7656: Added the LatLonDocValuesField.new(Box/Distance)Query() factory
+  methods that are the equivalent of factory methods on LatLonPoint but operate
+  on doc values. These new methods should be wrapped in an IndexOrDocValuesQuery
+  for best performance. (Adrien Grand)
+
+* LUCENE-7673: Added MultiValued[Int/Long/Float/Double]FieldSource that given a
+  SortedNumericSelector.Type can give a ValueSource view of a 
+  SortedNumericDocValues field. (Tomás Fernández Löbbe)
+
 Bug Fixes
 
 * LUCENE-7630: Fix (Edge)NGramTokenFilter to no longer drop payloads
   and preserve all attributes. (Nathan Gass via Uwe Schindler)
+
+* LUCENE-7676: Fixed FilterCodecReader to override more super-class methods.
+  Also added TestFilterCodecReader class. (Christine Poerschke)
+
+* LUCENE-7679: MemoryIndex was ignoring omitNorms settings on passed-in
+  IndexableFields. (Alan Woodward)
 
 Improvements
 
@@ -103,11 +129,57 @@ Improvements
   either points or doc values depending on which one is more efficient.
   (Adrien Grand)
 
+* LUCENE-7662: If index files are missing, throw CorruptIndexException instead
+  of the less descriptive FileNotFound or NoSuchFileException (Mike Drob via 
+  Mike McCandless, Erick Erickson)
+
 Optimizations
 
 * LUCENE-7641: Optimized point range queries to compute documents that do not
   match the range on single-valued fields when more than half the documents in
   the index would match. (Adrien Grand)
+
+* LUCENE-7656: Speed up for LatLonPointDistanceQuery by computing distances even
+  less often. (Adrien Grand)
+
+* LUCENE-7661: Speed up for LatLonPointInPolygonQuery by pre-computing the
+  relation of the polygon with a grid. (Adrien Grand)
+
+* LUCENE-7660: Speed up LatLonPointDistanceQuery by improving the detection of
+  whether BKD cells are entirely within the distance close to the dateline.
+  (Adrien Grand)
+
+* LUCENE-7654: ToParentBlockJoinQuery now implements two-phase iteration and
+  computes scores lazily in order to be faster when used in conjunctions.
+  (Adrien Grand)
+
+* LUCENE-7667: BKDReader now calls `IntersectVisitor.grow()` on larger
+  increments. (Adrien Grand)
+
+* LUCENE-7638: Query parsers now analyze the token graph for articulation
+  points (or cut vertices) in order to create more efficient queries for
+  multi-token synonyms. (Jim Ferenczi)
+
+Build
+
+* LUCENE-7653: Update randomizedtesting to version 2.5.0. (Dawid Weiss)
+
+* LUCENE-7665: Remove grouping dependency from the join module.
+  (Martijn van Groningen)
+  
+* SOLR-10023: Add non-recursive 'test-nocompile' target: Only runs unit tests.
+  Jars are not downloaded; compilation is not updated; and Clover is not enabled.
+  (Steve Rowe)
+
+Other
+
+* LUCENE-7666: Fix typos in lucene-join package info javadoc.
+  (Tom Saleeba via Christine Poerschke)
+
+* LUCENE-7658: queryparser/xml CoreParser now implements SpanQueryBuilder interface.
+  (Daniel Collins, Christine Poerschke)
+
+======================= Lucene 6.4.1 =======================
 
 Build
 
@@ -116,7 +188,17 @@ Build
   Also update Prettify to latest version to fix Google Chrome issue.
   (Uwe Schindler)
 
-* LUCENE-7653: Update randomizedtesting to version 2.5.0. (Dawid Weiss)
+Bug Fixes
+
+* LUCENE-7657: Fixed potential memory leak in the case that a (Span)TermQuery
+  with a TermContext is cached. (Adrien Grand)
+
+* LUCENE-7647: Made stored fields reclaim native memory more aggressively when
+  configured with BEST_COMPRESSION. This could otherwise result in out-of-memory
+  issues. (Adrien Grand)
+
+* LUCENE-7670: AnalyzingInfixSuggester should not immediately open an
+  IndexWriter over an already-built index. (Steve Rowe)
 
 ======================= Lucene 6.4.0 =======================
 
@@ -1041,6 +1123,9 @@ Other
 
 * LUCENE-7095: Add point values support to the numeric field query time join.
   (Martijn van Groningen, Mike McCandless)
+
+======================= Lucene 5.5.4 =======================
+(No Changes)
 
 ======================= Lucene 5.5.3 =======================
 (No Changes)

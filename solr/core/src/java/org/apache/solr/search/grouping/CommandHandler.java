@@ -40,6 +40,7 @@ import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.BitDocSet;
 import org.apache.solr.search.DocSet;
 import org.apache.solr.search.DocSetCollector;
+import org.apache.solr.search.DocSetUtil;
 import org.apache.solr.search.QueryCommand;
 import org.apache.solr.search.QueryResult;
 import org.apache.solr.search.QueryUtils;
@@ -171,7 +172,7 @@ public class CommandHandler {
     FieldType fieldType = sf.getType();
     
     final AllGroupHeadsCollector allGroupHeadsCollector;
-    if (fieldType.getNumericType() != null) {
+    if (fieldType.getNumberType() != null) {
       ValueSource vs = fieldType.getValueSource(sf, null);
       allGroupHeadsCollector = new FunctionAllGroupHeadsCollector(vs, new HashMap(), firstCommand.getSortWithinGroup());
     } else {
@@ -193,7 +194,7 @@ public class CommandHandler {
     List<Collector> allCollectors = new ArrayList<>(collectors);
     allCollectors.add(docSetCollector);
     searchWithTimeLimiter(query, filter, MultiCollector.wrap(allCollectors));
-    return docSetCollector.getDocSet();
+    return DocSetUtil.getDocSet( docSetCollector, searcher );
   }
 
   @SuppressWarnings("unchecked")

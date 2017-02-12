@@ -86,6 +86,8 @@ public class CollectionsAPIDistributedZkTest extends SolrCloudTestCase {
 
   @BeforeClass
   public static void beforeCollectionsAPIDistributedZkTest() {
+    // we don't want this test to have zk timeouts
+    System.setProperty("zkClientTimeout", "240000");
     TestInjection.randomDelayInCoreCreation = "true:20";
     System.setProperty("validateAfterInactivity", "200");
   }
@@ -100,7 +102,11 @@ public class CollectionsAPIDistributedZkTest extends SolrCloudTestCase {
 
   @Before
   public void clearCluster() throws Exception {
-    cluster.deleteAllCollections();
+    try {
+      cluster.deleteAllCollections();
+    } finally {
+      System.clearProperty("zkClientTimeout");
+    }
   }
 
   @Test
@@ -366,7 +372,7 @@ public class CollectionsAPIDistributedZkTest extends SolrCloudTestCase {
       cluster.getSolrClient().request(createCmd);
     });
 
-    TimeUnit.MILLISECONDS.sleep(200);
+    TimeUnit.MILLISECONDS.sleep(1000);
     // in both cases, the collection should have default to the core name
     cloudClient.getZkStateReader().forceUpdateCollection("corewithnocollection3");
 

@@ -34,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -42,8 +41,28 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.DocumentStoredFieldVisitor;
 import org.apache.lucene.document.LazyDocument;
-import org.apache.lucene.index.*;
+import org.apache.lucene.index.BinaryDocValues;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.DocValuesType;
+import org.apache.lucene.index.ExitableDirectoryReader;
+import org.apache.lucene.index.FieldInfo;
+import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.index.MultiPostingsEnum;
+import org.apache.lucene.index.NumericDocValues;
+import org.apache.lucene.index.PostingsEnum;
+import org.apache.lucene.index.ReaderUtil;
+import org.apache.lucene.index.SortedDocValues;
+import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.index.StoredFieldVisitor;
 import org.apache.lucene.index.StoredFieldVisitor.Status;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.index.TermContext;
+import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.search.BooleanQuery;
@@ -98,8 +117,7 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.schema.BoolField;
 import org.apache.solr.schema.EnumField;
 import org.apache.solr.schema.IndexSchema;
-import org.apache.solr.schema.NumericFieldType;
-import org.apache.solr.schema.PointField;
+import org.apache.solr.schema.NumberType;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.schema.TrieDateField;
 import org.apache.solr.schema.TrieDoubleField;
@@ -427,6 +445,10 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
 
   public final int maxDoc() {
     return reader.maxDoc();
+  }
+
+  public final int numDocs() {
+    return reader.numDocs();
   }
 
   public final int docFreq(Term term) throws IOException {
@@ -828,7 +850,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
             }
             Object newVal = val;
             if (schemaField.getType().isPointField()) {
-              NumericFieldType.NumberType type = ((PointField)schemaField.getType()).getType(); 
+              NumberType type = schemaField.getType().getNumberType(); 
               switch (type) {
                 case INTEGER:
                   newVal = val.intValue();
@@ -1063,19 +1085,24 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
     getDocSet(query);
   }
 
-  public BitDocSet getDocSetBits(Query q) throws IOException {
-    DocSet answer = getDocSet(q);
-    if (answer instanceof BitDocSet) {
-      return (BitDocSet) answer;
-    }
-
+  private BitDocSet makeBitDocSet(DocSet answer) {
+    // TODO: this should be implemented in DocSet, most likely with a getBits method that takes a maxDoc argument
+    // or make DocSet instances remember maxDoc
     FixedBitSet bs = new FixedBitSet(maxDoc());
     DocIterator iter = answer.iterator();
     while (iter.hasNext()) {
       bs.set(iter.nextDoc());
     }
 
-    BitDocSet answerBits = new BitDocSet(bs, answer.size());
+    return new BitDocSet(bs, answer.size());
+  }
+
+  public BitDocSet getDocSetBits(Query q) throws IOException {
+    DocSet answer = getDocSet(q);
+    if (answer instanceof BitDocSet) {
+      return (BitDocSet) answer;
+    }
+    BitDocSet answerBits = makeBitDocSet(answer);
     if (filterCache != null) {
       filterCache.put(q, answerBits);
     }
@@ -1138,14 +1165,34 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   }
 
   private static Query matchAllDocsQuery = new MatchAllDocsQuery();
-  private BitDocSet liveDocs;
+  private volatile BitDocSet liveDocs;
 
+  /** @lucene.internal the type of DocSet returned may change in the future */
   public BitDocSet getLiveDocs() throws IOException {
-    // going through the filter cache will provide thread safety here
-    if (liveDocs == null) {
-      liveDocs = getDocSetBits(matchAllDocsQuery);
+    // Going through the filter cache will provide thread safety here if we only had getLiveDocs,
+    // but the addition of setLiveDocs means we needed to add volatile to "liveDocs".
+    BitDocSet docs = liveDocs;
+    if (docs == null) {
+      liveDocs = docs = getDocSetBits(matchAllDocsQuery);
     }
-    return liveDocs;
+    assert docs.size() == numDocs();
+    return docs;
+  }
+
+  /** @lucene.internal */
+  public boolean isLiveDocsInstantiated() {
+    return liveDocs != null;
+  }
+
+  /** @lucene.internal */
+  public void setLiveDocs(DocSet docs) {
+    // a few places currently expect BitDocSet
+    assert docs.size() == numDocs();
+    if (docs instanceof BitDocSet) {
+      this.liveDocs = (BitDocSet)docs;
+    } else {
+      this.liveDocs = makeBitDocSet(docs);
+    }
   }
 
   public static class ProcessedFilter {
@@ -1178,8 +1225,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
       ((DelegatingCollector) collector).finish();
     }
 
-    DocSet docSet = setCollector.getDocSet();
-    return docSet;
+    return DocSetUtil.getDocSet(setCollector, this);
   }
 
   /**
@@ -1251,7 +1297,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
       ((DelegatingCollector) collector).finish();
     }
 
-    return setCollector.getDocSet();
+    return DocSetUtil.getDocSet(setCollector, this);
   }
 
   public ProcessedFilter getProcessedFilter(DocSet setFilter, List<Query> queries) throws IOException {
@@ -1959,7 +2005,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
 
       buildAndRunCollectorChain(qr, query, collector, cmd, pf.postFilter);
 
-      set = setCollector.getDocSet();
+      set = DocSetUtil.getDocSet(setCollector, this);
 
       nDocsReturned = 0;
       ids = new int[nDocsReturned];
@@ -1976,7 +2022,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
 
       buildAndRunCollectorChain(qr, query, collector, cmd, pf.postFilter);
 
-      set = setCollector.getDocSet();
+      set = DocSetUtil.getDocSet(setCollector, this);
 
       totalHits = topCollector.getTotalHits();
       assert (totalHits == set.size());

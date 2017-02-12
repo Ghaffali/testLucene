@@ -1621,8 +1621,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   public long updateNumericDocValue(Term term, String field, long value) throws IOException {
     ensureOpen();
     if (!globalFieldNumberMap.contains(field, DocValuesType.NUMERIC)) {
-      throw new IllegalArgumentException("can only update existing numeric-docvalues fields! Attempted"
-          + " to update field: " + field + "=" + value);
+      throw new IllegalArgumentException("can only update existing numeric-docvalues fields!");
     }
     if (config.getIndexSortFields().contains(field)) {
       throw new IllegalArgumentException("cannot update docvalues field involved in the index sort, field=" + field + ", sort=" + config.getIndexSort());
@@ -1785,11 +1784,19 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   }
 
   /**
-   * Return a set of all field names as seen by this IndexWriter, across all segments
-   * of the index.
+   * Return an unmodifiable set of all field names as visible
+   * from this IndexWriter, across all segments of the index.
+   * Useful for knowing which fields exist, before {@link #updateDocValues(Term, Field...)} is
+   * attempted. We could phase out this method if
+   * {@link #updateDocValues(Term, Field...)} could create the non-existent
+   * docValues fields as necessary, instead of throwing
+   * IllegalArgumentException for attempts to update non-existent
+   * docValues fields.
+   * @lucene.internal
+   * @lucene.experimental
    */
   public Set<String> getFieldNames() {
-    return Collections.unmodifiableSet(globalFieldNumberMap.getFieldNames());
+    return globalFieldNumberMap.getFieldNames(); // FieldNumbers#getFieldNames() returns an unmodifiableSet
   }
 
   final String newSegmentName() {
