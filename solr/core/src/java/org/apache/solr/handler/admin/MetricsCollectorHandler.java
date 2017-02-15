@@ -51,7 +51,30 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Handler to collect and aggregate metric reports.
+ * Handler to collect and aggregate metric reports.  Each report indicates the target registry where
+ * metrics values should be collected and aggregated. Mtrics with the same names are
+ * aggregated using {@link AggregateMetric} instances, which track the source of updates and
+ * their count, as well as providing simple statistics over collected values.
+ *
+ * Each report consists of {@link SolrInputDocument}-s that are expected to contain
+ * the following fields:
+ * <ul>
+ *   <li>{@link SolrReporter#GROUP_ID} - (required) specifies target registry name where metrics will be grouped.</li>
+ *   <li>{@link SolrReporter#REPORTER_ID} - (required) id of the reporter that sent this update. This can be eg.
+ *   node name or replica name or other id that uniquely identifies the source of metrics values.</li>
+ *   <li>{@link MetricUtils#METRIC_NAME} - (required) metric name (in the source registry)</li>
+ *   <li>{@link SolrReporter#LABEL_ID} - (optional) label to prepend to metric names in the target registry.</li>
+ *   <li>{@link SolrReporter#REGISTRY_ID} - (optional) name of the source registry.</li>
+ * </ul>
+ * Remaining fields are assumed to be single-valued, and to contain metric attributes and their values. Example:
+ * <pre>
+ *   <doc>
+ *     <field name="_group_">solr.core.collection1.shard1.leader</field>
+ *     <field name="_reporter_">solr.core.collection1.shard1.replica1.core_node3</field>
+ *     <field name="metric">INDEX.merge.errors</field>
+ *     <field name="value">0</field>
+ *   </doc>
+ * </pre>
  */
 public class MetricsCollectorHandler extends RequestHandlerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -127,7 +150,7 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       }
       String metricName = (String)doc.getFieldValue(MetricUtils.METRIC_NAME);
       if (metricName == null) {
-        log.warn("Missing metric " + MetricUtils.METRIC_NAME + " field in document, skipping: " + doc);
+        log.warn("Missing " + MetricUtils.METRIC_NAME + " field in document, skipping: " + doc);
         return;
       }
       doc.remove(MetricUtils.METRIC_NAME);
@@ -135,13 +158,13 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       doc.remove(SolrReporter.REGISTRY_ID);
       String groupId = (String)doc.getFieldValue(SolrReporter.GROUP_ID);
       if (groupId == null) {
-        log.warn("Missing metric " + SolrReporter.GROUP_ID + " field in document, skipping: " + doc);
+        log.warn("Missing " + SolrReporter.GROUP_ID + " field in document, skipping: " + doc);
         return;
       }
       doc.remove(SolrReporter.GROUP_ID);
       String reporterId = (String)doc.getFieldValue(SolrReporter.REPORTER_ID);
       if (reporterId == null) {
-        log.warn("Missing metric " + SolrReporter.REPORTER_ID + " field in document, skipping: " + doc);
+        log.warn("Missing " + SolrReporter.REPORTER_ID + " field in document, skipping: " + doc);
         return;
       }
       doc.remove(SolrReporter.REPORTER_ID);

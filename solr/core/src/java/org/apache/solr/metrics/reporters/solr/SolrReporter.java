@@ -66,36 +66,58 @@ public class SolrReporter extends ScheduledReporter {
   /**
    * Specification of what registries and what metrics to send.
    */
-  public static final class Specification {
+  public static final class Report {
     public String groupPattern;
     public String labelPattern;
     public String registryPattern;
-    public Set<String> metricPatterns = new HashSet<>();
+    public Set<String> metricFilters = new HashSet<>();
 
     /**
-     * Create a specification
-     * @param groupPattern logical group for these metrics. This is used in {@link MetricsCollectorHandler} to select
-     *              the target registry for metrics to aggregate. It may contain back-references to capture groups from
-     *                     {@code registryPattern}
-     * @param labelPattern name of this group of metrics. This is used in {@link MetricsCollectorHandler} to prefix
-     *              metric names. May be null or empty. It may contain back-references to capture groups from
-     *                     {@code registryPattern}.
+     * Create a report specification
+     * @param groupPattern logical group for these metrics. This is used in {@link MetricsCollectorHandler}
+     *                     to select the target registry for metrics to aggregate. Must not be null or empty.
+     *                     It may contain back-references to capture groups from {@code registryPattern}
+     * @param labelPattern name of this group of metrics. This is used in {@link MetricsCollectorHandler}
+     *                     to prefix metric names. May be null or empty. It may contain back-references
+     *                     to capture groups from {@code registryPattern}.
      * @param registryPattern pattern for selecting matching registries, see {@link SolrMetricManager#registryNames(String...)}
-     * @param metricPatterns patterns for selecting matching metrics, see {@link SolrMetricManager.RegexFilter}
+     * @param metricFilters patterns for selecting matching metrics, see {@link SolrMetricManager.RegexFilter}
      */
-    public Specification(String groupPattern, String labelPattern, String registryPattern, Collection<String> metricPatterns) {
+    public Report(String groupPattern, String labelPattern, String registryPattern, Collection<String> metricFilters) {
       this.groupPattern = groupPattern;
       this.labelPattern = labelPattern;
       this.registryPattern = registryPattern;
-      if (metricPatterns != null) {
-        this.metricPatterns.addAll(metricPatterns);
+      if (metricFilters != null) {
+        this.metricFilters.addAll(metricFilters);
       }
+    }
+
+    public static Report fromMap(Map<?, ?> map) {
+      String groupPattern = (String)map.get("group");
+      String labelPattern = (String)map.get("label");
+      String registryPattern = (String)map.get("registry");
+      Object oFilters = map.get("filter");
+      Collection<String> metricFilters = Collections.emptyList();
+      if (oFilters != null) {
+        if (oFilters instanceof String) {
+          metricFilters = Collections.singletonList((String)oFilters);
+        } else if (oFilters instanceof Collection) {
+          metricFilters = (Collection<String>)oFilters;
+        } else {
+          log.warn("Invalid report filters, ignoring: " + oFilters);
+        }
+      }
+      if (groupPattern == null || registryPattern == null) {
+        log.warn("Invalid report configuration, group and registry required!: " + map);
+        return null;
+      }
+      return new Report(groupPattern, labelPattern, registryPattern, metricFilters);
     }
   }
 
   public static class Builder {
     private final SolrMetricManager metricManager;
-    private final List<Specification> metrics;
+    private final List<Report> metrics;
     private String reporterId;
     private TimeUnit rateUnit;
     private TimeUnit durationUnit;
@@ -112,11 +134,11 @@ public class SolrReporter extends ScheduledReporter {
      *                and the corresponding metrics prefixes, see {@link org.apache.solr.metrics.SolrMetricManager.PrefixFilter}.
      * @return builder
      */
-    public static Builder forRegistries(SolrMetricManager metricManager, List<Specification> metrics) {
+    public static Builder forRegistries(SolrMetricManager metricManager, List<Report> metrics) {
       return new Builder(metricManager, metrics);
     }
 
-    private Builder(SolrMetricManager metricManager, List<Specification> metrics) {
+    private Builder(SolrMetricManager metricManager, List<Report> metrics) {
       this.metricManager = metricManager;
       this.metrics = metrics;
       this.rateUnit = TimeUnit.SECONDS;
@@ -245,16 +267,16 @@ public class SolrReporter extends ScheduledReporter {
     Pattern registryPattern;
     MetricFilter filter;
 
-    CompiledSpecification(Specification spec) throws PatternSyntaxException {
+    CompiledSpecification(Report spec) throws PatternSyntaxException {
       this.group = spec.groupPattern;
       this.label = spec.labelPattern;
       this.registryPattern = Pattern.compile(spec.registryPattern);
-      this.filter = new SolrMetricManager.RegexFilter(spec.metricPatterns);
+      this.filter = new SolrMetricManager.RegexFilter(spec.metricFilters);
     }
   }
 
   public SolrReporter(HttpClient httpClient, Supplier<String> urlProvider, SolrMetricManager metricManager,
-                      List<Specification> metrics, String handler,
+                      List<Report> metrics, String handler,
                       String reporterId, TimeUnit rateUnit, TimeUnit durationUnit,
                       SolrParams params, boolean skipHistograms, boolean skipAggregateValues, boolean cloudClient) {
     super(null, "solr-reporter", MetricFilter.ALL, rateUnit, durationUnit);
@@ -268,7 +290,7 @@ public class SolrReporter extends ScheduledReporter {
     this.clientCache = new SolrClientCache(httpClient);
     this.specs = new ArrayList<>();
     metrics.forEach(spec -> {
-      MetricFilter filter = new SolrMetricManager.RegexFilter(spec.metricPatterns);
+      MetricFilter filter = new SolrMetricManager.RegexFilter(spec.metricFilters);
       try {
         CompiledSpecification cs = new CompiledSpecification(spec);
         specs.add(cs);

@@ -18,8 +18,10 @@ package org.apache.solr.metrics.reporters.solr;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -35,19 +37,32 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * This class reports selected metrics from replicas to a shard leader.
+ * This class reports selected metrics from replicas to shard leader.
+ * <p>Example configuration:</p>
+ * <pre>
+ *    <reporter name="test" group="replica">
+ *      <int name="period">11</int>
+ *      <str name="filter">UPDATE\./update/.*requests</str>
+ *      <str name="filter">QUERY\./select.*requests</str>
+ *    </reporter>
+ * </pre>
  */
 public class SolrReplicaReporter extends SolrMetricReporter {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public static final String[] DEFAULT_METRICS = {
-    "TLOG.*", "REPLICATION.*", "INDEX.flush.*", "INDEX.merge.major.*", "UPDATE\\./update/.*requests", "QUERY\\./select.*requests"
-  };
+  public static final List<String> DEFAULT_FILTERS = new ArrayList(){{
+    add("TLOG.*");
+    add("REPLICATION.*");
+    add("INDEX.flush.*");
+    add("INDEX.merge.major.*");
+    add("UPDATE\\./update/.*requests");
+    add("QUERY\\./select.*requests");
+  }};
 
   private String groupId;
   private String handler = MetricsCollectorHandler.HANDLER_PATH;
   private int period = 60;
-  private String[] metrics = DEFAULT_METRICS;
+  private List<String> filters = new ArrayList<>();
 
   private SolrReporter reporter;
 
@@ -75,24 +90,24 @@ public class SolrReplicaReporter extends SolrMetricReporter {
   }
 
   // for unit tests
-  public int getPeriod() {
+  int getPeriod() {
     return period;
   }
 
-  public void setMetrics(String prefixList) {
-    if (prefixList == null || prefixList.isEmpty()) {
+  public void setFilter(List<String> filterConfig) {
+    if (filterConfig == null || filterConfig.isEmpty()) {
       return;
     }
-    String[] newMetrics = prefixList.split("[\\s,]+");
-    if (newMetrics.length > 0) {
-      metrics = newMetrics;
-    }
+    filters = filterConfig;
   }
 
   @Override
   protected void validate() throws IllegalStateException {
     if (period < 1) {
       log.info("Turning off replica reporter, period=" + period);
+    }
+    if (filters.isEmpty()) {
+      filters = DEFAULT_FILTERS;
     }
     // start in inform(...) only when core is available
   }
@@ -118,7 +133,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     }
     // our id is coreNodeName
     String id = core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName();
-    SolrReporter.Specification spec = new SolrReporter.Specification(groupId, null, registryName, Arrays.asList(metrics));
+    SolrReporter.Report spec = new SolrReporter.Report(groupId, null, registryName, filters);
     reporter = SolrReporter.Builder.forRegistries(metricManager, Collections.singletonList(spec))
         .convertRatesTo(TimeUnit.SECONDS)
         .convertDurationsTo(TimeUnit.MILLISECONDS)

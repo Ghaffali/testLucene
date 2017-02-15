@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
@@ -15,6 +16,7 @@ import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.ZkController;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkNodeProps;
+import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.handler.admin.MetricsCollectorHandler;
@@ -25,6 +27,29 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
+ * This reporter sends selected metrics from local registries to {@link Overseer}.
+ * <p>Example configuration:</p>
+ * <pre>
+ *       <reporter name="test" group="overseer">
+ *         <str name="handler">/admin/metrics/collector</str>
+ *         <int name="period">11</int>
+ *         <lst name="report">
+ *           <str name="group">overseer</str>
+ *           <str name="label">jvm</str>
+ *           <str name="registry">solr\.jvm</str>
+ *           <str name="filter">memory\.total\..*</str>
+ *           <str name="filter">memory\.heap\..*</str>
+ *           <str name="filter">os\.SystemLoadAverage</str>
+ *           <str name="filter">threads\.count</str>
+ *         </lst>
+ *         <lst name="report">
+ *           <str name="group">overseer</str>
+ *           <str name="label">leader.$1</str>
+ *           <str name="registry">solr\.core\.(.*)\.leader</str>
+ *           <str name="filter">UPDATE\./update/.*</str>
+ *         </lst>
+ *       </reporter>
+ * </pre>
  *
  */
 public class SolrOverseerReporter extends SolrMetricReporter {
@@ -32,22 +57,25 @@ public class SolrOverseerReporter extends SolrMetricReporter {
 
   public static final String OVERSEER_GROUP = SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.overseer.toString());
 
-  public static final List<SolrReporter.Specification> DEFAULT_METRICS = new ArrayList<SolrReporter.Specification>() {{
-    add(new SolrReporter.Specification(OVERSEER_GROUP, "jetty",
+  public static final List<SolrReporter.Report> DEFAULT_REPORTS = new ArrayList<SolrReporter.Report>() {{
+    add(new SolrReporter.Report(OVERSEER_GROUP, "jetty",
         SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.jetty.toString()),
         Collections.emptySet())); // all metrics
-    add(new SolrReporter.Specification(OVERSEER_GROUP, "jvm",
+    add(new SolrReporter.Report(OVERSEER_GROUP, "jvm",
         SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.jvm.toString()),
         new HashSet<String>() {{
           add("memory\\.total\\..*");
           add("memory\\.heap\\..*");
           add("os\\.SystemLoadAverage");
+          add("os\\.FreePhysicalMemorySize");
+          add("os\\.FreeSwapSpaceSize");
+          add("os\\.OpenFileDescriptorCount");
           add("threads\\.count");
         }})); // all metrics
     // XXX anything interesting here?
     //add(new SolrReporter.Specification(OVERSEER_GROUP, "node", SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.node.toString()),
     //    Collections.emptySet())); // all metrics
-    add(new SolrReporter.Specification(OVERSEER_GROUP, "leader.$1", "solr\\.core\\.(.*)\\.leader",
+    add(new SolrReporter.Report(OVERSEER_GROUP, "leader.$1", "solr\\.core\\.(.*)\\.leader",
         new HashSet<String>(){{
           add("UPDATE\\./update/.*");
           add("QUERY\\./select.*");
@@ -58,7 +86,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
 
   private String handler = MetricsCollectorHandler.HANDLER_PATH;
   private int period = 60;
-  private List<SolrReporter.Specification> metrics = DEFAULT_METRICS;
+  private List<SolrReporter.Report> reports = new ArrayList<>();
 
   private SolrReporter reporter;
 
@@ -80,9 +108,25 @@ public class SolrOverseerReporter extends SolrMetricReporter {
     this.period = period;
   }
 
+  public void setReport(List<Map> reportConfig) {
+    if (reportConfig == null || reportConfig.isEmpty()) {
+      return;
+    }
+    reportConfig.forEach(map -> {
+      SolrReporter.Report r = SolrReporter.Report.fromMap(map);
+      if (r != null) {
+        reports.add(r);
+      }
+    });
+  }
+
   // for unit tests
-  public int getPeriod() {
+  int getPeriod() {
     return period;
+  }
+
+  List<SolrReporter.Report> getReports() {
+    return reports;
   }
 
   @Override
@@ -90,7 +134,9 @@ public class SolrOverseerReporter extends SolrMetricReporter {
     if (period < 1) {
       log.info("Turning off node reporter, period=" + period);
     }
-    // start in setCoreContainer(...)
+    if (reports.isEmpty()) { // set defaults
+      reports = DEFAULT_REPORTS;
+    }
   }
 
   @Override
@@ -111,7 +157,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
     HttpClient httpClient = cc.getUpdateShardHandler().getHttpClient();
     ZkController zk = cc.getZkController();
     String reporterId = zk.getNodeName();
-    reporter = SolrReporter.Builder.forRegistries(metricManager, metrics)
+    reporter = SolrReporter.Builder.forRegistries(metricManager, reports)
         .convertRatesTo(TimeUnit.SECONDS)
         .convertDurationsTo(TimeUnit.MILLISECONDS)
         .withHandler(handler)

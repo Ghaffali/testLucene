@@ -913,7 +913,6 @@ public class SolrMetricManager {
     if (!cc.isZooKeeperAware()) {
       return;
     }
-    // load even for non-leader replicas, as their status may change unexpectedly
     Map<String, String> attrs = new HashMap<>();
     attrs.put("name", "overseerDefault");
     attrs.put("group", "overseer");

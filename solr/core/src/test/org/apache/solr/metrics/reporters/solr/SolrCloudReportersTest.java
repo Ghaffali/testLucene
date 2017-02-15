@@ -64,7 +64,7 @@ public class SolrCloudReportersTest extends SolrCloudTestCase {
       assertNotNull(reporter);
       assertTrue(reporter.toString(), reporter instanceof SolrOverseerReporter);
       SolrOverseerReporter sor = (SolrOverseerReporter)reporter;
-      assertEquals(111, sor.getPeriod());
+      assertEquals(11, sor.getPeriod());
       for (String registryName : metricManager.registryNames(".*\\.shard[0-9]\\.core.*")) {
         reporters = metricManager.getReporters(registryName);
         assertEquals(reporters.toString(), 1, reporters.size());
@@ -72,7 +72,7 @@ public class SolrCloudReportersTest extends SolrCloudTestCase {
         assertNotNull(reporter);
         assertTrue(reporter.toString(), reporter instanceof SolrReplicaReporter);
         SolrReplicaReporter srr = (SolrReplicaReporter)reporter;
-        assertEquals(111, srr.getPeriod());
+        assertEquals(11, srr.getPeriod());
       }
       for (String registryName : metricManager.registryNames(".*\\.leader")) {
         reporters = metricManager.getReporters(registryName);
