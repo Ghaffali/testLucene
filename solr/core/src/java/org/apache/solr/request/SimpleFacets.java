@@ -23,7 +23,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -38,7 +37,6 @@ import java.util.concurrent.SynchronousQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 
-import org.apache.commons.lang.StringUtils;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -484,8 +482,8 @@ public class SimpleFacets {
           counts = getFacetTermEnumCounts(searcher, docs, field, offset, limit, mincount,missing,sort,prefix, termFilter, exists);
           break;
         case FCS:
-          assert !multiToken;
-          if (ft.getNumberType() != null && !sf.multiValued()) {
+          assert ft.isPointField() || !multiToken;
+          if (ft.isPointField() || (ft.getNumberType() != null && !sf.multiValued())) {
             // force numeric faceting
             if (prefix != null && !prefix.isEmpty()) {
               throw new SolrException(ErrorCode.BAD_REQUEST, FacetParams.FACET_PREFIX + " is not supported on numeric types");
@@ -496,6 +494,10 @@ public class SimpleFacets {
                 throw new SolrException(ErrorCode.BAD_REQUEST, FacetParams.FACET_CONTAINS + " is not supported on numeric types");
               }
             }
+//            We should do this, but mincount=0 is currently the default
+//            if (ft.isPointField() && mincount <= 0) {
+//              throw new SolrException(ErrorCode.BAD_REQUEST, FacetParams.FACET_MINCOUNT + " <= 0 is not supported on point types");
+//            }
             counts = NumericFacets.getCounts(searcher, docs, field, offset, limit, mincount, missing, sort);
           } else {
             PerSegmentSingleValuedFaceting ps = new PerSegmentSingleValuedFaceting(searcher, docs, field, offset, limit, mincount, missing, sort, prefix, termFilter);
