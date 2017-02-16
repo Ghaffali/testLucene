@@ -892,7 +892,7 @@ public class SolrMetricManager {
     attrs.put("group", "replica");
     Map<String, Object> initArgs = new HashMap<>();
     initArgs.put("groupId", leaderRegistryName);
-    initArgs.put("period", 30);
+    initArgs.put("period", 60);
     PluginInfo defaultPlugin = new PluginInfo("reporter", attrs, new NamedList(), null);
 
     // collect infos and normalize
@@ -917,7 +917,7 @@ public class SolrMetricManager {
     attrs.put("name", "overseerDefault");
     attrs.put("group", "overseer");
     Map<String, Object> initArgs = new HashMap<>();
-    initArgs.put("period", 30);
+    initArgs.put("period", 60);
     PluginInfo defaultPlugin = new PluginInfo("reporter", attrs, new NamedList(), null);
     List<PluginInfo> infos = prepareCloudPlugins(pluginInfos, "overseer", SolrOverseerReporter.class.getName(),
         attrs, initArgs, defaultPlugin);

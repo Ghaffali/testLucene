@@ -68,12 +68,12 @@ import org.slf4j.LoggerFactory;
  * </ul>
  * Remaining fields are assumed to be single-valued, and to contain metric attributes and their values. Example:
  * <pre>
- *   <doc>
- *     <field name="_group_">solr.core.collection1.shard1.leader</field>
- *     <field name="_reporter_">solr.core.collection1.shard1.replica1.core_node3</field>
- *     <field name="metric">INDEX.merge.errors</field>
- *     <field name="value">0</field>
- *   </doc>
+ *   &lt;doc&gt;
+ *     &lt;field name="_group_"&gt;solr.core.collection1.shard1.leader&lt;/field&gt;
+ *     &lt;field name="_reporter_"&gt;core_node3&lt;/field&gt;
+ *     &lt;field name="metric"&gt;INDEX.merge.errors&lt;/field&gt;
+ *     &lt;field name="value"&gt;0&lt;/field&gt;
+ *   &lt;/doc&gt;
  * </pre>
  */
 public class MetricsCollectorHandler extends RequestHandlerBase {

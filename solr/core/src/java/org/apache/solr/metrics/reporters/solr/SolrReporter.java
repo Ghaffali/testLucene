@@ -117,7 +117,7 @@ public class SolrReporter extends ScheduledReporter {
 
   public static class Builder {
     private final SolrMetricManager metricManager;
-    private final List<Report> metrics;
+    private final List<Report> reports;
     private String reporterId;
     private TimeUnit rateUnit;
     private TimeUnit durationUnit;
@@ -130,17 +130,16 @@ public class SolrReporter extends ScheduledReporter {
     /**
      * Create a builder for SolrReporter.
      * @param metricManager metric manager that is the source of metrics
-     * @param metrics patterns to select registries, see {@link SolrMetricManager#registryNames(String...)},
-     *                and the corresponding metrics prefixes, see {@link org.apache.solr.metrics.SolrMetricManager.PrefixFilter}.
+     * @param reports report definitions
      * @return builder
      */
-    public static Builder forRegistries(SolrMetricManager metricManager, List<Report> metrics) {
-      return new Builder(metricManager, metrics);
+    public static Builder forReports(SolrMetricManager metricManager, List<Report> reports) {
+      return new Builder(metricManager, reports);
     }
 
-    private Builder(SolrMetricManager metricManager, List<Report> metrics) {
+    private Builder(SolrMetricManager metricManager, List<Report> reports) {
       this.metricManager = metricManager;
-      this.metrics = metrics;
+      this.reports = reports;
       this.rateUnit = TimeUnit.SECONDS;
       this.durationUnit = TimeUnit.MILLISECONDS;
       this.skipHistograms = false;
@@ -172,7 +171,7 @@ public class SolrReporter extends ScheduledReporter {
     /**
      * Histograms are difficult / impossible to aggregate, so it may not be
      * worth to report them.
-     * @param skipHistograms
+     * @param skipHistograms when true then skip histograms from reports
      * @return {@code this}
      */
     public Builder skipHistograms(boolean skipHistograms) {
@@ -182,7 +181,7 @@ public class SolrReporter extends ScheduledReporter {
 
     /**
      * Individual values from {@link org.apache.solr.metrics.AggregateMetric} may not be worth to report.
-     * @param skipAggregateValues
+     * @param skipAggregateValues when tru then skip reporting individual values from the metric
      * @return {@code this}
      */
     public Builder skipAggregateValues(boolean skipAggregateValues) {
@@ -204,7 +203,7 @@ public class SolrReporter extends ScheduledReporter {
     /**
      * Use this id to identify metrics from this instance.
      *
-     * @param reporterId
+     * @param reporterId reporter id
      * @return {@code this}
      */
     public Builder withReporterId(String reporterId) {
@@ -243,7 +242,7 @@ public class SolrReporter extends ScheduledReporter {
      * @return configured instance of reporter
      */
     public SolrReporter build(HttpClient client, Supplier<String> urlProvider) {
-      return new SolrReporter(client, urlProvider, metricManager, metrics, handler, reporterId, rateUnit, durationUnit,
+      return new SolrReporter(client, urlProvider, metricManager, reports, handler, reporterId, rateUnit, durationUnit,
           params, skipHistograms, skipAggregateValues, cloudClient);
     }
 
@@ -253,7 +252,7 @@ public class SolrReporter extends ScheduledReporter {
   private String handler;
   private Supplier<String> urlProvider;
   private SolrClientCache clientCache;
-  private List<CompiledSpecification> specs;
+  private List<CompiledReport> compiledReports;
   private SolrMetricManager metricManager;
   private boolean skipHistograms;
   private boolean skipAggregateValues;
@@ -261,17 +260,17 @@ public class SolrReporter extends ScheduledReporter {
   private ModifiableSolrParams params;
   private Map<String, Object> metadata;
 
-  private static final class CompiledSpecification {
+  private static final class CompiledReport {
     String group;
     String label;
     Pattern registryPattern;
     MetricFilter filter;
 
-    CompiledSpecification(Report spec) throws PatternSyntaxException {
-      this.group = spec.groupPattern;
-      this.label = spec.labelPattern;
-      this.registryPattern = Pattern.compile(spec.registryPattern);
-      this.filter = new SolrMetricManager.RegexFilter(spec.metricFilters);
+    CompiledReport(Report report) throws PatternSyntaxException {
+      this.group = report.groupPattern;
+      this.label = report.labelPattern;
+      this.registryPattern = Pattern.compile(report.registryPattern);
+      this.filter = new SolrMetricManager.RegexFilter(report.metricFilters);
     }
   }
 
@@ -288,14 +287,14 @@ public class SolrReporter extends ScheduledReporter {
     }
     this.handler = handler;
     this.clientCache = new SolrClientCache(httpClient);
-    this.specs = new ArrayList<>();
-    metrics.forEach(spec -> {
-      MetricFilter filter = new SolrMetricManager.RegexFilter(spec.metricFilters);
+    this.compiledReports = new ArrayList<>();
+    metrics.forEach(report -> {
+      MetricFilter filter = new SolrMetricManager.RegexFilter(report.metricFilters);
       try {
-        CompiledSpecification cs = new CompiledSpecification(spec);
-        specs.add(cs);
+        CompiledReport cs = new CompiledReport(report);
+        compiledReports.add(cs);
       } catch (PatternSyntaxException e) {
-        log.warn("Skipping spec with invalid registryPattern: " + spec.registryPattern, e);
+        log.warn("Skipping report with invalid registryPattern: " + report.registryPattern, e);
       }
     });
     this.skipHistograms = skipHistograms;
@@ -333,24 +332,24 @@ public class SolrReporter extends ScheduledReporter {
     }
     UpdateRequest req = new UpdateRequest(handler);
     req.setParams(params);
-    specs.forEach(spec -> {
-      Set<String> registryNames = metricManager.registryNames(spec.registryPattern);
+    compiledReports.forEach(report -> {
+      Set<String> registryNames = metricManager.registryNames(report.registryPattern);
       registryNames.forEach(registryName -> {
-        String label = spec.label;
+        String label = report.label;
         if (label != null && label.indexOf('$') != -1) {
           // label with back-references
-          Matcher m = spec.registryPattern.matcher(registryName);
+          Matcher m = report.registryPattern.matcher(registryName);
           label = m.replaceFirst(label);
         }
         final String effectiveLabel = label;
-        String group = spec.group;
+        String group = report.group;
         if (group.indexOf('$') != -1) {
           // group with back-references
-          Matcher m = spec.registryPattern.matcher(registryName);
+          Matcher m = report.registryPattern.matcher(registryName);
           group = m.replaceFirst(group);
         }
         final String effectiveGroup = group;
-        MetricUtils.toSolrInputDocuments(metricManager.registry(registryName), Collections.singletonList(spec.filter), MetricFilter.ALL,
+        MetricUtils.toSolrInputDocuments(metricManager.registry(registryName), Collections.singletonList(report.filter), MetricFilter.ALL,
             skipHistograms, skipAggregateValues, metadata, doc -> {
               doc.setField(REGISTRY_ID, registryName);
               doc.setField(GROUP_ID, effectiveGroup);

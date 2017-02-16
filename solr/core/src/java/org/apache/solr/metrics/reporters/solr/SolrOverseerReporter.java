@@ -16,7 +16,6 @@ import org.apache.solr.cloud.Overseer;
 import org.apache.solr.cloud.ZkController;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkNodeProps;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.handler.admin.MetricsCollectorHandler;
@@ -28,27 +27,47 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This reporter sends selected metrics from local registries to {@link Overseer}.
+ * <p>The following configuration properties are supported:</p>
+ * <ul>
+ *   <li>handler - (optional str) handler path where reports are sent. Default is
+ *   {@link MetricsCollectorHandler#HANDLER_PATH}.</li>
+ *   <li>period - (optional int) how often reports are sent, in seconds. Default is 60. Setting this
+ *   to 0 disables the reporter.</li>
+ *   <li>report - (optional multiple lst) report configuration(s), see below.</li>
+ * </ul>
+ * Each report configuration consist of the following properties:
+ * <ul>
+ *   <li>registry - (required str) regex pattern matching source registries (see {@link SolrMetricManager#registryNames(String...)}),
+ *   may contain capture groups.</li>
+ *   <li>group - (required str) target registry name where metrics will be grouped. This can be a regex pattern that
+ *   contains back-references to capture groups collected by <code>registry</code> pattern</li>
+ *   <li>label - (optional str) optional prefix to prepend to metric names, may contain back-references to
+ *   capture groups collected by <code>registry</code> pattern</li>
+ *   <li>filter - (optional multiple str) regex expression(s) matching selected metrics to be reported.</li>
+ * </ul>
+ * NOTE: this reporter uses predefined "overseer" group, and it's always created even if explicit configuration
+ * is missing. Default configuration uses report specifications from {@link #DEFAULT_REPORTS}.
  * <p>Example configuration:</p>
  * <pre>
- *       <reporter name="test" group="overseer">
- *         <str name="handler">/admin/metrics/collector</str>
- *         <int name="period">11</int>
- *         <lst name="report">
- *           <str name="group">overseer</str>
- *           <str name="label">jvm</str>
- *           <str name="registry">solr\.jvm</str>
- *           <str name="filter">memory\.total\..*</str>
- *           <str name="filter">memory\.heap\..*</str>
- *           <str name="filter">os\.SystemLoadAverage</str>
- *           <str name="filter">threads\.count</str>
- *         </lst>
- *         <lst name="report">
- *           <str name="group">overseer</str>
- *           <str name="label">leader.$1</str>
- *           <str name="registry">solr\.core\.(.*)\.leader</str>
- *           <str name="filter">UPDATE\./update/.*</str>
- *         </lst>
- *       </reporter>
+ *       &lt;reporter name="test" group="overseer"&gt;
+ *         &lt;str name="handler"&gt;/admin/metrics/collector&lt;/str&gt;
+ *         &lt;int name="period"&gt;11&lt;/int&gt;
+ *         &lt;lst name="report"&gt;
+ *           &lt;str name="group"&gt;overseer&lt;/str&gt;
+ *           &lt;str name="label"&gt;jvm&lt;/str&gt;
+ *           &lt;str name="registry"&gt;solr\.jvm&lt;/str&gt;
+ *           &lt;str name="filter"&gt;memory\.total\..*&lt;/str&gt;
+ *           &lt;str name="filter"&gt;memory\.heap\..*&lt;/str&gt;
+ *           &lt;str name="filter"&gt;os\.SystemLoadAverage&lt;/str&gt;
+ *           &lt;str name="filter"&gt;threads\.count&lt;/str&gt;
+ *         &lt;/lst&gt;
+ *         &lt;lst name="report"&gt;
+ *           &lt;str name="group"&gt;overseer&lt;/str&gt;
+ *           &lt;str name="label"&gt;leader.$1&lt;/str&gt;
+ *           &lt;str name="registry"&gt;solr\.core\.(.*)\.leader&lt;/str&gt;
+ *           &lt;str name="filter"&gt;UPDATE\./update/.*&lt;/str&gt;
+ *         &lt;/lst&gt;
+ *       &lt;/reporter&gt;
  * </pre>
  *
  */
@@ -94,7 +113,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
    * Create a reporter for metrics managed in a named registry.
    *
    * @param metricManager metric manager
-   * @param registryName  unlike in other reporters, this is the node id
+   * @param registryName  this is ignored
    */
   public SolrOverseerReporter(SolrMetricManager metricManager, String registryName) {
     super(metricManager, registryName);
@@ -147,6 +166,9 @@ public class SolrOverseerReporter extends SolrMetricReporter {
   }
 
   public void setCoreContainer(CoreContainer cc) {
+    if (reporter != null) {
+      reporter.close();;
+    }
     // start reporter only in cloud mode
     if (!cc.isZooKeeperAware()) {
       return;
@@ -157,7 +179,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
     HttpClient httpClient = cc.getUpdateShardHandler().getHttpClient();
     ZkController zk = cc.getZkController();
     String reporterId = zk.getNodeName();
-    reporter = SolrReporter.Builder.forRegistries(metricManager, reports)
+    reporter = SolrReporter.Builder.forReports(metricManager, reports)
         .convertRatesTo(TimeUnit.SECONDS)
         .convertDurationsTo(TimeUnit.MILLISECONDS)
         .withHandler(handler)
@@ -172,7 +194,8 @@ public class SolrOverseerReporter extends SolrMetricReporter {
   }
 
   // TODO: fix this when there is an elegant way to retrieve URL of a node that runs Overseer leader.
-  private static class OverseerUrlSupplier implements Supplier<String> {
+  // package visibility for unit tests
+  static class OverseerUrlSupplier implements Supplier<String> {
     private static final long DEFAULT_INTERVAL = 30000; // 30s
     private ZkController zk;
     private String lastKnownUrl = null;
@@ -188,7 +211,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
       if (zk == null) {
         return null;
       }
-      // primitive caching for interval
+      // primitive caching for lastKnownUrl
       long now = System.currentTimeMillis();
       if (lastKnownUrl != null && (now - lastCheckTime) < interval) {
         return lastKnownUrl;

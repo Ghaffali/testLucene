@@ -39,13 +39,13 @@
 
   <metrics>
     <reporter name="test" group="replica">
-      <int name="period">11</int>
+      <int name="period">5</int>
       <str name="filter">UPDATE\./update/.*requests</str>
       <str name="filter">QUERY\./select.*requests</str>
     </reporter>
     <reporter name="test" group="overseer">
       <str name="handler">/admin/metrics/collector</str>
-      <int name="period">11</int>
+      <int name="period">5</int>
       <lst name="report">
         <str name="group">overseer</str>
         <str name="label">jvm</str>

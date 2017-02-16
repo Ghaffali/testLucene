@@ -19,7 +19,6 @@ package org.apache.solr.metrics.reporters.solr;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -38,13 +37,23 @@ import org.slf4j.LoggerFactory;
 
 /**
  * This class reports selected metrics from replicas to shard leader.
+ * <p>The following configuration properties are supported:</p>
+ * <ul>
+ *   <li>handler - (optional str) handler path where reports are sent. Default is
+ *   {@link MetricsCollectorHandler#HANDLER_PATH}.</li>
+ *   <li>period - (optional int) how often reports are sent, in seconds. Default is 60. Setting this
+ *   to 0 disables the reporter.</li>
+ *   <li>filter - (optional multiple str) regex expression(s) matching selected metrics to be reported.</li>
+ * </ul>
+ * NOTE: this reporter uses predefined "replica" group, and it's always created even if explicit configuration
+ * is missing. Default configuration uses filters defined in {@link #DEFAULT_FILTERS}.
  * <p>Example configuration:</p>
  * <pre>
- *    <reporter name="test" group="replica">
- *      <int name="period">11</int>
- *      <str name="filter">UPDATE\./update/.*requests</str>
- *      <str name="filter">QUERY\./select.*requests</str>
- *    </reporter>
+ *    &lt;reporter name="test" group="replica"&gt;
+ *      &lt;int name="period"&gt;11&lt;/int&gt;
+ *      &lt;str name="filter"&gt;UPDATE\./update/.*requests&lt;/str&gt;
+ *      &lt;str name="filter"&gt;QUERY\./select.*requests&lt;/str&gt;
+ *    &lt;/reporter&gt;
  * </pre>
  */
 public class SolrReplicaReporter extends SolrMetricReporter {
@@ -69,7 +78,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
   /**
    * Create a reporter for metrics managed in a named registry.
    *
-   * @param metricManager
+   * @param metricManager metric manager
    * @param registryName  registry to use, one of registries managed by
    *                      {@link SolrMetricManager}
    */
@@ -89,16 +98,16 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     this.period = period;
   }
 
-  // for unit tests
-  int getPeriod() {
-    return period;
-  }
-
   public void setFilter(List<String> filterConfig) {
     if (filterConfig == null || filterConfig.isEmpty()) {
       return;
     }
     filters = filterConfig;
+  }
+
+  // for unit tests
+  int getPeriod() {
+    return period;
   }
 
   @Override
@@ -134,7 +143,7 @@ public class SolrReplicaReporter extends SolrMetricReporter {
     // our id is coreNodeName
     String id = core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName();
     SolrReporter.Report spec = new SolrReporter.Report(groupId, null, registryName, filters);
-    reporter = SolrReporter.Builder.forRegistries(metricManager, Collections.singletonList(spec))
+    reporter = SolrReporter.Builder.forReports(metricManager, Collections.singletonList(spec))
         .convertRatesTo(TimeUnit.SECONDS)
         .convertDurationsTo(TimeUnit.MILLISECONDS)
         .withHandler(handler)

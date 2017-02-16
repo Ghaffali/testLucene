@@ -29,6 +29,11 @@ public class SolrReplicaReporterTest extends AbstractFullDistribZkTestBase {
     schemaString = "schema15.xml";      // we need a string id
   }
 
+  @Override
+  public String getSolrXml() {
+    return "solr-solrreporter.xml";
+  }
+
   @Test
   public void test() throws Exception {
     waitForRecoveriesToFinish("control_collection",
@@ -37,7 +42,7 @@ public class SolrReplicaReporterTest extends AbstractFullDistribZkTestBase {
         jettys.get(0).getCoreContainer().getZkController().getZkStateReader(), false);
     printLayout();
     // wait for at least two reports
-    Thread.sleep(30000);
+    Thread.sleep(10000);
     ClusterState state = jettys.get(0).getCoreContainer().getZkController().getClusterState();
     for (JettySolrRunner jetty : jettys) {
       CoreContainer cc = jetty.getCoreContainer();
