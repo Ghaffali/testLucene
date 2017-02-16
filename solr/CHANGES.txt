@@ -53,6 +53,9 @@ Bug Fixes
 * SOLR-9837: Fix 55% performance regression of FieldCache uninvert time of
   numeric fields.  (yonik)
 
+* SOLR-10114: Reordered delete-by-query causes inconsistenties between shards that have 
+  child documents (Mano Kovacs, Mihaly Toth, yonik)
+
 
 Optimizations
 ----------------------
@@ -2030,7 +2033,12 @@ Apache ZooKeeper 3.4.6
 Jetty 9.3.14.v20161028
 
 
-(No Changes)
+Other Changes
+----------------------
+
+* SOLR-9819: Upgrade commons-fileupload to 1.3.2, fixing a potential vulnerability CVE-2016-3092 (Anshum Gupta)
+
+* SOLR-10031: Validation of filename params in ReplicationHandler (Hrishikesh Gadre, janhoy)
 
 
 ======================= 5.5.3 =======================
