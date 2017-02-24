@@ -24,9 +24,15 @@ import java.util.Locale;
 public interface ConfigSetParams
 {
   public final static String ACTION = "action";
+  
+  String ENABLE_CONFIGSET_UPLOAD = "configs.upload";
+  String ENABLE_CONFIGSET_UPLOAD_DEFAULT = "false";
+  
+  String HTTP_METHOD = "httpMethod";
 
   public enum ConfigSetAction {
     CREATE,
+    UPLOAD,
     DELETE,
     LIST;
 

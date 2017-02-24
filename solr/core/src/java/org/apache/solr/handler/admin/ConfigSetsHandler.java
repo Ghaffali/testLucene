@@ -16,14 +16,20 @@
  */
 package org.apache.solr.handler.admin;
 
+import java.io.InputStream;
 import java.lang.invoke.MethodHandles;
-
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipInputStream;
 
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.fs.Path;
 import org.apache.solr.api.Api;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.cloud.OverseerSolrResponse;
@@ -36,6 +42,7 @@ import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.params.ConfigSetParams;
 import org.apache.solr.common.params.ConfigSetParams.ConfigSetAction;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
@@ -43,6 +50,7 @@ import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.BASE_CONFIGSET;
 import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.CONFIGSETS_ACTION_PREFIX;
@@ -63,6 +71,7 @@ public class ConfigSetsHandler extends RequestHandlerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
   public static long DEFAULT_ZK_TIMEOUT = 300*1000;
+  protected final boolean isUploadEnabled;
   private final ConfigSetsHandlerApi configSetsHandlerApi = new ConfigSetsHandlerApi(this);
 
   /**
@@ -72,6 +81,8 @@ public class ConfigSetsHandler extends RequestHandlerBase {
    */
   public ConfigSetsHandler(final CoreContainer coreContainer) {
     this.coreContainer = coreContainer;
+    isUploadEnabled = Boolean.parseBoolean(System.getProperty(
+        ConfigSetParams.ENABLE_CONFIGSET_UPLOAD, ConfigSetParams.ENABLE_CONFIGSET_UPLOAD_DEFAULT));
   }
 
 
@@ -95,6 +106,16 @@ public class ConfigSetsHandler extends RequestHandlerBase {
       ConfigSetAction action = ConfigSetAction.get(a);
       if (action == null)
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown action: " + a);
+      if (action == ConfigSetAction.UPLOAD) {
+        if (isUploadEnabled) {
+          handleConfigUploadRequest(req, rsp);
+          return;
+        } else {
+          throw new SolrException(SolrException.ErrorCode.FORBIDDEN, 
+              "Uploads are not enabled. Please set the system property \"" 
+                  + ConfigSetParams.ENABLE_CONFIGSET_UPLOAD + "\" to true");
+        }
+      }
       invokeAction(req, rsp, action);
     } else {
       throw new SolrException(ErrorCode.BAD_REQUEST, "action is a required param");
@@ -121,6 +142,66 @@ public class ConfigSetsHandler extends RequestHandlerBase {
     }
   }
 
+  private void handleConfigUploadRequest(SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
+
+    String httpMethod = (String) req.getContext().get(ConfigSetParams.HTTP_METHOD);
+    if (!"POST".equals(httpMethod)) {
+      throw new SolrException(ErrorCode.BAD_REQUEST,
+          "The upload action supports POST requests only");
+    }
+
+    String configSetName = req.getParams().get(NAME);
+    if (StringUtils.isBlank(configSetName)) {
+      throw new SolrException(ErrorCode.BAD_REQUEST,
+          "The configuration name should be provided in the \"name\" parameter");
+    }
+
+    SolrZkClient zkClient = coreContainer.getZkController().getZkClient();
+    String configPathInZk = ZkConfigManager.CONFIGS_ZKNODE + Path.SEPARATOR + configSetName;
+
+    if (zkClient.exists(configPathInZk, true)) {
+      throw new SolrException(ErrorCode.BAD_REQUEST,
+          "The configuration " + configSetName + " already exists in zookeeper");
+    }
+
+    Iterator<ContentStream> contentStreamsIterator = req.getContentStreams().iterator();
+
+    if (!contentStreamsIterator.hasNext()) {
+      throw new SolrException(ErrorCode.BAD_REQUEST,
+          "No stream found for the config data to be uploaded");
+    }
+
+    InputStream inputStream = contentStreamsIterator.next().getStream();
+
+    // Create a node for the configuration in zookeeper
+    zkClient.makePath(configPathInZk, true);
+
+    ZipInputStream zis = new ZipInputStream(inputStream, StandardCharsets.UTF_8);
+    ZipEntry zipEntry = null;
+    while ((zipEntry = zis.getNextEntry()) != null) {
+      String filePathInZk = configPathInZk + "/" + zipEntry.getName();
+      if (zipEntry.isDirectory()) {
+        zkClient.makePath(filePathInZk, true);
+      } else {
+        createZkNodeIfNotExistsAndSetData(zkClient, filePathInZk,
+            IOUtils.toByteArray(zis));
+      }
+    }
+
+    zis.close();
+
+    rsp.add("message", configSetName + " successfully uploaded!");
+  }
+
+      private void createZkNodeIfNotExistsAndSetData(SolrZkClient zkClient,
+          String filePathInZk, byte[] data) throws Exception {
+        if (!zkClient.exists(filePathInZk, true)) {
+          zkClient.create(filePathInZk, data, CreateMode.PERSISTENT, true);
+        } else {
+          zkClient.setData(filePathInZk, data, true);
+        }
+      }
+    
   private void handleResponse(String operation, ZkNodeProps m,
       SolrQueryResponse rsp, long timeout) throws KeeperException, InterruptedException {
     long time = System.nanoTime();

@@ -18,8 +18,13 @@ package org.apache.solr.cloud;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.StringReader;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -29,8 +34,14 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.commons.io.FileUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.ByteArrayEntity;
+import org.apache.http.util.EntityUtils;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest.Create;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest.Delete;
@@ -45,11 +56,15 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.ConfigSetProperties;
+import org.apache.solr.core.TestDynamicLoading;
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.noggit.JSONParser;
+import org.noggit.ObjectBuilder;
 
 import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.BASE_CONFIGSET;
 import static org.apache.solr.common.params.CommonParams.NAME;
@@ -61,6 +76,10 @@ import static org.apache.solr.core.ConfigSetProperties.DEFAULT_FILENAME;
 public class TestConfigSetsAPI extends SolrTestCaseJ4 {
 
   private MiniSolrCloudCluster solrCluster;
+
+  static {
+    System.setProperty(ConfigSetParams.ENABLE_CONFIGSET_UPLOAD, "true");
+  }
 
   @Override
   @Before
@@ -231,6 +250,145 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
     }
   }
 
+  @Test
+  public void testUploadErrors() throws Exception {
+    final SolrClient solrClient = new HttpSolrClient(
+        solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString());
+
+    ByteBuffer emptyData = ByteBuffer.allocate(0);
+
+    //Checking error when no configuration name is specified in request
+    Map map = postDataAndGetResponse(solrCluster.getSolrClient(),
+        solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString()
+        + "/admin/configs?action=UPLOAD&wt=json", emptyData);
+    assertNotNull(map);
+    long statusCode = (long) getObjectByPath(map, false,
+        Arrays.asList("responseHeader", "status"));
+    assertEquals(400l, statusCode);
+
+    SolrZkClient zkClient = new SolrZkClient(solrCluster.getZkServer().getZkAddress(),
+        AbstractZkTestCase.TIMEOUT, 45000, null);
+
+    //Create dummy config files in zookeeper
+    zkClient.makePath("/configs/myconf", true);
+    zkClient.create("/configs/myconf/firstDummyFile",
+        "first dummy content".getBytes(), CreateMode.PERSISTENT, true);
+    zkClient.create("/configs/myconf/anotherDummyFile",
+        "second dummy content".getBytes(), CreateMode.PERSISTENT, true);
+
+    //Checking error when configuration name specified already exists
+    map = postDataAndGetResponse(solrCluster.getSolrClient(),
+        solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString()
+        + "/admin/configs?action=UPLOAD&wt=json&name=myconf", emptyData);
+    assertNotNull(map);
+    statusCode = (long) getObjectByPath(map, false,
+        Arrays.asList("responseHeader", "status"));
+    assertEquals(400l, statusCode);
+    assertTrue("Expected file doesnt exist in zk. It's possibly overwritten",
+        zkClient.exists("/configs/myconf/firstDummyFile", true));
+    assertTrue("Expected file doesnt exist in zk. It's possibly overwritten",
+        zkClient.exists("/configs/myconf/anotherDummyFile", true));
+
+    zkClient.close();
+    solrClient.close();
+  }
+
+  @Test
+  public void testUpload() throws Exception {
+    String configSetName = "newzkconfig";
+
+    // Read zipped sample config
+    ByteBuffer sampleZippedConfig = TestDynamicLoading
+        .getFileContent("solr/configsets/upload/newzkconf.zip");
+
+    final SolrClient solrClient = new HttpSolrClient(
+        solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString());
+
+    SolrZkClient zkClient = new SolrZkClient(solrCluster.getZkServer().getZkAddress(),
+        AbstractZkTestCase.TIMEOUT, 45000, null);
+    try {
+      ZkConfigManager configManager = new ZkConfigManager(zkClient);
+      assertFalse(configManager.configExists(configSetName));
+
+      Map map = postDataAndGetResponse(solrCluster.getSolrClient(),
+          solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString() + "/admin/configs?action=UPLOAD&wt=json&name=newzkconf",
+          sampleZippedConfig);
+      assertNotNull(map);
+      long statusCode = (long) getObjectByPath(map, false, Arrays.asList("responseHeader", "status"));
+      assertEquals(0l, statusCode);
+
+      assertTrue("schema-minimal.xml file should have been uploaded",
+          zkClient.exists("/configs/newzkconf/schema-minimal.xml", true));
+      assertTrue("schema-minimal.xml file contents on zookeeper are not exactly same as that of the file uploaded in config",
+          Arrays.equals(zkClient.getData("/configs/newzkconf/schema-minimal.xml", null, null, true),
+              readFile("solr/configsets/upload/schema-minimal.xml")));
+
+      assertTrue("solrconfig-minimal.xml file should have been uploaded",
+          zkClient.exists("/configs/newzkconf/solrconfig-minimal.xml", true));
+      assertTrue("solrconfig-minimal.xml file contents on zookeeper are not exactly same as that of the file uploaded in config",
+          Arrays.equals(zkClient.getData("/configs/newzkconf/solrconfig-minimal.xml", null, null, true),
+              readFile("solr/configsets/upload/solrconfig-minimal.xml")));
+    } finally {
+      zkClient.close();
+    }
+    solrClient.close();
+  }
+
+  public static Map postDataAndGetResponse(CloudSolrClient cloudClient,
+      String uri, ByteBuffer bytarr) throws IOException {
+    HttpPost httpPost = null;
+    HttpEntity entity;
+    String response = null;
+    Map m = null;
+    try {
+      httpPost = new HttpPost(uri);
+      httpPost.setHeader("Content-Type", "application/octet-stream");
+      httpPost.setEntity(new ByteArrayEntity(bytarr.array(), bytarr
+          .arrayOffset(), bytarr.limit()));
+      entity = cloudClient.getLbClient().getHttpClient().execute(httpPost)
+          .getEntity();
+      try {
+        response = EntityUtils.toString(entity, StandardCharsets.UTF_8);
+        m = (Map) ObjectBuilder.getVal(new JSONParser(
+            new StringReader(response)));
+      } catch (JSONParser.ParseException e) {
+        fail(e.getMessage());
+      }
+    } finally {
+      httpPost.releaseConnection();
+    }
+    return m;
+  }
+
+  private static Object getObjectByPath(Map root, boolean onlyPrimitive, java.util.List<String> hierarchy) {
+    Map obj = root;
+    for (int i = 0; i < hierarchy.size(); i++) {
+      String s = hierarchy.get(i);
+      if (i < hierarchy.size() - 1) {
+        if (!(obj.get(s) instanceof Map)) return null;
+        obj = (Map) obj.get(s);
+        if (obj == null) return null;
+      } else {
+        Object val = obj.get(s);
+        if (onlyPrimitive && val instanceof Map) {
+          return null;
+        }
+        return val;
+      }
+    }
+
+    return false;
+  }
+
+  private byte[] readFile(String fname) throws IOException {
+    byte[] buf = null;
+    try (FileInputStream fis = new FileInputStream(getFile(fname))) {
+      buf = new byte[fis.available()];
+      fis.read(buf);
+    }
+    return buf;
+  }
+  
   @Test
   public void testDeleteErrors() throws Exception {
     final String baseUrl = solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString();
