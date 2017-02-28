@@ -665,7 +665,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
     }
   }
 
-  private void sendPrepRecoveryCmd(String leaderBaseUrl, WaitForState prepCmd)
+  final private void sendPrepRecoveryCmd(String leaderBaseUrl, WaitForState prepCmd)
       throws SolrServerException, IOException, InterruptedException, ExecutionException {
     try (HttpSolrClient client = new HttpSolrClient.Builder(leaderBaseUrl).build()) {
       client.setConnectionTimeout(10000);
