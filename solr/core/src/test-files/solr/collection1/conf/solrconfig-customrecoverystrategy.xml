@@ -21,6 +21,10 @@
   <luceneMatchVersion>${tests.luceneMatchVersion:LATEST}</luceneMatchVersion>
   <xi:include href="solrconfig.snippet.randomindexconfig.xml" xmlns:xi="http://www.w3.org/2001/XInclude"/>
   <requestHandler name="standard" class="solr.StandardRequestHandler"></requestHandler>
+  <!--
+    The RecoveryStrategy and RecoveryStrategy.Builder classes may change in future and customisations
+    are not supported between versions in terms of API or back compat behaviour.
+  -->
   <recoveryStrategy class="org.apache.solr.core.ConfigureRecoveryStrategyTest$CustomRecoveryStrategyBuilder">
     <str name="alternativeBaseUrlProp">recovery_base_url</str>
   </recoveryStrategy>

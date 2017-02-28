@@ -16,6 +16,9 @@
  */
 package org.apache.solr.core;
 
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.cloud.RecoveryStrategy;
 import org.apache.solr.common.cloud.ZkCoreNodeProps;
@@ -59,7 +62,18 @@ public class ConfigureRecoveryStrategyTest extends SolrTestCaseJ4 {
 
     assertEquals("recoveryStrategyBuilder is wrong class (name)",
         expectedClassName, recoveryStrategyBuilder.getClass().getName());
-}
+  }
+
+  public void testAlmostAllMethodsAreFinal() throws Exception {
+    for (Method m : RecoveryStrategy.class.getDeclaredMethods()) {
+      final String methodName = m.getName();
+      if ("getReplicateLeaderUrl".equals(methodName)) {
+        assertFalse(m.toString(), Modifier.isFinal(m.getModifiers()));
+      } else {
+        assertTrue(m.toString(), Modifier.isFinal(m.getModifiers()));
+      }
+    }
+  }
 
   static public class CustomRecoveryStrategy extends RecoveryStrategy {
 

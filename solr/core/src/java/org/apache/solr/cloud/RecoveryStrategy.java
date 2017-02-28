@@ -68,6 +68,11 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * This class may change in future and customisations are not supported
+ * between versions in terms of API or back compat behaviour.
+ * @lucene.experimental
+ */
 public class RecoveryStrategy extends Thread implements Closeable {
 
   public static class Builder implements NamedListInitializedPlugin {
@@ -124,41 +129,41 @@ public class RecoveryStrategy extends Thread implements Closeable {
     coreZkNodeName = cd.getCloudDescriptor().getCoreNodeName();
   }
 
-  public int getWaitForUpdatesWithStaleStatePauseMilliSeconds() {
+  final public int getWaitForUpdatesWithStaleStatePauseMilliSeconds() {
     return waitForUpdatesWithStaleStatePauseMilliSeconds;
   }
 
-  public void setWaitForUpdatesWithStaleStatePauseMilliSeconds(int waitForUpdatesWithStaleStatePauseMilliSeconds) {
+  final public void setWaitForUpdatesWithStaleStatePauseMilliSeconds(int waitForUpdatesWithStaleStatePauseMilliSeconds) {
     this.waitForUpdatesWithStaleStatePauseMilliSeconds = waitForUpdatesWithStaleStatePauseMilliSeconds;
   }
 
-  public int getMaxRetries() {
+  final public int getMaxRetries() {
     return maxRetries;
   }
 
-  public void setMaxRetries(int maxRetries) {
+  final public void setMaxRetries(int maxRetries) {
     this.maxRetries = maxRetries;
   }
 
-  public int getStartingRecoveryDelayMilliSeconds() {
+  final public int getStartingRecoveryDelayMilliSeconds() {
     return startingRecoveryDelayMilliSeconds;
   }
 
-  public void setStartingRecoveryDelayMilliSeconds(int startingRecoveryDelayMilliSeconds) {
+  final public void setStartingRecoveryDelayMilliSeconds(int startingRecoveryDelayMilliSeconds) {
     this.startingRecoveryDelayMilliSeconds = startingRecoveryDelayMilliSeconds;
   }
 
-  public boolean getRecoveringAfterStartup() {
+  final public boolean getRecoveringAfterStartup() {
     return recoveringAfterStartup;
   }
 
-  public void setRecoveringAfterStartup(boolean recoveringAfterStartup) {
+  final public void setRecoveringAfterStartup(boolean recoveringAfterStartup) {
     this.recoveringAfterStartup = recoveringAfterStartup;
   }
 
   // make sure any threads stop retrying
   @Override
-  public void close() {
+  final public void close() {
     close = true;
     if (prevSendPreRecoveryHttpUriRequest != null) {
       prevSendPreRecoveryHttpUriRequest.abort();
@@ -166,7 +171,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
     LOG.warn("Stopping recovery for core=[{}] coreNodeName=[{}]", coreName, coreZkNodeName);
   }
 
-  private void recoveryFailed(final SolrCore core,
+  final private void recoveryFailed(final SolrCore core,
       final ZkController zkController, final String baseUrl,
       final String shardZkNodeName, final CoreDescriptor cd) throws KeeperException, InterruptedException {
     SolrException.log(LOG, "Recovery failed - I give up.");
@@ -178,11 +183,16 @@ public class RecoveryStrategy extends Thread implements Closeable {
     }
   }
   
+  /**
+   * This method may change in future and customisations are not supported
+   * between versions in terms of API or back compat behaviour.
+   * @lucene.experimental
+   */
   protected String getReplicateLeaderUrl(ZkNodeProps leaderprops) {
     return new ZkCoreNodeProps(leaderprops).getCoreUrl();
   }
 
-  private void replicate(String nodeName, SolrCore core, ZkNodeProps leaderprops)
+  final private void replicate(String nodeName, SolrCore core, ZkNodeProps leaderprops)
       throws SolrServerException, IOException {
 
     final String leaderUrl = getReplicateLeaderUrl(leaderprops);
@@ -242,7 +252,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
 
   }
 
-  private void commitOnLeader(String leaderUrl) throws SolrServerException,
+  final private void commitOnLeader(String leaderUrl) throws SolrServerException,
       IOException {
     try (HttpSolrClient client = new HttpSolrClient.Builder(leaderUrl).build()) {
       client.setConnectionTimeout(30000);
@@ -256,7 +266,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
   }
 
   @Override
-  public void run() {
+  final public void run() {
 
     // set request info for logging
     try (SolrCore core = cc.getCore(coreName)) {
@@ -285,7 +295,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
   }
 
   // TODO: perhaps make this grab a new core each time through the loop to handle core reloads?
-  public void doRecovery(SolrCore core) throws KeeperException, InterruptedException {
+  final public void doRecovery(SolrCore core) throws KeeperException, InterruptedException {
     boolean replayed = false;
     boolean successfulRecovery = false;
 
@@ -576,7 +586,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
     LOG.info("Finished recovery process, successful=[{}]", Boolean.toString(successfulRecovery));
   }
 
-  private Future<RecoveryInfo> replay(SolrCore core)
+  final private Future<RecoveryInfo> replay(SolrCore core)
       throws InterruptedException, ExecutionException {
     Future<RecoveryInfo> future = core.getUpdateHandler().getUpdateLog().applyBufferedUpdates();
     if (future == null) {
@@ -598,7 +608,7 @@ public class RecoveryStrategy extends Thread implements Closeable {
     return future;
   }
   
-  private void cloudDebugLog(SolrCore core, String op) {
+  final private void cloudDebugLog(SolrCore core, String op) {
     if (!LOG.isDebugEnabled()) {
       return;
     }
@@ -617,11 +627,11 @@ public class RecoveryStrategy extends Thread implements Closeable {
     }
   }
 
-  public boolean isClosed() {
+  final public boolean isClosed() {
     return close;
   }
   
-  private void sendPrepRecoveryCmd(String leaderBaseUrl, String leaderCoreName, Slice slice)
+  final private void sendPrepRecoveryCmd(String leaderBaseUrl, String leaderCoreName, Slice slice)
       throws SolrServerException, IOException, InterruptedException, ExecutionException {
 
     try (HttpSolrClient client = new HttpSolrClient.Builder(leaderBaseUrl).build()) {
