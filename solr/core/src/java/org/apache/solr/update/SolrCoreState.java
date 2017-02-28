@@ -146,7 +146,7 @@ public abstract class SolrCoreState {
   public abstract DirectoryFactory getDirectoryFactory();
 
   /**
-   * @return the {@link RecoveryStrategy.Builder} that should be used.
+   * @return the {@link org.apache.solr.cloud.RecoveryStrategy.Builder} that should be used.
    */
   public abstract RecoveryStrategy.Builder getRecoveryStrategyBuilder();
 
