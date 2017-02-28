@@ -17,11 +17,7 @@
 package org.apache.solr.util;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.util.Properties;
 
-import org.apache.commons.io.*;
-import org.apache.lucene.util.LuceneTestCase;
 
 /**
  * Some tests need to reach outside the classpath to get certain resources (e.g. the example configuration).
@@ -67,7 +63,7 @@ public class ExternalPaths {
         }
       } catch (Exception e) {
         // If there is no "solr/conf" in the classpath, fall back to searching from the current directory.
-        file = new File(".");
+        file = new File(System.getProperty("tests.src.home", "."));
       }
       File base = file.getAbsoluteFile();
       while (!(new File(base, "solr/CHANGES.txt").exists()) && null != base) {

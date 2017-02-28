@@ -27,6 +27,7 @@ import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.ScoreDoc;
 import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.spans.SpanQuery;
 import org.apache.lucene.util.LuceneTestCase;
 import org.junit.AfterClass;
 
@@ -116,6 +117,9 @@ public class TestCoreParser extends LuceneTestCase {
   public void testSpanTermXML() throws Exception {
     Query q = parse("SpanQuery.xml");
     dumpResults("Span Query", q, 5);
+    SpanQuery sq = parseAsSpan("SpanQuery.xml");
+    dumpResults("Span Query", sq, 5);
+    assertEquals(q, sq);
   }
 
   public void testConstantScoreQueryXML() throws Exception {
@@ -131,26 +135,6 @@ public class TestCoreParser extends LuceneTestCase {
   public void testNestedBooleanQuery() throws ParserException, IOException {
     Query q = parse("NestedBooleanQuery.xml");
     dumpResults("Nested Boolean query", q, 5);
-  }
-
-  public void testNumericRangeQueryXML() throws ParserException, IOException {
-    Query q = parse("LegacyNumericRangeQuery.xml");
-    dumpResults("LegacyNumericRangeQuery", q, 5);
-  }
-
-  public void testNumericRangeQueryXMLWithoutLowerTerm() throws ParserException, IOException {
-    Query q = parse("LegacyNumericRangeQueryWithoutLowerTerm.xml");
-    dumpResults("LegacyNumericRangeQueryWithoutLowerTerm", q, 5);
-  }
-
-  public void testNumericRangeQueryXMLWithoutUpperTerm() throws ParserException, IOException {
-    Query q = parse("LegacyNumericRangeQueryWithoutUpperTerm.xml");
-    dumpResults("LegacyNumericRangeQueryWithoutUpperTerm", q, 5);
-  }
-
-  public void testNumericRangeQueryXMLWithoutRange() throws ParserException, IOException {
-    Query q = parse("LegacyNumericRangeQueryWithoutRange.xml");
-    dumpResults("LegacyNumericRangeQueryWithoutRange", q, 5);
   }
   
   public void testPointRangeQuery() throws ParserException, IOException {
@@ -227,10 +211,21 @@ public class TestCoreParser extends LuceneTestCase {
   }
 
   protected Query parse(String xmlFileName) throws ParserException, IOException {
+    return implParse(xmlFileName, false);
+  }
+
+  protected SpanQuery parseAsSpan(String xmlFileName) throws ParserException, IOException {
+    return (SpanQuery)implParse(xmlFileName, true);
+  }
+
+  private Query implParse(String xmlFileName, boolean span) throws ParserException, IOException {
     try (InputStream xmlStream = TestCoreParser.class.getResourceAsStream(xmlFileName)) {
       assertNotNull("Test XML file " + xmlFileName + " cannot be found", xmlStream);
-      Query result = coreParser().parse(xmlStream);
-      return result;
+      if (span) {
+        return coreParser().parseAsSpanQuery(xmlStream);
+      } else {
+        return coreParser().parse(xmlStream);
+      }
     }
   }
 

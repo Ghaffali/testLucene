@@ -22,7 +22,6 @@ import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.queries.function.docvalues.FloatDocValues;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRefBuilder;
-import org.apache.solr.core.SolrCore;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.handler.RequestHandlerUtils;
 import org.apache.solr.request.SolrQueryRequest;
@@ -338,13 +337,15 @@ public class FileFloatSource extends ValueSource {
       FileFloatSource.resetCache();
       log.debug("readerCache has been reset.");
 
-      UpdateRequestProcessor processor =
-        req.getCore().getUpdateProcessingChain(null).createProcessor(req, rsp);
-      try{
+      UpdateRequestProcessor processor = req.getCore().getUpdateProcessingChain(null).createProcessor(req, rsp);
+      try {
         RequestHandlerUtils.handleCommit(req, processor, req.getParams(), true);
-      }
-      finally{
-        processor.finish();
+      } finally {
+        try {
+          processor.finish();
+        } finally {
+          processor.close();
+        }
       }
     }
 

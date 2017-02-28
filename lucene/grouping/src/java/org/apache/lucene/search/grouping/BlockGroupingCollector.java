@@ -135,7 +135,7 @@ public class BlockGroupingCollector extends SimpleCollector {
 
   // Called when we transition to another group; if the
   // group is competitive we insert into the group queue
-  private void processGroup() {
+  private void processGroup() throws IOException {
     totalGroupCount++;
     //System.out.println("    processGroup ord=" + lastGroupOrd + " competes=" + groupCompetes + " count=" + subDocUpto + " groupDoc=" + topGroupDoc);
     if (groupCompetes) {
@@ -216,7 +216,7 @@ public class BlockGroupingCollector extends SimpleCollector {
    *  @param lastDocPerGroup a {@link Weight} that marks the
    *    last document in each group.
    */
-  public BlockGroupingCollector(Sort groupSort, int topNGroups, boolean needsScores, Weight lastDocPerGroup) throws IOException {
+  public BlockGroupingCollector(Sort groupSort, int topNGroups, boolean needsScores, Weight lastDocPerGroup) {
 
     if (topNGroups < 1) {
       throw new IllegalArgumentException("topNGroups must be >= 1 (got " + topNGroups + ")");

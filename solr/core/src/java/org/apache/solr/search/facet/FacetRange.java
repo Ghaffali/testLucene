@@ -30,13 +30,14 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.FacetParams;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.schema.FieldType;
+import org.apache.solr.schema.PointField;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.schema.TrieDateField;
 import org.apache.solr.schema.TrieField;
 import org.apache.solr.search.DocSet;
 import org.apache.solr.util.DateMathParser;
 
-public class FacetRange extends FacetRequest {
+public class FacetRange extends FacetRequestSorted {
   String field;
   Object start;
   Object end;
@@ -44,8 +45,12 @@ public class FacetRange extends FacetRequest {
   boolean hardend = false;
   EnumSet<FacetParams.FacetRangeInclude> include;
   EnumSet<FacetParams.FacetRangeOther> others;
-  long mincount = 0;
 
+  {
+    // defaults
+    mincount = 0;
+    limit = -1;
+  }
 
   @Override
   public FacetProcessor createFacetProcessor(FacetContext fcontext) {
@@ -93,11 +98,6 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
     response = getRangeCounts();
   }
 
-  @Override
-  public Object getResponse() {
-    return response;
-  }
-
   private static class Range {
     Object label;
     Comparable low;
@@ -119,9 +119,7 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
     final FieldType ft = sf.getType();
 
     if (ft instanceof TrieField) {
-      final TrieField trie = (TrieField)ft;
-
-      switch (trie.getType()) {
+      switch (ft.getNumberType()) {
         case FLOAT:
           calc = new FloatCalc(sf);
           break;
@@ -142,7 +140,31 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
               (SolrException.ErrorCode.BAD_REQUEST,
                   "Expected numeric field type :" + sf);
       }
-    } else {
+    } else if (ft instanceof PointField) {
+      // TODO, this is the same in Trie and Point now
+      switch (ft.getNumberType()) {
+        case FLOAT:
+          calc = new FloatCalc(sf);
+          break;
+        case DOUBLE:
+          calc = new DoubleCalc(sf);
+          break;
+        case INTEGER:
+          calc = new IntCalc(sf);
+          break;
+        case LONG:
+          calc = new LongCalc(sf);
+          break;
+        case DATE:
+          calc = new DateCalc(sf, null);
+          break;
+        default:
+          throw new SolrException
+              (SolrException.ErrorCode.BAD_REQUEST,
+                  "Expected numeric field type :" + sf);
+      }
+    } 
+    else {
       throw new SolrException
           (SolrException.ErrorCode.BAD_REQUEST,
               "Expected numeric field type :" + sf);
@@ -154,9 +176,7 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
     final FieldType ft = sf.getType();
 
     if (ft instanceof TrieField) {
-      final TrieField trie = (TrieField)ft;
-
-      switch (trie.getType()) {
+      switch (ft.getNumberType()) {
         case FLOAT:
           calc = new FloatCalc(sf);
           break;

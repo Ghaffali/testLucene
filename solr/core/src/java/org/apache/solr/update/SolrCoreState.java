@@ -42,10 +42,16 @@ public abstract class SolrCoreState {
   
   protected boolean closed = false;
   private final Object updateLock = new Object();
+  private final Object reloadLock = new Object();
   
   public Object getUpdateLock() {
     return updateLock;
   }
+  
+  public Object getReloadLock() {
+    return reloadLock;
+  }
+  
   
   private int solrCoreStateRefCnt = 1;
 
@@ -71,7 +77,7 @@ public abstract class SolrCoreState {
     
     if (close) {
       try {
-        log.info("Closing SolrCoreState");
+        log.debug("Closing SolrCoreState");
         close(closer);
       } catch (Exception e) {
         log.error("Error closing SolrCoreState", e);
@@ -169,4 +175,6 @@ public abstract class SolrCoreState {
       super(s);
     }
   }
+
+  public abstract Lock getRecoveryLock();
 }

@@ -21,6 +21,7 @@ import java.io.IOException;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.MockAnalyzer;
+import org.apache.lucene.analysis.MockSynonymFilter;
 import org.apache.lucene.analysis.MockTokenizer;
 import org.apache.lucene.analysis.TokenFilter;
 import org.apache.lucene.analysis.TokenStream;
@@ -35,6 +36,10 @@ import org.apache.lucene.search.PhraseQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.SynonymQuery;
 import org.apache.lucene.search.TermQuery;
+import org.apache.lucene.search.spans.SpanNearQuery;
+import org.apache.lucene.search.spans.SpanOrQuery;
+import org.apache.lucene.search.spans.SpanQuery;
+import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.util.automaton.CharacterRunAutomaton;
 import org.apache.lucene.util.automaton.RegExp;
 
@@ -121,44 +126,13 @@ public class TestQueryBuilder extends LuceneTestCase {
     assertNull(builder.createBooleanQuery("field", ""));
   }
   
-  /** adds synonym of "dog" for "dogs". */
+  /** adds synonym of "dog" for "dogs", and synonym of "cavy" for "guinea pig". */
   static class MockSynonymAnalyzer extends Analyzer {
     @Override
     protected TokenStreamComponents createComponents(String fieldName) {
       MockTokenizer tokenizer = new MockTokenizer();
       return new TokenStreamComponents(tokenizer, new MockSynonymFilter(tokenizer));
     }
-  }
-  
-  /**
-   * adds synonym of "dog" for "dogs".
-   */
-  protected static class MockSynonymFilter extends TokenFilter {
-    CharTermAttribute termAtt = addAttribute(CharTermAttribute.class);
-    PositionIncrementAttribute posIncAtt = addAttribute(PositionIncrementAttribute.class);
-    boolean addSynonym = false;
-    
-    public MockSynonymFilter(TokenStream input) {
-      super(input);
-    }
-
-    @Override
-    public final boolean incrementToken() throws IOException {
-      if (addSynonym) { // inject our synonym
-        clearAttributes();
-        termAtt.setEmpty().append("dog");
-        posIncAtt.setPositionIncrement(0);
-        addSynonym = false;
-        return true;
-      }
-      
-      if (input.incrementToken()) {
-        addSynonym = termAtt.toString().equals("dogs");
-        return true;
-      } else {
-        return false;
-      }
-    } 
   }
   
   /** simple synonyms test */
@@ -178,6 +152,100 @@ public class TestQueryBuilder extends LuceneTestCase {
     expectedBuilder.add(new Term[] { new Term("field", "dogs"), new Term("field", "dog") });
     QueryBuilder builder = new QueryBuilder(new MockSynonymAnalyzer());
     assertEquals(expectedBuilder.build(), builder.createPhraseQuery("field", "old dogs"));
+  }
+
+  /** forms graph query */
+  public void testMultiWordSynonymsPhrase() throws Exception {
+    SpanNearQuery expectedNear = SpanNearQuery.newOrderedNearQuery("field")
+        .addClause(new SpanTermQuery(new Term("field", "guinea")))
+        .addClause(new SpanTermQuery(new Term("field", "pig")))
+        .setSlop(0)
+        .build();
+
+    SpanTermQuery expectedTerm = new SpanTermQuery(new Term("field", "cavy"));
+
+    QueryBuilder queryBuilder = new QueryBuilder(new MockSynonymAnalyzer());
+    assertEquals(new SpanOrQuery(new SpanQuery[]{expectedNear, expectedTerm}),
+        queryBuilder.createPhraseQuery("field", "guinea pig"));
+  }
+
+  /** forms graph query */
+  public void testMultiWordSynonymsBoolean() throws Exception {
+    for (BooleanClause.Occur occur : new BooleanClause.Occur[] {BooleanClause.Occur.SHOULD, BooleanClause.Occur.MUST}) {
+      Query syn1 = new BooleanQuery.Builder()
+          .add(new TermQuery(new Term("field", "guinea")), BooleanClause.Occur.MUST)
+          .add(new TermQuery(new Term("field", "pig")), BooleanClause.Occur.MUST)
+          .build();
+      Query syn2 = new TermQuery(new Term("field", "cavy"));
+
+      BooleanQuery expectedGraphQuery = new BooleanQuery.Builder()
+          .add(syn1, BooleanClause.Occur.SHOULD)
+          .add(syn2, BooleanClause.Occur.SHOULD)
+          .build();
+
+      QueryBuilder queryBuilder = new QueryBuilder(new MockSynonymAnalyzer());
+      assertEquals(expectedGraphQuery, queryBuilder.createBooleanQuery("field", "guinea pig", occur));
+
+      BooleanQuery expectedBooleanQuery = new BooleanQuery.Builder()
+          .add(expectedGraphQuery, occur)
+          .add(new TermQuery(new Term("field", "story")), occur)
+          .build();
+      assertEquals(expectedBooleanQuery, queryBuilder.createBooleanQuery("field", "guinea pig story", occur));
+
+      expectedBooleanQuery = new BooleanQuery.Builder()
+          .add(new TermQuery(new Term("field", "the")), occur)
+          .add(expectedGraphQuery, occur)
+          .add(new TermQuery(new Term("field", "story")), occur)
+          .build();
+      assertEquals(expectedBooleanQuery, queryBuilder.createBooleanQuery("field", "the guinea pig story", occur));
+
+      expectedBooleanQuery = new BooleanQuery.Builder()
+          .add(new TermQuery(new Term("field", "the")), occur)
+          .add(expectedGraphQuery, occur)
+          .add(new TermQuery(new Term("field", "story")), occur)
+          .add(expectedGraphQuery, occur)
+          .build();
+      assertEquals(expectedBooleanQuery, queryBuilder.createBooleanQuery("field", "the guinea pig story guinea pig", occur));
+    }
+  }
+
+  /** forms graph query */
+  public void testMultiWordPhraseSynonymsBoolean() throws Exception {
+    for (BooleanClause.Occur occur : new BooleanClause.Occur[] {BooleanClause.Occur.SHOULD, BooleanClause.Occur.MUST}) {
+      Query syn1 = new PhraseQuery.Builder()
+          .add(new Term("field", "guinea"))
+          .add(new Term("field", "pig"))
+          .build();
+      Query syn2 = new TermQuery(new Term("field", "cavy"));
+      BooleanQuery expectedGraphQuery = new BooleanQuery.Builder()
+          .add(syn1, BooleanClause.Occur.SHOULD)
+          .add(syn2, BooleanClause.Occur.SHOULD)
+          .build();
+      QueryBuilder queryBuilder = new QueryBuilder(new MockSynonymAnalyzer());
+      queryBuilder.setAutoGenerateMultiTermSynonymsPhraseQuery(true);
+      assertEquals(expectedGraphQuery, queryBuilder.createBooleanQuery("field", "guinea pig", occur));
+
+      BooleanQuery expectedBooleanQuery = new BooleanQuery.Builder()
+          .add(expectedGraphQuery, occur)
+          .add(new TermQuery(new Term("field", "story")), occur)
+          .build();
+      assertEquals(expectedBooleanQuery, queryBuilder.createBooleanQuery("field", "guinea pig story", occur));
+
+      expectedBooleanQuery = new BooleanQuery.Builder()
+          .add(new TermQuery(new Term("field", "the")), occur)
+          .add(expectedGraphQuery, occur)
+          .add(new TermQuery(new Term("field", "story")), occur)
+          .build();
+      assertEquals(expectedBooleanQuery, queryBuilder.createBooleanQuery("field", "the guinea pig story", occur));
+
+      expectedBooleanQuery = new BooleanQuery.Builder()
+          .add(new TermQuery(new Term("field", "the")), occur)
+          .add(expectedGraphQuery, occur)
+          .add(new TermQuery(new Term("field", "story")), occur)
+          .add(expectedGraphQuery, occur)
+          .build();
+      assertEquals(expectedBooleanQuery, queryBuilder.createBooleanQuery("field", "the guinea pig story guinea pig", occur));
+    }
   }
 
   protected static class SimpleCJKTokenizer extends Tokenizer {

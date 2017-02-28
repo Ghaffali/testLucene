@@ -39,7 +39,7 @@ public class ObjectReleaseTracker {
   public static boolean track(Object object) {
     StringWriter sw = new StringWriter();
     PrintWriter pw = new PrintWriter(sw);
-    new ObjectTrackerException().printStackTrace(pw);
+    new ObjectTrackerException(object.getClass().getName()).printStackTrace(pw);
     OBJECTS.put(object, sw.toString());
     return true;
   }
@@ -56,17 +56,6 @@ public class ObjectReleaseTracker {
   /**
    * @return null if ok else error message
    */
-  public static String clearObjectTrackerAndCheckEmpty() {
-    String result = checkEmpty();
-    
-    OBJECTS.clear();
-    
-    return result;
-  }
-  
-  /**
-   * @return null if ok else error message
-   */
   public static String checkEmpty() {
     String error = null;
     Set<Entry<Object,String>> entries = OBJECTS.entrySet();
@@ -77,11 +66,9 @@ public class ObjectReleaseTracker {
         objects.add(entry.getKey().getClass().getSimpleName());
       }
       
-      error = "ObjectTracker found " + entries.size() + " object(s) that were not released!!! " + objects;
-      
-      System.err.println(error);
+      error = "ObjectTracker found " + entries.size() + " object(s) that were not released!!! " + objects + "\n";
       for (Entry<Object,String> entry : entries) {
-        System.err.println(entry.getValue());
+        error += entry.getValue() + "\n";
       }
     }
     
@@ -111,7 +98,9 @@ public class ObjectReleaseTracker {
   }
   
   private static class ObjectTrackerException extends RuntimeException {
-    
+    ObjectTrackerException(String msg) {
+      super(msg);
+    }
   }
 
 }

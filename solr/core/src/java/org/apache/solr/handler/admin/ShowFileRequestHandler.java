@@ -33,8 +33,6 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.RawResponseWriter;
 import org.apache.solr.response.SolrQueryResponse;
-import org.apache.solr.schema.IndexSchema;
-import org.apache.solr.schema.ManagedIndexSchema;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -365,5 +363,9 @@ public class ShowFileRequestHandler extends RequestHandlerBase
   @Override
   public String getDescription() {
     return "Admin Config File -- view or update config files directly";
+  }
+  @Override
+  public Category getCategory() {
+    return Category.ADMIN;
   }
 }

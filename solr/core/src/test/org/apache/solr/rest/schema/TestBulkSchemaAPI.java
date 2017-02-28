@@ -27,6 +27,7 @@ import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.schema.SimilarityFactory;
 import org.apache.solr.search.similarities.SchemaSimilarityFactory;
+import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestBase;
 import org.apache.solr.util.RestTestHarness;
 
@@ -34,9 +35,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.noggit.JSONParser;
 import org.noggit.ObjectBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.StringReader;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +49,8 @@ import java.util.Set;
 
 
 public class TestBulkSchemaAPI extends RestTestBase {
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
 
   private static File tmpSolrHome;
 
@@ -58,6 +64,15 @@ public class TestBulkSchemaAPI extends RestTestBase {
 
     createJettyAndHarness(tmpSolrHome.getAbsolutePath(), "solrconfig-managed-schema.xml", "schema-rest.xml",
         "/solr", true, null);
+    if (random().nextBoolean()) {
+      log.info("These tests are run with V2 API");
+      restTestHarness.setServerProvider(new RESTfulServerProvider() {
+        @Override
+        public String getBaseURL() {
+          return jetty.getBaseUrl().toString() + "/v2/cores/" + DEFAULT_TEST_CORENAME;
+        }
+      });
+    }
   }
 
   @After
@@ -92,14 +107,13 @@ public class TestBulkSchemaAPI extends RestTestBase {
     String response = restTestHarness.post("/schema?wt=json", json(payload));
     Map map = (Map) ObjectBuilder.getVal(new JSONParser(new StringReader(response)));
     List l = (List) map.get("errors");
-
+    assertNotNull("No errors", l);
     List errorList = (List) ((Map) l.get(0)).get("errorMessages");
     assertEquals(1, errorList.size());
-    assertTrue (((String)errorList.get(0)).contains("No such field type"));
+    assertTrue (((String)errorList.get(0)).contains("Field 'a1': Field type 'string1' not found.\n"));
     errorList = (List) ((Map) l.get(1)).get("errorMessages");
     assertEquals(1, errorList.size());
     assertTrue (((String)errorList.get(0)).contains("is a required field"));
-
   }
   
   public void testAnalyzerClass() throws Exception {
@@ -193,6 +207,70 @@ public class TestBulkSchemaAPI extends RestTestBase {
 
     map = getObj(harness, newFieldName, "fields");
     assertNotNull("Field '" + newFieldName + "' is not in the schema", map);
+  }
+
+  public void testAddIllegalDynamicField() throws Exception {
+    RestTestHarness harness = restTestHarness;
+
+    String newFieldName = "illegal";
+
+    String payload = "{\n" +
+        "    'add-dynamic-field' : {\n" +
+        "                 'name':'" + newFieldName + "',\n" +
+        "                 'type':'string',\n" +
+        "                 'stored':true,\n" +
+        "                 'indexed':true\n" +
+        "                 }\n" +
+        "    }";
+
+    String response = harness.post("/schema?wt=json", json(payload));
+    Map map = (Map)ObjectBuilder.getVal(new JSONParser(new StringReader(response)));
+    assertNotNull(response, map.get("errors"));
+
+    map = getObj(harness, newFieldName, "dynamicFields");
+    assertNull(newFieldName + " illegal dynamic field should not have been added to schema", map);
+  }
+
+  public void testAddIllegalFields() throws Exception {
+    RestTestHarness harness = restTestHarness;
+
+    // 1. Make sure you can't create a new field with an asterisk in its name
+    String newFieldName = "asterisk*";
+
+    String payload = "{\n" +
+        "    'add-field' : {\n" +
+        "         'name':'" + newFieldName + "',\n" +
+        "         'type':'string',\n" +
+        "         'stored':true,\n" +
+        "         'indexed':true\n" +
+        "     }\n" +
+        "}";
+
+    String response = harness.post("/schema?wt=json", json(payload));
+    Map map = (Map)ObjectBuilder.getVal(new JSONParser(new StringReader(response)));
+    assertNotNull(response, map.get("errors"));
+
+    map = getObj(harness, newFieldName, "fields");
+    assertNull(newFieldName + " illegal dynamic field should not have been added to schema", map);
+
+    // 2. Make sure you get an error when you try to create a field that already exists
+    // Make sure 'wdf_nocase' field exists
+    newFieldName = "wdf_nocase";
+    Map m = getObj(harness, newFieldName, "fields");
+    assertNotNull("'" + newFieldName + "' field does not exist in the schema", m);
+
+    payload = "{\n" +
+        "    'add-field' : {\n" +
+        "         'name':'" + newFieldName + "',\n" +
+        "         'type':'string',\n" +
+        "         'stored':true,\n" +
+        "         'indexed':true\n" +
+        "     }\n" +
+        "}";
+
+    response = harness.post("/schema?wt=json", json(payload));
+    map = (Map)ObjectBuilder.getVal(new JSONParser(new StringReader(response)));
+    assertNotNull(response, map.get("errors"));
   }
 
   public void testAddFieldWithExistingCatchallDynamicField() throws Exception {

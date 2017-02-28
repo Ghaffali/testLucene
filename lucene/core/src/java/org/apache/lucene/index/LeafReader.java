@@ -16,10 +16,9 @@
  */
 package org.apache.lucene.index;
 
-
 import java.io.IOException;
 
-import org.apache.lucene.index.IndexReader.ReaderClosedListener;
+import org.apache.lucene.index.IndexReader.CacheHelper;
 import org.apache.lucene.search.Sort;
 import org.apache.lucene.util.Bits;
 
@@ -62,80 +61,18 @@ public abstract class LeafReader extends IndexReader {
   }
 
   /**
-   * Called when the shared core for this {@link LeafReader}
-   * is closed.
-   * <p>
-   * If this {@link LeafReader} impl has the ability to share
-   * resources across instances that might only vary through
-   * deleted documents and doc values updates, then this listener
-   * will only be called when the shared core is closed.
-   * Otherwise, this listener will be called when this reader is
-   * closed.</p>
-   * <p>
-   * This is typically useful to manage per-segment caches: when
-   * the listener is called, it is safe to evict this reader from
-   * any caches keyed on {@link #getCoreCacheKey}.</p>
-   *
+   * Optional method: Return a {@link CacheHelper} that can be used to cache
+   * based on the content of this leaf regardless of deletions. Two readers
+   * that have the same data but different sets of deleted documents or doc
+   * values updates may be considered equal. Consider using
+   * {@link #getReaderCacheHelper} if you need deletions or dv updates to be
+   * taken into account.
+   * <p>A return value of {@code null} indicates that this reader is not suited
+   * for caching, which is typically the case for short-lived wrappers that
+   * alter the content of the wrapped leaf reader.
    * @lucene.experimental
    */
-  public static interface CoreClosedListener {
-    /** Invoked when the shared core of the original {@code
-     *  SegmentReader} has closed. The provided {@code
-     *  ownerCoreCacheKey} will be the same key as the one
-     *  returned by {@link LeafReader#getCoreCacheKey()}. */
-    public void onClose(Object ownerCoreCacheKey) throws IOException;
-  }
-
-  private static class CoreClosedListenerWrapper implements ReaderClosedListener {
-
-    private final CoreClosedListener listener;
-
-    CoreClosedListenerWrapper(CoreClosedListener listener) {
-      this.listener = listener;
-    }
-
-    @Override
-    public void onClose(IndexReader reader) throws IOException {
-      listener.onClose(reader.getCoreCacheKey());
-    }
-
-    @Override
-    public int hashCode() {
-      return listener.hashCode();
-    }
-
-    @Override
-    public boolean equals(Object other) {
-      if (!(other instanceof CoreClosedListenerWrapper)) {
-        return false;
-      }
-      return listener.equals(((CoreClosedListenerWrapper) other).listener);
-    }
-
-  }
-
-  /** Add a {@link CoreClosedListener} as a {@link ReaderClosedListener}. This
-   * method is typically useful for {@link LeafReader} implementations that
-   * don't have the concept of a core that is shared across several
-   * {@link LeafReader} instances in which case the {@link CoreClosedListener}
-   * is called when closing the reader. */
-  protected static void addCoreClosedListenerAsReaderClosedListener(IndexReader reader, CoreClosedListener listener) {
-    reader.addReaderClosedListener(new CoreClosedListenerWrapper(listener));
-  }
-
-  /** Remove a {@link CoreClosedListener} which has been added with
-   * {@link #addCoreClosedListenerAsReaderClosedListener(IndexReader, CoreClosedListener)}. */
-  protected static void removeCoreClosedListenerAsReaderClosedListener(IndexReader reader, CoreClosedListener listener) {
-    reader.removeReaderClosedListener(new CoreClosedListenerWrapper(listener));
-  }
-
-  /** Expert: adds a CoreClosedListener to this reader's shared core
-   *  @lucene.experimental */
-  public abstract void addCoreClosedListener(CoreClosedListener listener);
-
-  /** Expert: removes a CoreClosedListener from this reader's shared core
-   *  @lucene.experimental */
-  public abstract void removeCoreClosedListener(CoreClosedListener listener);
+  public abstract CacheHelper getCoreCacheHelper();
 
   /**
    * Returns {@link Fields} for this reader.
@@ -241,13 +178,13 @@ public abstract class LeafReader extends IndexReader {
   }
 
   /** Returns {@link NumericDocValues} for this field, or
-   *  null if no {@link NumericDocValues} were indexed for
+   *  null if no numeric doc values were indexed for
    *  this field.  The returned instance should only be
    *  used by a single thread. */
   public abstract NumericDocValues getNumericDocValues(String field) throws IOException;
 
   /** Returns {@link BinaryDocValues} for this field, or
-   *  null if no {@link BinaryDocValues} were indexed for
+   *  null if no binary doc values were indexed for
    *  this field.  The returned instance should only be
    *  used by a single thread. */
   public abstract BinaryDocValues getBinaryDocValues(String field) throws IOException;
@@ -269,12 +206,6 @@ public abstract class LeafReader extends IndexReader {
    *  this field.  The returned instance should only be
    *  used by a single thread. */
   public abstract SortedSetDocValues getSortedSetDocValues(String field) throws IOException;
-
-  /** Returns a {@link Bits} at the size of <code>reader.maxDoc()</code>,
-   *  with turned on bits for each docid that does have a value for this field,
-   *  or null if no DocValues were indexed for this field. The
-   *  returned instance should only be used by a single thread */
-  public abstract Bits getDocsWithField(String field) throws IOException;
 
   /** Returns {@link NumericDocValues} representing norms
    *  for this field, or null if no {@link NumericDocValues}
@@ -302,8 +233,9 @@ public abstract class LeafReader extends IndexReader {
   public abstract Bits getLiveDocs();
 
   /** Returns the {@link PointValues} used for numeric or
-   *  spatial searches, or null if there are no point fields. */
-  public abstract PointValues getPointValues();
+   *  spatial searches for the given field, or null if there
+   *  are no point fields. */
+  public abstract PointValues getPointValues(String field) throws IOException;
 
   /**
    * Checks consistency of this reader.

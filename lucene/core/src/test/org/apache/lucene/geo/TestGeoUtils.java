@@ -30,7 +30,7 @@ public class TestGeoUtils extends LuceneTestCase {
 
   // We rely heavily on GeoUtils.circleToBBox so we test it here:
   public void testRandomCircleToBBox() throws Exception {
-    int iters = atLeast(1000);
+    int iters = atLeast(100);
     for(int iter=0;iter<iters;iter++) {
 
       double centerLat = GeoTestUtil.nextLatitude();
@@ -89,7 +89,8 @@ public class TestGeoUtils extends LuceneTestCase {
 
   // similar to testRandomCircleToBBox, but different, less evil, maybe simpler
   public void testBoundingBoxOpto() {
-    for (int i = 0; i < 1000; i++) {
+    int iters = atLeast(100);
+    for (int i = 0; i < iters; i++) {
       double lat = GeoTestUtil.nextLatitude();
       double lon = GeoTestUtil.nextLongitude();
       double radius = 50000000 * random().nextDouble();
@@ -119,7 +120,8 @@ public class TestGeoUtils extends LuceneTestCase {
 
   // test we can use haversinSortKey() for distance queries.
   public void testHaversinOpto() {
-    for (int i = 0; i < 1000; i++) {
+    int iters = atLeast(100);
+    for (int i = 0; i < iters; i++) {
       double lat = GeoTestUtil.nextLatitude();
       double lon = GeoTestUtil.nextLongitude();
       double radius = 50000000 * random().nextDouble();
@@ -193,7 +195,8 @@ public class TestGeoUtils extends LuceneTestCase {
   // TODO: does not really belong here, but we test it like this for now
   // we can make a fake IndexReader to send boxes directly to Point visitors instead?
   public void testCircleOpto() throws Exception {
-    for (int i = 0; i < 50; i++) {
+    int iters = atLeast(20);
+    for (int i = 0; i < iters; i++) {
       // circle
       final double centerLat = -90 + 180.0 * random().nextDouble();
       final double centerLon = -180 + 360.0 * random().nextDouble();
@@ -289,5 +292,17 @@ public class TestGeoUtils extends LuceneTestCase {
     }
 
     return false;
+  }
+
+  public void testWithin90LonDegrees() {
+    assertTrue(GeoUtils.within90LonDegrees(0, -80, 80));
+    assertFalse(GeoUtils.within90LonDegrees(0, -100, 80));
+    assertFalse(GeoUtils.within90LonDegrees(0, -80, 100));
+
+    assertTrue(GeoUtils.within90LonDegrees(-150, 140, 170));
+    assertFalse(GeoUtils.within90LonDegrees(-150, 120, 150));
+
+    assertTrue(GeoUtils.within90LonDegrees(150, -170, -140));
+    assertFalse(GeoUtils.within90LonDegrees(150, -150, -120));
   }
 }

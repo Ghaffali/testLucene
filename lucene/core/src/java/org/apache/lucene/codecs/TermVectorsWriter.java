@@ -32,7 +32,6 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.store.DataInput;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.BytesRefBuilder;
 
@@ -206,7 +205,7 @@ public abstract class TermVectorsWriter implements Closeable {
       subs.add(new TermVectorsMergeSub(mergeState.docMaps[i], reader, mergeState.maxDocs[i]));
     }
 
-    final DocIDMerger<TermVectorsMergeSub> docIDMerger = new DocIDMerger<>(subs, mergeState.segmentInfo.getIndexSort() != null);
+    final DocIDMerger<TermVectorsMergeSub> docIDMerger = DocIDMerger.of(subs, mergeState.needsIndexSort);
 
     int docCount = 0;
     while (true) {

@@ -26,7 +26,6 @@ import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.docvalues.IntDocValues;
 import org.apache.lucene.search.SortField;
 import org.apache.lucene.search.SortField.Type;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.mutable.MutableValue;
 import org.apache.lucene.util.mutable.MutableValueInt;
 
@@ -52,25 +51,42 @@ public class IntFieldSource extends FieldCacheSource {
   
   @Override
   public FunctionValues getValues(Map context, LeafReaderContext readerContext) throws IOException {
-    final NumericDocValues arr = DocValues.getNumeric(readerContext.reader(), field);
-    final Bits valid = DocValues.getDocsWithField(readerContext.reader(), field);
     
-    return new IntDocValues(this) {
-      final MutableValueInt val = new MutableValueInt();
+    final NumericDocValues arr = getNumericDocValues(context, readerContext);
 
-      @Override
-      public int intVal(int doc) {
-        return (int) arr.get(doc);
+    return new IntDocValues(this) {
+      int lastDocID;
+
+      private int getValueForDoc(int doc) throws IOException {
+        if (doc < lastDocID) {
+          throw new IllegalArgumentException("docs were sent out-of-order: lastDocID=" + lastDocID + " vs docID=" + doc);
+        }
+        lastDocID = doc;
+        int curDocID = arr.docID();
+        if (doc > curDocID) {
+          curDocID = arr.advance(doc);
+        }
+        if (doc == curDocID) {
+          return (int) arr.longValue();
+        } else {
+          return 0;
+        }
       }
 
       @Override
-      public String strVal(int doc) {
+      public int intVal(int doc) throws IOException {
+        return getValueForDoc(doc);
+      }
+
+      @Override
+      public String strVal(int doc) throws IOException {
         return Integer.toString(intVal(doc));
       }
 
       @Override
-      public boolean exists(int doc) {
-        return arr.get(doc) != 0 || valid.get(doc);
+      public boolean exists(int doc) throws IOException {
+        getValueForDoc(doc);
+        return arr.docID() == doc;
       }
 
       @Override
@@ -84,13 +100,17 @@ public class IntFieldSource extends FieldCacheSource {
           }
 
           @Override
-          public void fillValue(int doc) {
-            mval.value = intVal(doc);
-            mval.exists = mval.value != 0 || valid.get(doc);
+          public void fillValue(int doc) throws IOException {
+            mval.value = getValueForDoc(doc);
+            mval.exists = arr.docID() == doc;
           }
         };
       }
     };
+  }
+
+  protected NumericDocValues getNumericDocValues(Map context, LeafReaderContext readerContext) throws IOException {
+    return DocValues.getNumeric(readerContext.reader(), field);
   }
 
   @Override

@@ -19,6 +19,8 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.lucene.codecs.Codec;
 import org.apache.lucene.codecs.DocValuesProducer;
@@ -32,6 +34,7 @@ import org.apache.lucene.search.Sort;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.util.Bits;
+import org.apache.lucene.util.IOUtils;
 
 /**
  * IndexReader implementation over a single segment. 
@@ -52,6 +55,9 @@ public final class SegmentReader extends CodecReader {
 
   final SegmentCoreReaders core;
   final SegmentDocValues segDocValues;
+
+  /** True if we are holding RAM only liveDocs or DV updates, i.e. the SegmentCommitInfo delGen doesn't match our liveDocs. */
+  final boolean isNRT;
   
   final DocValuesProducer docValuesProducer;
   final FieldInfos fieldInfos;
@@ -64,6 +70,10 @@ public final class SegmentReader extends CodecReader {
   // TODO: why is this public?
   public SegmentReader(SegmentCommitInfo si, IOContext context) throws IOException {
     this.si = si;
+
+    // We pull liveDocs/DV updates from disk:
+    this.isNRT = false;
+    
     core = new SegmentCoreReaders(si.info.dir, si, context);
     segDocValues = new SegmentDocValues();
     
@@ -100,8 +110,8 @@ public final class SegmentReader extends CodecReader {
    *  deletes file.  Used by openIfChanged. */
   SegmentReader(SegmentCommitInfo si, SegmentReader sr) throws IOException {
     this(si, sr,
-         si.info.getCodec().liveDocsFormat().readLiveDocs(si.info.dir, si, IOContext.READONCE),
-         si.info.maxDoc() - si.getDelCount());
+         si.hasDeletions() ? si.info.getCodec().liveDocsFormat().readLiveDocs(si.info.dir, si, IOContext.READONCE) : null,
+         si.info.maxDoc() - si.getDelCount(), false);
   }
 
   /** Create new SegmentReader sharing core from a previous
@@ -109,6 +119,13 @@ public final class SegmentReader extends CodecReader {
    *  liveDocs.  Used by IndexWriter to provide a new NRT
    *  reader */
   SegmentReader(SegmentCommitInfo si, SegmentReader sr, Bits liveDocs, int numDocs) throws IOException {
+    this(si, sr, liveDocs, numDocs, true);
+  }
+    
+  /** Create new SegmentReader sharing core from a previous
+   *  SegmentReader and using the provided liveDocs, and recording
+   *  whether those liveDocs were carried in ram (isNRT=true). */
+  SegmentReader(SegmentCommitInfo si, SegmentReader sr, Bits liveDocs, int numDocs, boolean isNRT) throws IOException {
     if (numDocs > si.info.maxDoc()) {
       throw new IllegalArgumentException("numDocs=" + numDocs + " but maxDoc=" + si.info.maxDoc());
     }
@@ -117,6 +134,7 @@ public final class SegmentReader extends CodecReader {
     }
     this.si = si;
     this.liveDocs = liveDocs;
+    this.isNRT = isNRT;
     this.numDocs = numDocs;
     this.core = sr.core;
     core.incRef();
@@ -176,14 +194,10 @@ public final class SegmentReader extends CodecReader {
     try {
       core.decRef();
     } finally {
-      try {
-        super.doClose();
-      } finally {
-        if (docValuesProducer instanceof SegmentDocValuesProducer) {
-          segDocValues.decRef(((SegmentDocValuesProducer)docValuesProducer).dvGens);
-        } else if (docValuesProducer != null) {
-          segDocValues.decRef(Collections.singletonList(-1L));
-        }
+      if (docValuesProducer instanceof SegmentDocValuesProducer) {
+        segDocValues.decRef(((SegmentDocValuesProducer)docValuesProducer).dvGens);
+      } else if (docValuesProducer != null) {
+        segDocValues.decRef(Collections.singletonList(-1L));
       }
     }
   }
@@ -219,7 +233,7 @@ public final class SegmentReader extends CodecReader {
   }
   
   @Override
-  public PointValues getPointValues() {
+  public PointsReader getPointsReader() {
     ensureOpen();
     return core.pointsReader;
   }
@@ -240,12 +254,6 @@ public final class SegmentReader extends CodecReader {
   public FieldsProducer getPostingsReader() {
     ensureOpen();
     return core.fields;
-  }
-
-  @Override
-  public PointsReader getPointsReader() {
-    ensureOpen();
-    return core.pointsReader;
   }
 
   @Override
@@ -277,32 +285,48 @@ public final class SegmentReader extends CodecReader {
     return si.info.dir;
   }
 
-  // This is necessary so that cloned SegmentReaders (which
-  // share the underlying postings data) will map to the
-  // same entry for CachingWrapperFilter.  See LUCENE-1579.
+  private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
+
   @Override
-  public Object getCoreCacheKey() {
-    // NOTE: if this ever changes, be sure to fix
-    // SegmentCoreReader.notifyCoreClosedListeners to match!
-    // Today it passes "this" as its coreCacheKey:
-    return core;
+  void notifyReaderClosedListeners(Throwable th) throws IOException {
+    synchronized(readerClosedListeners) {
+      for(ClosedListener listener : readerClosedListeners) {
+        try {
+          listener.onClose(cacheHelper.getKey());
+        } catch (Throwable t) {
+          if (th == null) {
+            th = t;
+          } else {
+            th.addSuppressed(t);
+          }
+        }
+      }
+      IOUtils.reThrow(th);
+    }
+  }
+
+  private final IndexReader.CacheHelper cacheHelper = new IndexReader.CacheHelper() {
+    private final IndexReader.CacheKey cacheKey = new IndexReader.CacheKey();
+
+    @Override
+    public CacheKey getKey() {
+      return cacheKey;
+    }
+
+    @Override
+    public void addClosedListener(ClosedListener listener) {
+      readerClosedListeners.add(listener);
+    }
+  };
+
+  @Override
+  public CacheHelper getReaderCacheHelper() {
+    return cacheHelper;
   }
 
   @Override
-  public Object getCombinedCoreAndDeletesKey() {
-    return this;
-  }
-
-  @Override
-  public void addCoreClosedListener(CoreClosedListener listener) {
-    ensureOpen();
-    core.addCoreClosedListener(listener);
-  }
-  
-  @Override
-  public void removeCoreClosedListener(CoreClosedListener listener) {
-    ensureOpen();
-    core.removeCoreClosedListener(listener);
+  public CacheHelper getCoreCacheHelper() {
+    return core.getCacheHelper();
   }
 
   @Override

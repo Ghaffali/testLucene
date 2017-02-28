@@ -20,16 +20,16 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 
-import org.apache.lucene.index.FilterLeafReader;
-import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.BinaryDocValues;
 import org.apache.lucene.index.DocValuesType;
 import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.FieldInfos;
+import org.apache.lucene.index.FilterLeafReader;
+import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.NumericDocValues;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
-import org.apache.lucene.uninverting.UninvertingReader;
+import org.apache.solr.uninverting.UninvertingReader;
 
 /** 
  * Lucene 5.0 removes "accidental" insanity, so you must explicitly
@@ -118,13 +118,14 @@ public class Insanity {
     // important to override these, so fieldcaches are shared on what we wrap
     
     @Override
-    public Object getCoreCacheKey() {
-      return in.getCoreCacheKey();
+    public CacheHelper getCoreCacheHelper() {
+      return in.getCoreCacheHelper();
     }
 
     @Override
-    public Object getCombinedCoreAndDeletesKey() {
-      return in.getCombinedCoreAndDeletesKey();
+    public CacheHelper getReaderCacheHelper() {
+      return in.getReaderCacheHelper();
     }
+
   }
 }

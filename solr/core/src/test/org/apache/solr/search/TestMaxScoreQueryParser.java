@@ -17,6 +17,7 @@
 package org.apache.solr.search;
 
 import org.apache.lucene.index.Term;
+import org.apache.lucene.legacy.LegacyNumericRangeQuery;
 import org.apache.lucene.search.*;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.util.AbstractSolrTestCase;
@@ -45,7 +46,8 @@ public class TestMaxScoreQueryParser extends AbstractSolrTestCase {
     assertEquals(new BoostQuery(new TermQuery(new Term("text", "foo")), 3f), q);
 
     q = parse("price:[0 TO 10]");
-    assertTrue(q instanceof LegacyNumericRangeQuery);
+    assertTrue(q instanceof LegacyNumericRangeQuery 
+        || (q instanceof IndexOrDocValuesQuery && ((IndexOrDocValuesQuery)q).getIndexQuery() instanceof PointRangeQuery));
   }
 
   @Test

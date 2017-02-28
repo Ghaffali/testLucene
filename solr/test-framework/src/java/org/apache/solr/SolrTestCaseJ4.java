@@ -31,6 +31,7 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Method;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -50,12 +51,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
-import java.util.logging.Level;
+import java.util.Set;
+import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 
 import com.carrotsearch.randomizedtesting.RandomizedContext;
+import com.carrotsearch.randomizedtesting.TraceFormatting;
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
 import com.carrotsearch.randomizedtesting.rules.SystemPropertiesRestoreRule;
-import org.apache.commons.codec.Charsets;
 import org.apache.commons.io.FileUtils;
 import org.apache.http.client.HttpClient;
 import org.apache.lucene.analysis.MockAnalyzer;
@@ -67,6 +70,7 @@ import org.apache.lucene.util.LuceneTestCase.SuppressFileSystems;
 import org.apache.lucene.util.LuceneTestCase.SuppressSysoutChecks;
 import org.apache.lucene.util.QuickPatchThreadsFilter;
 import org.apache.lucene.util.TestUtil;
+import org.apache.solr.client.solrj.ResponseParser;
 import org.apache.solr.client.solrj.embedded.JettyConfig;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.ConcurrentUpdateSolrClient;
@@ -74,7 +78,6 @@ import org.apache.solr.client.solrj.impl.HttpClientUtil;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient.Builder;
 import org.apache.solr.client.solrj.impl.LBHttpSolrClient;
-import org.apache.solr.client.solrj.ResponseParser;
 import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.cloud.IpTables;
 import org.apache.solr.common.SolrDocument;
@@ -84,9 +87,12 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.params.MultiMapSolrParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.params.UpdateParams;
+import org.apache.solr.common.util.ContentStream;
+import org.apache.solr.common.util.ContentStreamBase;
 import org.apache.solr.common.util.ObjectReleaseTracker;
-import org.apache.solr.common.util.SuppressForbidden;
 import org.apache.solr.common.util.XML;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.CoresLocator;
@@ -98,19 +104,26 @@ import org.apache.solr.core.SolrXmlConfig;
 import org.apache.solr.handler.UpdateRequestHandler;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
+import org.apache.solr.request.SolrQueryRequestBase;
 import org.apache.solr.request.SolrRequestHandler;
+import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.servlet.DirectSolrConnection;
 import org.apache.solr.util.AbstractSolrTestCase;
+import org.apache.solr.util.LogLevel;
+import org.apache.solr.util.RandomizeSSL;
+import org.apache.solr.util.RandomizeSSL.SSLRandomizer;
 import org.apache.solr.util.RefCounted;
 import org.apache.solr.util.RevertDefaultThreadHandlerRule;
 import org.apache.solr.util.SSLTestConfig;
 import org.apache.solr.util.TestHarness;
 import org.apache.solr.util.TestInjection;
 import org.apache.zookeeper.KeeperException;
+import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.ClassRule;
 import org.junit.Rule;
@@ -123,7 +136,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
-import static com.google.common.base.Preconditions.checkNotNull;
+import static org.apache.solr.update.processor.DistributedUpdateProcessor.DistribPhase;
+import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
+
+import static java.util.Objects.requireNonNull;
 
 /**
  * A junit4 Solr test harness that extends LuceneTestCaseJ4. To change which core is used when loading the schema and solrconfig.xml, simply
@@ -137,10 +153,19 @@ import static com.google.common.base.Preconditions.checkNotNull;
 })
 @SuppressSysoutChecks(bugUrl = "Solr dumps tons of logs to console.")
 @SuppressFileSystems("ExtrasFS") // might be ok, the failures with e.g. nightly runs might be "normal"
+@RandomizeSSL()
 public abstract class SolrTestCaseJ4 extends LuceneTestCase {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  private static final List<String> DEFAULT_STACK_FILTERS = Arrays.asList(new String [] {
+      "org.junit.",
+      "junit.framework.",
+      "sun.",
+      "java.lang.reflect.",
+      "com.carrotsearch.randomizedtesting.",
+  });
+  
   public static final String DEFAULT_TEST_COLLECTION_NAME = "collection1";
   public static final String DEFAULT_TEST_CORENAME = DEFAULT_TEST_COLLECTION_NAME;
   protected static final String CORE_PROPERTIES_FILENAME = "core.properties";
@@ -154,11 +179,18 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   public static final String SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICYFACTORY = "solr.tests.useMergePolicyFactory";
   @Deprecated // remove solr.tests.useMergePolicy use with SOLR-8668
   public static final String SYSTEM_PROPERTY_SOLR_TESTS_USEMERGEPOLICY = "solr.tests.useMergePolicy";
+  
+  /**
+   * The system property {@code "solr.tests.preferPointFields"} can be used to make tests use PointFields when possible. 
+   * PointFields will only be used if the schema used by the tests uses "${solr.tests.TYPEClass}" when defining fields. 
+   * If this environment variable is not set, those tests will use PointFields 50% of the times and TrieFields the rest.
+   */
+  public static final boolean PREFER_POINT_FIELDS = Boolean.getBoolean("solr.tests.preferPointFields");
 
   private static String coreName = DEFAULT_TEST_CORENAME;
 
   public static int DEFAULT_CONNECTION_TIMEOUT = 60000;  // default socket connection timeout in ms
-
+  
   protected void writeCoreProperties(Path coreDirectory, String corename) throws IOException {
     Properties props = new Properties();
     props.setProperty("name", corename);
@@ -202,6 +234,19 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     public String bugUrl();
   }
   
+  /**
+   * Annotation for test classes that want to disable PointFields.
+   * PointFields will otherwise randomly used by some schemas.
+   */
+  @Documented
+  @Inherited
+  @Retention(RetentionPolicy.RUNTIME)
+  @Target(ElementType.TYPE)
+  public @interface SuppressPointFields {
+    /** Point to JIRA entry. */
+    public String bugUrl() default "None";
+  }
+  
   // these are meant to be accessed sequentially, but are volatile just to ensure any test
   // thread will read the latest value
   protected static volatile SSLTestConfig sslConfig;
@@ -215,11 +260,12 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   public TestRule solrTestRules = 
     RuleChain.outerRule(new SystemPropertiesRestoreRule());
 
-  @BeforeClass 
-  @SuppressWarnings("unused")
-  private static void beforeClass() {
-    initCoreDataDir = createTempDir("init-core-data").toFile();
+  @BeforeClass
+  public static void setupTestCases() {
 
+    initClassLogLevels();
+
+    initCoreDataDir = createTempDir("init-core-data").toFile();
     System.err.println("Creating dataDir: " + initCoreDataDir.getAbsolutePath());
 
     System.setProperty("zookeeper.forceSync", "no");
@@ -227,6 +273,8 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     System.setProperty("enable.update.log", usually() ? "true" : "false");
     System.setProperty("tests.shardhandler.randomSeed", Long.toString(random().nextLong()));
     System.setProperty("solr.clustering.enabled", "false");
+    System.setProperty("solr.peerSync.useRangeVersions", String.valueOf(random().nextBoolean()));
+    System.setProperty("solr.cloud.wait-for-updates-with-stale-state-pause", "500");
     startTrackingSearchers();
     ignoreException("ignore_exception");
     newRandomConfig();
@@ -241,8 +289,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   }
 
   @AfterClass
-  @SuppressWarnings("unused")
-  private static void afterClass() throws Exception {
+  public static void teardownTestCases() throws Exception {
     try {
       deleteCore();
       resetExceptionIgnores();
@@ -251,7 +298,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
         // if the tests passed, make sure everything was closed / released
         if (!RandomizedContext.current().getTargetClass().isAnnotationPresent(SuppressObjectReleaseTracker.class)) {
           endTrackingSearchers(120, false);
-          String orr = ObjectReleaseTracker.clearObjectTrackerAndCheckEmpty();
+          String orr = clearObjectTrackerAndCheckEmpty(120);
           assertNull(orr, orr);
         } else {
           endTrackingSearchers(15, false);
@@ -275,7 +322,8 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
       System.clearProperty("enable.update.log");
       System.clearProperty("useCompoundFile");
       System.clearProperty("urlScheme");
-      
+      System.clearProperty("solr.peerSync.useRangeVersions");
+      System.clearProperty("solr.cloud.wait-for-updates-with-stale-state-pause");
       HttpClientUtil.resetHttpClientBuilder();
 
       // clean up static
@@ -284,6 +332,75 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     }
     
     IpTables.unblockAllPorts();
+
+    LogLevel.Configurer.restoreLogLevels(savedClassLogLevels);
+    savedClassLogLevels.clear();
+  }
+  
+  /**
+   * @return null if ok else error message
+   */
+  public static String clearObjectTrackerAndCheckEmpty(int waitSeconds) {
+    int retries = 0;
+    String result;
+    do {
+      result = ObjectReleaseTracker.checkEmpty();
+      if (result == null)
+        break;
+      try {
+        if (retries % 10 == 0) {
+          log.info("Waiting for all tracked resources to be released");
+          if (retries > 10) {
+            TraceFormatting tf = new TraceFormatting(DEFAULT_STACK_FILTERS);
+            Map<Thread,StackTraceElement[]> stacksMap = Thread.getAllStackTraces();
+            Set<Entry<Thread,StackTraceElement[]>> entries = stacksMap.entrySet();
+            for (Entry<Thread,StackTraceElement[]> entry : entries) {
+              String stack = tf.formatStackTrace(entry.getValue());
+              System.err.println(entry.getKey().getName() + ":\n" + stack);
+            }
+          }
+        }
+        TimeUnit.SECONDS.sleep(1);
+      } catch (InterruptedException e) { break; }
+    }
+    while (retries++ < waitSeconds);
+    
+    
+    log.info("------------------------------------------------------- Done waiting for tracked resources to be released");
+    ObjectReleaseTracker.clear();
+    
+    return result;
+  }
+
+  private static Map<String, String> savedClassLogLevels = new HashMap<>();
+
+  public static void initClassLogLevels() {
+    Class currentClass = RandomizedContext.current().getTargetClass();
+    LogLevel annotation = (LogLevel) currentClass.getAnnotation(LogLevel.class);
+    if (annotation == null) {
+      return;
+    }
+    Map<String, String> previousLevels = LogLevel.Configurer.setLevels(annotation.value());
+    savedClassLogLevels.putAll(previousLevels);
+  }
+
+  private Map<String, String> savedMethodLogLevels = new HashMap<>();
+
+  @Before
+  public void initMethodLogLevels() {
+    Method method = RandomizedContext.current().getTargetMethod();
+    LogLevel annotation = method.getAnnotation(LogLevel.class);
+    if (annotation == null) {
+      return;
+    }
+    Map<String, String> previousLevels = LogLevel.Configurer.setLevels(annotation.value());
+    savedMethodLogLevels.putAll(previousLevels);
+  }
+
+  @After
+  public void restoreMethodLogLevels() {
+    LogLevel.Configurer.restoreLogLevels(savedMethodLogLevels);
+    savedMethodLogLevels.clear();
   }
   
   protected static boolean isSSLMode() {
@@ -317,27 +434,21 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   }
 
   private static SSLTestConfig buildSSLConfig() {
-    // test has been disabled
-    if (RandomizedContext.current().getTargetClass().isAnnotationPresent(SuppressSSL.class)) {
-      return new SSLTestConfig();
-    }
+
+    SSLRandomizer sslRandomizer =
+      SSLRandomizer.getSSLRandomizerForClass(RandomizedContext.current().getTargetClass());
     
-    // we don't choose ssl that often because of SOLR-5776
-    final boolean trySsl = random().nextInt(10) < 2;
-    // NOTE: clientAuth is useless unless trySsl==true, but we randomize it independently
-    // just in case it might find bugs in our test/ssl client code (ie: attempting to use
-    // SSL w/client cert to non-ssl servers)
-    boolean trySslClientAuth = random().nextInt(10) < 2;
     if (Constants.MAC_OS_X) {
       // see SOLR-9039
       // If a solution is found to remove this, please make sure to also update
       // TestMiniSolrCloudClusterSSL.testSslAndClientAuth as well.
-      trySslClientAuth = false; 
+      sslRandomizer = new SSLRandomizer(sslRandomizer.ssl, 0.0D, (sslRandomizer.debug + " w/ MAC_OS_X supressed clientAuth"));
     }
-    
-    log.info("Randomized ssl ({}) and clientAuth ({})", trySsl, trySslClientAuth);
-    
-    return new SSLTestConfig(trySsl, trySslClientAuth);
+
+    SSLTestConfig result = sslRandomizer.createSSLTestConfig();
+    log.info("Randomized ssl ({}) and clientAuth ({}) via: {}",
+             result.isSSLMode(), result.isClientAuthMode(), sslRandomizer.debug);
+    return result;
   }
 
   protected static JettyConfig buildJettyConfig(String context) {
@@ -376,10 +487,12 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     lrf = h.getRequestFactory("standard", 0, 20, CommonParams.VERSION, "2.2");
   }
   
-  /** sets system properties based on 
+  /** 
+   * Sets system properties to allow generation of random configurations of
+   * solrconfig.xml and schema.xml. 
+   * Sets properties used on  
    * {@link #newIndexWriterConfig(org.apache.lucene.analysis.Analyzer)}
-   * 
-   * configs can use these system properties to vary the indexwriter settings
+   *  and base schema.xml (Point Fields)
    */
   public static void newRandomConfig() {
     IndexWriterConfig iwc = newIndexWriterConfig(new MockAnalyzer(random()));
@@ -395,6 +508,20 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
       mergeSchedulerClass = "org.apache.lucene.index.ConcurrentMergeScheduler";
     }
     System.setProperty("solr.tests.mergeScheduler", mergeSchedulerClass);
+    if (RandomizedContext.current().getTargetClass().isAnnotationPresent(SuppressPointFields.class)
+        || (!PREFER_POINT_FIELDS && random().nextBoolean())) {
+      log.info("Using TrieFields");
+      System.setProperty("solr.tests.intClass", "int");
+      System.setProperty("solr.tests.longClass", "long");
+      System.setProperty("solr.tests.doubleClass", "double");
+      System.setProperty("solr.tests.floatClass", "float");
+    } else {
+      log.info("Using PointFields");
+      System.setProperty("solr.tests.intClass", "pint");
+      System.setProperty("solr.tests.longClass", "plong");
+      System.setProperty("solr.tests.doubleClass", "pdouble");
+      System.setProperty("solr.tests.floatClass", "pfloat");
+    }
   }
 
   public static Throwable getWrappedException(Throwable e) {
@@ -415,13 +542,6 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     log.info("###Ending " + getTestName());    
     super.tearDown();
   }
-
-  @SuppressForbidden(reason = "method is specific to java.util.logging and highly suspect!")
-  public static void setLoggingLevel(Level level) {
-    java.util.logging.Logger logger = java.util.logging.Logger.getLogger("");
-    logger.setLevel(level);
-  }
-
 
   /** Call initCore in @BeforeClass to instantiate a solr core in your test class.
    * deleteCore will be called for you via SolrTestCaseJ4 @AfterClass */
@@ -469,6 +589,18 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
        if (retries++ > waitSeconds) {
          break;
        }
+       if (retries % 10 == 0) {
+         log.info("Waiting for all SolrIndexSearchers to be released at end of test");
+        if (retries > 10) {
+          TraceFormatting tf = new TraceFormatting();
+          Map<Thread,StackTraceElement[]> stacksMap = Thread.getAllStackTraces();
+          Set<Entry<Thread,StackTraceElement[]>> entries = stacksMap.entrySet();
+          for (Entry<Thread,StackTraceElement[]> entry : entries) {
+            String stack = tf.formatStackTrace(entry.getValue());
+            System.err.println(entry.getKey().getName() + ":\n" + stack);
+          }
+        }
+       }
        try {
          Thread.sleep(1000);
        } catch (InterruptedException e) {}
@@ -476,6 +608,8 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
        endNumCloses = SolrIndexSearcher.numCloses.get();
      }
 
+     log.info("------------------------------------------------------- Done waiting for all SolrIndexSearchers to be released");
+     
      SolrIndexSearcher.numOpens.getAndSet(0);
      SolrIndexSearcher.numCloses.getAndSet(0);
 
@@ -523,7 +657,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   protected static SolrConfig solrConfig;
 
   /**
-   * Harness initialized by initTestHarness.
+   * Harness initialized by create[Default]Core[Container].
    *
    * <p>
    * For use in test methods as needed.
@@ -532,7 +666,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   protected static TestHarness h;
 
   /**
-   * LocalRequestFactory initialized by initTestHarness using sensible
+   * LocalRequestFactory initialized by create[Default]Core[Container] using sensible
    * defaults.
    *
    * <p>
@@ -611,7 +745,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   }
 
   public static CoreContainer createCoreContainer(Path solrHome, String solrXML) {
-    testSolrHome = checkNotNull(solrHome);
+    testSolrHome = requireNonNull(solrHome);
     h = new TestHarness(solrHome, solrXML);
     lrf = h.getRequestFactory("standard", 0, 20, CommonParams.VERSION, "2.2");
     return h.getCoreContainer();
@@ -633,7 +767,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   }
 
   public static CoreContainer createDefaultCoreContainer(Path solrHome) {
-    testSolrHome = checkNotNull(solrHome);
+    testSolrHome = requireNonNull(solrHome);
     h = new TestHarness("collection1", initCoreDataDir.getAbsolutePath(), "solrconfig.xml", "schema.xml");
     lrf = h.getRequestFactory("standard", 0, 20, CommonParams.VERSION, "2.2");
     return h.getCoreContainer();
@@ -982,6 +1116,22 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     return out.toString();
   }
 
+  public static void addDoc(String doc, String updateRequestProcessorChain) throws Exception {
+    Map<String, String[]> params = new HashMap<>();
+    MultiMapSolrParams mmparams = new MultiMapSolrParams(params);
+    params.put(UpdateParams.UPDATE_CHAIN, new String[]{updateRequestProcessorChain});
+    SolrQueryRequestBase req = new SolrQueryRequestBase(h.getCore(),
+        (SolrParams) mmparams) {
+    };
+
+    UpdateRequestHandler handler = new UpdateRequestHandler();
+    handler.init(null);
+    ArrayList<ContentStream> streams = new ArrayList<>(2);
+    streams.add(new ContentStreamBase.StringStream(doc));
+    req.setContentStreams(streams);
+    handler.handleRequestBody(req, new SolrQueryResponse());
+    req.close();
+  }
 
   /**
    * Generates an &lt;add&gt;&lt;doc&gt;... XML String with options
@@ -1099,9 +1249,24 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     @Override
     public String toString() { return xml; }
   }
-  
+
+  /**
+   * Does a low level delete of all docs in the index. 
+   *
+   * The behavior of this method is slightly different then doing a normal <code>*:*</code> DBQ because it
+   * takes advantage of internal methods to ensure all index data is wiped, regardless of optimistic 
+   * concurrency version constraints -- making it suitable for tests that create synthetic versions, 
+   * and/or require a completely pristine index w/o any field metdata.
+   *
+   * @see #deleteByQueryAndGetVersion
+   */
   public void clearIndex() {
-    assertU(delQ("*:*"));
+    try {
+      deleteByQueryAndGetVersion("*:*", params("_version_", Long.toString(-Long.MAX_VALUE),
+                                               DISTRIB_UPDATE_PARAM,DistribPhase.FROMLEADER.toString()));
+    } catch (Exception e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /** Send JSON update commands */
@@ -1130,6 +1295,25 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
       sd.addField((String)fieldsAndValues[i], fieldsAndValues[i+1]);
     }
     return sd;
+  }
+
+  public SolrInputDocument sdocWithChildren(String id, String version) {
+    return sdocWithChildren(id, version, 2);
+  }
+
+  public SolrInputDocument sdocWithChildren(String id, String version, int childCount) {
+    SolrInputDocument doc = sdoc("id", id, "_version_", version);
+    for (int i = 1; i <= childCount; i++) {
+      doc.addChildDocument(sdoc("id", id + "_child" + i));
+    }
+    return doc;
+  }
+  public SolrInputDocument sdocWithChildren(Integer id, String version, int childCount) {
+    SolrInputDocument doc = sdoc("id", id, "_version_", version);
+    for (int i = 1; i <= childCount; i++) {
+      doc.addChildDocument(sdoc("id", (1000)*id + i));
+    }
+    return doc;
   }
 
   public static List<SolrInputDocument> sdocs(SolrInputDocument... docs) {
@@ -1776,6 +1960,10 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
 
   public static Path TEST_PATH() { return getFile("solr/collection1").getParentFile().toPath(); }
 
+  public static Path configset(String name) {
+    return TEST_PATH().resolve("configsets").resolve(name).resolve("conf");
+  }
+
   public static Throwable getRootCause(Throwable t) {
     Throwable result = t;
     for (Throwable cause = t; null != cause; cause = cause.getCause()) {
@@ -1838,7 +2026,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     }
     Files.createFile(dstRoot.toPath().resolve("core.properties"));
     if (propertiesContent != null) {
-      FileUtils.writeStringToFile(new File(dstRoot, "core.properties"), propertiesContent, Charsets.UTF_8.toString());
+      FileUtils.writeStringToFile(new File(dstRoot, "core.properties"), propertiesContent, StandardCharsets.UTF_8);
     }
     String top = SolrTestCaseJ4.TEST_HOME() + "/collection1/conf";
     FileUtils.copyFile(new File(top, "schema-tiny.xml"), new File(subHome, "schema.xml"));
@@ -1858,21 +2046,14 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   }
 
   // Creates a consistent configuration, _including_ solr.xml at dstRoot. Creates collection1/conf and copies
-  // the stock files in there. Seems to be indicated for some tests when we remove the default, hard-coded
-  // solr.xml from being automatically synthesized from SolrConfigXmlOld.DEFAULT_SOLR_XML.
+  // the stock files in there.
+
   public static void copySolrHomeToTemp(File dstRoot, String collection) throws IOException {
-    copySolrHomeToTemp(dstRoot, collection, false);
-  }
-  public static void copySolrHomeToTemp(File dstRoot, String collection, boolean newStyle) throws IOException {
     if (!dstRoot.exists()) {
       assertTrue("Failed to make subdirectory ", dstRoot.mkdirs());
     }
 
-    if (newStyle) {
-      FileUtils.copyFile(new File(SolrTestCaseJ4.TEST_HOME(), "solr-no-core.xml"), new File(dstRoot, "solr.xml"));
-    } else {
-      FileUtils.copyFile(new File(SolrTestCaseJ4.TEST_HOME(), "solr.xml"), new File(dstRoot, "solr.xml"));
-    }
+    FileUtils.copyFile(new File(SolrTestCaseJ4.TEST_HOME(), "solr.xml"), new File(dstRoot, "solr.xml"));
 
     File subHome = new File(dstRoot, collection + File.separator + "conf");
     String top = SolrTestCaseJ4.TEST_HOME() + "/collection1/conf";
@@ -1902,7 +2083,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     SolrDocument solrDocument1 = (SolrDocument) expected;
     SolrDocument solrDocument2 = (SolrDocument) actual;
 
-    if(solrDocument1.getFieldNames().size() != solrDocument1.getFieldNames().size()) {
+    if(solrDocument1.getFieldNames().size() != solrDocument2.getFieldNames().size()) {
       return false;
     }
 
@@ -2051,11 +2232,55 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     return (0 == TestUtil.nextInt(random(), 0, 9)) ? unlikely : likely;
   }
   
+  public static class CloudSolrClientBuilder extends CloudSolrClient.Builder {
+
+    private boolean configuredDUTflag = false;
+
+    public CloudSolrClientBuilder() {
+      super();
+    }
+
+    @Override
+    public CloudSolrClient.Builder sendDirectUpdatesToShardLeadersOnly() {
+      configuredDUTflag = true;
+      return super.sendDirectUpdatesToShardLeadersOnly();
+    }
+
+    @Override
+    public CloudSolrClient.Builder sendDirectUpdatesToAnyShardReplica() {
+      configuredDUTflag = true;
+      return super.sendDirectUpdatesToAnyShardReplica();
+    }
+
+    private void randomlyChooseDirectUpdatesToLeadersOnly() {
+      if (random().nextBoolean()) {
+        sendDirectUpdatesToShardLeadersOnly();
+      } else {
+        sendDirectUpdatesToAnyShardReplica();
+      }
+    }
+
+    @Override
+    public CloudSolrClient build() {
+      if (configuredDUTflag == false) {
+        // flag value not explicity configured
+        if (random().nextBoolean()) {
+          // so randomly choose a value
+          randomlyChooseDirectUpdatesToLeadersOnly();
+        } else {
+          // or go with whatever the default value is
+          configuredDUTflag = true;
+        }
+      }
+      return super.build();
+    }
+  }
+
   public static CloudSolrClient getCloudSolrClient(String zkHost) {
     if (random().nextBoolean()) {
       return new CloudSolrClient(zkHost);
     }
-    return new CloudSolrClient.Builder()
+    return new CloudSolrClientBuilder()
         .withZkHost(zkHost)
         .build();
   }
@@ -2064,7 +2289,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     if (random().nextBoolean()) {
       return new CloudSolrClient(zkHost, httpClient);
     }
-    return new CloudSolrClient.Builder()
+    return new CloudSolrClientBuilder()
         .withZkHost(zkHost)
         .withHttpClient(httpClient)
         .build();
@@ -2076,12 +2301,12 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     }
     
     if (shardLeadersOnly) {
-      return new CloudSolrClient.Builder()
+      return new CloudSolrClientBuilder()
           .withZkHost(zkHost)
           .sendUpdatesOnlyToShardLeaders()
           .build();
     }
-    return new CloudSolrClient.Builder()
+    return new CloudSolrClientBuilder()
         .withZkHost(zkHost)
         .sendUpdatesToAllReplicasInShard()
         .build();
@@ -2093,13 +2318,13 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     }
     
     if (shardLeadersOnly) {
-      return new CloudSolrClient.Builder()
+      return new CloudSolrClientBuilder()
           .withZkHost(zkHost)
           .withHttpClient(httpClient)
           .sendUpdatesOnlyToShardLeaders()
           .build();
     }
-    return new CloudSolrClient.Builder()
+    return new CloudSolrClientBuilder()
         .withZkHost(zkHost)
         .withHttpClient(httpClient)
         .sendUpdatesToAllReplicasInShard()
@@ -2268,5 +2493,9 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
 
   protected static void systemClearPropertySolrTestsMergePolicyFactory() {
     System.clearProperty(SYSTEM_PROPERTY_SOLR_TESTS_MERGEPOLICYFACTORY);
+  }
+  
+  protected <T> T pickRandom(T... options) {
+    return options[random().nextInt(options.length)];
   }
 }

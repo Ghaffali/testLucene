@@ -17,11 +17,9 @@
 package org.apache.solr.cloud.rule;
 
 import java.lang.invoke.MethodHandles;
-
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -37,7 +35,9 @@ import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
-import org.apache.solr.common.util.StrUtils;
+import org.apache.solr.common.cloud.rule.ImplicitSnitch;
+import org.apache.solr.common.cloud.rule.Snitch;
+import org.apache.solr.common.cloud.rule.SnitchContext;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.slf4j.Logger;
@@ -46,7 +46,6 @@ import org.slf4j.LoggerFactory;
 import static java.util.Collections.singletonList;
 import static org.apache.solr.cloud.rule.Rule.MatchStatus.*;
 import static org.apache.solr.cloud.rule.Rule.Phase.*;
-import static org.apache.solr.common.util.StrUtils.formatString;
 import static org.apache.solr.common.util.Utils.getDeepCopy;
 
 public class ReplicaAssigner {
@@ -101,7 +100,6 @@ public class ReplicaAssigner {
     this.participatingLiveNodes = new ArrayList<>(participatingLiveNodes);
     this.nodeVsTags = getTagsForNodes(cc, snitches);
     this.shardVsNodes = getDeepCopy(shardVsNodes, 2);
-    validateTags(nodeVsTags);
 
     if (clusterState != null) {
       Map<String, DocCollection> collections = clusterState.getCollectionsMap();
@@ -255,7 +253,8 @@ public class ReplicaAssigner {
         Integer n = nodeNames.get(liveNode);
         n = n == null ? 1 : n + 1;
         nodeNames.put(liveNode, n);
-        Number coreCount = (Number) nodeVsTagsCopy.get(liveNode).get(ImplicitSnitch.CORES);
+        Map<String, Object> tagsMap = nodeVsTagsCopy.get(liveNode);
+        Number coreCount = tagsMap == null ? null: (Number) tagsMap.get(ImplicitSnitch.CORES);
         if (coreCount != null) {
           nodeVsTagsCopy.get(liveNode).put(ImplicitSnitch.CORES, coreCount.intValue() + 1);
         }
@@ -280,21 +279,6 @@ public class ReplicaAssigner {
     }
     return result;
   }
-
-  private void validateTags(Map<String, Map<String, Object>> nodeVsTags) {
-    List<String> errors = new ArrayList<>();
-    for (Rule rule : rules) {
-      for (Map.Entry<String, Map<String, Object>> e : nodeVsTags.entrySet()) {
-        if (e.getValue().get(rule.tag.name) == null) {
-          errors.add(formatString("The value for tag {0} is not available for node {1}", rule.tag.name, e.getKey()));
-        }
-      }
-    }
-    if (!errors.isEmpty()) {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, StrUtils.join(errors, ','));
-    }
-  }
-
 
   /**
    * get all permutations for the int[] whose items are 0..level
@@ -360,10 +344,7 @@ public class ReplicaAssigner {
       return myTags;
     }
 
-    @Override
-    public CoreContainer getCoreContainer() {
-      return cc;
-    }
+
   }
 
   /**
@@ -399,7 +380,7 @@ public class ReplicaAssigner {
       //now use the Snitch to get the tags
       for (SnitchInfoImpl info : snitches.values()) {
         if (!info.myTags.isEmpty()) {
-          SnitchContext context = new SnitchContext(info, node);
+          SnitchContext context = getSnitchCtx(node, info, cc);
           info.nodeVsContext.put(node, context);
           try {
             info.snitch.getTags(node, info.myTags, context);
@@ -418,18 +399,16 @@ public class ReplicaAssigner {
         if (context.exception != null) {
           failedNodes.put(node, context);
           participatingLiveNodes.remove(node);
-          log.warn("Not all tags were obtained from node " + node);
+          log.warn("Not all tags were obtained from node " + node, context.exception);
           context.exception = new SolrException(SolrException.ErrorCode.SERVER_ERROR,
               "Not all tags were obtained from node " + node);
         } else {
-          if (context.getTags().keySet().containsAll(context.snitchInfo.getTagNames())) {
-            Map<String, Object> tags = result.get(node);
-            if (tags == null) {
-              tags = new HashMap<>();
-              result.put(node, tags);
-            }
-            tags.putAll(context.getTags());
+          Map<String, Object> tags = result.get(node);
+          if (tags == null) {
+            tags = new HashMap<>();
+            result.put(node, tags);
           }
+          tags.putAll(context.getTags());
         }
       }
     }
@@ -440,6 +419,12 @@ public class ReplicaAssigner {
     }
     return result;
 
+  }
+
+  private Map<String, Object> snitchSession = new HashMap<>();
+
+  protected SnitchContext getSnitchCtx(String node, SnitchInfoImpl info, CoreContainer cc) {
+    return new ServerSnitchContext(info, node, snitchSession, cc);
   }
 
   public static void verifySnitchConf(CoreContainer cc, List snitchConf) {

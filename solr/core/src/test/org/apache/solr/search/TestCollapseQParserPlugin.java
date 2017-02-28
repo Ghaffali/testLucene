@@ -16,7 +16,6 @@
  */
 package org.apache.solr.search;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,6 +25,7 @@ import java.util.Iterator;
 
 import org.apache.lucene.util.LuceneTestCase.SuppressCodecs;
 import org.apache.solr.SolrTestCaseJ4;
+import org.apache.solr.SolrTestCaseJ4.SuppressPointFields;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
@@ -37,8 +37,9 @@ import org.junit.Test;
 
 //We want codecs that support DocValues, and ones supporting blank/empty values.
 @SuppressCodecs({"Appending","Lucene3x","Lucene40","Lucene41","Lucene42"})
+@SuppressPointFields
 public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
-
+  
   @BeforeClass
   public static void beforeClass() throws Exception {
     initCore("solrconfig-collapseqparser.xml", "schema11.xml");
@@ -262,6 +263,23 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     assertQ(req(params), "*[count(//doc)=1]",
         "//result/doc[1]/float[@name='id'][.='2.0']");
 
+  }
+
+  @Test // https://issues.apache.org/jira/browse/SOLR-9494
+  public void testNeedsScoreBugFixed() throws Exception {
+    String[] doc = {"id","1", "group_s", "xyz", "text_ws", "hello xxx world"};
+    assertU(adoc(doc));
+    assertU(commit());
+
+    ModifiableSolrParams params = params(
+        "q", "{!surround df=text_ws} 2W(hello, world)", // a SpanQuery that matches
+        "fq", "{!collapse field=group_s}", // collapse on some field
+        // note: rows= whatever; doesn't matter
+        "facet", "true", // facet on something
+        "facet.field", "group_s"
+    );
+    assertQ(req(params));
+    assertQ(req(params)); // fails *second* time!
   }
 
   @Test

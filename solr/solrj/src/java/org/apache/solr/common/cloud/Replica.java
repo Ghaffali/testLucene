@@ -104,8 +104,16 @@ public class Replica extends ZkNodeProps {
   public String getName() {
     return name;
   }
+
   public String getCoreUrl() {
     return ZkCoreNodeProps.getCoreUrl(getStr(BASE_URL_PROP), getStr(CORE_NAME_PROP));
+  }
+  public String getBaseUrl(){
+    return getStr(ZkStateReader.BASE_URL_PROP);
+  }
+
+  public String getCoreName() {
+    return getStr(CORE_NAME_PROP);
   }
 
   /** The name of the node this replica resides on */

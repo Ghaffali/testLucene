@@ -1,8 +1,3 @@
-package org.apache.lucene.geo;
-
-import static org.apache.lucene.util.SloppyMath.TO_RADIANS;
-import static org.apache.lucene.util.SloppyMath.cos;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -19,6 +14,15 @@ import static org.apache.lucene.util.SloppyMath.cos;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+package org.apache.lucene.geo;
+
+import static org.apache.lucene.util.SloppyMath.TO_RADIANS;
+import static org.apache.lucene.util.SloppyMath.cos;
+import static org.apache.lucene.util.SloppyMath.haversinMeters;
+
+import org.apache.lucene.index.PointValues;
+import org.apache.lucene.index.PointValues.Relation;
+import org.apache.lucene.util.SloppyMath;
 
 /**
  * Basic reusable geo-spatial utility methods
@@ -91,4 +95,83 @@ public final class GeoUtils {
   public static double sloppySin(double a) {
     return cos(a - PIO2);
   }
+
+  /**
+   * binary search to find the exact sortKey needed to match the specified radius
+   * any sort key lte this is a query match.
+   */
+  public static double distanceQuerySortKey(double radius) {
+    // effectively infinite
+    if (radius >= haversinMeters(Double.MAX_VALUE)) {
+      return haversinMeters(Double.MAX_VALUE);
+    }
+
+    // this is a search through non-negative long space only
+    long lo = 0;
+    long hi = Double.doubleToRawLongBits(Double.MAX_VALUE);
+    while (lo <= hi) {
+      long mid = (lo + hi) >>> 1;
+      double sortKey = Double.longBitsToDouble(mid);
+      double midRadius = haversinMeters(sortKey);
+      if (midRadius == radius) {
+        return sortKey;
+      } else if (midRadius > radius) {
+        hi = mid - 1;
+      } else {
+        lo = mid + 1;
+      }
+    }
+
+    // not found: this is because a user can supply an arbitrary radius, one that we will never
+    // calculate exactly via our haversin method.
+    double ceil = Double.longBitsToDouble(lo);
+    assert haversinMeters(ceil) > radius;
+    return ceil;
+  }
+
+  /**
+   * Compute the relation between the provided box and distance query.
+   * This only works for boxes that do not cross the dateline.
+   */
+  public static PointValues.Relation relate(
+      double minLat, double maxLat, double minLon, double maxLon,
+      double lat, double lon, double distanceSortKey, double axisLat) {
+
+    if (minLon > maxLon) {
+      throw new IllegalArgumentException("Box crosses the dateline");
+    }
+
+    if ((lon < minLon || lon > maxLon) && (axisLat + Rectangle.AXISLAT_ERROR < minLat || axisLat - Rectangle.AXISLAT_ERROR > maxLat)) {
+      // circle not fully inside / crossing axis
+      if (SloppyMath.haversinSortKey(lat, lon, minLat, minLon) > distanceSortKey &&
+          SloppyMath.haversinSortKey(lat, lon, minLat, maxLon) > distanceSortKey &&
+          SloppyMath.haversinSortKey(lat, lon, maxLat, minLon) > distanceSortKey &&
+          SloppyMath.haversinSortKey(lat, lon, maxLat, maxLon) > distanceSortKey) {
+        // no points inside
+        return Relation.CELL_OUTSIDE_QUERY;
+      }
+    }
+
+    if (within90LonDegrees(lon, minLon, maxLon) &&
+        SloppyMath.haversinSortKey(lat, lon, minLat, minLon) <= distanceSortKey &&
+        SloppyMath.haversinSortKey(lat, lon, minLat, maxLon) <= distanceSortKey &&
+        SloppyMath.haversinSortKey(lat, lon, maxLat, minLon) <= distanceSortKey &&
+        SloppyMath.haversinSortKey(lat, lon, maxLat, maxLon) <= distanceSortKey) {
+      // we are fully enclosed, collect everything within this subtree
+      return Relation.CELL_INSIDE_QUERY;
+    }
+
+    return Relation.CELL_CROSSES_QUERY;
+  }
+
+  /** Return whether all points of {@code [minLon,maxLon]} are within 90 degrees of {@code lon}. */
+  static boolean within90LonDegrees(double lon, double minLon, double maxLon) {
+    if (maxLon <= lon - 180) {
+      lon -= 360;
+    } else if (minLon >= lon + 180) {
+      lon += 360;
+    }
+    return maxLon - lon < 90 && lon - minLon < 90;
+  }
+
 }

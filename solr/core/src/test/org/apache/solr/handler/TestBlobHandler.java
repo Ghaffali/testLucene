@@ -16,6 +16,15 @@
  */
 package org.apache.solr.handler;
 
+import java.io.IOException;
+import java.io.StringReader;
+import java.lang.invoke.MethodHandles;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
@@ -35,7 +44,6 @@ import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
-import org.apache.solr.core.ConfigOverlay;
 import org.apache.solr.util.RTimer;
 import org.apache.solr.util.SimplePostTool;
 import org.junit.Test;
@@ -43,15 +51,6 @@ import org.noggit.JSONParser;
 import org.noggit.ObjectBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.io.StringReader;
-import java.lang.invoke.MethodHandles;
-import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
 
 import static org.apache.solr.common.util.Utils.getObjectByPath;
 
@@ -82,26 +81,40 @@ public class TestBlobHandler extends AbstractFullDistribZkTestBase {
           "requestHandler",
           "/blob",
           "class")));
+      map = TestSolrConfigHandlerConcurrent.getAsMap(baseUrl + "/.system/schema/fields/blob", cloudClient);
+      assertNotNull(map);
+      assertEquals("blob", getObjectByPath(map, true, Arrays.asList(
+          "field",
+          "name")));
+      assertEquals("bytes", getObjectByPath(map, true, Arrays.asList(
+          "field",
+          "type")));
 
-      byte[] bytarr = new byte[1024];
-      for (int i = 0; i < bytarr.length; i++) bytarr[i] = (byte) (i % 127);
-      byte[] bytarr2 = new byte[2048];
-      for (int i = 0; i < bytarr2.length; i++) bytarr2[i] = (byte) (i % 127);
-      String blobName = "test";
-      postAndCheck(cloudClient, baseUrl, blobName, ByteBuffer.wrap(bytarr), 1);
-      postAndCheck(cloudClient, baseUrl, blobName, ByteBuffer.wrap(bytarr2), 2);
-
-      url = baseUrl + "/.system/blob/test/1";
-      map = TestSolrConfigHandlerConcurrent.getAsMap(url, cloudClient);
-      List l = (List) Utils.getObjectByPath(map, false, Arrays.asList("response", "docs"));
-      assertNotNull("" + map, l);
-      assertTrue("" + map, l.size() > 0);
-      map = (Map) l.get(0);
-      assertEquals("" + bytarr.length, String.valueOf(map.get("size")));
-
-      compareInputAndOutput(baseUrl + "/.system/blob/test?wt=filestream", bytarr2);
-      compareInputAndOutput(baseUrl + "/.system/blob/test/1?wt=filestream", bytarr);
+      checkBlobPost(baseUrl, cloudClient);
     }
+  }
+
+  static void checkBlobPost(String baseUrl, CloudSolrClient cloudClient) throws Exception {
+    String url;
+    Map map;
+    byte[] bytarr = new byte[1024];
+    for (int i = 0; i < bytarr.length; i++) bytarr[i] = (byte) (i % 127);
+    byte[] bytarr2 = new byte[2048];
+    for (int i = 0; i < bytarr2.length; i++) bytarr2[i] = (byte) (i % 127);
+    String blobName = "test";
+    postAndCheck(cloudClient, baseUrl, blobName, ByteBuffer.wrap(bytarr), 1);
+    postAndCheck(cloudClient, baseUrl, blobName, ByteBuffer.wrap(bytarr2), 2);
+
+    url = baseUrl + "/.system/blob/test/1";
+    map = TestSolrConfigHandlerConcurrent.getAsMap(url, cloudClient);
+    List l = (List) Utils.getObjectByPath(map, false, Arrays.asList("response", "docs"));
+    assertNotNull("" + map, l);
+    assertTrue("" + map, l.size() > 0);
+    map = (Map) l.get(0);
+    assertEquals("" + bytarr.length, String.valueOf(map.get("size")));
+
+    compareInputAndOutput(baseUrl + "/.system/blob/test?wt=filestream", bytarr2, cloudClient);
+    compareInputAndOutput(baseUrl + "/.system/blob/test/1?wt=filestream", bytarr, cloudClient);
   }
 
   public static void createSystemCollection(SolrClient client) throws SolrServerException, IOException {
@@ -145,7 +158,7 @@ public class TestBlobHandler extends AbstractFullDistribZkTestBase {
     return new String(Utils.toJSON(map), StandardCharsets.UTF_8);
   }
 
-  private void compareInputAndOutput(String url, byte[] bytarr) throws IOException {
+  static void compareInputAndOutput(String url, byte[] bytarr, CloudSolrClient cloudClient) throws IOException {
 
     HttpClient httpClient = cloudClient.getLbClient().getHttpClient();
 

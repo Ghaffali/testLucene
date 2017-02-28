@@ -22,13 +22,13 @@ import java.util.Arrays;
 import java.util.List;
 
 import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.index.TermContext;
 import org.apache.lucene.index.TermState;
 import org.apache.lucene.search.BooleanClause.Occur;
 import org.apache.lucene.util.ArrayUtil;
-import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.InPlaceMergeSorter;
 
 /**
@@ -126,16 +126,14 @@ public final class BlendedTermQuery extends Query {
   }
 
   /**
-   * A {@link RewriteMethod} that adds all sub queries to a {@link BooleanQuery}
-   * which has {@link BooleanQuery#isCoordDisabled() coords disabled}. This
-   * {@link RewriteMethod} is useful when matching on several fields is
+   * A {@link RewriteMethod} that adds all sub queries to a {@link BooleanQuery}.
+   * This {@link RewriteMethod} is useful when matching on several fields is
    * considered better than having a good match on a single field.
    */
   public static final RewriteMethod BOOLEAN_REWRITE = new RewriteMethod() {
     @Override
     public Query rewrite(Query[] subQueries) {
       BooleanQuery.Builder merged = new BooleanQuery.Builder();
-      merged.setDisableCoord(true);
       for (Query query : subQueries) {
         merged.add(query, Occur.SHOULD);
       }
@@ -224,20 +222,21 @@ public final class BlendedTermQuery extends Query {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (super.equals(obj) == false) {
-      return false;
-    }
-    BlendedTermQuery that = (BlendedTermQuery) obj;
-    return Arrays.equals(terms, that.terms)
-        && Arrays.equals(contexts, that.contexts)
-        && Arrays.equals(boosts, that.boosts)
-        && rewriteMethod.equals(that.rewriteMethod);
+  public boolean equals(Object other) {
+    return sameClassAs(other) &&
+           equalsTo(getClass().cast(other));
+  }
+  
+  private boolean equalsTo(BlendedTermQuery other) {
+    return Arrays.equals(terms, other.terms) && 
+           Arrays.equals(contexts, other.contexts) && 
+           Arrays.equals(boosts, other.boosts) && 
+           rewriteMethod.equals(other.rewriteMethod);
   }
 
   @Override
   public int hashCode() {
-    int h = super.hashCode();
+    int h = classHash();
     h = 31 * h + Arrays.hashCode(terms);
     h = 31 * h + Arrays.hashCode(contexts);
     h = 31 * h + Arrays.hashCode(boosts);
@@ -266,7 +265,7 @@ public final class BlendedTermQuery extends Query {
   public final Query rewrite(IndexReader reader) throws IOException {
     final TermContext[] contexts = Arrays.copyOf(this.contexts, this.contexts.length);
     for (int i = 0; i < contexts.length; ++i) {
-      if (contexts[i] == null || contexts[i].topReaderContext != reader.getContext()) {
+      if (contexts[i] == null || contexts[i].wasBuiltFor(reader.getContext()) == false) {
         contexts[i] = TermContext.build(reader.getContext(), terms[i]);
       }
     }
@@ -286,7 +285,7 @@ public final class BlendedTermQuery extends Query {
     }
 
     for (int i = 0; i < contexts.length; ++i) {
-      contexts[i] = adjustFrequencies(contexts[i], df, ttf);
+      contexts[i] = adjustFrequencies(reader.getContext(), contexts[i], df, ttf);
     }
 
     Query[] termQueries = new Query[terms.length];
@@ -299,15 +298,16 @@ public final class BlendedTermQuery extends Query {
     return rewriteMethod.rewrite(termQueries);
   }
 
-  private static TermContext adjustFrequencies(TermContext ctx, int artificialDf, long artificialTtf) {
-    List<LeafReaderContext> leaves = ctx.topReaderContext.leaves();
+  private static TermContext adjustFrequencies(IndexReaderContext readerContext,
+      TermContext ctx, int artificialDf, long artificialTtf) {
+    List<LeafReaderContext> leaves = readerContext.leaves();
     final int len;
     if (leaves == null) {
       len = 1;
     } else {
       len = leaves.size();
     }
-    TermContext newCtx = new TermContext(ctx.topReaderContext);
+    TermContext newCtx = new TermContext(readerContext);
     for (int i = 0; i < len; ++i) {
       TermState termState = ctx.get(i);
       if (termState == null) {

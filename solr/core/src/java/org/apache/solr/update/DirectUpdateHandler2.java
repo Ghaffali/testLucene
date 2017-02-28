@@ -20,18 +20,18 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.LongAdder;
 
 import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
 import org.apache.lucene.index.CodecReader;
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SlowCodecReaderWrapper;
 import org.apache.lucene.index.Term;
@@ -47,7 +47,6 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
-import org.apache.solr.common.util.SuppressForbidden;
 import org.apache.solr.core.SolrConfig.UpdateHandlerInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.request.LocalSolrQueryRequest;
@@ -76,20 +75,20 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   protected final SolrCoreState solrCoreState;
 
   // stats
-  AtomicLong addCommands = new AtomicLong();
-  AtomicLong addCommandsCumulative = new AtomicLong();
-  AtomicLong deleteByIdCommands= new AtomicLong();
-  AtomicLong deleteByIdCommandsCumulative= new AtomicLong();
-  AtomicLong deleteByQueryCommands= new AtomicLong();
-  AtomicLong deleteByQueryCommandsCumulative= new AtomicLong();
-  AtomicLong expungeDeleteCommands = new AtomicLong();
-  AtomicLong mergeIndexesCommands = new AtomicLong();
-  AtomicLong commitCommands= new AtomicLong();
-  AtomicLong optimizeCommands= new AtomicLong();
-  AtomicLong rollbackCommands= new AtomicLong();
-  AtomicLong numDocsPending= new AtomicLong();
-  AtomicLong numErrors = new AtomicLong();
-  AtomicLong numErrorsCumulative = new AtomicLong();
+  LongAdder addCommands = new LongAdder();
+  LongAdder addCommandsCumulative = new LongAdder();
+  LongAdder deleteByIdCommands= new LongAdder();
+  LongAdder deleteByIdCommandsCumulative= new LongAdder();
+  LongAdder deleteByQueryCommands= new LongAdder();
+  LongAdder deleteByQueryCommandsCumulative= new LongAdder();
+  LongAdder expungeDeleteCommands = new LongAdder();
+  LongAdder mergeIndexesCommands = new LongAdder();
+  LongAdder commitCommands= new LongAdder();
+  LongAdder optimizeCommands= new LongAdder();
+  LongAdder rollbackCommands= new LongAdder();
+  LongAdder numDocsPending= new LongAdder();
+  LongAdder numErrors = new LongAdder();
+  LongAdder numErrorsCumulative = new LongAdder();
 
   // tracks when auto-commit should occur
   protected final CommitTracker commitTracker;
@@ -158,7 +157,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   }
 
   protected void rollbackWriter() throws IOException {
-    numDocsPending.set(0);
+    numDocsPending.reset();
     solrCoreState.rollbackIndexWriter(core);
     
   }
@@ -192,8 +191,8 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   private int addDoc0(AddUpdateCommand cmd) throws IOException {
     int rc = -1;
 
-    addCommands.incrementAndGet();
-    addCommandsCumulative.incrementAndGet();
+    addCommands.increment();
+    addCommandsCumulative.increment();
 
     // if there is no ID field, don't overwrite
     if (idField == null) {
@@ -230,10 +229,10 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       rc = 1;
     } finally {
       if (rc != 1) {
-        numErrors.incrementAndGet();
-        numErrorsCumulative.incrementAndGet();
+        numErrors.increment();
+        numErrorsCumulative.increment();
       } else {
-        numDocsPending.incrementAndGet();
+        numDocsPending.increment();
       }
     }
 
@@ -260,7 +259,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
 
   private void doNormalUpdate(AddUpdateCommand cmd) throws IOException {
     Term updateTerm;
-    Term idTerm = new Term(cmd.isBlock() ? "_root_" : idField.getName(), cmd.getIndexedId());
+    Term idTerm = getIdTerm(cmd);
     boolean del = false;
     if (cmd.updateTerm == null) {
       updateTerm = idTerm;
@@ -274,14 +273,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
     try {
       IndexWriter writer = iw.get();
 
-      if (cmd.isBlock()) {
-        writer.updateDocuments(updateTerm, cmd);
-      } else {
-        Document luceneDocument = cmd.getLuceneDocument();
-        // SolrCore.verbose("updateDocument",updateTerm,luceneDocument,writer);
-        writer.updateDocument(updateTerm, luceneDocument);
-      }
-      // SolrCore.verbose("updateDocument",updateTerm,"DONE");
+      updateDocOrDocValues(cmd, writer, updateTerm);
 
       if (del) { // ensure id remains unique
         BooleanQuery.Builder bq = new BooleanQuery.Builder();
@@ -325,8 +317,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       }
     }
 
-    Document luceneDocument = cmd.getLuceneDocument();
-    Term idTerm = new Term(idField.getName(), cmd.getIndexedId());
+    Term idTerm = getIdTerm(cmd);
 
     RefCounted<IndexWriter> iw = solrCoreState.getIndexWriter(core);
     try {
@@ -334,7 +325,11 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
 
       // see comment in deleteByQuery
       synchronized (solrCoreState.getUpdateLock()) {
-        writer.updateDocument(idTerm, luceneDocument);
+        updateDocOrDocValues(cmd, writer, idTerm);
+
+        if (cmd.isInPlaceUpdate() && ulog != null) {
+          ulog.openRealtimeSearcher(); // This is needed due to LUCENE-7344.
+        }
         for (Query q : dbqList) {
           writer.deleteDocuments(new DeleteByQueryWrapper(q, core.getLatestSchema()));
         }
@@ -344,6 +339,10 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       iw.decref();
     }
 
+  }
+
+  private Term getIdTerm(AddUpdateCommand cmd) {
+    return new Term(cmd.isBlock() ? "_root_" : idField.getName(), cmd.getIndexedId());
   }
 
   private void updateDeleteTrackers(DeleteUpdateCommand cmd) {
@@ -368,8 +367,8 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   // we don't return the number of docs deleted because it's not always possible to quickly know that info.
   @Override
   public void delete(DeleteUpdateCommand cmd) throws IOException {
-    deleteByIdCommands.incrementAndGet();
-    deleteByIdCommandsCumulative.incrementAndGet();
+    deleteByIdCommands.increment();
+    deleteByIdCommandsCumulative.increment();
 
     Term deleteTerm = new Term(idField.getName(), cmd.getIndexedId());
     // SolrCore.verbose("deleteDocuments",deleteTerm,writer);
@@ -399,7 +398,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
     Query q;
     try {
       // move this higher in the stack?
-      QParser parser = QParser.getParser(cmd.getQuery(), "lucene", cmd.req);
+      QParser parser = QParser.getParser(cmd.getQuery(), cmd.req);
       q = parser.getQuery();
       q = QueryUtils.makeQueryable(q);
 
@@ -426,8 +425,8 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   // we don't return the number of docs deleted because it's not always possible to quickly know that info.
   @Override
   public void deleteByQuery(DeleteUpdateCommand cmd) throws IOException {
-    deleteByQueryCommands.incrementAndGet();
-    deleteByQueryCommandsCumulative.incrementAndGet();
+    deleteByQueryCommands.increment();
+    deleteByQueryCommandsCumulative.increment();
     boolean madeIt=false;
     try {
       Query q = getQuery(cmd);
@@ -453,6 +452,11 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       // as we use around ulog.preCommit... also see comments in ulog.postSoftCommit)
       //
       synchronized (solrCoreState.getUpdateLock()) {
+
+        // We are reopening a searcher before applying the deletes to overcome LUCENE-7344.
+        // Once LUCENE-7344 is resolved, we can consider removing this.
+        if (ulog != null) ulog.openRealtimeSearcher();
+
         if (delAll) {
           deleteAll();
         } else {
@@ -473,8 +477,8 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
 
     } finally {
       if (!madeIt) {
-        numErrors.incrementAndGet();
-        numErrorsCumulative.incrementAndGet();
+        numErrors.increment();
+        numErrorsCumulative.increment();
       }
     }
   }
@@ -482,7 +486,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
 
   @Override
   public int mergeIndexes(MergeIndexesCommand cmd) throws IOException {
-    mergeIndexesCommands.incrementAndGet();
+    mergeIndexesCommands.increment();
     int rc;
 
     log.info("start " + cmd);
@@ -516,16 +520,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
 
     return rc;
   }
-
-  @SuppressForbidden(reason = "Need currentTimeMillis, commit time should be used only for debugging purposes, " +
-      " but currently suspiciously used for replication as well")
-  private void setCommitData(IndexWriter iw) {
-    final Map<String,String> commitData = new HashMap<>();
-    commitData.put(SolrIndexWriter.COMMIT_TIME_MSEC_KEY,
-        String.valueOf(System.currentTimeMillis()));
-    iw.setCommitData(commitData);
-  }
-
+  
   public void prepareCommit(CommitUpdateCommand cmd) throws IOException {
 
     boolean error=true;
@@ -534,7 +529,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       log.info("start "+cmd);
       RefCounted<IndexWriter> iw = solrCoreState.getIndexWriter(core);
       try {
-        setCommitData(iw.get());
+        SolrIndexWriter.setCommitData(iw.get());
         iw.get().prepareCommit();
       } finally {
         iw.decref();
@@ -545,7 +540,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       error=false;
     }
     finally {
-      if (error) numErrors.incrementAndGet();
+      if (error) numErrors.increment();
     }
   }
 
@@ -557,10 +552,10 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
     }
 
     if (cmd.optimize) {
-      optimizeCommands.incrementAndGet();
+      optimizeCommands.increment();
     } else {
-      commitCommands.incrementAndGet();
-      if (cmd.expungeDeletes) expungeDeleteCommands.incrementAndGet();
+      commitCommands.increment();
+      if (cmd.expungeDeletes) expungeDeleteCommands.increment();
     }
 
     Future[] waitSearcher = null;
@@ -615,14 +610,14 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
           // SolrCore.verbose("writer.commit() start writer=",writer);
 
           if (writer.hasUncommittedChanges()) {
-            setCommitData(writer);
+            SolrIndexWriter.setCommitData(writer);
             writer.commit();
           } else {
             log.info("No uncommitted changes. Skipping IW.commit.");
           }
 
           // SolrCore.verbose("writer.commit() end");
-          numDocsPending.set(0);
+          numDocsPending.reset();
           callPostCommitCallbacks();
         }
       } finally {
@@ -676,10 +671,10 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
         solrCoreState.getCommitLock().unlock();
       }
 
-      addCommands.set(0);
-      deleteByIdCommands.set(0);
-      deleteByQueryCommands.set(0);
-      if (error) numErrors.incrementAndGet();
+      addCommands.reset();
+      deleteByIdCommands.reset();
+      deleteByQueryCommands.reset();
+      if (error) numErrors.increment();
     }
 
     // if we are supposed to wait for the searcher to be registered, then we should do it
@@ -707,7 +702,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       throw new UnsupportedOperationException("Rollback is currently not supported in SolrCloud mode. (SOLR-4895)");
     }
 
-    rollbackCommands.incrementAndGet();
+    rollbackCommands.increment();
 
     boolean error=true;
 
@@ -727,13 +722,10 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       error=false;
     }
     finally {
-      addCommandsCumulative.set(
-          addCommandsCumulative.get() - addCommands.getAndSet( 0 ) );
-      deleteByIdCommandsCumulative.set(
-          deleteByIdCommandsCumulative.get() - deleteByIdCommands.getAndSet( 0 ) );
-      deleteByQueryCommandsCumulative.set(
-          deleteByQueryCommandsCumulative.get() - deleteByQueryCommands.getAndSet( 0 ) );
-      if (error) numErrors.incrementAndGet();
+      addCommandsCumulative.add(-addCommands.sumThenReset());
+      deleteByIdCommandsCumulative.add(-deleteByIdCommands.sumThenReset());
+      deleteByQueryCommandsCumulative.add(-deleteByQueryCommands.sumThenReset());
+      if (error) numErrors.increment();
     }
   }
 
@@ -744,12 +736,12 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
 
   @Override
   public void close() throws IOException {
-    log.info("closing " + this);
+    log.debug("closing " + this);
     
     commitTracker.close();
     softCommitTracker.close();
 
-    numDocsPending.set(0);
+    numDocsPending.reset();
   }
 
 
@@ -803,7 +795,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
           }
 
           // todo: refactor this shared code (or figure out why a real CommitUpdateCommand can't be used)
-          setCommitData(writer);
+          SolrIndexWriter.setCommitData(writer);
           writer.commit();
 
           synchronized (solrCoreState.getUpdateLock()) {
@@ -845,6 +837,53 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
     splitter.split();
   }
 
+  /**
+   * Calls either {@link IndexWriter#updateDocValues} or {@link IndexWriter#updateDocument} as 
+   * needed based on {@link AddUpdateCommand#isInPlaceUpdate}.
+   * <p>
+   * If the this is an UPDATE_INPLACE cmd, then all fields inclued in 
+   * {@link AddUpdateCommand#getLuceneDocument} must either be the uniqueKey field, or be DocValue 
+   * only fields.
+   * </p>
+   *
+   * @param cmd - cmd apply to IndexWriter
+   * @param writer - IndexWriter to use
+   * @param updateTerm - used if this cmd results in calling {@link IndexWriter#updateDocument}
+   */
+  private void updateDocOrDocValues(AddUpdateCommand cmd, IndexWriter writer, Term updateTerm) throws IOException {
+    assert null != cmd;
+    final SchemaField uniqueKeyField = cmd.req.getSchema().getUniqueKeyField();
+    final String uniqueKeyFieldName = null == uniqueKeyField ? null : uniqueKeyField.getName();
+
+    if (cmd.isInPlaceUpdate()) {
+      Document luceneDocument = cmd.getLuceneDocument(true);
+
+      final List<IndexableField> origDocFields = luceneDocument.getFields();
+      final List<Field> fieldsToUpdate = new ArrayList<>(origDocFields.size());
+      for (IndexableField field : origDocFields) {
+        if (! field.name().equals(uniqueKeyFieldName) ) {
+          fieldsToUpdate.add((Field)field);
+        }
+      }
+      log.debug("updateDocValues({})", cmd);
+      writer.updateDocValues(updateTerm, fieldsToUpdate.toArray(new Field[fieldsToUpdate.size()]));
+    } else {
+      updateDocument(cmd, writer, updateTerm);
+    }
+  }
+
+  private void updateDocument(AddUpdateCommand cmd, IndexWriter writer, Term updateTerm) throws IOException {
+    if(cmd.isBlock()){
+      log.debug("updateDocuments({})", cmd);
+      writer.updateDocuments(updateTerm, cmd);
+    }else{
+      Document luceneDocument = cmd.getLuceneDocument(false);
+      log.debug("updateDocument({})", cmd);
+      writer.updateDocument(updateTerm, luceneDocument);
+    }
+  }
+
+
   /////////////////////////////////////////////////////////////////////
   // SolrInfoMBean stuff: Statistics and Module Info
   /////////////////////////////////////////////////////////////////////
@@ -865,11 +904,6 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   }
 
   @Override
-  public Category getCategory() {
-    return Category.UPDATEHANDLER;
-  }
-
-  @Override
   public String getSource() {
     return null;
   }
@@ -882,7 +916,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   @Override
   public NamedList getStatistics() {
     NamedList lst = new SimpleOrderedMap();
-    lst.add("commits", commitCommands.get());
+    lst.add("commits", commitCommands.longValue());
     if (commitTracker.getDocsUpperBound() > 0) {
       lst.add("autocommit maxDocs", commitTracker.getDocsUpperBound());
     }
@@ -897,20 +931,20 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       lst.add("soft autocommit maxTime", "" + softCommitTracker.getTimeUpperBound() + "ms");
     }
     lst.add("soft autocommits", softCommitTracker.getCommitCount());
-    lst.add("optimizes", optimizeCommands.get());
-    lst.add("rollbacks", rollbackCommands.get());
-    lst.add("expungeDeletes", expungeDeleteCommands.get());
-    lst.add("docsPending", numDocsPending.get());
+    lst.add("optimizes", optimizeCommands.longValue());
+    lst.add("rollbacks", rollbackCommands.longValue());
+    lst.add("expungeDeletes", expungeDeleteCommands.longValue());
+    lst.add("docsPending", numDocsPending.longValue());
     // pset.size() not synchronized, but it should be fine to access.
     // lst.add("deletesPending", pset.size());
-    lst.add("adds", addCommands.get());
-    lst.add("deletesById", deleteByIdCommands.get());
-    lst.add("deletesByQuery", deleteByQueryCommands.get());
-    lst.add("errors", numErrors.get());
-    lst.add("cumulative_adds", addCommandsCumulative.get());
-    lst.add("cumulative_deletesById", deleteByIdCommandsCumulative.get());
-    lst.add("cumulative_deletesByQuery", deleteByQueryCommandsCumulative.get());
-    lst.add("cumulative_errors", numErrorsCumulative.get());
+    lst.add("adds", addCommands.longValue());
+    lst.add("deletesById", deleteByIdCommands.longValue());
+    lst.add("deletesByQuery", deleteByQueryCommands.longValue());
+    lst.add("errors", numErrors.longValue());
+    lst.add("cumulative_adds", addCommandsCumulative.longValue());
+    lst.add("cumulative_deletesById", deleteByIdCommandsCumulative.longValue());
+    lst.add("cumulative_deletesByQuery", deleteByQueryCommandsCumulative.longValue());
+    lst.add("cumulative_errors", numErrorsCumulative.longValue());
     if (this.ulog != null) {
       lst.add("transaction_logs_total_size", ulog.getTotalLogsSize());
       lst.add("transaction_logs_total_number", ulog.getTotalLogsNumber());

@@ -159,16 +159,6 @@ public class ParallelLeafReader extends LeafReader {
     return buffer.append(')').toString();
   }
 
-  @Override
-  public void addCoreClosedListener(CoreClosedListener listener) {
-    addCoreClosedListenerAsReaderClosedListener(this, listener);
-  }
-
-  @Override
-  public void removeCoreClosedListener(CoreClosedListener listener) {
-    removeCoreClosedListenerAsReaderClosedListener(this, listener);
-  }
-
   // Single instance of this, per ParallelReader instance
   private final class ParallelFields extends Fields {
     final Map<String,Terms> fields = new TreeMap<>();
@@ -242,6 +232,32 @@ public class ParallelLeafReader extends LeafReader {
   }
   
   @Override
+  public CacheHelper getCoreCacheHelper() {
+    // ParallelReader instances can be short-lived, which would make caching trappy
+    // so we do not cache on them, unless they wrap a single reader in which
+    // case we delegate
+    if (parallelReaders.length == 1
+        && storedFieldsReaders.length == 1
+        && parallelReaders[0] == storedFieldsReaders[0]) {
+      return parallelReaders[0].getCoreCacheHelper();
+    }
+    return null;
+  }
+
+  @Override
+  public CacheHelper getReaderCacheHelper() {
+    // ParallelReader instances can be short-lived, which would make caching trappy
+    // so we do not cache on them, unless they wrap a single reader in which
+    // case we delegate
+    if (parallelReaders.length == 1
+        && storedFieldsReaders.length == 1
+        && parallelReaders[0] == storedFieldsReaders[0]) {
+      return parallelReaders[0].getReaderCacheHelper();
+    }
+    return null;
+  }
+
+  @Override
   public Fields getTermVectors(int docID) throws IOException {
     ensureOpen();
     ParallelFields fields = null;
@@ -290,7 +306,7 @@ public class ParallelLeafReader extends LeafReader {
     LeafReader reader = fieldToReader.get(field);
     return reader == null ? null : reader.getBinaryDocValues(field);
   }
-  
+
   @Override
   public SortedDocValues getSortedDocValues(String field) throws IOException {
     ensureOpen();
@@ -313,13 +329,6 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public Bits getDocsWithField(String field) throws IOException {
-    ensureOpen();
-    LeafReader reader = fieldToReader.get(field);
-    return reader == null ? null : reader.getDocsWithField(field);
-  }
-
-  @Override
   public NumericDocValues getNormValues(String field) throws IOException {
     ensureOpen();
     LeafReader reader = fieldToReader.get(field);
@@ -328,99 +337,10 @@ public class ParallelLeafReader extends LeafReader {
   }
 
   @Override
-  public PointValues getPointValues() {
-    return new PointValues() {
-      @Override
-      public void intersect(String fieldName, IntersectVisitor visitor) throws IOException {
-        LeafReader reader = fieldToReader.get(fieldName);
-        if (reader == null) {
-          return;
-        }
-        PointValues dimValues = reader.getPointValues();
-        if (dimValues == null) {
-          return;
-        }
-        dimValues.intersect(fieldName, visitor);
-      }
-
-      @Override
-      public byte[] getMinPackedValue(String fieldName) throws IOException {
-        LeafReader reader = fieldToReader.get(fieldName);
-        if (reader == null) {
-          return null;
-        }
-        PointValues dimValues = reader.getPointValues();
-        if (dimValues == null) {
-          return null;
-        }
-        return dimValues.getMinPackedValue(fieldName);
-      }
-
-      @Override
-      public byte[] getMaxPackedValue(String fieldName) throws IOException {
-        LeafReader reader = fieldToReader.get(fieldName);
-        if (reader == null) {
-          return null;
-        }
-        PointValues dimValues = reader.getPointValues();
-        if (dimValues == null) {
-          return null;
-        }
-        return dimValues.getMaxPackedValue(fieldName);
-      }
-
-      @Override
-      public int getNumDimensions(String fieldName) throws IOException {
-        LeafReader reader = fieldToReader.get(fieldName);
-        if (reader == null) {
-          return 0;
-        }
-        PointValues dimValues = reader.getPointValues();
-        if (dimValues == null) {
-          return 0;
-        }
-        return dimValues.getNumDimensions(fieldName);
-      }
-
-      @Override
-      public int getBytesPerDimension(String fieldName) throws IOException {
-        LeafReader reader = fieldToReader.get(fieldName);
-        if (reader == null) {
-          return 0;
-        }
-        PointValues dimValues = reader.getPointValues();
-        if (dimValues == null) {
-          return 0;
-        }
-        return dimValues.getBytesPerDimension(fieldName);
-      }
-
-      @Override
-      public long size(String fieldName) {
-        LeafReader reader = fieldToReader.get(fieldName);
-        if (reader == null) {
-          return 0;
-        }
-        PointValues dimValues = reader.getPointValues();
-        if (dimValues == null) {
-          return 0;
-        }
-        return dimValues.size(fieldName);
-      }
-
-      @Override
-      public int getDocCount(String fieldName) {
-        LeafReader reader = fieldToReader.get(fieldName);
-        if (reader == null) {
-          return 0;
-        }
-        PointValues dimValues = reader.getPointValues();
-        if (dimValues == null) {
-          return 0;
-        }
-        return dimValues.getDocCount(fieldName);
-      }
-    };
+  public PointValues getPointValues(String fieldName) throws IOException {
+    ensureOpen();
+    LeafReader reader = fieldToReader.get(fieldName);
+    return reader == null ? null : reader.getPointValues(fieldName);
   }
 
   @Override

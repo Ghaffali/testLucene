@@ -33,7 +33,6 @@ import java.io.StringReader;
 import java.net.URL;
 import java.text.NumberFormat;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -298,5 +297,10 @@ public class SolrInfoMBeanHandler extends RequestHandlerBase {
   @Override
   public String getDescription() {
     return "Get Info (and statistics) for registered SolrInfoMBeans";
+  }
+
+  @Override
+  public Category getCategory() {
+    return Category.ADMIN;
   }
 }

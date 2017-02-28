@@ -20,7 +20,6 @@ import java.lang.invoke.MethodHandles;
 
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -28,7 +27,6 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.lucene.util.LuceneTestCase;
-import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.cloud.AbstractFullDistribZkTestBase.CloudJettyRunner;
 import org.apache.solr.common.cloud.Replica;
@@ -75,7 +73,6 @@ public class ChaosMonkey {
   private AtomicInteger expires = new AtomicInteger();
   private AtomicInteger connloss = new AtomicInteger();
   
-  private Map<String,List<SolrClient>> shardToClient;
   private boolean expireSessions;
   private boolean causeConnectionLoss;
   private boolean aggressivelyKillLeaders;

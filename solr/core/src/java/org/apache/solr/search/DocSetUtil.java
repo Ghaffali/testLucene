@@ -17,10 +17,12 @@
 package org.apache.solr.search;
 
 import java.io.IOException;
+import java.util.Iterator;
 import java.util.List;
 
 import org.apache.lucene.index.DirectoryReader;
 import org.apache.lucene.index.Fields;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -29,12 +31,15 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.Collector;
 import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.LeafCollector;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.FixedBitSet;
+import org.apache.solr.common.SolrException;
 
 /** @lucene.experimental */
 public class DocSetUtil {
@@ -65,6 +70,51 @@ public class DocSetUtil {
         return false;
       }
     }
+  }
+
+  /**
+   * This variant of getDocSet will attempt to do some deduplication
+   * on certain DocSets such as DocSets that match numDocs.  This means it can return
+   * a cached version of the set, and the returned set should not be modified.
+   * @lucene.experimental
+   */
+  public static DocSet getDocSet(DocSetCollector collector, SolrIndexSearcher searcher) {
+    if (collector.size() == searcher.numDocs()) {
+      if (!searcher.isLiveDocsInstantiated()) {
+        searcher.setLiveDocs( collector.getDocSet() );
+      }
+      try {
+        return searcher.getLiveDocs();
+      } catch (IOException e) {
+        // should be impossible... liveDocs should exist, so no IO should be necessary
+        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, e);
+      }
+    }
+
+    return collector.getDocSet();
+  }
+
+  /**
+   * This variant of getDocSet maps all sets with size numDocs to searcher.getLiveDocs.
+   * The returned set should not be modified.
+   * @lucene.experimental
+   */
+  public static DocSet getDocSet(DocSet docs, SolrIndexSearcher searcher) {
+    if (docs.size() == searcher.numDocs()) {
+      if (!searcher.isLiveDocsInstantiated()) {
+        searcher.setLiveDocs( docs );
+      }
+      try {
+        // if this docset has the same cardinality as liveDocs, return liveDocs instead
+        // so this set will be short lived garbage.
+        return searcher.getLiveDocs();
+      } catch (IOException e) {
+        // should be impossible... liveDocs should exist, so no IO should be necessary
+        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, e);
+      }
+    }
+
+    return docs;
   }
 
   // implementers of DocSetProducer should not call this with themselves or it will result in an infinite loop
@@ -101,14 +151,13 @@ public class DocSetUtil {
     // but we should not catch it here, as we don't know how this DocSet will be used (it could be negated before use) or cached.
     searcher.search(query, collector);
 
-    return collector.getDocSet();
+    return getDocSet(collector, searcher);
   }
 
   public static DocSet createDocSet(SolrIndexSearcher searcher, Term term) throws IOException {
     DirectoryReader reader = searcher.getRawReader();  // raw reader to avoid extra wrapping overhead
     int maxDoc = searcher.getIndexReader().maxDoc();
     int smallSetSize = smallSetSize(maxDoc);
-
 
     String field = term.field();
     BytesRef termVal = term.bytes();
@@ -131,15 +180,16 @@ public class DocSetUtil {
       }
     }
 
+    DocSet answer = null;
     if (maxCount == 0) {
-      return DocSet.EMPTY;
+      answer = DocSet.EMPTY;
+    } else if (maxCount <= smallSetSize) {
+      answer = createSmallSet(leaves, postList, maxCount, firstReader);
+    } else {
+      answer = createBigSet(leaves, postList, maxDoc, firstReader);
     }
 
-    if (maxCount <= smallSetSize) {
-      return createSmallSet(leaves, postList, maxCount, firstReader);
-    }
-
-    return createBigSet(leaves, postList, maxDoc, firstReader);
+    return DocSetUtil.getDocSet( answer, searcher );
   }
 
   private static DocSet createSmallSet(List<LeafReaderContext> leaves, PostingsEnum[] postList, int maxPossible, int firstReader) throws IOException {
@@ -206,6 +256,35 @@ public class DocSetUtil {
       docs[i] = doc;
     }
     return new SortedIntDocSet(docs);
+  }
+
+  public static void collectSortedDocSet(DocSet docs, IndexReader reader, Collector collector) throws IOException {
+    // TODO add SortedDocSet sub-interface and take that.
+    // TODO collectUnsortedDocSet: iterate segment, then all docSet per segment.
+
+    final List<LeafReaderContext> leaves = reader.leaves();
+    final Iterator<LeafReaderContext> ctxIt = leaves.iterator();
+    int segBase = 0;
+    int segMax;
+    int adjustedMax = 0;
+    LeafReaderContext ctx = null;
+    LeafCollector leafCollector = null;
+    for (DocIterator docsIt = docs.iterator(); docsIt.hasNext(); ) {
+      final int doc = docsIt.nextDoc();
+      if (doc >= adjustedMax) {
+        do {
+          ctx = ctxIt.next();
+          segBase = ctx.docBase;
+          segMax = ctx.reader().maxDoc();
+          adjustedMax = segBase + segMax;
+        } while (doc >= adjustedMax);
+        leafCollector = collector.getLeafCollector(ctx);
+      }
+      if (doc < segBase) {
+        throw new IllegalStateException("algorithm expects sorted DocSet but wasn't: " + docs.getClass());
+      }
+      leafCollector.collect(doc - segBase);  // per-seg collectors
+    }
   }
 
 }

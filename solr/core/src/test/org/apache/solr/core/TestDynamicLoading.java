@@ -20,7 +20,6 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.cloud.AbstractFullDistribZkTestBase;
 import org.apache.solr.handler.TestBlobHandler;
-import org.apache.solr.util.RESTfulServerProvider;
 import org.apache.solr.util.RestTestHarness;
 import org.apache.solr.util.SimplePostTool;
 import org.junit.BeforeClass;
@@ -89,7 +88,7 @@ public class TestDynamicLoading extends AbstractFullDistribZkTestBase {
 
 
     payload = "{\n" +
-        "'create-requesthandler' : { 'name' : '/test1', 'class': 'org.apache.solr.core.BlobStoreTestRequestHandler' , 'runtimeLib' : true }\n" +
+        "'create-requesthandler' : { 'name' : '/test1', 'class': 'org.apache.solr.core.BlobStoreTestRequestHandler' ,registerPath: '/,/v2',  'runtimeLib' : true }\n" +
         "}";
 
     client = restTestHarnesses.get(random().nextInt(restTestHarnesses.size()));

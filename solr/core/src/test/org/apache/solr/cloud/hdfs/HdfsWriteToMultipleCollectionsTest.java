@@ -22,8 +22,13 @@ import java.util.Collection;
 import java.util.List;
 
 import com.carrotsearch.randomizedtesting.annotations.ThreadLeakFilters;
+
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.hdfs.MiniDFSCluster;
 import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.NRTCachingDirectory;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase.Nightly;
@@ -34,6 +39,7 @@ import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.cloud.BasicDistributedZkTest;
 import org.apache.solr.cloud.StoppableIndexingThread;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.core.DirectoryFactory;
 import org.apache.solr.core.HdfsDirectoryFactory;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.store.blockcache.BlockCache;
@@ -81,7 +87,7 @@ public class HdfsWriteToMultipleCollectionsTest extends BasicDistributedZkTest {
   }
   
   protected String getSolrXml() {
-    return "solr-no-core.xml";
+    return "solr.xml";
   }
 
   @Test
@@ -129,13 +135,27 @@ public class HdfsWriteToMultipleCollectionsTest extends BasicDistributedZkTest {
       for (SolrCore core : solrCores) {
         if (core.getCoreDescriptor().getCloudDescriptor().getCollectionName()
             .startsWith(ACOLLECTION)) {
-          assertTrue(core.getDirectoryFactory() instanceof HdfsDirectoryFactory);
+          DirectoryFactory factory = core.getDirectoryFactory();
+          assertTrue("Found: " + core.getDirectoryFactory().getClass().getName(), factory instanceof HdfsDirectoryFactory);
+          Directory dir = factory.get(core.getDataDir(), null, null);
+          try {
+            long dataDirSize = factory.size(dir);
+            FileSystem fileSystem = null;
+            
+            fileSystem = FileSystem.newInstance(
+                new Path(core.getDataDir()).toUri(), new Configuration());
+            long size = fileSystem.getContentSummary(
+                new Path(core.getDataDir())).getLength();
+            assertEquals(size, dataDirSize);
+          } finally {
+            core.getDirectoryFactory().release(dir);
+          }
+          
           RefCounted<IndexWriter> iwRef = core.getUpdateHandler()
               .getSolrCoreState().getIndexWriter(core);
           try {
             IndexWriter iw = iwRef.get();
-            NRTCachingDirectory directory = (NRTCachingDirectory) iw
-                .getDirectory();
+            NRTCachingDirectory directory = (NRTCachingDirectory) iw.getDirectory();
             BlockDirectory blockDirectory = (BlockDirectory) directory
                 .getDelegate();
             assertTrue(blockDirectory.isBlockCacheReadEnabled());

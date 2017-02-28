@@ -17,13 +17,14 @@
 package org.apache.solr.search;
 
 import java.io.IOException;
+import java.util.Objects;
 
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.search.DocIdSet;
 import org.apache.lucene.search.DocIdSetIterator;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BitDocIdSet;
+import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.solr.common.SolrException;
 
@@ -62,8 +63,21 @@ abstract class DocSetBase implements DocSet {
       // don't compare matches
     }
 
+    FixedBitSet bs1 = this.getBits();
+    FixedBitSet bs2 = toBitSet(other);
+
+// resize both BitSets to make sure they have the same amount of zero padding
+
+    int maxNumBits = bs1.length() > bs2.length() ? bs1.length() : bs2.length();
+    bs1 = FixedBitSet.ensureCapacity(bs1, maxNumBits);
+    bs2 = FixedBitSet.ensureCapacity(bs2, maxNumBits);
+
     // if (this.size() != other.size()) return false;
-    return this.getBits().equals(toBitSet(other));
+    return bs1.equals(bs2);
+  }
+
+  public DocSet clone() {
+    throw new RuntimeException(new CloneNotSupportedException());
   }
 
   /**
@@ -89,7 +103,7 @@ abstract class DocSetBase implements DocSet {
    * implementation.
    */
   protected FixedBitSet getBits() {
-    FixedBitSet bits = new FixedBitSet(64);
+    FixedBitSet bits = new FixedBitSet(size());
     for (DocIterator iter = iterator(); iter.hasNext();) {
       int nextDoc = iter.nextDoc();
       bits = FixedBitSet.ensureCapacity(bits, nextDoc);
@@ -161,9 +175,9 @@ abstract class DocSetBase implements DocSet {
 
   @Override
   public Filter getTopFilter() {
-    final FixedBitSet bs = getBits();
-
     return new Filter() {
+      final FixedBitSet bs = getBits();
+
       @Override
       public DocIdSet getDocIdSet(final LeafReaderContext context, Bits acceptDocs) {
         LeafReader reader = context.reader();
@@ -192,7 +206,7 @@ abstract class DocSetBase implements DocSet {
 
               @Override
               public int nextDoc() {
-                pos = bs.nextSetBit(pos+1);
+                pos = bs.nextSetBit(pos+1);  // TODO: this is buggy if getBits() returns a bitset that does not have a capacity of maxDoc
                 return adjustedDoc = pos<max ? pos-base : NO_MORE_DOCS;
               }
 
@@ -223,9 +237,21 @@ abstract class DocSetBase implements DocSet {
 
         }, acceptDocs2);
       }
+
       @Override
       public String toString(String field) {
         return "DocSetTopFilter";
+      }
+
+      @Override
+      public boolean equals(Object other) {
+        return sameClassAs(other) &&
+               Objects.equals(bs, getClass().cast(other).bs);
+      }
+
+      @Override
+      public int hashCode() {
+        return classHash() ^ bs.hashCode();
       }
     };
   }

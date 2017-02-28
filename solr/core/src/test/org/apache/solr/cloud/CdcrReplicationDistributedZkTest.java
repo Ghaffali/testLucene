@@ -16,6 +16,7 @@
  */
 package org.apache.solr.cloud;
 
+import org.apache.lucene.util.LuceneTestCase.BadApple;
 import org.apache.lucene.util.LuceneTestCase.Nightly;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.util.NamedList;
@@ -31,6 +32,7 @@ import java.util.List;
 import java.util.Map;
 
 @Nightly
+@BadApple(bugUrl = "https://issues.apache.org/jira/browse/SOLR-10107")
 public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -103,6 +105,11 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
     // check status
     this.assertState(SOURCE_COLLECTION, CdcrParams.ProcessState.STARTED, CdcrParams.BufferState.ENABLED);
 
+    this.waitForBootstrapToComplete(TARGET_COLLECTION, SHARD2);
+
+    // sleep for a bit to ensure that replicator threads are started
+    Thread.sleep(3000);
+
     // Kill all the servers of the target
     this.deleteCollection(TARGET_COLLECTION);
 
@@ -156,6 +163,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
     this.invokeCdcrAction(shardToLeaderJetty.get(SOURCE_COLLECTION).get(SHARD1), CdcrParams.CdcrAction.START);
     this.waitForCdcrStateReplication(SOURCE_COLLECTION);
 
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
+
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD1);
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD2);
 
@@ -182,6 +192,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
     this.invokeCdcrAction(shardToLeaderJetty.get(SOURCE_COLLECTION).get(SHARD1), CdcrParams.CdcrAction.START);
     this.waitForCdcrStateReplication(SOURCE_COLLECTION);
 
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
+
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD1);
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD2);
 
@@ -202,6 +215,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
     // send start action to first shard
     this.invokeCdcrAction(shardToLeaderJetty.get(SOURCE_COLLECTION).get(SHARD1), CdcrParams.CdcrAction.START);
     this.waitForCdcrStateReplication(SOURCE_COLLECTION);
+
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
 
     log.info("Indexing 10 documents");
 
@@ -244,6 +260,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
 
     log.info("Waiting for replication");
 
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
+
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD1);
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD2);
 
@@ -266,6 +285,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
     // send start action to first shard
     this.invokeCdcrAction(shardToLeaderJetty.get(SOURCE_COLLECTION).get(SHARD1), CdcrParams.CdcrAction.START);
     this.waitForCdcrStateReplication(SOURCE_COLLECTION);
+
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
 
     log.info("Indexing 10 documents");
 
@@ -348,6 +370,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
       // will perform a commit for every document and will create one tlog file per commit
       index(SOURCE_COLLECTION, getDoc(id, Integer.toString(i)));
     }
+
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
 
     // wait a bit for the replication to complete
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD1);
@@ -495,6 +520,8 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
     // Start CDCR
     this.invokeCdcrAction(shardToLeaderJetty.get(SOURCE_COLLECTION).get(SHARD1), CdcrParams.CdcrAction.START);
     this.waitForCdcrStateReplication(SOURCE_COLLECTION);
+    this.waitForBootstrapToComplete(TARGET_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(TARGET_COLLECTION, SHARD2);
 
     // wait a bit for the replication to complete
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD1);
@@ -526,6 +553,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
 
     assertNumDocs(128, SOURCE_COLLECTION);
 
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
+
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD1);
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD2);
 
@@ -552,6 +582,9 @@ public class CdcrReplicationDistributedZkTest extends BaseCdcrDistributedZkTest 
     // Start CDCR
     this.invokeCdcrAction(shardToLeaderJetty.get(SOURCE_COLLECTION).get(SHARD1), CdcrParams.CdcrAction.START);
     this.waitForCdcrStateReplication(SOURCE_COLLECTION);
+
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD1);
+    this.waitForBootstrapToComplete(SOURCE_COLLECTION, SHARD2);
 
     // wait a bit for the replication to complete
     this.waitForReplicationToComplete(SOURCE_COLLECTION, SHARD1);

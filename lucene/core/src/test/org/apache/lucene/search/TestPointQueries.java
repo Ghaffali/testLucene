@@ -22,9 +22,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -66,6 +69,7 @@ import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.NumericUtils;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.TestUtil;
+import org.apache.lucene.util.bkd.BKDWriter;
 import org.junit.BeforeClass;
 
 public class TestPointQueries extends LuceneTestCase {
@@ -510,7 +514,6 @@ public class TestPointQueries extends LuceneTestCase {
           private void _run() throws Exception {
             startingGun.await();
 
-            NumericDocValues docIDToID = MultiDocValues.getNumericValues(r, "id");
             for (int iter=0;iter<iters && failed.get() == false;iter++) {
               Long lower = randomValue();
               Long upper = randomValue();
@@ -575,8 +578,11 @@ public class TestPointQueries extends LuceneTestCase {
                 System.out.println(Thread.currentThread().getName() + ":  hitCount: " + hits.cardinality());
               }
       
+              NumericDocValues docIDToID = MultiDocValues.getNumericValues(r, "id");
+              
               for(int docID=0;docID<r.maxDoc();docID++) {
-                int id = (int) docIDToID.get(docID);
+                assertEquals(docID, docIDToID.nextDoc());
+                int id = (int) docIDToID.longValue();
                 boolean expected = missing.get(id) == false && deleted.get(id) == false && values[id] >= lower && values[id] <= upper;
                 if (hits.get(docID) != expected) {
                   // We do exact quantized comparison so the bbox query should never disagree:
@@ -616,6 +622,9 @@ public class TestPointQueries extends LuceneTestCase {
     int numDims = TestUtil.nextInt(random(), 1, PointValues.MAX_DIMENSIONS);
 
     int sameValuePct = random().nextInt(100);
+    if (VERBOSE) {
+      System.out.println("TEST: sameValuePct=" + sameValuePct);
+    }
 
     byte[][][] docValues = new byte[numValues][][];
 
@@ -765,8 +774,6 @@ public class TestPointQueries extends LuceneTestCase {
           private void _run() throws Exception {
             startingGun.await();
 
-            NumericDocValues docIDToID = MultiDocValues.getNumericValues(r, "id");
-
             for (int iter=0;iter<iters && failed.get() == false;iter++) {
 
               byte[][] lower = new byte[numDims][];
@@ -834,9 +841,12 @@ public class TestPointQueries extends LuceneTestCase {
                 }
               }
 
+              NumericDocValues docIDToID = MultiDocValues.getNumericValues(r, "id");
+
               int failCount = 0;
               for(int docID=0;docID<r.maxDoc();docID++) {
-                int id = (int) docIDToID.get(docID);
+                assertEquals(docID, docIDToID.nextDoc());
+                int id = (int) docIDToID.longValue();
                 if (hits.get(docID) != expected.get(id)) {
                   System.out.println("FAIL: iter=" + iter + " id=" + id + " docID=" + docID + " expected=" + expected.get(id) + " but got " + hits.get(docID) + " deleted?=" + deleted.get(id) + " missing?=" + missing.get(id));
                   for(int dim=0;dim<numDims;dim++) {
@@ -1151,14 +1161,14 @@ public class TestPointQueries extends LuceneTestCase {
   }
 
   private static Codec getCodec() {
-    if (Codec.getDefault().getName().equals("Lucene62")) {
+    if (Codec.getDefault().getName().equals("Lucene70")) {
       int maxPointsInLeafNode = TestUtil.nextInt(random(), 16, 2048);
       double maxMBSortInHeap = 5.0 + (3*random().nextDouble());
       if (VERBOSE) {
         System.out.println("TEST: using Lucene60PointsFormat with maxPointsInLeafNode=" + maxPointsInLeafNode + " and maxMBSortInHeap=" + maxMBSortInHeap);
       }
 
-      return new FilterCodec("Lucene62", Codec.getDefault()) {
+      return new FilterCodec("Lucene70", Codec.getDefault()) {
         @Override
         public PointsFormat pointsFormat() {
           return new PointsFormat() {
@@ -1854,6 +1864,24 @@ public class TestPointQueries extends LuceneTestCase {
     assertEquals("bytes:{[12] [2a]}", BinaryPoint.newSetQuery("bytes", new byte[] {42}, new byte[] {18}).toString());
   }
 
+  public void testPointInSetQueryGetPackedPoints() throws Exception {
+    int numValues = randomIntValue(1, 32);
+    List<byte[]> values = new ArrayList<>(numValues);
+    for (byte i = 0; i < numValues; i++) {
+      values.add(new byte[]{i});
+    }
+
+    PointInSetQuery query = (PointInSetQuery) BinaryPoint.newSetQuery("field", values.toArray(new byte[][]{}));
+    Collection<byte[]> packedPoints = query.getPackedPoints();
+    assertEquals(numValues, packedPoints.size());
+    Iterator<byte[]> iterator = packedPoints.iterator();
+    for (byte[] expectedValue : values) {
+      assertArrayEquals(expectedValue, iterator.next());
+    }
+    expectThrows(NoSuchElementException.class, () -> iterator.next());
+    assertFalse(iterator.hasNext());
+  }
+
   public void testRangeOptimizesIfAllPointsMatch() throws IOException {
     final int numDims = TestUtil.nextInt(random(), 1, 3);
     Directory dir = newDirectory();
@@ -2024,5 +2052,67 @@ public class TestPointQueries extends LuceneTestCase {
                                                 };
                                               });
     assertEquals("lowerPoint has length=4 but upperPoint has different length=8", e.getMessage());
+  }
+
+  public void testNextUp() {
+    assertTrue(Double.compare(0d, DoublePoint.nextUp(-0d)) == 0);
+    assertTrue(Double.compare(Double.MIN_VALUE, DoublePoint.nextUp(0d)) == 0);
+    assertTrue(Double.compare(Double.POSITIVE_INFINITY, DoublePoint.nextUp(Double.MAX_VALUE)) == 0);
+    assertTrue(Double.compare(Double.POSITIVE_INFINITY, DoublePoint.nextUp(Double.POSITIVE_INFINITY)) == 0);
+    assertTrue(Double.compare(-Double.MAX_VALUE, DoublePoint.nextUp(Double.NEGATIVE_INFINITY)) == 0);
+
+    assertTrue(Float.compare(0f, FloatPoint.nextUp(-0f)) == 0);
+    assertTrue(Float.compare(Float.MIN_VALUE, FloatPoint.nextUp(0f)) == 0);
+    assertTrue(Float.compare(Float.POSITIVE_INFINITY, FloatPoint.nextUp(Float.MAX_VALUE)) == 0);
+    assertTrue(Float.compare(Float.POSITIVE_INFINITY, FloatPoint.nextUp(Float.POSITIVE_INFINITY)) == 0);
+    assertTrue(Float.compare(-Float.MAX_VALUE, FloatPoint.nextUp(Float.NEGATIVE_INFINITY)) == 0);
+  }
+
+  public void testNextDown() {
+    assertTrue(Double.compare(-0d, DoublePoint.nextDown(0d)) == 0);
+    assertTrue(Double.compare(-Double.MIN_VALUE, DoublePoint.nextDown(-0d)) == 0);
+    assertTrue(Double.compare(Double.NEGATIVE_INFINITY, DoublePoint.nextDown(-Double.MAX_VALUE)) == 0);
+    assertTrue(Double.compare(Double.NEGATIVE_INFINITY, DoublePoint.nextDown(Double.NEGATIVE_INFINITY)) == 0);
+    assertTrue(Double.compare(Double.MAX_VALUE, DoublePoint.nextDown(Double.POSITIVE_INFINITY)) == 0);
+
+    assertTrue(Float.compare(-0f, FloatPoint.nextDown(0f)) == 0);
+    assertTrue(Float.compare(-Float.MIN_VALUE, FloatPoint.nextDown(-0f)) == 0);
+    assertTrue(Float.compare(Float.NEGATIVE_INFINITY, FloatPoint.nextDown(-Float.MAX_VALUE)) == 0);
+    assertTrue(Float.compare(Float.NEGATIVE_INFINITY, FloatPoint.nextDown(Float.NEGATIVE_INFINITY)) == 0);
+    assertTrue(Float.compare(Float.MAX_VALUE, FloatPoint.nextDown(Float.POSITIVE_INFINITY)) == 0);
+  }
+
+  public void testInversePointRange() throws IOException {
+    Directory dir = newDirectory();
+    IndexWriter w = new IndexWriter(dir, newIndexWriterConfig());
+    final int numDims = TestUtil.nextInt(random(), 1, 3);
+    final int numDocs = atLeast(10 * BKDWriter.DEFAULT_MAX_POINTS_IN_LEAF_NODE); // we need multiple leaves to enable this optimization
+    for (int i = 0; i < numDocs; ++i) {
+      Document doc = new Document();
+      int[] values = new int[numDims];
+      Arrays.fill(values, i);
+      doc.add(new IntPoint("f", values));
+      w.addDocument(doc);
+    }
+    w.forceMerge(1);
+    IndexReader r = DirectoryReader.open(w);
+    w.close();
+
+    IndexSearcher searcher = newSearcher(r);
+    int[] low = new int[numDims];
+    int[] high = new int[numDims];
+    Arrays.fill(high, numDocs - 2);
+    assertEquals(high[0] - low[0] + 1, searcher.count(IntPoint.newRangeQuery("f", low, high)));
+    Arrays.fill(low, 1);
+    assertEquals(high[0] - low[0] + 1, searcher.count(IntPoint.newRangeQuery("f", low, high)));
+    Arrays.fill(high, numDocs - 1);
+    assertEquals(high[0] - low[0] + 1, searcher.count(IntPoint.newRangeQuery("f", low, high)));
+    Arrays.fill(low, BKDWriter.DEFAULT_MAX_POINTS_IN_LEAF_NODE + 1);
+    assertEquals(high[0] - low[0] + 1, searcher.count(IntPoint.newRangeQuery("f", low, high)));
+    Arrays.fill(high, numDocs - BKDWriter.DEFAULT_MAX_POINTS_IN_LEAF_NODE);
+    assertEquals(high[0] - low[0] + 1, searcher.count(IntPoint.newRangeQuery("f", low, high)));
+
+    r.close();
+    dir.close();
   }
 }

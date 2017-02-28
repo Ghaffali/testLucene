@@ -98,17 +98,13 @@ public final class BlockTreeTermsReader extends FieldsProducer {
   final static String TERMS_CODEC_NAME = "BlockTreeTermsDict";
 
   /** Initial terms format. */
-  public static final int VERSION_START = 0;
+  public static final int VERSION_START = 2;
 
-  /** Auto-prefix terms. */
-  public static final int VERSION_AUTO_PREFIX_TERMS = 1;
-
-  /** Conditional auto-prefix terms: we record at write time whether
-   *  this field did write any auto-prefix terms. */
-  public static final int VERSION_AUTO_PREFIX_TERMS_COND = 2;
+  /** Auto-prefix terms have been superseded by points. */
+  public static final int VERSION_AUTO_PREFIX_TERMS_REMOVED = 3;
 
   /** Current terms format. */
-  public static final int VERSION_CURRENT = VERSION_AUTO_PREFIX_TERMS_COND;
+  public static final int VERSION_CURRENT = VERSION_AUTO_PREFIX_TERMS_REMOVED;
 
   /** Extension of terms index file */
   static final String TERMS_INDEX_EXTENSION = "tip";
@@ -135,8 +131,6 @@ public final class BlockTreeTermsReader extends FieldsProducer {
   
   final int version;
 
-  final boolean anyAutoPrefixTerms;
-
   /** Sole constructor. */
   public BlockTreeTermsReader(PostingsReaderBase postingsReader, SegmentReadState state) throws IOException {
     boolean success = false;
@@ -150,22 +144,11 @@ public final class BlockTreeTermsReader extends FieldsProducer {
       termsIn = state.directory.openInput(termsName, state.context);
       version = CodecUtil.checkIndexHeader(termsIn, TERMS_CODEC_NAME, VERSION_START, VERSION_CURRENT, state.segmentInfo.getId(), state.segmentSuffix);
 
-      if (version < VERSION_AUTO_PREFIX_TERMS) {
-        // Old (pre-5.2.0) index, no auto-prefix terms:
-        this.anyAutoPrefixTerms = false;
-      } else if (version == VERSION_AUTO_PREFIX_TERMS) {
-        // 5.2.x index, might have auto-prefix terms:
-        this.anyAutoPrefixTerms = true;
-      } else {
-        // 5.3.x index, we record up front if we may have written any auto-prefix terms:
-        assert version >= VERSION_AUTO_PREFIX_TERMS_COND;
+      if (version < VERSION_AUTO_PREFIX_TERMS_REMOVED) {
+        // pre-6.2 index, records whether auto-prefix terms are enabled in the header
         byte b = termsIn.readByte();
-        if (b == 0) {
-          this.anyAutoPrefixTerms = false;
-        } else if (b == 1) {
-          this.anyAutoPrefixTerms = true;
-        } else {
-          throw new CorruptIndexException("invalid anyAutoPrefixTerms: expected 0 or 1 but got " + b, termsIn);
+        if (b != 0) {
+          throw new CorruptIndexException("Index header pretends the index has auto-prefix terms: " + b, termsIn);
         }
       }
 

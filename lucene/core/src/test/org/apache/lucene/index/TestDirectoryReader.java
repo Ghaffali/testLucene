@@ -19,7 +19,6 @@ package org.apache.lucene.index;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.Collection;
@@ -46,6 +45,8 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
 import org.junit.Assume;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
 
 public class TestDirectoryReader extends LuceneTestCase {
   
@@ -574,8 +575,13 @@ public class TestDirectoryReader extends LuceneTestCase {
       NumericDocValues norms2 = MultiDocValues.getNormValues(index2, curField);
       if (norms1 != null && norms2 != null) {
         // todo: generalize this (like TestDuelingCodecs assert)
-        for (int i = 0; i < index1.maxDoc(); i++) {
-          assertEquals("Norm different for doc " + i + " and field '" + curField + "'.", norms1.get(i), norms2.get(i));
+        while (true) {
+          int docID = norms1.nextDoc();
+          assertEquals(docID, norms2.nextDoc());
+          if (docID == NO_MORE_DOCS) {
+            break;
+          }
+          assertEquals("Norm different for doc " + docID + " and field '" + curField + "'.", norms1.longValue(), norms2.longValue());
         }
       } else {
         assertNull(norms1);
@@ -921,14 +927,14 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.commit();
     final DirectoryReader reader = writer.getReader();
     final int[] closeCount = new int[1];
-    final IndexReader.ReaderClosedListener listener = new IndexReader.ReaderClosedListener() {
+    final IndexReader.ClosedListener listener = new IndexReader.ClosedListener() {
       @Override
-      public void onClose(IndexReader reader) {
+      public void onClose(IndexReader.CacheKey key) {
         closeCount[0]++;
       }
     };
   
-    reader.addReaderClosedListener(listener);
+    reader.getReaderCacheHelper().addClosedListener(listener);
   
     reader.close();
   
@@ -937,7 +943,7 @@ public class TestDirectoryReader extends LuceneTestCase {
     writer.close();
   
     DirectoryReader reader2 = DirectoryReader.open(dir);
-    reader2.addReaderClosedListener(listener);
+    reader2.getReaderCacheHelper().addClosedListener(listener);
   
     closeCount[0] = 0;
     reader2.close();

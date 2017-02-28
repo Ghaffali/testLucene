@@ -25,8 +25,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import com.codahale.metrics.Counter;
+import com.codahale.metrics.Timer;
 import org.apache.http.NoHttpResponseException;
 import org.apache.http.client.HttpClient;
 import org.apache.http.conn.ConnectTimeoutException;
@@ -36,14 +40,18 @@ import org.apache.solr.cloud.ZkController;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.handler.component.HttpShardHandlerFactory;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.handler.component.ShardHandlerFactory;
 import org.apache.solr.handler.component.ShardRequest;
 import org.apache.solr.handler.component.ShardResponse;
 import org.apache.solr.logging.MDCLoggingContext;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
@@ -56,7 +64,7 @@ import static org.apache.solr.update.processor.DistributedUpdateProcessor.Distri
 import static org.apache.solr.update.processor.DistributingUpdateProcessorFactory.DISTRIB_UPDATE_PARAM;
 
 /** @lucene.experimental */
-public class PeerSync  {
+public class PeerSync implements SolrMetricProducer {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private boolean debug = log.isDebugEnabled();
 
@@ -85,8 +93,13 @@ public class PeerSync  {
   private final boolean onlyIfActive;
   private SolrCore core;
 
+  // metrics
+  private Timer syncTime;
+  private Counter syncErrors;
+  private Counter syncSkipped;
+
   // comparator that sorts by absolute value, putting highest first
-  private static Comparator<Long> absComparator = (o1, o2) -> {
+  public static Comparator<Long> absComparator = (o1, o2) -> {
     long l1 = Math.abs(o1);
     long l2 = Math.abs(o2);
     if (l1 > l2) return -1;
@@ -110,13 +123,14 @@ public class PeerSync  {
     return 0;
   };
 
-
   private static class SyncShardRequest extends ShardRequest {
     List<Long> reportedVersions;
     IndexFingerprint fingerprint;
     boolean doFingerprintComparison;
     List<Long> requestedUpdates;
     Exception updateException;
+    List<String> requestedRanges;
+    long totalRequestedUpdates;
   }
 
   public PeerSync(SolrCore core, List<String> replicas, int nUpdates) {
@@ -143,6 +157,15 @@ public class PeerSync  {
     // TODO: close
     shardHandlerFactory = (HttpShardHandlerFactory) core.getCoreDescriptor().getCoreContainer().getShardHandlerFactory();
     shardHandler = shardHandlerFactory.getShardHandler(client);
+
+    core.getCoreMetricManager().registerMetricProducer(SolrInfoMBean.Category.REPLICATION.toString(), this);
+  }
+
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    syncTime = manager.timer(registry, "time", scope);
+    syncErrors = manager.counter(registry, "errors", scope);
+    syncSkipped = manager.counter(registry, "skipped", scope);
   }
 
   /** optional list of updates we had before possibly receiving new updates */
@@ -169,14 +192,46 @@ public class PeerSync  {
     return "PeerSync: core="+uhandler.core.getName()+ " url="+myURL +" ";
   }
 
+  public static class PeerSyncResult  {
+    private final boolean success;
+    private final Boolean otherHasVersions;
+
+    public PeerSyncResult(boolean success, Boolean otherHasVersions) {
+      this.success = success;
+      this.otherHasVersions = otherHasVersions;
+    }
+
+    public boolean isSuccess() {
+      return success;
+    }
+
+    public Optional<Boolean> getOtherHasVersions() {
+      return Optional.ofNullable(otherHasVersions);
+    }
+
+    public static PeerSyncResult success()  {
+      return new PeerSyncResult(true, null);
+    }
+
+    public static PeerSyncResult failure()  {
+      return new PeerSyncResult(false, null);
+    }
+
+    public static PeerSyncResult failure(boolean otherHasVersions)  {
+      return new PeerSyncResult(false, otherHasVersions);
+    }
+  }
+
   /** Returns true if peer sync was successful, meaning that this core may be considered to have the latest updates.
    * It does not mean that the remote replica is in sync with us.
    */
-  public boolean sync() {
+  public PeerSyncResult sync() {
     if (ulog == null) {
-      return false;
+      syncErrors.inc();
+      return PeerSyncResult.failure();
     }
     MDCLoggingContext.setCore(core);
+    Timer.Context timerContext = null;
     try {
       log.info(msg() + "START replicas=" + replicas + " nUpdates=" + nUpdates);
       
@@ -185,7 +240,15 @@ public class PeerSync  {
           log.debug(msg() + "startingVersions=" + startingVersions.size() + " " + startingVersions);
         }
       }
-      
+      // check if we already in sync to begin with 
+      if(doFingerprint && alreadyInSync()) {
+        syncSkipped.inc();
+        return PeerSyncResult.success();
+      }
+
+      // measure only when actual sync is performed
+      timerContext = syncTime.time();
+
       // Fire off the requests before getting our own recent updates (for better concurrency)
       // This also allows us to avoid getting updates we don't need... if we got our updates and then got their updates,
       // they would
@@ -203,7 +266,8 @@ public class PeerSync  {
       if (startingVersions != null) {
         if (startingVersions.size() == 0) {
           log.warn("no frame of reference to tell if we've missed updates");
-          return false;
+          syncErrors.inc();
+          return PeerSyncResult.failure();
         }
         Collections.sort(startingVersions, absComparator);
         
@@ -218,7 +282,8 @@ public class PeerSync  {
         if (Math.abs(startingVersions.get(0)) < smallestNewUpdate) {
           log.warn(msg()
               + "too many updates received since start - startingUpdates no longer overlaps with our currentUpdates");
-          return false;
+          syncErrors.inc();
+          return PeerSyncResult.failure();
         }
         
         // let's merge the lists
@@ -240,7 +305,19 @@ public class PeerSync  {
           // we have no versions and hence no frame of reference to tell if we can use a peers
           // updates to bring us into sync
           log.info(msg() + "DONE.  We have no versions.  sync failed.");
-          return false;
+          for (;;)  {
+            ShardResponse srsp = shardHandler.takeCompletedOrError();
+            if (srsp == null) break;
+            if (srsp.getException() == null)  {
+              List<Long> otherVersions = (List<Long>)srsp.getSolrResponse().getResponse().get("versions");
+              if (otherVersions != null && !otherVersions.isEmpty())  {
+                syncErrors.inc();
+                return PeerSyncResult.failure(true);
+              }
+            }
+          }
+          syncErrors.inc();
+          return PeerSyncResult.failure(false);
         }
       }
 
@@ -255,7 +332,8 @@ public class PeerSync  {
         if (!success) {
           log.info(msg() + "DONE. sync failed");
           shardHandler.cancelAll();
-          return false;
+          syncErrors.inc();
+          return PeerSyncResult.failure();
         }
       }
 
@@ -269,11 +347,68 @@ public class PeerSync  {
       }
 
       log.info(msg() + "DONE. sync " + (success ? "succeeded" : "failed"));
-      return success;
+      if (!success) {
+        syncErrors.inc();
+      }
+      return success ?  PeerSyncResult.success() : PeerSyncResult.failure();
     } finally {
+      if (timerContext != null) {
+        timerContext.close();
+      }
       MDCLoggingContext.clear();
     }
   }
+
+  /**
+   * Check if we are already in sync. Simple fingerprint comparison should do
+   */
+  private boolean alreadyInSync() {
+    for (String replica : replicas) {
+      requestFingerprint(replica);
+    }
+    
+    for (;;) {
+      ShardResponse srsp = shardHandler.takeCompletedOrError();
+      if (srsp == null) break;
+
+      Object replicaFingerprint = srsp.getSolrResponse().getResponse().get("fingerprint");
+      if (replicaFingerprint == null) {
+        log.warn("Replica did not return a fingerprint - possibly an older Solr version");
+        continue;
+      }
+      
+      try {
+        IndexFingerprint otherFingerprint = IndexFingerprint.fromObject(replicaFingerprint);
+        IndexFingerprint ourFingerprint = IndexFingerprint.getFingerprint(core, Long.MAX_VALUE);
+        if(IndexFingerprint.compare(otherFingerprint, ourFingerprint) == 0) {
+          log.info("We are already in sync. No need to do a PeerSync ");
+          return true;
+        }
+      } catch(IOException e) {
+        log.warn("Could not cofirm if we are already in sync. Continue with PeerSync");
+      }
+    }
+    
+    return false;
+  }
+  
+  
+  private void requestFingerprint(String replica) {
+    SyncShardRequest sreq = new SyncShardRequest();
+    requests.add(sreq);
+
+    sreq.shards = new String[]{replica};
+    sreq.actualShards = sreq.shards;
+    sreq.params = new ModifiableSolrParams();
+    sreq.params = new ModifiableSolrParams();
+    sreq.params.set("qt","/get");
+    sreq.params.set("distrib",false);
+    sreq.params.set("getFingerprint", String.valueOf(Long.MAX_VALUE));
+    
+    shardHandler.submit(sreq, replica, sreq.params);
+  }
+  
+  
   
   private void requestVersions(String replica) {
     SyncShardRequest sreq = new SyncShardRequest();
@@ -359,6 +494,103 @@ public class PeerSync  {
     }
   }
 
+  private boolean canHandleVersionRanges(String replica) {
+    SyncShardRequest sreq = new SyncShardRequest();
+    requests.add(sreq);
+
+    // determine if leader can handle version ranges
+    sreq.shards = new String[] {replica};
+    sreq.actualShards = sreq.shards;
+    sreq.params = new ModifiableSolrParams();
+    sreq.params.set("qt", "/get");
+    sreq.params.set("distrib", false);
+    sreq.params.set("checkCanHandleVersionRanges", false);
+
+    ShardHandler sh = shardHandlerFactory.getShardHandler(client);
+    sh.submit(sreq, replica, sreq.params);
+
+    ShardResponse srsp = sh.takeCompletedIncludingErrors();
+    Boolean canHandleVersionRanges = srsp.getSolrResponse().getResponse().getBooleanArg("canHandleVersionRanges");
+
+    if (canHandleVersionRanges == null || canHandleVersionRanges.booleanValue() == false) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private boolean handleVersionsWithRanges(ShardResponse srsp, List<Long> otherVersions, SyncShardRequest sreq,
+      boolean completeList, long otherHigh, long otherHighest) {
+    // we may endup asking for updates for too many versions, causing 2MB post payload limit. Construct a range of
+    // versions to request instead of asking individual versions
+    List<String> rangesToRequest = new ArrayList<>();
+
+    // construct ranges to request
+    // both ourUpdates and otherVersions are sorted with highest range first
+    // may be we can create another reverse the lists and avoid confusion
+    int ourUpdatesIndex = ourUpdates.size() - 1;
+    int otherUpdatesIndex = otherVersions.size() - 1;
+    long totalRequestedVersions = 0;
+
+    while (otherUpdatesIndex >= 0) {
+      // we have run out of ourUpdates, pick up all the remaining versions from the other versions
+      if (ourUpdatesIndex < 0) {
+        String range = otherVersions.get(otherUpdatesIndex) + "..." + otherVersions.get(0);
+        rangesToRequest.add(range);
+        totalRequestedVersions += otherUpdatesIndex + 1;
+        break;
+      }
+
+      // stop when the entries get old enough that reorders may lead us to see updates we don't need
+      if (!completeList && Math.abs(otherVersions.get(otherUpdatesIndex)) < ourLowThreshold) break;
+
+      if (ourUpdates.get(ourUpdatesIndex).longValue() == otherVersions.get(otherUpdatesIndex).longValue()) {
+        ourUpdatesIndex--;
+        otherUpdatesIndex--;
+      } else if (Math.abs(ourUpdates.get(ourUpdatesIndex)) < Math.abs(otherVersions.get(otherUpdatesIndex))) {
+        ourUpdatesIndex--;
+      } else {
+        long rangeStart = otherVersions.get(otherUpdatesIndex);
+        while ((otherUpdatesIndex < otherVersions.size())
+            && (Math.abs(otherVersions.get(otherUpdatesIndex)) < Math.abs(ourUpdates.get(ourUpdatesIndex)))) {
+          otherUpdatesIndex--;
+          totalRequestedVersions++;
+        }
+        // construct range here
+        rangesToRequest.add(rangeStart + "..." + otherVersions.get(otherUpdatesIndex + 1));
+      }
+    }
+
+    // TODO, do we really need to hold on to all the ranges we requested 
+    // keeping track of totalRequestedUpdates should suffice for verification
+    sreq.requestedRanges = rangesToRequest;
+    sreq.totalRequestedUpdates = totalRequestedVersions;
+
+    if (rangesToRequest.isEmpty()) {
+      log.info(msg() + " No additional versions requested. ourLowThreshold=" + ourLowThreshold + " otherHigh="
+          + otherHigh + " ourHighest=" + ourHighest + " otherHighest=" + otherHighest);
+
+      // we had (or already requested) all the updates referenced by the replica
+
+      // If we requested updates from another replica, we can't compare fingerprints yet with this replica, we need to
+      // defer
+      if (doFingerprint) {
+        sreq.doFingerprintComparison = true;
+      }
+
+      return true;
+    }
+
+    if (totalRequestedVersions > maxUpdates) {
+      log.info(msg() + " Failing due to needing too many updates:" + maxUpdates);
+      return false;
+    }
+
+    String rangesToRequestStr = rangesToRequest.stream().collect(Collectors.joining(","));
+    return requestUpdates(srsp, rangesToRequestStr, totalRequestedVersions);
+  }
+
+  
   private boolean handleVersions(ShardResponse srsp) {
     // we retrieved the last N updates from the replica
     List<Long> otherVersions = (List<Long>)srsp.getSolrResponse().getResponse().get("versions");
@@ -410,6 +642,15 @@ public class PeerSync  {
       return true;
     }
     
+    if(core.getSolrConfig().useRangeVersionsForPeerSync && canHandleVersionRanges(sreq.shards[0])) {
+      return handleVersionsWithRanges(srsp, otherVersions, sreq, completeList, otherHigh, otherHighest);
+    } else {
+      return handleIndividualVersions(srsp, otherVersions, sreq, completeList, otherHigh, otherHighest);
+    }
+  }
+
+  private boolean handleIndividualVersions(ShardResponse srsp, List<Long> otherVersions, SyncShardRequest sreq,
+      boolean completeList, long otherHigh, long otherHighest) {
     List<Long> toRequest = new ArrayList<>();
     for (Long otherVersion : otherVersions) {
       // stop when the entries get old enough that reorders may lead us to see updates we don't need
@@ -426,7 +667,10 @@ public class PeerSync  {
       requestedUpdateSet.add(otherVersion);
     }
 
+    // TODO, do we really need to hold on to all the version numbers we requested.
+    // keeping track of totalRequestedUpdates should suffice for verification 
     sreq.requestedUpdates = toRequest;
+    sreq.totalRequestedUpdates = toRequest.size();
     
     if (toRequest.isEmpty()) {
       log.info(msg() + " No additional versions requested. ourLowThreshold="+ourLowThreshold + " otherHigh="+otherHigh+ " ourHighest=" + ourHighest + " otherHighest=" + otherHighest);
@@ -446,15 +690,20 @@ public class PeerSync  {
       return false;
     }
 
-    return requestUpdates(srsp, toRequest);
+    return requestUpdates(srsp, StrUtils.join(toRequest, ','), toRequest.size());
   }
 
   private boolean compareFingerprint(SyncShardRequest sreq) {
     if (sreq.fingerprint == null) return true;
     try {
-      IndexFingerprint ourFingerprint = IndexFingerprint.getFingerprint(core, Long.MAX_VALUE);
-      int cmp = IndexFingerprint.compare(ourFingerprint, sreq.fingerprint);
-      log.info("Fingerprint comparison: " + cmp);
+      // check our fingerprint only upto the max version in the other fingerprint. 
+      // Otherwise for missed updates (look at missed update test in PeerSyncTest) ourFingerprint won't match with otherFingerprint   
+      IndexFingerprint ourFingerprint = IndexFingerprint.getFingerprint(core, sreq.fingerprint.getMaxVersionSpecified());
+      int cmp = IndexFingerprint.compare(sreq.fingerprint, ourFingerprint);
+      log.info("Fingerprint comparison: {}" , cmp);
+      if(cmp != 0) {
+        log.info("Other fingerprint: {}, Our fingerprint: {}", sreq.fingerprint , ourFingerprint);
+      }
       return cmp == 0;  // currently, we only check for equality...
     } catch(IOException e){
       log.error(msg() + "Error getting index fingerprint", e);
@@ -462,10 +711,10 @@ public class PeerSync  {
     }
   }
 
-  private boolean requestUpdates(ShardResponse srsp, List<Long> toRequest) {
+  private boolean requestUpdates(ShardResponse srsp, String versionsAndRanges, long totalUpdates) {
     String replica = srsp.getShardRequest().shards[0];
 
-    log.info(msg() + "Requesting updates from " + replica + "n=" + toRequest.size() + " versions=" + toRequest);
+    log.info(msg() + "Requesting updates from " + replica + "n=" + totalUpdates + " versions=" + versionsAndRanges);
 
     // reuse our original request object
     ShardRequest sreq = srsp.getShardRequest();
@@ -474,8 +723,14 @@ public class PeerSync  {
     sreq.params = new ModifiableSolrParams();
     sreq.params.set("qt", "/get");
     sreq.params.set("distrib", false);
-    sreq.params.set("getUpdates", StrUtils.join(toRequest, ','));
+    sreq.params.set("getUpdates", versionsAndRanges);
     sreq.params.set("onlyIfActive", onlyIfActive);
+    
+    // fingerprint should really be requested only for the maxversion  we are requesting updates for
+    // In case updates are coming in while node is coming up after restart, node would have already
+    // buffered some of the updates. fingerprint we requested with versions would reflect versions
+    // in our buffer as well and will definitely cause a mismatch
+    sreq.params.set("fingerprint",doFingerprint);
     sreq.responses.clear();  // needs to be zeroed for correct correlation to occur
 
     shardHandler.submit(sreq, sreq.shards[0], sreq.params);
@@ -489,10 +744,18 @@ public class PeerSync  {
     List<Object> updates = (List<Object>)srsp.getSolrResponse().getResponse().get("updates");
 
     SyncShardRequest sreq = (SyncShardRequest) srsp.getShardRequest();
-    if (updates.size() < sreq.requestedUpdates.size()) {
-      log.error(msg() + " Requested " + sreq.requestedUpdates.size() + " updates from " + sreq.shards[0] + " but retrieved " + updates.size());
+    if (updates.size() < sreq.totalRequestedUpdates) {
+      log.error(msg() + " Requested " + sreq.totalRequestedUpdates + " updates from " + sreq.shards[0] + " but retrieved " + updates.size());
       return false;
     }
+    
+    // overwrite fingerprint we saved in 'handleVersions()'   
+    Object fingerprint = srsp.getSolrResponse().getResponse().get("fingerprint");
+
+    if (fingerprint != null) {
+      sreq.fingerprint = IndexFingerprint.fromObject(fingerprint);
+    }
+
 
     ModifiableSolrParams params = new ModifiableSolrParams();
     params.set(DISTRIB_UPDATE_PARAM, FROMLEADER.toString());
@@ -566,6 +829,16 @@ public class PeerSync  {
             proc.processDelete(cmd);
             break;
           }
+          case UpdateLog.UPDATE_INPLACE:
+          {
+            AddUpdateCommand cmd = UpdateLog.convertTlogEntryToAddUpdateCommand(req, entry, oper, version);
+            cmd.setFlags(UpdateCommand.PEER_SYNC | UpdateCommand.IGNORE_AUTOCOMMIT);
+            if (debug) {
+              log.debug(msg() + "inplace update " + cmd + " prevVersion=" + cmd.prevVersion + ", doc=" + cmd.solrDoc);
+            }
+            proc.processAdd(cmd);
+            break;
+          }
 
           default:
             throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,  "Unknown Operation! " + oper);
@@ -593,6 +866,8 @@ public class PeerSync  {
         sreq.updateException = e;
         log.error(msg() + "Error applying updates from " + sreq.shards + " ,finish()", e);
         return false;
+      } finally {
+        IOUtils.closeQuietly(proc);
       }
     }
 

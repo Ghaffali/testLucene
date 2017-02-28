@@ -19,13 +19,18 @@ package org.apache.solr.core;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileFilter;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.file.NoSuchFileException;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FilterDirectory;
 import org.apache.lucene.store.FlushInfo;
 import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.LockFactory;
@@ -146,6 +151,31 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
   public abstract void remove(String path) throws IOException;
   
   /**
+   * @param directory to calculate size of
+   * @return size in bytes
+   * @throws IOException on low level IO error
+   */
+  public long size(Directory directory) throws IOException {
+    return sizeOfDirectory(directory);
+  }
+  
+  /**
+   * @param path to calculate size of
+   * @return size in bytes
+   * @throws IOException on low level IO error
+   */
+  public long size(String path) throws IOException {
+    Directory dir = get(path, DirContext.DEFAULT, null);
+    long size;
+    try {
+      size = sizeOfDirectory(dir);
+    } finally {
+      release(dir); 
+    }
+    return size;
+  }
+  
+  /**
    * Override for more efficient moves.
    * 
    * Intended for use with replication - use
@@ -157,6 +187,20 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
   public void move(Directory fromDir, Directory toDir, String fileName, IOContext ioContext) throws IOException {
     toDir.copyFrom(fromDir, fileName, fileName, ioContext);
     fromDir.deleteFile(fileName);
+  }
+  
+  // sub classes perform an atomic rename if possible, otherwise fall back to delete + rename
+  // this is important to support for index roll over durability after crashes
+  public void renameWithOverwrite(Directory dir, String fileName, String toName) throws IOException {
+    try {
+      dir.deleteFile(toName);
+    } catch (FileNotFoundException | NoSuchFileException e) {
+
+    } catch (Exception e) {
+      log.error("Exception deleting file", e);
+    }
+
+    dir.rename(fileName, toName);
   }
   
   /**
@@ -284,10 +328,10 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
     return Collections.emptySet();
   }
 
-  public void cleanupOldIndexDirectories(final String dataDirPath, final String currentIndexDirPath) {
+  public void cleanupOldIndexDirectories(final String dataDirPath, final String currentIndexDirPath, boolean afterCoreReload) {
     File dataDir = new File(dataDirPath);
     if (!dataDir.isDirectory()) {
-      log.warn("{} does not point to a valid data directory; skipping clean-up of old index directories.", dataDirPath);
+      log.debug("{} does not point to a valid data directory; skipping clean-up of old index directories.", dataDirPath);
       return;
     }
 
@@ -305,9 +349,17 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
     if (oldIndexDirs == null || oldIndexDirs.length == 0)
       return; // nothing to do (no log message needed)
 
-    log.info("Found {} old index directories to clean-up under {}", oldIndexDirs.length, dataDirPath);
-    for (File dir : oldIndexDirs) {
-
+    List<File> dirsList = Arrays.asList(oldIndexDirs);
+    Collections.sort(dirsList, Collections.reverseOrder());
+    
+    int i = 0;
+    if (afterCoreReload) {
+      log.info("Will not remove most recent old directory after reload {}", oldIndexDirs[0]);
+      i = 1;
+    }
+    log.info("Found {} old index directories to clean-up under {} afterReload={}", oldIndexDirs.length - i, dataDirPath, afterCoreReload);
+    for (; i < dirsList.size(); i++) {
+      File dir = dirsList.get(i);
       String dirToRmPath = dir.getAbsolutePath();
       try {
         if (deleteOldIndexDirectory(dirToRmPath)) {
@@ -330,5 +382,35 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
   
   public void initCoreContainer(CoreContainer cc) {
     this.coreContainer = cc;
+  }
+  
+  // special hack to work with FilterDirectory
+  protected Directory getBaseDir(Directory dir) {
+    Directory baseDir = dir;
+    while (baseDir instanceof FilterDirectory) {
+      baseDir = ((FilterDirectory)baseDir).getDelegate();
+    } 
+    
+    return baseDir;
+  }
+
+  /**
+   * Create a new DirectoryFactory instance from the given SolrConfig and tied to the specified core container.
+   */
+  static DirectoryFactory loadDirectoryFactory(SolrConfig config, CoreContainer cc, String registryName) {
+    final PluginInfo info = config.getPluginInfo(DirectoryFactory.class.getName());
+    final DirectoryFactory dirFactory;
+    if (info != null) {
+      log.debug(info.className);
+      dirFactory = config.getResourceLoader().newInstance(info.className, DirectoryFactory.class);
+      // allow DirectoryFactory instances to access the CoreContainer
+      dirFactory.initCoreContainer(cc);
+      dirFactory.init(info.initArgs);
+    } else {
+      log.debug("solr.NRTCachingDirectoryFactory");
+      dirFactory = new NRTCachingDirectoryFactory();
+      dirFactory.initCoreContainer(cc);
+    }
+    return dirFactory;
   }
 }

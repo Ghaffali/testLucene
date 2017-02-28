@@ -29,7 +29,6 @@ import org.apache.lucene.index.FieldInfo;
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.MultiDocValues.MultiSortedDocValues;
 import org.apache.lucene.index.MultiDocValues.MultiSortedSetDocValues;
 import org.apache.lucene.index.MultiDocValues.OrdinalMap;
 import org.apache.lucene.index.MultiDocValues;
@@ -37,7 +36,8 @@ import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Default implementation of {@link SortedSetDocValuesFacetCounts}
+ * Default implementation of {@link SortedSetDocValuesFacetCounts}. You must ensure the original
+ * {@link IndexReader} passed to the constructor is not closed whenever you use this class!
  */
 public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesReaderState {
 
@@ -114,9 +114,10 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
       if (map == null) {
         // uncached, or not a multi dv
         SortedSetDocValues dv = MultiDocValues.getSortedSetValues(origReader, field);
-        if (dv instanceof MultiSortedSetDocValues) {
-          map = ((MultiSortedSetDocValues)dv).mapping;
-          if (map.owner == origReader.getCoreCacheKey()) {
+        if (dv instanceof MultiDocValues.MultiSortedSetDocValues) {
+          map = ((MultiDocValues.MultiSortedSetDocValues)dv).mapping;
+          IndexReader.CacheHelper cacheHelper = origReader.getReaderCacheHelper();
+          if (cacheHelper != null && map.owner == cacheHelper.getKey()) {
             cachedOrdMaps.put(field, map);
           }
         }
@@ -128,6 +129,7 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
     int size = origReader.leaves().size();
     final SortedSetDocValues[] values = new SortedSetDocValues[size];
     final int[] starts = new int[size+1];
+    long cost = 0;
     for (int i = 0; i < size; i++) {
       LeafReaderContext context = origReader.leaves().get(i);
       final LeafReader reader = context.reader();
@@ -141,9 +143,10 @@ public class DefaultSortedSetDocValuesReaderState extends SortedSetDocValuesRead
       }
       values[i] = v;
       starts[i] = context.docBase;
+      cost += v.cost();
     }
     starts[size] = origReader.maxDoc();
-    return new MultiSortedSetDocValues(values, starts, map);
+    return new MultiSortedSetDocValues(values, starts, map, cost);
   }
 
   /** Returns mapping from prefix to {@link OrdRange}. */

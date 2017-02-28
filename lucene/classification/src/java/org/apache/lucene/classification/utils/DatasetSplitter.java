@@ -18,19 +18,19 @@ package org.apache.lucene.classification.utils;
 
 
 import java.io.IOException;
-import java.util.HashMap;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.FieldType;
 import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexWriter;
 import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexableField;
-import org.apache.lucene.index.LeafReader;
+import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.SortedDocValues;
-import org.apache.lucene.index.Terms;
+import org.apache.lucene.index.SortedSetDocValues;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.MatchAllDocsQuery;
 import org.apache.lucene.search.ScoreDoc;
@@ -72,7 +72,7 @@ public class DatasetSplitter {
    * @param fieldNames           names of fields that need to be put in the new indexes or <code>null</code> if all should be used
    * @throws IOException if any writing operation fails on any of the indexes
    */
-  public void split(LeafReader originalIndex, Directory trainingIndex, Directory testIndex, Directory crossValidationIndex,
+  public void split(IndexReader originalIndex, Directory trainingIndex, Directory testIndex, Directory crossValidationIndex,
                     Analyzer analyzer, boolean termVectors, String classFieldName, String... fieldNames) throws IOException {
 
     // create IWs for train / test / cv IDXs
@@ -81,12 +81,24 @@ public class DatasetSplitter {
     IndexWriter trainingWriter = new IndexWriter(trainingIndex, new IndexWriterConfig(analyzer));
 
     // get the exact no. of existing classes
-    SortedDocValues classValues = originalIndex.getSortedDocValues(classFieldName);
-    if (classValues == null) {
-      throw new IllegalStateException("the classFieldName \"" + classFieldName + "\" must index sorted doc values");
+    int noOfClasses = 0;
+    for (LeafReaderContext leave : originalIndex.leaves()) {
+      long valueCount = 0;
+      SortedDocValues classValues = leave.reader().getSortedDocValues(classFieldName);
+      if (classValues != null) {
+        valueCount = classValues.getValueCount();
+      } else {
+        SortedSetDocValues sortedSetDocValues = leave.reader().getSortedSetDocValues(classFieldName);
+        if (sortedSetDocValues != null) {
+          valueCount = sortedSetDocValues.getValueCount();
+        }
+      }
+      if (classValues == null) {
+        // approximate with no. of terms
+        noOfClasses += leave.reader().terms(classFieldName).size();
+      }
+      noOfClasses += valueCount;
     }
-
-    int noOfClasses = classValues.getValueCount();
 
     try {
 
@@ -153,7 +165,7 @@ public class DatasetSplitter {
     }
   }
 
-  private Document createNewDoc(LeafReader originalIndex, FieldType ft, ScoreDoc scoreDoc, String[] fieldNames) throws IOException {
+  private Document createNewDoc(IndexReader originalIndex, FieldType ft, ScoreDoc scoreDoc, String[] fieldNames) throws IOException {
     Document doc = new Document();
     Document document = originalIndex.document(scoreDoc.doc);
     if (fieldNames != null && fieldNames.length > 0) {

@@ -18,13 +18,11 @@ package org.apache.solr.search;
 
 import java.net.URL;
 
-import org.apache.lucene.uninverting.UninvertingReader;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
-
-import org.apache.solr.core.SolrCore;
-import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.JmxMonitoredMap.JmxAugmentedSolrInfoMBean;
+import org.apache.solr.core.SolrCore;
+import org.apache.solr.uninverting.UninvertingReader;
 
 /**
  * A SolrInfoMBean that provides introspection of the Solr FieldCache
@@ -63,12 +61,16 @@ public class SolrFieldCacheMBean implements JmxAugmentedSolrInfoMBean {
 
   private NamedList getStats(boolean listEntries) {
     NamedList stats = new SimpleOrderedMap();
-    String[] entries = UninvertingReader.getUninvertedStats();
-    stats.add("entries_count", entries.length);
     if (listEntries) {
+      UninvertingReader.FieldCacheStats fieldCacheStats = UninvertingReader.getUninvertedStats();
+      String[] entries = fieldCacheStats.info;
+      stats.add("entries_count", entries.length);
+      stats.add("total_size", fieldCacheStats.totalSize);
       for (int i = 0; i < entries.length; i++) {
         stats.add("entry#" + i, entries[i]);
       }
+    } else {
+      stats.add("entries_count", UninvertingReader.getUninvertedStatsSize());
     }
     return stats;
   }

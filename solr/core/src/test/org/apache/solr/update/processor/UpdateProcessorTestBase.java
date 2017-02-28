@@ -18,10 +18,10 @@ package org.apache.solr.update.processor;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.SolrInputField;
-import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.request.SolrRequestInfo;
 import org.apache.solr.request.LocalSolrQueryRequest;
@@ -131,6 +131,7 @@ public class UpdateProcessorTestBase extends SolrTestCaseJ4 {
     try {
       processor.finish();
     } finally {
+      IOUtils.closeQuietly(processor);
       req.close();
     }
   }

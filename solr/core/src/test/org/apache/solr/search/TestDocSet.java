@@ -388,16 +388,6 @@ public class TestDocSet extends LuceneTestCase {
       }
 
       @Override
-      public void addCoreClosedListener(CoreClosedListener listener) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
-      public void removeCoreClosedListener(CoreClosedListener listener) {
-        throw new UnsupportedOperationException();
-      }
-
-      @Override
       public FieldInfos getFieldInfos() {
         return new FieldInfos(new FieldInfo[0]);
       }
@@ -443,17 +433,12 @@ public class TestDocSet extends LuceneTestCase {
       }
 
       @Override
-      public Bits getDocsWithField(String field) throws IOException {
-        return null;
-      }
-
-      @Override
       public NumericDocValues getNormValues(String field) {
         return null;
       }
 
       @Override
-      public PointValues getPointValues() {
+      public PointValues getPointValues(String field) {
         return null;
       }
 
@@ -471,6 +456,16 @@ public class TestDocSet extends LuceneTestCase {
 
       @Override
       public Sort getIndexSort() {
+        return null;
+      }
+
+      @Override
+      public CacheHelper getCoreCacheHelper() {
+        return null;
+      }
+
+      @Override
+      public CacheHelper getReaderCacheHelper() {
         return null;
       }
     };

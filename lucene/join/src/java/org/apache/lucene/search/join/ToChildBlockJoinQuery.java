@@ -20,11 +20,9 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Locale;
-import java.util.Set;
-
 import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
-import org.apache.lucene.index.Term;
+import org.apache.lucene.search.FilterWeight;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.IndexSearcher;
@@ -45,20 +43,14 @@ import org.apache.lucene.util.BitSet;
 public class ToChildBlockJoinQuery extends Query {
 
   /** Message thrown from {@link
-   *  ToChildBlockJoinScorer#validateParentDoc} on mis-use,
+   *  ToChildBlockJoinScorer#validateParentDoc} on misuse,
    *  when the parent query incorrectly returns child docs. */
-  static final String INVALID_QUERY_MESSAGE = "Parent query yields document which is not matched by parents filter, docID=";
+  static final String INVALID_QUERY_MESSAGE = "Parent query must not match any docs besides parent filter. "
+      + "Combine them as must (+) and must-not (-) clauses to find a problem doc. docID=";
   static final String ILLEGAL_ADVANCE_ON_PARENT = "Expect to be advanced on child docs only. got docID=";
 
   private final BitSetProducer parentsFilter;
   private final Query parentQuery;
-
-  // If we are rewritten, this is the original parentQuery we
-  // were passed; we use this for .equals() and
-  // .hashCode().  This makes rewritten query equal the
-  // original, so that user does not have to .rewrite() their
-  // query before searching:
-  private final Query origParentQuery;
 
   /**
    * Create a ToChildBlockJoinQuery.
@@ -68,21 +60,13 @@ public class ToChildBlockJoinQuery extends Query {
    */
   public ToChildBlockJoinQuery(Query parentQuery, BitSetProducer parentsFilter) {
     super();
-    this.origParentQuery = parentQuery;
-    this.parentQuery = parentQuery;
-    this.parentsFilter = parentsFilter;
-  }
-
-  private ToChildBlockJoinQuery(Query origParentQuery, Query parentQuery, BitSetProducer parentsFilter) {
-    super();
-    this.origParentQuery = origParentQuery;
     this.parentQuery = parentQuery;
     this.parentsFilter = parentsFilter;
   }
 
   @Override
-  public Weight createWeight(IndexSearcher searcher, boolean needsScores) throws IOException {
-    return new ToChildBlockJoinWeight(this, parentQuery.createWeight(searcher, needsScores), parentsFilter, needsScores);
+  public Weight createWeight(IndexSearcher searcher, boolean needsScores, float boost) throws IOException {
+    return new ToChildBlockJoinWeight(this, parentQuery.createWeight(searcher, needsScores, boost), parentsFilter, needsScores);
   }
 
   /** Return our parent query. */
@@ -90,31 +74,14 @@ public class ToChildBlockJoinQuery extends Query {
     return parentQuery;
   }
 
-  private static class ToChildBlockJoinWeight extends Weight {
-    private final Weight parentWeight;
+  private static class ToChildBlockJoinWeight extends FilterWeight {
     private final BitSetProducer parentsFilter;
     private final boolean doScores;
 
     public ToChildBlockJoinWeight(Query joinQuery, Weight parentWeight, BitSetProducer parentsFilter, boolean doScores) {
-      super(joinQuery);
-      this.parentWeight = parentWeight;
+      super(joinQuery, parentWeight);
       this.parentsFilter = parentsFilter;
       this.doScores = doScores;
-    }
-
-    @Override
-    public void extractTerms(Set<Term> terms) {
-      parentWeight.extractTerms(terms);
-    }
-
-    @Override
-    public float getValueForNormalization() throws IOException {
-      return parentWeight.getValueForNormalization();
-    }
-
-    @Override
-    public void normalize(float norm, float boost) {
-      parentWeight.normalize(norm, boost);
     }
 
     // NOTE: acceptDocs applies (and is checked) only in the
@@ -122,7 +89,7 @@ public class ToChildBlockJoinQuery extends Query {
     @Override
     public Scorer scorer(LeafReaderContext readerContext) throws IOException {
 
-      final Scorer parentScorer = parentWeight.scorer(readerContext);
+      final Scorer parentScorer = in.scorer(readerContext);
 
       if (parentScorer == null) {
         // No matches
@@ -148,7 +115,7 @@ public class ToChildBlockJoinQuery extends Query {
         return Explanation.match(
           scorer.score(), 
           String.format(Locale.ROOT, "Score based on parent document %d", parentDoc + context.docBase), 
-          parentWeight.explain(context, parentDoc)
+          in.explain(context, parentDoc)
         );
       }
       return Explanation.noMatch("Not a match");
@@ -330,9 +297,7 @@ public class ToChildBlockJoinQuery extends Query {
   public Query rewrite(IndexReader reader) throws IOException {
     final Query parentRewrite = parentQuery.rewrite(reader);
     if (parentRewrite != parentQuery) {
-      return new ToChildBlockJoinQuery(parentQuery,
-                                parentRewrite,
-                                parentsFilter);
+      return new ToChildBlockJoinQuery(parentRewrite, parentsFilter);
     } else {
       return super.rewrite(reader);
     }
@@ -344,22 +309,21 @@ public class ToChildBlockJoinQuery extends Query {
   }
 
   @Override
-  public boolean equals(Object _other) {
-    if (_other instanceof ToChildBlockJoinQuery) {
-      final ToChildBlockJoinQuery other = (ToChildBlockJoinQuery) _other;
-      return origParentQuery.equals(other.origParentQuery) &&
-        parentsFilter.equals(other.parentsFilter) &&
-        super.equals(other);
-    } else {
-      return false;
-    }
+  public boolean equals(Object other) {
+    return sameClassAs(other) &&
+           equalsTo(getClass().cast(other));
+  }
+
+  private boolean equalsTo(ToChildBlockJoinQuery other) {
+    return parentQuery.equals(other.parentQuery) &&
+           parentsFilter.equals(other.parentsFilter);
   }
 
   @Override
   public int hashCode() {
     final int prime = 31;
-    int hash = super.hashCode();
-    hash = prime * hash + origParentQuery.hashCode();
+    int hash = classHash();
+    hash = prime * hash + parentQuery.hashCode();
     hash = prime * hash + parentsFilter.hashCode();
     return hash;
   }

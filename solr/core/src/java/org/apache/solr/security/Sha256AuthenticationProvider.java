@@ -30,7 +30,10 @@ import java.util.Set;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.commons.codec.binary.Base64;
+import org.apache.solr.common.util.ValidatingJsonMap;
+
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.api.ApiBag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +67,7 @@ public class Sha256AuthenticationProvider implements ConfigEditablePlugin,  Basi
     credentials = new LinkedHashMap<>();
     Map<String,String> users = (Map<String,String>) pluginConfig.get("credentials");
     if (users == null) {
-      log.warn("No users configured yet");
+      log.debug("No users configured yet");
       return;
     }
     for (Map.Entry<String, String> e : users.entrySet()) {
@@ -150,6 +153,11 @@ public class Sha256AuthenticationProvider implements ConfigEditablePlugin,  Basi
       }
     }
     return latestConf;
+  }
+
+  @Override
+  public ValidatingJsonMap getSpec() {
+    return ApiBag.getSpec("cluster.security.BasicAuth.Commands").getSpec();
   }
 
   static final Set<String> supported_ops = ImmutableSet.of("set-user", "delete-user");

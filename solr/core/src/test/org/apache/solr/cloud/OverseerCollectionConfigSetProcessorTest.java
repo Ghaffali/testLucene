@@ -24,7 +24,6 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrResponse;
-import org.apache.solr.client.solrj.response.QueryResponse;
 import org.apache.solr.cloud.Overseer.LeaderStatus;
 import org.apache.solr.cloud.OverseerTaskQueue.QueueEvent;
 import org.apache.solr.common.cloud.ClusterState;
@@ -40,21 +39,17 @@ import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.handler.component.ShardHandlerFactory;
 import org.apache.solr.handler.component.ShardRequest;
-import org.apache.solr.handler.component.ShardResponse;
 import org.apache.solr.util.TimeOut;
-import org.apache.zookeeper.CreateMode;
-import org.easymock.Capture;
-import org.easymock.EasyMock;
-import org.easymock.IAnswer;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.easymock.EasyMock.*;
+import static org.mockito.Mockito.*;
 
 public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
 
@@ -102,19 +97,18 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     }
     
   }
-  
+
   @BeforeClass
   public static void setUpOnce() throws Exception {
-    workQueueMock = createMock(OverseerTaskQueue.class);
-    runningMapMock = createMock(DistributedMap.class);
-    completedMapMock = createMock(DistributedMap.class);
-    failureMapMock = createMock(DistributedMap.class);
-    shardHandlerFactoryMock = createMock(ShardHandlerFactory.class);
-    shardHandlerMock = createMock(ShardHandler.class);
-    zkStateReaderMock = createMock(ZkStateReader.class);
-    clusterStateMock = createMock(ClusterState.class);
-    solrZkClientMock = createMock(SolrZkClient.class);
-
+    workQueueMock = mock(OverseerTaskQueue.class);
+    runningMapMock = mock(DistributedMap.class);
+    completedMapMock = mock(DistributedMap.class);
+    failureMapMock = mock(DistributedMap.class);
+    shardHandlerFactoryMock = mock(ShardHandlerFactory.class);
+    shardHandlerMock = mock(ShardHandler.class);
+    zkStateReaderMock = mock(ZkStateReader.class);
+    clusterStateMock = mock(ClusterState.class);
+    solrZkClientMock = mock(SolrZkClient.class);
   }
   
   @AfterClass
@@ -143,9 +137,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     reset(zkStateReaderMock);
     reset(clusterStateMock);
     reset(solrZkClientMock);
-    underTest = new OverseerCollectionConfigSetProcessorToBeTested(zkStateReaderMock,
-        "1234", shardHandlerFactoryMock, ADMIN_PATH, workQueueMock, runningMapMock,
-        completedMapMock, failureMapMock);
+
     zkMap.clear();
     collectionsSet.clear();
   }
@@ -157,185 +149,79 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
   }
   
   protected Set<String> commonMocks(int liveNodesCount) throws Exception {
+    when(shardHandlerFactoryMock.getShardHandler()).thenReturn(shardHandlerMock);
+    when(workQueueMock.peekTopN(anyInt(), any(), anyLong())).thenAnswer(invocation -> {
+      Object result;
+      int count = 0;
+      while ((result = queue.peek()) == null) {
+        Thread.sleep(1000);
+        count++;
+        if (count > 1) return null;
+      }
 
-    shardHandlerFactoryMock.getShardHandler();
-    expectLastCall().andAnswer(new IAnswer<ShardHandler>() {
-      @Override
-      public ShardHandler answer() throws Throwable {
-        log.info("SHARDHANDLER");
-        return shardHandlerMock;
-      }
-    }).anyTimes();
-    workQueueMock.peekTopN(EasyMock.anyInt(), anyObject(Set.class), EasyMock.anyLong());
-    expectLastCall().andAnswer(new IAnswer<List>() {
-      @Override
-      public List answer() throws Throwable {
-        Object result;
-        int count = 0;
-        while ((result = queue.peek()) == null) {
-          Thread.sleep(1000);
-          count++;
-          if (count > 1) return null;
-        }
+      return Arrays.asList(result);
+    });
 
-        return Arrays.asList(result);
+    when(workQueueMock.getTailId()).thenAnswer(invocation -> {
+      Object result = null;
+      Iterator iter = queue.iterator();
+      while(iter.hasNext()) {
+        result = iter.next();
       }
-    }).anyTimes();
+      return result==null ? null : ((QueueEvent)result).getId();
+    });
 
-    workQueueMock.getTailId();
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        Object result = null;
-        Iterator iter = queue.iterator();
-        while(iter.hasNext()) {
-          result = iter.next();
-        }
-        return result==null ? null : ((QueueEvent)result).getId();
+    when(workQueueMock.peek(true)).thenAnswer(invocation -> {
+      Object result;
+      while ((result = queue.peek()) == null) {
+        Thread.sleep(1000);
       }
-    }).anyTimes();
+      return result;
+    });
 
-    workQueueMock.peek(true);
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        Object result;
-        while ((result = queue.peek()) == null) {
-          Thread.sleep(1000);
-        }
-        return result;
-      }
-    }).anyTimes();
-    
-    workQueueMock.remove(anyObject(QueueEvent.class));
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        queue.remove((QueueEvent) getCurrentArguments()[0]);
-        return null;
-      }
-    }).anyTimes();
-    
-    workQueueMock.poll();
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        return queue.poll();
-      }
-    }).anyTimes();
+    doAnswer(invocation -> {
+      queue.remove(invocation.getArgument(0));
+      return null;
+    }).when(workQueueMock).remove(any());
 
-    zkStateReaderMock.getClusterState();
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        return clusterStateMock;
-      }
-    }).anyTimes();
-    
-    zkStateReaderMock.getZkClient();
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        return solrZkClientMock;
-      }
-    }).anyTimes();
+    when(workQueueMock.poll()).thenAnswer(invocation -> {
+      queue.poll();
+      return null;
+    });
 
-    zkStateReaderMock.updateClusterState();
+    when(zkStateReaderMock.getZkClient()).thenReturn(solrZkClientMock);
+    when(zkStateReaderMock.getClusterState()).thenReturn(clusterStateMock);
 
-    clusterStateMock.getCollections();
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        return collectionsSet;
-      }
-    }).anyTimes();
+    when(clusterStateMock.getCollections()).thenReturn(collectionsSet);
     final Set<String> liveNodes = new HashSet<>();
     for (int i = 0; i < liveNodesCount; i++) {
       final String address = "localhost:" + (8963 + i) + "_solr";
       liveNodes.add(address);
       
-      zkStateReaderMock.getBaseUrlForNodeName(address);
-      expectLastCall().andAnswer(new IAnswer<Object>() {
-        @Override
-        public Object answer() throws Throwable {
-          // This works as long as this test does not use a 
-          // webapp context with an underscore in it
-          return address.replaceAll("_", "/");
-        }
-      }).anyTimes();
-      
+      when(zkStateReaderMock.getBaseUrlForNodeName(address)).thenAnswer(invocation -> address.replaceAll("_", "/"));
     }
 
-    zkStateReaderMock.getClusterProperty("legacyCloud", "true");
-    expectLastCall().andAnswer(new IAnswer<String>() {
-      @Override
-      public String answer() throws Throwable {
-        return "true";
-      }
+    when(zkStateReaderMock.getClusterProperty("legacyCloud", "true")).thenReturn("true");
+
+    when(solrZkClientMock.getZkClientTimeout()).thenReturn(30000);
+    
+    when(clusterStateMock.hasCollection(anyString())).thenAnswer(invocation -> {
+      String key = invocation.getArgument(0);
+      return collectionsSet.contains(key);
     });
 
-    solrZkClientMock.getZkClientTimeout();
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        return 30000;
-      }
-    }).anyTimes();
-    
-    clusterStateMock.hasCollection(anyObject(String.class));
-    expectLastCall().andAnswer(new IAnswer<Boolean>() {
-      @Override
-      public Boolean answer() throws Throwable {
-        String key = (String) getCurrentArguments()[0];
-        return collectionsSet.contains(key);
-      }
-    } ).anyTimes();
+    when(clusterStateMock.getLiveNodes()).thenReturn(liveNodes);
+    when(solrZkClientMock.create(any(), any(), any(), anyBoolean())).thenAnswer(invocation -> {
+      String key = invocation.getArgument(0);
+      zkMap.put(key, null);
+      handleCreateCollMessage(invocation.getArgument(1));
+      return key;
+    });
 
-
-    clusterStateMock.getLiveNodes();
-    expectLastCall().andAnswer(new IAnswer<Object>() {
-      @Override
-      public Object answer() throws Throwable {
-        return liveNodes;
-      }
-    }).anyTimes();
-    solrZkClientMock.create(anyObject(String.class), anyObject(byte[].class), anyObject(CreateMode.class), anyBoolean());
-    expectLastCall().andAnswer(new IAnswer<String>() {
-      @Override
-      public String answer() throws Throwable {
-        String key = (String) getCurrentArguments()[0];
-        zkMap.put(key, null);
-        handleCreateCollMessage((byte[]) getCurrentArguments()[1]);
-        return key;
-      }
-    }).anyTimes();
-
-    solrZkClientMock.makePath(anyObject(String.class), anyObject(byte[].class), anyBoolean());
-    expectLastCall().andAnswer(new IAnswer<String>() {
-      @Override
-      public String answer() throws Throwable {
-        String key = (String) getCurrentArguments()[0];
-        return key;
-      }
-    }).anyTimes();
-
-    solrZkClientMock.makePath(anyObject(String.class), anyObject(byte[].class), anyObject(CreateMode.class), anyBoolean());
-    expectLastCall().andAnswer(new IAnswer<String>() {
-      @Override
-      public String answer() throws Throwable {
-        String key = (String) getCurrentArguments()[0];
-        return key;
-      }
-    }).anyTimes();
-
-    solrZkClientMock.exists(anyObject(String.class),anyBoolean());
-    expectLastCall().andAnswer(new IAnswer<Boolean>() {
-      @Override
-      public Boolean answer() throws Throwable {
-        String key = (String) getCurrentArguments()[0];
-        return zkMap.containsKey(key);
-      }
-    }).anyTimes();
+    when(solrZkClientMock.exists(any(String.class), anyBoolean())).thenAnswer(invocation -> {
+      String key = invocation.getArgument(0);
+      return zkMap.containsKey(key);
+    });
     
     zkMap.put("/configs/myconfig", null);
     
@@ -362,32 +248,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     thread.interrupt();
     thread.join();
   }
-  
-  private class SubmitCapture {
-    public Capture<ShardRequest> shardRequestCapture = new Capture<>();
-    public Capture<String> nodeUrlsWithoutProtocolPartCapture = new Capture<>();
-    public Capture<ModifiableSolrParams> params = new Capture<>();
-  }
-  
-  protected List<SubmitCapture> mockShardHandlerForCreateJob(
-      Integer numberOfSlices, Integer numberOfReplica) {
-    List<SubmitCapture> submitCaptures = new ArrayList<>();
-    for (int i = 0; i < (numberOfSlices * numberOfReplica); i++) {
-      SubmitCapture submitCapture = new SubmitCapture();
-      shardHandlerMock.submit(capture(submitCapture.shardRequestCapture),
-          capture(submitCapture.nodeUrlsWithoutProtocolPartCapture),
-          capture(submitCapture.params));
-      expectLastCall();
-      submitCaptures.add(submitCapture);
-      ShardResponse shardResponseWithoutException = new ShardResponse();
-      shardResponseWithoutException.setSolrResponse(new QueryResponse());
-      expect(shardHandlerMock.takeCompletedOrError()).andReturn(
-          shardResponseWithoutException);
-    }
-    expect(shardHandlerMock.takeCompletedOrError()).andReturn(null);
-    return submitCaptures;
-  }
-  
+
   protected void issueCreateJob(Integer numberOfSlices,
       Integer replicationFactor, Integer maxShardsPerNode, List<String> createNodeList, boolean sendCreateNodeList, boolean createNodeSetShuffle) {
     Map<String,Object> propMap = Utils.makeMap(
@@ -416,7 +277,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     queue.add(qe);
   }
   
-  protected void verifySubmitCaptures(List<SubmitCapture> submitCaptures,
+  protected void verifySubmitCaptures(
       Integer numberOfSlices, Integer numberOfReplica, Collection<String> createNodes, boolean dontShuffleCreateNodeSet) {
     List<String> coreNames = new ArrayList<>();
     Map<String,Map<String,Integer>> sliceToNodeUrlsWithoutProtocolPartToNumberOfShardsRunningMapMap = new HashMap<>();
@@ -429,9 +290,17 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
       nodeUrlWithoutProtocolPartForLiveNodes.add(nodeUrlWithoutProtocolPart);
     }
     final Map<String,String> coreName_TO_nodeUrlWithoutProtocolPartForLiveNodes_map = new HashMap<>();
-    
-    for (SubmitCapture submitCapture : submitCaptures) {
-      ShardRequest shardRequest = submitCapture.shardRequestCapture.getValue();
+
+    ArgumentCaptor<ShardRequest> shardRequestCaptor = ArgumentCaptor.forClass(ShardRequest.class);
+    ArgumentCaptor<String> nodeUrlsWithoutProtocolPartCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<ModifiableSolrParams> paramsCaptor = ArgumentCaptor.forClass(ModifiableSolrParams.class);
+    verify(shardHandlerMock, times(numberOfReplica * numberOfSlices))
+        .submit(shardRequestCaptor.capture(), nodeUrlsWithoutProtocolPartCaptor.capture(), paramsCaptor.capture());
+    log.info("Datcmzz " + shardRequestCaptor.getAllValues().size());
+    for (int i = 0; i < shardRequestCaptor.getAllValues().size(); i++) {
+      ShardRequest shardRequest = shardRequestCaptor.getAllValues().get(i);
+      String nodeUrlsWithoutProtocolPartCapture = nodeUrlsWithoutProtocolPartCaptor.getAllValues().get(i);
+      ModifiableSolrParams params = paramsCaptor.getAllValues().get(i);
       assertEquals(CoreAdminAction.CREATE.toString(),
           shardRequest.params.get(CoreAdminParams.ACTION));
       // assertEquals(shardRequest.params, submitCapture.params);
@@ -448,7 +317,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
       assertEquals(ADMIN_PATH, shardRequest.params.get("qt"));
       assertEquals(1, shardRequest.purpose);
       assertEquals(1, shardRequest.shards.length);
-      assertEquals(submitCapture.nodeUrlsWithoutProtocolPartCapture.getValue(),
+      assertEquals(nodeUrlsWithoutProtocolPartCapture,
           shardRequest.shards[0]);
       assertTrue("Shard " + coreName + " created on wrong node "
           + shardRequest.shards[0],
@@ -579,19 +448,10 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     }
     
     if (random().nextBoolean()) Collections.shuffle(createNodeList, OverseerCollectionMessageHandler.RANDOM);
-    
-    List<SubmitCapture> submitCaptures = null;
-    if (collectionExceptedToBeCreated) {
-      submitCaptures = mockShardHandlerForCreateJob(numberOfSlices,
-          replicationFactor);
-    }
-    
-    replay(workQueueMock);
-    replay(solrZkClientMock);
-    replay(zkStateReaderMock);
-    replay(clusterStateMock);
-    replay(shardHandlerFactoryMock);
-    replay(shardHandlerMock);
+
+    underTest = new OverseerCollectionConfigSetProcessorToBeTested(zkStateReaderMock,
+        "1234", shardHandlerFactoryMock, ADMIN_PATH, workQueueMock, runningMapMock,
+        completedMapMock, failureMapMock);
 
 
     log.info("clusterstate " + clusterStateMock.hashCode());
@@ -603,15 +463,13 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     final boolean dontShuffleCreateNodeSet = (createNodeListToSend != null) && sendCreateNodeList && random().nextBoolean();
     issueCreateJob(numberOfSlices, replicationFactor, maxShardsPerNode, createNodeListToSend, sendCreateNodeList, !dontShuffleCreateNodeSet);
     waitForEmptyQueue(10000);
-    
+
     if (collectionExceptedToBeCreated) {
       assertNotNull(lastProcessMessageResult.getResponse().toString(), lastProcessMessageResult);
     }
-    verify(shardHandlerFactoryMock);
-    verify(shardHandlerMock);
 
     if (collectionExceptedToBeCreated) {
-      verifySubmitCaptures(submitCaptures, numberOfSlices, replicationFactor,
+      verifySubmitCaptures(numberOfSlices, replicationFactor,
           createNodeList, dontShuffleCreateNodeSet);
     }
   }

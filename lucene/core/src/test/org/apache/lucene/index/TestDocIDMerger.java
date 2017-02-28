@@ -17,10 +17,8 @@
 package org.apache.lucene.index;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.FixedBitSet;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.lucene.util.TestUtil;
@@ -72,7 +70,7 @@ public class TestDocIDMerger extends LuceneTestCase {
       valueStart += maxDoc;
     }
 
-    DocIDMerger<TestSubUnsorted> merger = new DocIDMerger<>(subs, false);
+    DocIDMerger<TestSubUnsorted> merger = DocIDMerger.of(subs, false);
 
     int count = 0;
     while (true) {
@@ -177,7 +175,7 @@ public class TestDocIDMerger extends LuceneTestCase {
         }, docMap.length, i));
     }
 
-    DocIDMerger<TestSubSorted> merger = new DocIDMerger<>(subs, true);
+    DocIDMerger<TestSubSorted> merger = DocIDMerger.of(subs, true);
 
     int count = 0;
     while (true) {

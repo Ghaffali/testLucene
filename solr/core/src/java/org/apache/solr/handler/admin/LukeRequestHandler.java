@@ -58,6 +58,7 @@ import org.apache.lucene.index.Terms;
 import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
@@ -288,8 +289,6 @@ public class LukeRequestHandler extends RequestHandlerBase
       f.add( "schema", getFieldFlags( sfield ) );
       f.add( "flags", getFieldFlags( field ) );
 
-      Term t = new Term(field.name(), ftype!=null ? ftype.storedToIndexed(field) : field.stringValue());
-
       f.add( "value", (ftype==null)?null:ftype.toExternal( field ) );
 
       // TODO: this really should be "stored"
@@ -300,7 +299,10 @@ public class LukeRequestHandler extends RequestHandlerBase
         f.add( "binary", Base64.byteArrayToBase64(bytes.bytes, bytes.offset, bytes.length));
       }
       f.add( "boost", field.boost() );
-      f.add( "docFreq", t.text()==null ? 0 : reader.docFreq( t ) ); // this can be 0 for non-indexed fields
+      if (!ftype.isPointField()) {
+        Term t = new Term(field.name(), ftype!=null ? ftype.storedToIndexed(field) : field.stringValue());
+        f.add( "docFreq", t.text()==null ? 0 : reader.docFreq( t ) ); // this can be 0 for non-indexed fields
+      }// TODO: Calculate docFreq for point fields
 
       // If we have a term vector, return that
       if( field.fieldType().storeTermVectors() ) {
@@ -340,7 +342,7 @@ public class LukeRequestHandler extends RequestHandlerBase
       fields = new TreeSet<>(Arrays.asList(fl.split( "[,\\s]+" )));
     }
 
-    LeafReader reader = searcher.getLeafReader();
+    LeafReader reader = searcher.getSlowAtomicReader();
     IndexSchema schema = searcher.getSchema();
 
     // Don't be tempted to put this in the loop below, the whole point here is to alphabetize the fields!
@@ -474,6 +476,7 @@ public class LukeRequestHandler extends RequestHandlerBase
     finfo.add("uniqueKeyField",
         null == uniqueField ? null : uniqueField.getName());
     finfo.add("defaultSearchField", schema.getDefaultSearchFieldName());
+    finfo.add("similarity", getSimilarityInfo(schema.getSimilarity()));
     finfo.add("types", types);
     return finfo;
   }
@@ -576,7 +579,7 @@ public class LukeRequestHandler extends RequestHandlerBase
 
     indexInfo.add("version", reader.getVersion());  // TODO? Is this different then: IndexReader.getCurrentVersion( dir )?
     indexInfo.add("segmentCount", reader.leaves().size());
-    indexInfo.add("current", reader.isCurrent() );
+    indexInfo.add("current", closeSafe( reader::isCurrent));
     indexInfo.add("hasDeletions", reader.hasDeletions() );
     indexInfo.add("directory", dir );
     IndexCommit indexCommit = reader.getIndexCommit();
@@ -591,6 +594,21 @@ public class LukeRequestHandler extends RequestHandlerBase
     }
     return indexInfo;
   }
+
+  @FunctionalInterface
+  interface IOSupplier {
+    boolean get() throws IOException;
+  }
+  
+  private static Object closeSafe(IOSupplier isCurrent) {
+    try {
+      return isCurrent.get();
+    }catch(AlreadyClosedException | IOException exception) {
+    }
+    return false;
+  }
+
+
 
   private static long getFileLength(Directory dir, String filename) {
     try {
@@ -683,6 +701,11 @@ public class LukeRequestHandler extends RequestHandlerBase
   @Override
   public String getDescription() {
     return "Lucene Index Browser.  Inspired and modeled after Luke: http://www.getopt.org/luke/";
+  }
+
+  @Override
+  public Category getCategory() {
+    return Category.ADMIN;
   }
 
   @Override

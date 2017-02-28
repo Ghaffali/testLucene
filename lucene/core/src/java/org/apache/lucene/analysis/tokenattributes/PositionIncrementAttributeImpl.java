@@ -30,8 +30,7 @@ public class PositionIncrementAttributeImpl extends AttributeImpl implements Pos
   @Override
   public void setPositionIncrement(int positionIncrement) {
     if (positionIncrement < 0) {
-      throw new IllegalArgumentException
-        ("Increment must be zero or greater: got " + positionIncrement);
+      throw new IllegalArgumentException("Position increment must be zero or greater; got " + positionIncrement);
     }
     this.positionIncrement = positionIncrement;
   }
@@ -46,6 +45,11 @@ public class PositionIncrementAttributeImpl extends AttributeImpl implements Pos
     this.positionIncrement = 1;
   }
   
+  @Override
+  public void end() {
+    this.positionIncrement = 0;
+  }
+
   @Override
   public boolean equals(Object other) {
     if (other == this) {

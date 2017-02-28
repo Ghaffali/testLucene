@@ -19,7 +19,6 @@ import java.util.List;
 
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.queries.function.ValueSource;
-import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
 import org.apache.solr.SolrTestCaseJ4;
@@ -112,13 +111,17 @@ public class PolyFieldTest extends SolrTestCaseJ4 {
       //
     }
 
-    //
+    
     SchemaField s1 = schema.getField("test_p");
     SchemaField s2 = schema.getField("test_p");
-    ValueSource v1 = s1.getType().getValueSource(s1, null);
-    ValueSource v2 = s2.getType().getValueSource(s2, null);
-    assertEquals(v1, v2);
-    assertEquals(v1.hashCode(), v2.hashCode());
+    // If we use [Int/Double/Long/Float]PointField, we can't get the valueSource, since docValues is false
+    if (s1.createFields("1,2", 0).get(0).fieldType().pointDimensionCount() == 0) {
+      assertFalse(s2.getType().isPointField());
+      ValueSource v1 = s1.getType().getValueSource(s1, null);
+      ValueSource v2 = s2.getType().getValueSource(s2, null);
+      assertEquals(v1, v2);
+      assertEquals(v1.hashCode(), v2.hashCode());
+    }
   }
 
   @Test

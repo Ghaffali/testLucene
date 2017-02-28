@@ -37,6 +37,7 @@ import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.util.HdfsUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -121,7 +122,7 @@ public class HdfsUpdateLog extends UpdateLog {
     String ulogDir = core.getCoreDescriptor().getUlogDir();
 
     this.uhandler = uhandler;
-    
+
     synchronized (fsLock) {
       // just like dataDir, we do not allow
       // moving the tlog dir on reload
@@ -219,8 +220,13 @@ public class HdfsUpdateLog extends UpdateLog {
     // It's possible that at abnormal close both "tlog" and "prevTlog" were
     // uncapped.
     for (TransactionLog ll : logs) {
-      newestLogsOnStartup.addFirst(ll);
-      if (newestLogsOnStartup.size() >= 2) break;
+      if (newestLogsOnStartup.size() < 2) {
+        newestLogsOnStartup.addFirst(ll);
+      } else {
+        // We're never going to modify old non-recovery logs - no need to hold their output open
+        log.info("Closing output for old non-recovery log " + ll);
+        ll.closeOutput();
+      }
     }
     
     try {
@@ -254,7 +260,9 @@ public class HdfsUpdateLog extends UpdateLog {
       }
 
     }
-    
+
+    // initialize metrics
+    core.getCoreMetricManager().registerMetricProducer(SolrInfoMBean.Category.TLOG.toString(), this);
   }
   
   @Override
@@ -308,12 +316,6 @@ public class HdfsUpdateLog extends UpdateLog {
       HdfsTransactionLog ntlog = new HdfsTransactionLog(fs, new Path(tlogDir, newLogName),
           globalStrings, tlogDfsReplication);
       tlog = ntlog;
-      
-      if (tlog != ntlog) {
-        ntlog.deleteOnClose = false;
-        ntlog.decref();
-        ntlog.forceClose();
-      }
     }
   }
   

@@ -16,12 +16,12 @@
  */
 package org.apache.solr.client.solrj.impl;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.security.Principal;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.security.auth.login.AppConfigurationEntry;
@@ -29,8 +29,6 @@ import javax.security.auth.login.Configuration;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpEntityEnclosingRequest;
-import org.apache.http.HttpException;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpRequestInterceptor;
 import org.apache.http.auth.AuthSchemeProvider;
 import org.apache.http.auth.AuthScope;
@@ -43,27 +41,32 @@ import org.apache.http.cookie.CookieSpecProvider;
 import org.apache.http.entity.BufferedHttpEntity;
 import org.apache.http.impl.auth.SPNegoSchemeFactory;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.protocol.HttpContext;
-import org.apache.solr.client.solrj.impl.SolrHttpClientBuilder.AuthSchemeRegistryProvider;
-import org.apache.solr.client.solrj.impl.SolrHttpClientBuilder.CookieSpecRegistryProvider;
-import org.apache.solr.client.solrj.impl.SolrHttpClientBuilder.CredentialsProviderProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
  * Kerberos-enabled SolrHttpClientBuilder
  */
-public class Krb5HttpClientBuilder  {
+public class Krb5HttpClientBuilder implements HttpClientBuilderFactory {
   
   public static final String LOGIN_CONFIG_PROP = "java.security.auth.login.config";
   private static final Logger logger = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   
-  private static final Configuration jaasConfig = new SolrJaasConfiguration();
+  private static Configuration jaasConfig = new SolrJaasConfiguration();
 
   public Krb5HttpClientBuilder() {
 
   }
-  
+
+  /**
+   * The jaasConfig is static, which makes it problematic for testing in the same jvm.
+   * Call this function to regenerate the static config (this is not thread safe).
+   * Note: only used for tests
+   */
+  public static void regenerateJaasConfiguration() {
+    jaasConfig = new SolrJaasConfiguration();
+  }
+
   public SolrHttpClientBuilder getBuilder() {
     return getBuilder(HttpClientUtil.getHttpClientBuilder());
   }
@@ -71,7 +74,12 @@ public class Krb5HttpClientBuilder  {
   public void close() {
     HttpClientUtil.removeRequestInterceptor(bufferedEntityInterceptor);
   }
-  
+
+  @Override
+  public SolrHttpClientBuilder getHttpClientBuilder(Optional<SolrHttpClientBuilder> builder) {
+    return builder.isPresent() ? getBuilder(builder.get()) : getBuilder();
+  }
+
   public SolrHttpClientBuilder getBuilder(SolrHttpClientBuilder builder) {
     if (System.getProperty(LOGIN_CONFIG_PROP) != null) {
       String configValue = System.getProperty(LOGIN_CONFIG_PROP);
@@ -111,9 +119,9 @@ public class Krb5HttpClientBuilder  {
             return null;
           }
         };
-        
+
         HttpClientUtil.setCookiePolicy(SolrPortAwareCookieSpecFactory.POLICY_NAME);
-        
+
         builder.setCookieSpecRegistryProvider(() -> {
           SolrPortAwareCookieSpecFactory cookieFactory = new SolrPortAwareCookieSpecFactory();
 
@@ -130,8 +138,11 @@ public class Krb5HttpClientBuilder  {
         });
         HttpClientUtil.addRequestInterceptor(bufferedEntityInterceptor);
       }
+    } else {
+      logger.warn("{} is configured without specifying system property '{}'",
+          getClass().getName(), LOGIN_CONFIG_PROP);
     }
-    
+
     return builder;
   }
 

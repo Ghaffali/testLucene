@@ -26,12 +26,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.stream.Collectors;
 
 import org.apache.solr.client.solrj.io.comp.ComparatorOrder;
 import org.apache.solr.client.solrj.io.comp.MultipleFieldComparator;
 import org.apache.solr.client.solrj.io.comp.StreamComparator;
 import org.apache.solr.client.solrj.io.eq.MultipleFieldEqualitor;
 import org.apache.solr.client.solrj.io.eq.StreamEqualitor;
+import org.apache.solr.client.solrj.io.eval.StreamEvaluator;
 import org.apache.solr.client.solrj.io.ops.StreamOperation;
 import org.apache.solr.client.solrj.io.stream.TupleStream;
 import org.apache.solr.client.solrj.io.stream.metrics.Metric;
@@ -42,12 +44,12 @@ import org.apache.solr.client.solrj.io.stream.metrics.Metric;
 public class StreamFactory implements Serializable {
   
   private transient HashMap<String,String> collectionZkHosts;
-  private transient HashMap<String,Class> functionNames;
+  private transient HashMap<String,Class<? extends Expressible>> functionNames;
   private transient String defaultZkHost;
   
   public StreamFactory(){
-    collectionZkHosts = new HashMap<String,String>();
-    functionNames = new HashMap<String,Class>();
+    collectionZkHosts = new HashMap<>();
+    functionNames = new HashMap<>();
   }
   
   public StreamFactory withCollectionZkHost(String collectionName, String zkHost){
@@ -71,10 +73,10 @@ public class StreamFactory implements Serializable {
     return null;
   }
   
-  public Map<String,Class> getFunctionNames(){
+  public Map<String,Class<? extends Expressible>> getFunctionNames(){
     return functionNames;
   }
-  public StreamFactory withFunctionName(String functionName, Class clazz){
+  public StreamFactory withFunctionName(String functionName, Class<? extends Expressible> clazz){
     this.functionNames.put(functionName, clazz);
     return this;
   }
@@ -87,12 +89,18 @@ public class StreamFactory implements Serializable {
     return expression.getParameters().get(parameterIndex);
   }
   
+  public List<String> getValueOperands(StreamExpression expression){
+    return getOperandsOfType(expression, StreamExpressionValue.class).stream().map(item -> ((StreamExpressionValue)item).getValue()).collect(Collectors.toList());
+  }
+  
   /** Given an expression, will return the value parameter at the given index, or null if doesn't exist */
   public String getValueOperand(StreamExpression expression, int parameterIndex){
     StreamExpressionParameter parameter = getOperand(expression, parameterIndex);
     if(null != parameter){ 
       if(parameter instanceof StreamExpressionValue){
         return ((StreamExpressionValue)parameter).getValue();
+      } else if(parameter instanceof StreamExpression) {
+        return parameter.toString();
       }
     }
     
@@ -100,7 +108,7 @@ public class StreamFactory implements Serializable {
   }
   
   public List<StreamExpressionNamedParameter> getNamedOperands(StreamExpression expression){
-    List<StreamExpressionNamedParameter> namedParameters = new ArrayList<StreamExpressionNamedParameter>();
+    List<StreamExpressionNamedParameter> namedParameters = new ArrayList<>();
     for(StreamExpressionParameter parameter : getOperandsOfType(expression, StreamExpressionNamedParameter.class)){
       namedParameters.add((StreamExpressionNamedParameter)parameter);
     }
@@ -119,7 +127,7 @@ public class StreamFactory implements Serializable {
   }
   
   public List<StreamExpression> getExpressionOperands(StreamExpression expression){
-    List<StreamExpression> namedParameters = new ArrayList<StreamExpression>();
+    List<StreamExpression> namedParameters = new ArrayList<>();
     for(StreamExpressionParameter parameter : getOperandsOfType(expression, StreamExpression.class)){
       namedParameters.add((StreamExpression)parameter);
     }
@@ -127,7 +135,7 @@ public class StreamFactory implements Serializable {
     return namedParameters;
   }
   public List<StreamExpression> getExpressionOperands(StreamExpression expression, String functionName){
-    List<StreamExpression> namedParameters = new ArrayList<StreamExpression>();
+    List<StreamExpression> namedParameters = new ArrayList<>();
     for(StreamExpressionParameter parameter : getOperandsOfType(expression, StreamExpression.class)){
       StreamExpression expressionOperand = (StreamExpression)parameter;
       if(expressionOperand.getFunctionName().equals(functionName)){
@@ -138,7 +146,7 @@ public class StreamFactory implements Serializable {
     return namedParameters;
   }
   public List<StreamExpressionParameter> getOperandsOfType(StreamExpression expression, Class ... clazzes){
-    List<StreamExpressionParameter> parameters = new ArrayList<StreamExpressionParameter>();
+    List<StreamExpressionParameter> parameters = new ArrayList<>();
     
     parameterLoop:
      for(StreamExpressionParameter parameter : expression.getParameters()){
@@ -155,7 +163,7 @@ public class StreamFactory implements Serializable {
   }
   
   public List<StreamExpression> getExpressionOperandsRepresentingTypes(StreamExpression expression, Class ... clazzes){
-    List<StreamExpression> matchingStreamExpressions = new ArrayList<StreamExpression>();
+    List<StreamExpression> matchingStreamExpressions = new ArrayList<>();
     List<StreamExpression> allStreamExpressions = getExpressionOperands(expression);
     
     parameterLoop:
@@ -174,16 +182,63 @@ public class StreamFactory implements Serializable {
     return matchingStreamExpressions;   
   }
   
+  public boolean doesRepresentTypes(StreamExpression expression, Class ... clazzes){
+    if(functionNames.containsKey(expression.getFunctionName())){
+      for(Class clazz : clazzes){
+        if(!clazz.isAssignableFrom(functionNames.get(expression.getFunctionName()))){
+          return false;
+        }
+      }
+      return true;
+    }
+    
+    return false;    
+  }
+  
+  public int getIntOperand(StreamExpression expression, String paramName, Integer defaultValue) throws IOException{
+    StreamExpressionNamedParameter param = getNamedOperand(expression, paramName);
+    
+    if(null == param || null == param.getParameter() || !(param.getParameter() instanceof StreamExpressionValue)){
+      if(null != defaultValue){
+        return defaultValue;
+      }
+      throw new IOException(String.format(Locale.ROOT,"Invalid expression %s - expecting a single '%s' parameter of type integer but didn't find one",expression, paramName));
+    }
+    String nStr = ((StreamExpressionValue)param.getParameter()).getValue();
+    try{
+      return Integer.parseInt(nStr);
+    }
+    catch(NumberFormatException e){
+      if(null != defaultValue){
+        return defaultValue;
+      }
+      throw new IOException(String.format(Locale.ROOT,"invalid expression %s - %s '%s' is not a valid integer.",expression, paramName, nStr));
+    }
+  }
+
+  public boolean getBooleanOperand(StreamExpression expression, String paramName, Boolean defaultValue) throws IOException{
+    StreamExpressionNamedParameter param = getNamedOperand(expression, paramName);
+    
+    if(null == param || null == param.getParameter() || !(param.getParameter() instanceof StreamExpressionValue)){
+      if(null != defaultValue){
+        return defaultValue;
+      }
+      throw new IOException(String.format(Locale.ROOT,"Invalid expression %s - expecting a single '%s' parameter of type boolean but didn't find one",expression, paramName));
+    }
+    String nStr = ((StreamExpressionValue)param.getParameter()).getValue();
+    return Boolean.parseBoolean(nStr);
+  }
+
+  
   public TupleStream constructStream(String expressionClause) throws IOException {
     return constructStream(StreamExpressionParser.parse(expressionClause));
   }
   public TupleStream constructStream(StreamExpression expression) throws IOException{
     String function = expression.getFunctionName();
     if(functionNames.containsKey(function)){
-      Class clazz = functionNames.get(function);
+      Class<? extends Expressible> clazz = functionNames.get(function);
       if(Expressible.class.isAssignableFrom(clazz) && TupleStream.class.isAssignableFrom(clazz)){
-        TupleStream stream = (TupleStream)createInstance(functionNames.get(function), new Class[]{ StreamExpression.class, StreamFactory.class }, new Object[]{ expression, this});
-        return stream;
+        return (TupleStream)createInstance(functionNames.get(function), new Class[]{ StreamExpression.class, StreamFactory.class }, new Object[]{ expression, this});
       }
     }
     
@@ -196,10 +251,9 @@ public class StreamFactory implements Serializable {
   public Metric constructMetric(StreamExpression expression) throws IOException{
     String function = expression.getFunctionName();
     if(functionNames.containsKey(function)){
-      Class clazz = functionNames.get(function);
+      Class<? extends Expressible> clazz = functionNames.get(function);
       if(Expressible.class.isAssignableFrom(clazz) && Metric.class.isAssignableFrom(clazz)){
-        Metric metric = (Metric)createInstance(functionNames.get(function), new Class[]{ StreamExpression.class, StreamFactory.class }, new Object[]{ expression, this});
-        return metric;
+        return (Metric)createInstance(functionNames.get(function), new Class[]{ StreamExpression.class, StreamFactory.class }, new Object[]{ expression, this});
       }
     }
     
@@ -237,7 +291,7 @@ public class StreamFactory implements Serializable {
         else if(null == rightFieldName){ 
           rightFieldName = part.trim(); 
         }
-        else if(null == order){ 
+        else {
           order = part.trim();
           break; // we're done, stop looping
         }
@@ -299,13 +353,28 @@ public class StreamFactory implements Serializable {
   public StreamOperation constructOperation(StreamExpression expression) throws IOException{
     String function = expression.getFunctionName();
     if(functionNames.containsKey(function)){
-      Class clazz = functionNames.get(function);
+      Class<? extends Expressible> clazz = functionNames.get(function);
       if(Expressible.class.isAssignableFrom(clazz) && StreamOperation.class.isAssignableFrom(clazz)){
         return (StreamOperation)createInstance(functionNames.get(function), new Class[]{ StreamExpression.class, StreamFactory.class }, new Object[]{ expression, this});
       }
     }
     
     throw new IOException(String.format(Locale.ROOT,"Invalid operation expression %s - function '%s' is unknown (not mapped to a valid StreamOperation)", expression, expression.getFunctionName()));
+  }
+
+  public StreamEvaluator constructEvaluator(String expressionClause) throws IOException {
+    return constructEvaluator(StreamExpressionParser.parse(expressionClause));
+  }
+  public StreamEvaluator constructEvaluator(StreamExpression expression) throws IOException{
+    String function = expression.getFunctionName();
+    if(functionNames.containsKey(function)){
+      Class<? extends Expressible> clazz = functionNames.get(function);
+      if(Expressible.class.isAssignableFrom(clazz) && StreamEvaluator.class.isAssignableFrom(clazz)){
+        return (StreamEvaluator)createInstance(functionNames.get(function), new Class[]{ StreamExpression.class, StreamFactory.class }, new Object[]{ expression, this});
+      }
+    }
+    
+    throw new IOException(String.format(Locale.ROOT,"Invalid evaluator expression %s - function '%s' is unknown (not mapped to a valid StreamEvaluator)", expression, expression.getFunctionName()));
   }
 
 
@@ -325,8 +394,8 @@ public class StreamFactory implements Serializable {
     }
   }
   
-  public String getFunctionName(Class clazz) throws IOException{
-    for(Entry<String,Class> entry : functionNames.entrySet()){
+  public String getFunctionName(Class<? extends Expressible> clazz) throws IOException{
+    for(Entry<String,Class<? extends Expressible>> entry : functionNames.entrySet()){
       if(entry.getValue() == clazz){
         return entry.getKey();
       }
@@ -340,9 +409,9 @@ public class StreamFactory implements Serializable {
     
     if("null".equals(lower)){ return null; }
     if("true".equals(lower) || "false".equals(lower)){ return Boolean.parseBoolean(lower); }
-    try{ return Long.valueOf(original); } catch(Exception e){};
-    try{ if (original.matches(".{1,8}")){ return Float.valueOf(original); }} catch(Exception e){};
-    try{ if (original.matches(".{1,17}")){ return Double.valueOf(original); }} catch(Exception e){};
+    try{ return Long.valueOf(original); } catch(Exception ignored){};
+    try{ if (original.matches(".{1,8}")){ return Float.valueOf(original); }} catch(Exception ignored){};
+    try{ if (original.matches(".{1,17}")){ return Double.valueOf(original); }} catch(Exception ignored){};
     
     // is a string
     return original;

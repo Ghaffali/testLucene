@@ -1,5 +1,3 @@
-package org.apache.lucene.replicator.nrt;
-
 /*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
@@ -16,6 +14,8 @@ package org.apache.lucene.replicator.nrt;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package org.apache.lucene.replicator.nrt;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -50,6 +50,7 @@ import org.apache.lucene.store.IOContext;
 import org.apache.lucene.store.IndexOutput;
 import org.apache.lucene.store.Lock;
 import org.apache.lucene.util.IOUtils;
+import org.apache.lucene.util.Version;
 
 /** Replica node, that pulls index changes from the primary node by copying newly flushed or merged index files.
  * 
@@ -97,6 +98,7 @@ public abstract class ReplicaNode extends Node {
       
       state = "init";
       deleter = new ReplicaFileDeleter(this, dir);
+      success = true;
     } catch (Throwable t) {
       message("exc on init:");
       t.printStackTrace(printStream);
@@ -137,7 +139,7 @@ public abstract class ReplicaNode extends Node {
       SegmentInfos infos;
       if (segmentsFileName == null) {
         // No index here yet:
-        infos = new SegmentInfos();
+        infos = new SegmentInfos(Version.LATEST);
         message("top: init: no segments in index");
       } else {
         message("top: init: read existing segments commit " + segmentsFileName);
@@ -218,8 +220,6 @@ public abstract class ReplicaNode extends Node {
           job.start();
 
           message("top: init: sync sis.version=" + job.getCopyState().version);
-
-          Collection<String> fileNamesToCopy = job.getFileNamesToCopy();
 
           // Force this copy job to finish while we wait, now.  Note that this can be very time consuming!
           // NOTE: newNRTPoint detects we are still in init (mgr is null) and does not cancel our copy if a flush happens
@@ -718,7 +718,6 @@ public abstract class ReplicaNode extends Node {
    *  files that need copying */
   public List<Map.Entry<String,FileMetaData>> getFilesToCopy(Map<String,FileMetaData> files) throws IOException {
 
-    boolean doCopyCommitFiles = false;
     List<Map.Entry<String,FileMetaData>> toCopy = new ArrayList<>();
     for (Map.Entry<String,FileMetaData> ent : files.entrySet()) {
       String fileName = ent.getKey();

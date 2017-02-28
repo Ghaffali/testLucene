@@ -17,9 +17,7 @@
 package org.apache.lucene.index;
 
 import java.io.Closeable;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.NoSuchFileException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,6 +30,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map.Entry;
+import java.util.Objects;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -64,6 +63,7 @@ import org.apache.lucene.store.MergeInfo;
 import org.apache.lucene.store.RateLimitedIndexOutput;
 import org.apache.lucene.store.TrackingDirectoryWrapper;
 import org.apache.lucene.util.Accountable;
+import org.apache.lucene.util.ArrayUtil;
 import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.CloseableThreadLocal;
@@ -72,6 +72,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.InfoStream;
 import org.apache.lucene.util.StringHelper;
 import org.apache.lucene.util.ThreadInterruptedException;
+import org.apache.lucene.util.UnicodeUtil;
 import org.apache.lucene.util.Version;
 
 /**
@@ -94,6 +95,14 @@ import org.apache.lucene.util.Version;
   #updateDocument(Term, Iterable) updateDocument} (which just deletes
   and then adds the entire document). When finished adding, deleting 
   and updating documents, {@link #close() close} should be called.</p>
+
+  <a name="sequence_numbers"></a>
+  <p>Each method that changes the index returns a {@code long} sequence number, which
+  expresses the effective order in which each change was applied.
+  {@link #commit} also returns a sequence number, describing which
+  changes are in the commit point and which are not.  Sequence numbers
+  are transient (not saved into the index in any way) and only valid
+  within a single {@code IndexWriter} instance.</p>
 
   <a name="flush"></a>
   <p>These changes are buffered in memory and periodically
@@ -125,19 +134,24 @@ import org.apache.lucene.util.Version;
   
   <a name="deletionPolicy"></a>
   <p>Expert: <code>IndexWriter</code> allows an optional
-  {@link IndexDeletionPolicy} implementation to be
-  specified.  You can use this to control when prior commits
-  are deleted from the index.  The default policy is {@link
-  KeepOnlyLastCommitDeletionPolicy} which removes all prior
-  commits as soon as a new commit is done (this matches
-  behavior before 2.2).  Creating your own policy can allow
-  you to explicitly keep previous "point in time" commits
-  alive in the index for some time, to allow readers to
-  refresh to the new commit without having the old commit
-  deleted out from under them.  This is necessary on
-  filesystems like NFS that do not support "delete on last
-  close" semantics, which Lucene's "point in time" search
-  normally relies on. </p>
+  {@link IndexDeletionPolicy} implementation to be specified.  You
+  can use this to control when prior commits are deleted from
+  the index.  The default policy is {@link KeepOnlyLastCommitDeletionPolicy}
+  which removes all prior commits as soon as a new commit is
+  done.  Creating your own policy can allow you to explicitly
+  keep previous "point in time" commits alive in the index for
+  some time, either because this is useful for your application,
+  or to give readers enough time to refresh to the new commit
+  without having the old commit deleted out from under them.
+  The latter is necessary when multiple computers take turns opening
+  their own {@code IndexWriter} and {@code IndexReader}s
+  against a single shared index mounted via remote filesystems
+  like NFS which do not support "delete on last close" semantics.
+  A single computer accessing an index via NFS is fine with the
+  default deletion policy since NFS clients emulate "delete on
+  last close" locally.  That said, accessing an index via NFS
+  will likely result in poor performance compared to a local IO
+  device. </p>
 
   <a name="mergePolicy"></a> <p>Expert:
   <code>IndexWriter</code> allows you to separately change
@@ -252,6 +266,12 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * IndexWriterConfig#setInfoStream(InfoStream)}).
    */
   public final static int MAX_TERM_LENGTH = DocumentsWriterPerThread.MAX_TERM_LENGTH_UTF8;
+
+  /**
+   * Maximum length string for a stored field.
+   */
+  public final static int MAX_STORED_STRING_LENGTH = ArrayUtil.MAX_ARRAY_LENGTH / UnicodeUtil.MAX_UTF8_BYTES_PER_CHAR;
+    
   // when unrecoverable disaster strikes, we populate this with the reason that we had to close IndexWriter
   volatile Throwable tragedy;
 
@@ -266,6 +286,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   private List<SegmentCommitInfo> rollbackSegments;      // list of segmentInfo we will fallback to if the commit fails
 
   volatile SegmentInfos pendingCommit;            // set when a commit is pending (after prepareCommit() & before commit())
+  volatile long pendingSeqNo;
   volatile long pendingCommitChangeCount;
 
   private Collection<String> filesToCommit;
@@ -285,6 +306,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
 
   private volatile boolean closed;
   private volatile boolean closing;
+
+  private Iterable<Map.Entry<String,String>> commitUserData;
 
   // Holds all SegmentInfo instances currently involved in
   // merges
@@ -425,7 +448,14 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       boolean success = false;
       synchronized (fullFlushLock) {
         try {
-          anyChanges = docWriter.flushAllThreads();
+          // TODO: should we somehow make this available in the returned NRT reader?
+          long seqNo = docWriter.flushAllThreads();
+          if (seqNo < 0) {
+            anyChanges = true;
+            seqNo = -seqNo;
+          } else {
+            anyChanges = false;
+          }
           if (!anyChanges) {
             // prevent double increment since docWriter#doFlush increments the flushcount
             // if we flushed anything.
@@ -747,8 +777,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * 
    * <p>
    * <b>NOTE:</b> after ths writer is created, the given configuration instance
-   * cannot be passed to another writer. If you intend to do so, you should
-   * {@link IndexWriterConfig#clone() clone} it beforehand.
+   * cannot be passed to another writer.
    * 
    * @param d
    *          the index directory. The index is either created or appended
@@ -836,14 +865,13 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         // against an index that's currently open for
         // searching.  In this case we write the next
         // segments_N file with no segments:
-        SegmentInfos sis = null;
+        final SegmentInfos sis = new SegmentInfos(Version.LATEST);
         try {
-          sis = SegmentInfos.readLatestCommit(directory);
-          sis.clear();
+          final SegmentInfos previous = SegmentInfos.readLatestCommit(directory);
+          sis.updateGenerationVersionAndCounter(previous);
         } catch (IOException e) {
           // Likely this means it's a fresh directory
           initialIndexExists = false;
-          sis = new SegmentInfos();
         }
         
         segmentInfos = sis;
@@ -931,6 +959,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         rollbackSegments = segmentInfos.createBackupSegmentInfos();
       }
 
+      commitUserData = new HashMap<String,String>(segmentInfos.getUserData()).entrySet();
+
       pendingNumDocs.set(segmentInfos.totalMaxDoc());
 
       // start with previous field numbers, but new FieldInfos
@@ -1002,15 +1032,19 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     }
   }
 
-  /** Confirms that the incoming index sort (if any) matches the existing index sort (if any).  This is unfortunately just best effort,
-   *  because it could be the old index only has flushed segments. */
-  private void validateIndexSort() {
+  /** Confirms that the incoming index sort (if any) matches the existing index sort (if any).
+   *  This is unfortunately just best effort, because it could be the old index only has unsorted flushed segments built
+   *  before {@link Version#LUCENE_6_5_0} (flushed segments are sorted in Lucene 7.0).  */
+  private void validateIndexSort() throws CorruptIndexException {
     Sort indexSort = config.getIndexSort();
     if (indexSort != null) {
       for(SegmentCommitInfo info : segmentInfos) {
         Sort segmentIndexSort = info.info.getIndexSort();
         if (segmentIndexSort != null && indexSort.equals(segmentIndexSort) == false) {
           throw new IllegalArgumentException("cannot change previous indexSort=" + segmentIndexSort + " (from segment=" + info + ") to new indexSort=" + indexSort);
+        } else if (segmentIndexSort == null && info.info.getVersion().onOrAfter(Version.LUCENE_6_5_0)) {
+          // Flushed segments are not sorted if they were built with a version prior to 6.5.0
+          throw new CorruptIndexException("segment not sorted with indexSort=" + segmentIndexSort, info.info.toString());
         }
       }
     }
@@ -1280,11 +1314,14 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * replaced with the Unicode replacement character
    * U+FFFD.</p>
    *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    */
-  public void addDocument(Iterable<? extends IndexableField> doc) throws IOException {
-    updateDocument(null, doc);
+  public long addDocument(Iterable<? extends IndexableField> doc) throws IOException {
+    return updateDocument(null, doc);
   }
 
   /**
@@ -1319,13 +1356,16 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * and will likely break them up.  Use such tools at your
    * own risk!
    *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    *
    * @lucene.experimental
    */
-  public void addDocuments(Iterable<? extends Iterable<? extends IndexableField>> docs) throws IOException {
-    updateDocuments(null, docs);
+  public long addDocuments(Iterable<? extends Iterable<? extends IndexableField>> docs) throws IOException {
+    return updateDocuments(null, docs);
   }
 
   /**
@@ -1336,20 +1376,26 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    *
    * See {@link #addDocuments(Iterable)}.
    *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    *
    * @lucene.experimental
    */
-  public void updateDocuments(Term delTerm, Iterable<? extends Iterable<? extends IndexableField>> docs) throws IOException {
+  public long updateDocuments(Term delTerm, Iterable<? extends Iterable<? extends IndexableField>> docs) throws IOException {
     ensureOpen();
     try {
       boolean success = false;
       try {
-        if (docWriter.updateDocuments(docs, analyzer, delTerm)) {
+        long seqNo = docWriter.updateDocuments(docs, analyzer, delTerm);
+        if (seqNo < 0) {
+          seqNo = -seqNo;
           processEvents(true, false);
         }
         success = true;
+        return seqNo;
       } finally {
         if (!success) {
           if (infoStream.isEnabled("IW")) {
@@ -1359,6 +1405,9 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       }
     } catch (AbortingException | VirtualMachineError tragedy) {
       tragicEvent(tragedy, "updateDocuments");
+
+      // dead code but javac disagrees
+      return -1;
     }
   }
 
@@ -1367,15 +1416,15 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    *  DirectoryReader#open(IndexWriter)}).  If the
    *  provided reader is an NRT reader obtained from this
    *  writer, and its segment has not been merged away, then
-   *  the delete succeeds and this method returns true; else, it
-   *  returns false the caller must then separately delete by
-   *  Term or Query.
+   *  the delete succeeds and this method returns a valid (&gt; 0) sequence
+   *  number; else, it returns -1 and the caller must then
+   *  separately delete by Term or Query.
    *
    *  <b>NOTE</b>: this method can only delete documents
    *  visible to the currently open NRT reader.  If you need
    *  to delete documents indexed after opening the NRT
    *  reader you must use {@link #deleteDocuments(Term...)}). */
-  public synchronized boolean tryDeleteDocument(IndexReader readerIn, int docID) throws IOException {
+  public synchronized long tryDeleteDocument(IndexReader readerIn, int docID) throws IOException {
 
     final LeafReader reader;
     if (readerIn instanceof LeafReader) {
@@ -1426,7 +1475,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
             changed();
           }
           //System.out.println("  yes " + info.info.name + " " + docID);
-          return true;
+          return docWriter.deleteQueue.getNextSequenceNumber();
         }
       } else {
         //System.out.println("  no rld " + info.info.name + " " + docID);
@@ -1434,7 +1483,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     } else {
       //System.out.println("  no seg " + info.info.name + " " + docID);
     }
-    return false;
+
+    return -1;
   }
 
   /**
@@ -1442,19 +1492,28 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * terms. All given deletes are applied and flushed atomically
    * at the same time.
    *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @param terms array of terms to identify the documents
    * to be deleted
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    */
-  public void deleteDocuments(Term... terms) throws IOException {
+  public long deleteDocuments(Term... terms) throws IOException {
     ensureOpen();
     try {
-      if (docWriter.deleteTerms(terms)) {
+      long seqNo = docWriter.deleteTerms(terms);
+      if (seqNo < 0) {
+        seqNo = -seqNo;
         processEvents(true, false);
       }
+      return seqNo;
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "deleteDocuments(Term..)");
+
+      // dead code but javac disagrees:
+      return -1;
     }
   }
 
@@ -1462,28 +1521,37 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * Deletes the document(s) matching any of the provided queries.
    * All given deletes are applied and flushed atomically at the same time.
    *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @param queries array of queries to identify the documents
    * to be deleted
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    */
-  public void deleteDocuments(Query... queries) throws IOException {
+  public long deleteDocuments(Query... queries) throws IOException {
     ensureOpen();
 
     // LUCENE-6379: Specialize MatchAllDocsQuery
     for(Query query : queries) {
       if (query.getClass() == MatchAllDocsQuery.class) {
-        deleteAll();
-        return;
+        return deleteAll();
       }
     }
 
     try {
-      if (docWriter.deleteQueries(queries)) {
+      long seqNo = docWriter.deleteQueries(queries);
+      if (seqNo < 0) {
+        seqNo = -seqNo;
         processEvents(true, false);
       }
+
+      return seqNo;
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "deleteDocuments(Query..)");
+
+      // dead code but javac disagrees:
+      return -1;
     }
   }
 
@@ -1494,21 +1562,27 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * by a reader on the same index (flush may happen only after
    * the add).
    *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @param term the term to identify the document(s) to be
    * deleted
    * @param doc the document to be added
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    */
-  public void updateDocument(Term term, Iterable<? extends IndexableField> doc) throws IOException {
+  public long updateDocument(Term term, Iterable<? extends IndexableField> doc) throws IOException {
     ensureOpen();
     try {
       boolean success = false;
       try {
-        if (docWriter.updateDocument(doc, analyzer, term)) {
+        long seqNo = docWriter.updateDocument(doc, analyzer, term);
+        if (seqNo < 0) {
+          seqNo = - seqNo;
           processEvents(true, false);
         }
         success = true;
+        return seqNo;
       } finally {
         if (!success) {
           if (infoStream.isEnabled("IW")) {
@@ -1518,6 +1592,9 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       }
     } catch (AbortingException | VirtualMachineError tragedy) {
       tragicEvent(tragedy, "updateDocument");
+
+      // dead code but javac disagrees:
+      return -1;
     }
   }
 
@@ -1532,22 +1609,35 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    *          field name of the {@link NumericDocValues} field
    * @param value
    *          new value for the field
+   *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException
    *           if the index is corrupt
    * @throws IOException
    *           if there is a low-level IO error
    */
-  public void updateNumericDocValue(Term term, String field, long value) throws IOException {
+  public long updateNumericDocValue(Term term, String field, long value) throws IOException {
     ensureOpen();
     if (!globalFieldNumberMap.contains(field, DocValuesType.NUMERIC)) {
       throw new IllegalArgumentException("can only update existing numeric-docvalues fields!");
     }
+    if (config.getIndexSortFields().contains(field)) {
+      throw new IllegalArgumentException("cannot update docvalues field involved in the index sort, field=" + field + ", sort=" + config.getIndexSort());
+    }
     try {
-      if (docWriter.updateDocValues(new NumericDocValuesUpdate(term, field, value))) {
+      long seqNo = docWriter.updateDocValues(new NumericDocValuesUpdate(term, field, value));
+      if (seqNo < 0) {
+        seqNo = -seqNo;
         processEvents(true, false);
       }
+      return seqNo;
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "updateNumericDocValue");
+
+      // dead code but javac disagrees:
+      return -1;
     }
   }
 
@@ -1566,12 +1656,16 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    *          field name of the {@link BinaryDocValues} field
    * @param value
    *          new value for the field
+   *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException
    *           if the index is corrupt
    * @throws IOException
    *           if there is a low-level IO error
    */
-  public void updateBinaryDocValue(Term term, String field, BytesRef value) throws IOException {
+  public long updateBinaryDocValue(Term term, String field, BytesRef value) throws IOException {
     ensureOpen();
     if (value == null) {
       throw new IllegalArgumentException("cannot update a field to a null value: " + field);
@@ -1580,11 +1674,17 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       throw new IllegalArgumentException("can only update existing binary-docvalues fields!");
     }
     try {
-      if (docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value))) {
+      long seqNo = docWriter.updateDocValues(new BinaryDocValuesUpdate(term, field, value));
+      if (seqNo < 0) {
+        seqNo = -seqNo;
         processEvents(true, false);
       }
+      return seqNo;
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "updateBinaryDocValue");
+
+      // dead code but javac disagrees:
+      return -1;
     }
   }
   
@@ -1596,12 +1696,16 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * 
    * @param updates
    *          the updates to apply
+   *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException
    *           if the index is corrupt
    * @throws IOException
    *           if there is a low-level IO error
    */
-  public void updateDocValues(Term term, Field... updates) throws IOException {
+  public long updateDocValues(Term term, Field... updates) throws IOException {
     ensureOpen();
     DocValuesUpdate[] dvUpdates = new DocValuesUpdate[updates.length];
     for (int i = 0; i < updates.length; i++) {
@@ -1616,6 +1720,9 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       if (!globalFieldNumberMap.contains(f.name(), dvType)) {
         throw new IllegalArgumentException("can only update existing docvalues fields! field=" + f.name() + ", type=" + dvType);
       }
+      if (config.getIndexSortFields().contains(f.name())) {
+        throw new IllegalArgumentException("cannot update docvalues field involved in the index sort, field=" + f.name() + ", sort=" + config.getIndexSort());
+      }
       switch (dvType) {
         case NUMERIC:
           dvUpdates[i] = new NumericDocValuesUpdate(term, f.name(), (Long) f.numericValue());
@@ -1628,11 +1735,17 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       }
     }
     try {
-      if (docWriter.updateDocValues(dvUpdates)) {
+      long seqNo = docWriter.updateDocValues(dvUpdates);
+      if (seqNo < 0) {
+        seqNo = -seqNo;
         processEvents(true, false);
       }
+      return seqNo;
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "updateDocValues");
+
+      // dead code but javac disagrees:
+      return -1;
     }
   }
   
@@ -1668,6 +1781,22 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   // for test purpose
   final int getFlushDeletesCount() {
     return flushDeletesCount.get();
+  }
+
+  /**
+   * Return an unmodifiable set of all field names as visible
+   * from this IndexWriter, across all segments of the index.
+   * Useful for knowing which fields exist, before {@link #updateDocValues(Term, Field...)} is
+   * attempted. We could phase out this method if
+   * {@link #updateDocValues(Term, Field...)} could create the non-existent
+   * docValues fields as necessary, instead of throwing
+   * IllegalArgumentException for attempts to update non-existent
+   * docValues fields.
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  public Set<String> getFieldNames() {
+    return globalFieldNumberMap.getFieldNames(); // FieldNumbers#getFieldNames() returns an unmodifiableSet
   }
 
   final String newSegmentName() {
@@ -1808,7 +1937,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
             final int size = mergeExceptions.size();
             for(int i=0;i<size;i++) {
               final MergePolicy.OneMerge merge = mergeExceptions.get(i);
-              if (merge.maxNumSegments != -1) {
+              if (merge.maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS) {
                 throw new IOException("background merge hit exception: " + merge.segString(), merge.getException());
               }
             }
@@ -1836,12 +1965,12 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    *  runningMerges are maxNumSegments merges. */
   private synchronized boolean maxNumSegmentsMergesPending() {
     for (final MergePolicy.OneMerge merge : pendingMerges) {
-      if (merge.maxNumSegments != -1)
+      if (merge.maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS)
         return true;
     }
 
     for (final MergePolicy.OneMerge merge : runningMerges) {
-      if (merge.maxNumSegments != -1)
+      if (merge.maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS)
         return true;
     }
 
@@ -1969,7 +2098,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     // point, try again to log the config here:
     messageState();
 
-    assert maxNumSegments == -1 || maxNumSegments > 0;
+    assert maxNumSegments == UNBOUNDED_MAX_MERGE_SEGMENTS || maxNumSegments > 0;
     assert trigger != null;
     if (stopMerges) {
       return false;
@@ -2204,8 +2333,11 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * threads are running {@link #forceMerge}, {@link #addIndexes(CodecReader[])}
    * or {@link #forceMergeDeletes} methods, they may receive
    * {@link MergePolicy.MergeAbortedException}s.
+   *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
    */
-  public void deleteAll() throws IOException {
+  public long deleteAll() throws IOException {
     ensureOpen();
     // Remove any buffered docs
     boolean success = false;
@@ -2252,6 +2384,10 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
             globalFieldNumberMap.clear();
 
             success = true;
+            long seqNo = docWriter.deleteQueue.getNextSequenceNumber();
+            docWriter.setLastSeqNo(seqNo);
+            return seqNo;
+
           } finally {
             docWriter.unlockAllAfterAbortAll(this);
             if (!success) {
@@ -2264,6 +2400,9 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       }
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "deleteAll");
+
+      // dead code but javac disagrees
+      return -1;
     }
   }
 
@@ -2485,13 +2624,19 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    *
    * <p>This requires this index not be among those to be added.
    *
+   * <p>All added indexes must have been created by the same
+   * Lucene version as this index.
+   *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException if the index is corrupt
    * @throws IOException if there is a low-level IO error
    * @throws IllegalArgumentException if addIndexes would cause
    *   the index to exceed {@link #MAX_DOCS}, or if the indoming
    *   index sort does not match this index's index sort
    */
-  public void addIndexes(Directory... dirs) throws IOException {
+  public long addIndexes(Directory... dirs) throws IOException {
     ensureOpen();
 
     noDupDirs(dirs);
@@ -2501,6 +2646,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     Sort indexSort = config.getIndexSort();
 
     boolean successTop = false;
+
+    long seqNo;
 
     try {
       if (infoStream.isEnabled("IW")) {
@@ -2519,6 +2666,13 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
           infoStream.message("IW", "addIndexes: process directory " + dir);
         }
         SegmentInfos sis = SegmentInfos.readLatestCommit(dir); // read infos from dir
+        if (Objects.equals(segmentInfos.getIndexCreatedVersion(), sis.getIndexCreatedVersion()) == false) {
+          throw new IllegalArgumentException("Cannot use addIndexes(Directory) with indexes that have been created "
+              + "by a different Lucene version. The current index was generated by "
+              + segmentInfos.getIndexCreatedVersion()
+              + " while one of the directories contains an index that was generated with "
+              + sis.getIndexCreatedVersion());
+        }
         totalMaxDoc += sis.totalMaxDoc();
         commits.add(sis);
       }
@@ -2573,6 +2727,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
           // Now reserve the docs, just before we update SIS:
           reserveDocs(totalMaxDoc);
 
+          seqNo = docWriter.deleteQueue.getNextSequenceNumber();
+
           success = true;
         } finally {
           if (!success) {
@@ -2590,6 +2746,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
 
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "addIndexes(Directory...)");
+      // dead code but javac disagrees:
+      seqNo = -1;
     } finally {
       if (successTop) {
         IOUtils.close(locks);
@@ -2598,6 +2756,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       }
     }
     maybeMerge();
+
+    return seqNo;
   }
   
   /**
@@ -2622,6 +2782,9 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * {@code maxMergeAtOnce} parameter, you should pass that many readers in one
    * call.
    * 
+   * @return The <a href="#sequence_number">sequence number</a>
+   * for this operation
+   *
    * @throws CorruptIndexException
    *           if the index is corrupt
    * @throws IOException
@@ -2629,13 +2792,15 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * @throws IllegalArgumentException
    *           if addIndexes would cause the index to exceed {@link #MAX_DOCS}
    */
-  public void addIndexes(CodecReader... readers) throws IOException {
+  public long addIndexes(CodecReader... readers) throws IOException {
     ensureOpen();
 
     // long so we can detect int overflow:
     long numDocs = 0;
 
     Sort indexSort = config.getIndexSort();
+
+    long seqNo;
 
     try {
       if (infoStream.isEnabled("IW")) {
@@ -2655,7 +2820,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       // Best-effort up front check:
       testReserveDocs(numDocs);
 
-      final IOContext context = new IOContext(new MergeInfo(Math.toIntExact(numDocs), -1, false, -1));
+      final IOContext context = new IOContext(new MergeInfo(Math.toIntExact(numDocs), -1, false, UNBOUNDED_MAX_MERGE_SEGMENTS));
 
       // TODO: somehow we should fix this merge so it's
       // abortable so that IW.close(false) is able to stop it
@@ -2671,7 +2836,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       rateLimiters.set(new MergeRateLimiter(null));
 
       if (!merger.shouldMerge()) {
-        return;
+        return docWriter.deleteQueue.getNextSequenceNumber();
       }
 
       merger.merge();                // merge 'em
@@ -2689,7 +2854,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         if (stopMerges) {
           // Safe: these files must exist
           deleteNewFiles(infoPerCommit.files());
-          return;
+
+          return docWriter.deleteQueue.getNextSequenceNumber();
         }
         ensureOpen();
         useCompoundFile = mergePolicy.useCompoundFile(segmentInfos, infoPerCommit, this);
@@ -2724,7 +2890,8 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         if (stopMerges) {
           // Safe: these files must exist
           deleteNewFiles(infoPerCommit.files());
-          return;
+
+          return docWriter.deleteQueue.getNextSequenceNumber();
         }
         ensureOpen();
 
@@ -2732,12 +2899,17 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         reserveDocs(numDocs);
       
         segmentInfos.add(infoPerCommit);
+        seqNo = docWriter.deleteQueue.getNextSequenceNumber();
         checkpoint();
       }
     } catch (VirtualMachineError tragedy) {
       tragicEvent(tragedy, "addIndexes(CodecReader...)");
+      // dead code but javac disagrees:
+      seqNo = -1;
     }
     maybeMerge();
+
+    return seqNo;
   }
 
   /** Copies the segment files as-is into the IndexWriter's directory. */
@@ -2760,9 +2932,6 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       // Copy the segment's files
       for (String file: info.files()) {
         final String newFileName = newInfo.namedForThisSegment(file);
-
-        assert !slowFileExists(directory, newFileName): "file \"" + newFileName + "\" already exists; newInfo.files=" + newInfo.files();
-
         directory.copyFrom(info.info.dir, file, newFileName, context);
         copiedFiles.add(newFileName);
       }
@@ -2805,14 +2974,24 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * <p>You can also just call {@link #commit()} directly
    *  without prepareCommit first in which case that method
    *  will internally call prepareCommit.
+   *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * of the last operation in the commit.  All sequence numbers &lt;= this value
+   * will be reflected in the commit, and all others will not.
    */
   @Override
-  public final void prepareCommit() throws IOException {
+  public final long prepareCommit() throws IOException {
     ensureOpen();
-    prepareCommitInternal(config.getMergePolicy());
+    boolean[] doMaybeMerge = new boolean[1];
+    pendingSeqNo = prepareCommitInternal(doMaybeMerge);
+    // we must do this outside of the commitLock else we can deadlock:
+    if (doMaybeMerge[0]) {
+      maybeMerge(config.getMergePolicy(), MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);      
+    }
+    return pendingSeqNo;
   }
 
-  private void prepareCommitInternal(MergePolicy mergePolicy) throws IOException {
+  private long prepareCommitInternal(boolean[] doMaybeMerge) throws IOException {
     startCommitTime = System.nanoTime();
     synchronized(commitLock) {
       ensureOpen(false);
@@ -2833,6 +3012,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       testPoint("startDoFlush");
       SegmentInfos toCommit = null;
       boolean anySegmentsFlushed = false;
+      long seqNo;
 
       // This is copied from doFlush, except it's modified to
       // clone & incRef the flushed SegmentInfos inside the
@@ -2844,7 +3024,11 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
           boolean flushSuccess = false;
           boolean success = false;
           try {
-            anySegmentsFlushed = docWriter.flushAllThreads();
+            seqNo = docWriter.flushAllThreads();
+            if (seqNo < 0) {
+              anySegmentsFlushed = true;
+              seqNo = -seqNo;
+            }
             if (!anySegmentsFlushed) {
               // prevent double increment since docWriter#doFlush increments the flushcount
               // if we flushed anything.
@@ -2867,6 +3051,14 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
                 segmentInfos.changed();
               }
 
+              if (commitUserData != null) {
+                Map<String,String> userData = new HashMap<>();
+                for(Map.Entry<String,String> ent : commitUserData) {
+                  userData.put(ent.getKey(), ent.getValue());
+                }
+                segmentInfos.setUserData(userData, false);
+              }
+
               // Must clone the segmentInfos while we still
               // hold fullFlushLock and while sync'd so that
               // no partial changes (eg a delete w/o
@@ -2881,7 +3073,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
               // we are trying to sync all referenced files, a
               // merge completes which would otherwise have
               // removed the files we are now syncing.    
-              filesToCommit = toCommit.files(false);
+              filesToCommit = toCommit.files(false); 
               deleter.incRef(filesToCommit);
             }
             success = true;
@@ -2898,15 +3090,23 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         }
       } catch (AbortingException | VirtualMachineError tragedy) {
         tragicEvent(tragedy, "prepareCommit");
+
+        // dead code but javac disagrees:
+        seqNo = -1;
       }
      
       boolean success = false;
       try {
         if (anySegmentsFlushed) {
-          maybeMerge(mergePolicy, MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);
+          doMaybeMerge[0] = true;
         }
         startCommit(toCommit);
         success = true;
+        if (pendingCommit == null) {
+          return -1;
+        } else {
+          return seqNo;
+        }
       } finally {
         if (!success) {
           synchronized (this) {
@@ -2921,36 +3121,38 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
   }
   
   /**
-   * Sets the commit user data map. That method is considered a transaction by
-   * {@link IndexWriter} and will be {@link #commit() committed} even if no other
-   * changes were made to the writer instance. Note that you must call this method
-   * before {@link #prepareCommit()}, or otherwise it won't be included in the
+   * Sets the iterator to provide the commit user data map at commit time.  Calling this method
+   * is considered a committable change and will be {@link #commit() committed} even if
+   * there are no other changes this writer. Note that you must call this method
+   * before {@link #prepareCommit()}.  Otherwise it won't be included in the
    * follow-on {@link #commit()}.
    * <p>
-   * <b>NOTE:</b> the map is cloned internally, therefore altering the map's
-   * contents after calling this method has no effect.
+   * <b>NOTE:</b> the iterator is late-binding: it is only visited once all documents for the
+   * commit have been written to their segments, before the next segments_N file is written
    */
-  public final synchronized void setCommitData(Map<String,String> commitUserData) {
-    setCommitData(commitUserData, true);
+  public final synchronized void setLiveCommitData(Iterable<Map.Entry<String,String>> commitUserData) {
+    setLiveCommitData(commitUserData, true);
   }
 
   /**
-   * Sets the commit user data map, controlling whether to advance the {@link SegmentInfos#getVersion}.
+   * Sets the commit user data iterator, controlling whether to advance the {@link SegmentInfos#getVersion}.
    *
-   * @see #setCommitData(Map)
+   * @see #setLiveCommitData(Iterable)
    *
    * @lucene.internal */
-  public final synchronized void setCommitData(Map<String,String> commitUserData, boolean doIncrementVersion) {
-    segmentInfos.setUserData(new HashMap<>(commitUserData), doIncrementVersion);
+  public final synchronized void setLiveCommitData(Iterable<Map.Entry<String,String>> commitUserData, boolean doIncrementVersion) {
+    this.commitUserData = commitUserData;
+    if (doIncrementVersion) {
+      segmentInfos.changed();
+    }
     changeCount.incrementAndGet();
   }
   
   /**
-   * Returns the commit user data map that was last committed, or the one that
-   * was set on {@link #setCommitData(Map)}.
+   * Returns the commit user data iterable previously set with {@link #setLiveCommitData(Iterable)}, or null if nothing has been set yet.
    */
-  public final synchronized Map<String,String> getCommitData() {
-    return segmentInfos.getUserData();
+  public final synchronized Iterable<Map.Entry<String,String>> getLiveCommitData() {
+    return commitUserData;
   }
   
   // Used only by commit and prepareCommit, below; lock
@@ -2980,12 +3182,22 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
    * loss it may still lose data.  Lucene cannot guarantee
    * consistency on such devices.  </p>
    *
+   * <p> If nothing was committed, because there were no
+   * pending changes, this returns -1.  Otherwise, it returns
+   * the sequence number such that all indexing operations
+   * prior to this sequence will be included in the commit
+   * point, and all other operations will not. </p>
+   *
    * @see #prepareCommit
+   *
+   * @return The <a href="#sequence_number">sequence number</a>
+   * of the last operation in the commit.  All sequence numbers &lt;= this value
+   * will be reflected in the commit, and all others will not.
    */
   @Override
-  public final void commit() throws IOException {
+  public final long commit() throws IOException {
     ensureOpen();
-    commitInternal(config.getMergePolicy());
+    return commitInternal(config.getMergePolicy());
   }
 
   /** Returns true if there may be changes that have not been
@@ -3001,11 +3213,15 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     return changeCount.get() != lastCommitChangeCount || docWriter.anyChanges() || bufferedUpdatesStream.any();
   }
 
-  private final void commitInternal(MergePolicy mergePolicy) throws IOException {
+  private final long commitInternal(MergePolicy mergePolicy) throws IOException {
 
     if (infoStream.isEnabled("IW")) {
       infoStream.message("IW", "commit: start");
     }
+
+    boolean[] doMaybeMerge = new boolean[1];
+
+    long seqNo;
 
     synchronized(commitLock) {
       ensureOpen(false);
@@ -3018,15 +3234,23 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "commit: now prepare");
         }
-        prepareCommitInternal(mergePolicy);
+        seqNo = prepareCommitInternal(doMaybeMerge);
       } else {
         if (infoStream.isEnabled("IW")) {
           infoStream.message("IW", "commit: already prepared");
         }
+        seqNo = pendingSeqNo;
       }
 
       finishCommit();
     }
+
+    // we must do this outside of the commitLock else we can deadlock:
+    if (doMaybeMerge[0]) {
+      maybeMerge(mergePolicy, MergeTrigger.FULL_FLUSH, UNBOUNDED_MAX_MERGE_SEGMENTS);      
+    }
+    
+    return seqNo;
   }
 
   private final void finishCommit() throws IOException {
@@ -3167,7 +3391,13 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       synchronized (fullFlushLock) {
         boolean flushSuccess = false;
         try {
-          anyChanges = docWriter.flushAllThreads();
+          long seqNo = docWriter.flushAllThreads();
+          if (seqNo < 0) {
+            seqNo = -seqNo;
+            anyChanges = true;
+          } else {
+            anyChanges = false;
+          }
           if (!anyChanges) {
             // flushCount is incremented in flushAllThreads
             flushCount.incrementAndGet();
@@ -3628,7 +3858,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       infoStream.message("IW", "after commitMerge: " + segString());
     }
 
-    if (merge.maxNumSegments != -1 && !dropSegment) {
+    if (merge.maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS && !dropSegment) {
       // cascade the forceMerge:
       if (!segmentsToMerge.containsKey(merge.info)) {
         segmentsToMerge.put(merge.info, Boolean.FALSE);
@@ -3707,7 +3937,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
             if (infoStream.isEnabled("IW")) {
               infoStream.message("IW", "hit exception during merge");
             }
-          } else if (merge.rateLimiter.getAbort() == false && (merge.maxNumSegments != -1 || (!closed && !closing))) {
+          } else if (merge.rateLimiter.getAbort() == false && (merge.maxNumSegments != UNBOUNDED_MAX_MERGE_SEGMENTS || (!closed && !closing))) {
             // This merge (and, generally, any change to the
             // segments) may now enable new merges, so we call
             // merge policy & update pending merges.
@@ -3846,7 +4076,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     testPoint("startMergeInit");
 
     assert merge.registerDone;
-    assert merge.maxNumSegments == -1 || merge.maxNumSegments > 0;
+    assert merge.maxNumSegments == UNBOUNDED_MAX_MERGE_SEGMENTS || merge.maxNumSegments > 0;
 
     if (tragedy != null) {
       throw new IllegalStateException("this writer hit an unrecoverable error; cannot merge", tragedy);
@@ -4368,7 +4598,6 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     
     Collection<String> files = toSync.files(false);
     for(final String fileName: files) {
-      assert slowFileExists(directory, fileName): "file " + fileName + " does not exist; files=" + Arrays.toString(directory.listAll());
       // If this trips it means we are missing a call to
       // .checkpoint somewhere, because by the time we
       // are called, deleter should know about every
@@ -4381,7 +4610,7 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
 
   // For infoStream output
   synchronized SegmentInfos toLiveInfos(SegmentInfos sis) {
-    final SegmentInfos newSIS = new SegmentInfos();
+    final SegmentInfos newSIS = new SegmentInfos(sis.getIndexCreatedVersion());
     final Map<SegmentCommitInfo,SegmentCommitInfo> liveSIS = new HashMap<>();
     for(SegmentCommitInfo info : segmentInfos) {
       liveSIS.put(info, info);
@@ -4515,24 +4744,6 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
       tragicEvent(tragedy, "startCommit");
     }
     testPoint("finishStartCommit");
-  }
-
-  /**
-   * Returns <code>true</code> iff the index in the named directory is
-   * currently locked.
-   * @param directory the directory to check for a lock
-   * @throws IOException if there is a low-level IO error
-   * @deprecated Use of this method can only lead to race conditions. Try
-   *             to actually obtain a lock instead.
-   */
-  @Deprecated
-  public static boolean isLocked(Directory directory) throws IOException {
-    try {
-      directory.obtainLock(WRITE_LOCK_NAME).close();
-      return false;
-    } catch (LockObtainFailedException failed) {
-      return true;
-    }
   }
 
   /** If {@link DirectoryReader#open(IndexWriter)} has
@@ -4825,19 +5036,6 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
     void process(IndexWriter writer, boolean triggerMerge, boolean clearBuffers) throws IOException;
   }
 
-  /** Used only by asserts: returns true if the file exists
-   *  (can be opened), false if it cannot be opened, and
-   *  (unlike Java's File.exists) throws IOException if
-   *  there's some unexpected error. */
-  static boolean slowFileExists(Directory dir, String fileName) throws IOException {
-    try {
-      dir.openInput(fileName, IOContext.DEFAULT).close();
-      return true;
-    } catch (NoSuchFileException | FileNotFoundException e) {
-      return false;
-    }
-  }
-
   /** Anything that will add N docs to the index should reserve first to
    *  make sure it's allowed.  This will throw {@code
    *  IllegalArgumentException} if it's not allowed. */ 
@@ -4887,5 +5085,15 @@ public class IndexWriter implements Closeable, TwoPhaseCommit, Accountable {
         return new RateLimitedIndexOutput(rateLimiter, in.createOutput(name, context));
       }
     };
+  }
+
+  /** Returns the highest <a href="#sequence_number">sequence number</a> across
+   *  all completed operations, or 0 if no operations have finished yet.  Still
+   *  in-flight operations (in other threads) are not counted until they finish.
+   *
+   * @lucene.experimental */
+  public long getMaxCompletedSequenceNumber() {
+    ensureOpen();
+    return docWriter.getMaxCompletedSequenceNumber();
   }
 }

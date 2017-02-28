@@ -16,15 +16,7 @@
  */
 package org.apache.lucene.analysis.miscellaneous;
 
-
-import org.apache.lucene.analysis.TokenFilter;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.util.CharArraySet;
-import org.apache.lucene.analysis.util.ResourceLoader;
-import org.apache.lucene.analysis.util.ResourceLoaderAware;
-import org.apache.lucene.analysis.util.TokenFilterFactory;
-import org.apache.lucene.util.Version;
-
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +24,14 @@ import java.util.SortedMap;
 import java.util.TreeMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.io.IOException;
+
+import org.apache.lucene.analysis.CharArraySet;
+import org.apache.lucene.analysis.TokenFilter;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.util.ResourceLoader;
+import org.apache.lucene.analysis.util.ResourceLoaderAware;
+import org.apache.lucene.analysis.util.TokenFilterFactory;
+import org.apache.lucene.search.PhraseQuery;
 
 import static org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.*;
 
@@ -49,7 +48,12 @@ import static org.apache.lucene.analysis.miscellaneous.WordDelimiterFilter.*;
  *             types="wdfftypes.txt" /&gt;
  *   &lt;/analyzer&gt;
  * &lt;/fieldType&gt;</pre>
+ *
+ * @deprecated Use {@link WordDelimiterGraphFilterFactory} instead: it produces a correct
+ * token graph so that e.g. {@link PhraseQuery} works correctly when it's used in
+ * the search time analyzer.
  */
+@Deprecated
 public class WordDelimiterFilterFactory extends TokenFilterFactory implements ResourceLoaderAware {
   public static final String PROTECTED_TOKENS = "protected";
   public static final String TYPES = "types";

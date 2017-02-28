@@ -19,11 +19,14 @@ package org.apache.lucene.index;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.lucene.store.Directory;
@@ -152,7 +155,6 @@ public final class StandardDirectoryReader extends DirectoryReader {
     }
     
     SegmentReader[] newReaders = new SegmentReader[infos.size()];
-    
     for (int i = infos.size() - 1; i>=0; i--) {
       SegmentCommitInfo commitInfo = infos.info(i);
 
@@ -167,6 +169,12 @@ public final class StandardDirectoryReader extends DirectoryReader {
         oldReader = (SegmentReader) oldReaders.get(oldReaderIndex.intValue());
       }
 
+      // Make a best effort to detect when the app illegally "rm -rf" their
+      // index while a reader was open, and then called openIfChanged:
+      if (oldReader != null && Arrays.equals(commitInfo.info.getId(), oldReader.getSegmentInfo().info.getId()) == false) {
+        throw new IllegalStateException("same segment " + commitInfo.info.name + " has invalid doc count change; likely you are re-opening a reader after illegally removing index files yourself and building a new index in their place.  Use IndexWriter.deleteAll or open a new IndexWriter using OpenMode.CREATE instead");
+      }
+
       boolean success = false;
       try {
         SegmentReader newReader;
@@ -176,35 +184,29 @@ public final class StandardDirectoryReader extends DirectoryReader {
           newReader = new SegmentReader(commitInfo, IOContext.READ);
           newReaders[i] = newReader;
         } else {
-          if (oldReader.getSegmentInfo().getDelGen() == commitInfo.getDelGen()
-              && oldReader.getSegmentInfo().getFieldInfosGen() == commitInfo.getFieldInfosGen()) {
-            // No change; this reader will be shared between
-            // the old and the new one, so we must incRef
-            // it:
-            oldReader.incRef();
-            newReaders[i] = oldReader;
+          if (oldReader.isNRT) {
+            // We must load liveDocs/DV updates from disk:
+            newReaders[i] = new SegmentReader(commitInfo, oldReader);
           } else {
-            // Steal the ref returned by SegmentReader ctor:
-            assert commitInfo.info.dir == oldReader.getSegmentInfo().info.dir;
-
-            // Make a best effort to detect when the app illegally "rm -rf" their
-            // index while a reader was open, and then called openIfChanged:
-            boolean illegalDocCountChange = commitInfo.info.maxDoc() != oldReader.getSegmentInfo().info.maxDoc();
             
-            boolean hasNeitherDeletionsNorUpdates = commitInfo.hasDeletions()== false && commitInfo.hasFieldUpdates() == false;
-
-            boolean deletesWereLost = commitInfo.getDelGen() == -1 && oldReader.getSegmentInfo().getDelGen() != -1;
-
-            if (illegalDocCountChange || hasNeitherDeletionsNorUpdates || deletesWereLost) {
-              throw new IllegalStateException("same segment " + commitInfo.info.name + " has invalid changes; likely you are re-opening a reader after illegally removing index files yourself and building a new index in their place.  Use IndexWriter.deleteAll or OpenMode.CREATE instead");
-            }
-
-            if (oldReader.getSegmentInfo().getDelGen() == commitInfo.getDelGen()) {
-              // only DV updates
-              newReaders[i] = new SegmentReader(commitInfo, oldReader, oldReader.getLiveDocs(), oldReader.numDocs());
+            if (oldReader.getSegmentInfo().getDelGen() == commitInfo.getDelGen()
+                && oldReader.getSegmentInfo().getFieldInfosGen() == commitInfo.getFieldInfosGen()) {
+              // No change; this reader will be shared between
+              // the old and the new one, so we must incRef
+              // it:
+              oldReader.incRef();
+              newReaders[i] = oldReader;
             } else {
-              // both DV and liveDocs have changed
-              newReaders[i] = new SegmentReader(commitInfo, oldReader);
+              // Steal the ref returned by SegmentReader ctor:
+              assert commitInfo.info.dir == oldReader.getSegmentInfo().info.dir;
+
+              if (oldReader.getSegmentInfo().getDelGen() == commitInfo.getDelGen()) {
+                // only DV updates
+                newReaders[i] = new SegmentReader(commitInfo, oldReader, oldReader.getLiveDocs(), oldReader.numDocs());
+              } else {
+                // both DV and liveDocs have changed
+                newReaders[i] = new SegmentReader(commitInfo, oldReader);
+              }
             }
           }
         }
@@ -421,7 +423,7 @@ public final class StandardDirectoryReader extends DirectoryReader {
 
     @Override
     public String toString() {
-      return "DirectoryReader.ReaderCommit(" + segmentsFileName + ")";
+      return "StandardDirectoryReader.ReaderCommit(" + segmentsFileName + " files=" + files + ")";
     }
 
     @Override
@@ -468,5 +470,45 @@ public final class StandardDirectoryReader extends DirectoryReader {
     StandardDirectoryReader getReader() {
       return reader;
     }
+  }
+
+  private final Set<ClosedListener> readerClosedListeners = new CopyOnWriteArraySet<>();
+
+  private final CacheHelper cacheHelper = new CacheHelper() {
+    private final CacheKey cacheKey = new CacheKey();
+
+    @Override
+    public CacheKey getKey() {
+      return cacheKey;
+    }
+
+    @Override
+    public void addClosedListener(ClosedListener listener) {
+        readerClosedListeners.add(listener);
+    }
+
+  };
+
+  @Override
+  void notifyReaderClosedListeners(Throwable th) throws IOException {
+    synchronized(readerClosedListeners) {
+      for(ClosedListener listener : readerClosedListeners) {
+        try {
+          listener.onClose(cacheHelper.getKey());
+        } catch (Throwable t) {
+          if (th == null) {
+            th = t;
+          } else {
+            th.addSuppressed(t);
+          }
+        }
+      }
+      IOUtils.reThrow(th);
+    }
+  }
+
+  @Override
+  public CacheHelper getReaderCacheHelper() {
+    return cacheHelper;
   }
 }

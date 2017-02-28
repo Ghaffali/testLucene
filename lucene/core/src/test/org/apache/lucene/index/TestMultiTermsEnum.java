@@ -44,7 +44,6 @@ import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.BytesRef;
 import org.apache.lucene.util.IOUtils;
 import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 
 public class TestMultiTermsEnum extends LuceneTestCase {
 
@@ -265,6 +264,16 @@ public class TestMultiTermsEnum extends LuceneTestCase {
       public void close() throws IOException {
         delegate.close();
       }
+    }
+
+    @Override
+    public CacheHelper getCoreCacheHelper() {
+      return null;
+    }
+
+    @Override
+    public CacheHelper getReaderCacheHelper() {
+      return null;
     }
   }
 }

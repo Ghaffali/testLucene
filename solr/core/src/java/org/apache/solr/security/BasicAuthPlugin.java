@@ -37,18 +37,20 @@ import org.apache.http.Header;
 import org.apache.http.auth.BasicUserPrincipal;
 import org.apache.http.message.BasicHeader;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.util.CommandOperation;
+import org.apache.solr.api.SpecProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEditablePlugin {
+public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEditablePlugin , SpecProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  private AuthenticationProvider zkAuthentication;
+  private AuthenticationProvider authenticationProvider;
   private final static ThreadLocal<Header> authHeader = new ThreadLocal<>();
   private boolean blockUnknown = false;
 
   public boolean authenticate(String username, String pwd) {
-    return zkAuthentication.authenticate(username, pwd);
+    return authenticationProvider.authenticate(username, pwd);
   }
 
   @Override
@@ -61,7 +63,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
         log.error(e.getMessage());
       }
     }
-    zkAuthentication = getAuthenticationProvider(pluginConfig);
+    authenticationProvider = getAuthenticationProvider(pluginConfig);
   }
 
   @Override
@@ -71,6 +73,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
         for (Map.Entry<String, Object> e : command.getDataMap().entrySet()) {
           if (PROPS.contains(e.getKey())) {
             latestConf.put(e.getKey(), e.getValue());
+            return latestConf;
           } else {
             command.addError("Unknown property " + e.getKey());
           }
@@ -78,8 +81,8 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
       }
     }
     if (!CommandOperation.captureErrors(commands).isEmpty()) return null;
-    if (zkAuthentication instanceof ConfigEditablePlugin) {
-      ConfigEditablePlugin editablePlugin = (ConfigEditablePlugin) zkAuthentication;
+    if (authenticationProvider instanceof ConfigEditablePlugin) {
+      ConfigEditablePlugin editablePlugin = (ConfigEditablePlugin) authenticationProvider;
       return editablePlugin.edit(latestConf, commands);
     }
     throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "This cannot be edited");
@@ -92,14 +95,14 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
   }
 
   private void authenticationFailure(HttpServletResponse response, String message) throws IOException {
-    for (Map.Entry<String, String> entry : zkAuthentication.getPromptHeaders().entrySet()) {
+    for (Map.Entry<String, String> entry : authenticationProvider.getPromptHeaders().entrySet()) {
       response.setHeader(entry.getKey(), entry.getValue());
     }
     response.sendError(401, message);
   }
 
   @Override
-  public void doAuthenticate(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws Exception {
+  public boolean doAuthenticate(ServletRequest servletRequest, ServletResponse servletResponse, FilterChain filterChain) throws Exception {
 
     HttpServletRequest request = (HttpServletRequest) servletRequest;
     HttpServletResponse response = (HttpServletResponse) servletResponse;
@@ -118,6 +121,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
               final String username = credentials.substring(0, p).trim();
               String pwd = credentials.substring(p + 1).trim();
               if (!authenticate(username, pwd)) {
+                log.debug("Bad auth credentials supplied in Authorization header");
                 authenticationFailure(response, "Bad credentials");
               } else {
                 HttpServletRequestWrapper wrapper = new HttpServletRequestWrapper(request) {
@@ -127,6 +131,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
                   }
                 };
                 filterChain.doFilter(wrapper, response);
+                return true;
               }
 
             } else {
@@ -141,10 +146,12 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
       if (blockUnknown) {
         authenticationFailure(response, "require authentication");
       } else {
-        request.setAttribute(AuthenticationPlugin.class.getName(), zkAuthentication.getPromptHeaders());
+        request.setAttribute(AuthenticationPlugin.class.getName(), authenticationProvider.getPromptHeaders());
         filterChain.doFilter(request, response);
+        return true;
       }
     }
+    return false;
   }
 
   @Override
@@ -157,7 +164,7 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
     authHeader.remove();
   }
 
-  public interface AuthenticationProvider {
+  public interface AuthenticationProvider extends SpecProvider {
     void init(Map<String, Object> pluginConfig);
 
     boolean authenticate(String user, String pwd);
@@ -165,6 +172,10 @@ public class BasicAuthPlugin extends AuthenticationPlugin implements ConfigEdita
     Map<String, String> getPromptHeaders();
   }
 
+  @Override
+  public ValidatingJsonMap getSpec() {
+    return authenticationProvider.getSpec();
+  }
   public boolean getBlockUnknown(){
     return blockUnknown;
   }

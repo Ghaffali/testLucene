@@ -51,9 +51,7 @@ import org.slf4j.LoggerFactory;
 // files - there are a lot of them to upload
 public class ZkCLITest extends SolrTestCaseJ4 {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  
-  private static final boolean VERBOSE = false;
-  
+
   protected ZkTestServer zkServer;
   
   protected String zkDir;
@@ -301,10 +299,9 @@ public class ZkCLITest extends SolrTestCaseJ4 {
 
   @Test
   public void testGetFileNotExists() throws Exception {
-    File tmpDir = createTempDir().toFile();
     String getNode = "/getFileNotExistsNode";
 
-    File file = File.createTempFile("newfile", null, tmpDir);
+    File file = createTempFile("newfile", null).toFile();
     String[] args = new String[] {"-zkhost", zkServer.getZkAddress(), "-cmd",
         "getfile", getNode, file.getAbsolutePath()};
     try {
@@ -364,9 +361,6 @@ public class ZkCLITest extends SolrTestCaseJ4 {
 
   @Override
   public void tearDown() throws Exception {
-    if (VERBOSE) {
-      printLayout(zkServer.getZkHost());
-    }
     zkClient.close();
     zkServer.shutdown();
     super.tearDown();

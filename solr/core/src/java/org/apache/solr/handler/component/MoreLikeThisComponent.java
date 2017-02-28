@@ -173,7 +173,7 @@ public class MoreLikeThisComponent extends SearchComponent {
         && rb.req.getParams().getBool(COMPONENT_NAME, false)) {
       Map<Object,SolrDocumentList> tempResults = new LinkedHashMap<>();
       
-      int mltcount = rb.req.getParams().getInt(MoreLikeThisParams.DOC_COUNT, 5);
+      int mltcount = rb.req.getParams().getInt(MoreLikeThisParams.DOC_COUNT, MoreLikeThisParams.DEFAULT_DOC_COUNT);
       String keyName = rb.req.getSchema().getUniqueKeyField().getName();
       
       for (ShardRequest sreq : rb.finished) {
@@ -221,7 +221,17 @@ public class MoreLikeThisComponent extends SearchComponent {
     }
     super.finishStage(rb);
   }
-  
+
+  @Override
+  public void modifyRequest(ResponseBuilder rb, SearchComponent who, ShardRequest sreq) {
+    SolrParams params = rb.req.getParams();
+    if (!params.getBool(COMPONENT_NAME, false)) return;
+    if ((sreq.purpose & ShardRequest.PURPOSE_GET_MLT_RESULTS) == 0
+        && (sreq.purpose & ShardRequest.PURPOSE_GET_TOP_IDS) == 0) {
+      sreq.params.set(COMPONENT_NAME, "false");
+    }
+  }
+
   /**
    * Returns NamedList based on the order of
    * resultIds.shardDoc.positionInResponse
@@ -409,7 +419,12 @@ public class MoreLikeThisComponent extends SearchComponent {
   public String getDescription() {
     return "More Like This";
   }
-  
+
+  @Override
+  public Category getCategory() {
+    return Category.QUERY;
+  }
+
   @Override
   public URL[] getDocs() {
     return null;

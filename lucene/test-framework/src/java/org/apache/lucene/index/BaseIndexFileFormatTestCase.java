@@ -330,7 +330,55 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     
     // DocValuesFormat
     try (DocValuesConsumer consumer = codec.docValuesFormat().fieldsConsumer(writeState)) {
-      consumer.addNumericField(field, Collections.singleton(5));
+      consumer.addNumericField(field,
+                               new EmptyDocValuesProducer() {
+                                 @Override
+                                 public NumericDocValues getNumeric(FieldInfo field) {
+                                   return new NumericDocValues() {
+                                     int docID = -1;
+                                 
+                                     @Override
+                                     public int docID() {
+                                       return docID;
+                                     }
+                                 
+                                     @Override
+                                     public int nextDoc() {
+                                       docID++;
+                                       if (docID == 1) {
+                                         docID = NO_MORE_DOCS;
+                                       }
+                                       return docID;
+                                     }
+
+                                     @Override
+                                     public int advance(int target) {
+                                       if (docID <= 0 && target == 0) {
+                                         docID = 0;
+                                       } else {
+                                         docID = NO_MORE_DOCS;
+                                       }
+                                       return docID;
+                                     }
+
+                                     @Override
+                                    public boolean advanceExact(int target) throws IOException {
+                                      docID = target;
+                                      return target == 0;
+                                    }
+
+                                     @Override
+                                     public long cost() {
+                                       return 1;
+                                     }
+
+                                     @Override
+                                     public long longValue() {
+                                       return 5;
+                                     }
+                                   };
+                                 }
+                               });
       IOUtils.close(consumer);
       IOUtils.close(consumer);
     }
@@ -341,7 +389,68 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     
     // NormsFormat
     try (NormsConsumer consumer = codec.normsFormat().normsConsumer(writeState)) {
-      consumer.addNormsField(field, Collections.singleton(5));
+      consumer.addNormsField(field,
+                             new NormsProducer() {
+                                 @Override
+                                 public NumericDocValues getNorms(FieldInfo field) {
+                                   return new NumericDocValues() {
+                                     int docID = -1;
+                                 
+                                     @Override
+                                     public int docID() {
+                                       return docID;
+                                     }
+                                 
+                                     @Override
+                                     public int nextDoc() {
+                                       docID++;
+                                       if (docID == 1) {
+                                         docID = NO_MORE_DOCS;
+                                       }
+                                       return docID;
+                                     }
+
+                                     @Override
+                                     public int advance(int target) {
+                                       if (docID <= 0 && target == 0) {
+                                         docID = 0;
+                                       } else {
+                                         docID = NO_MORE_DOCS;
+                                       }
+                                       return docID;
+                                     }
+
+                                     @Override
+                                    public boolean advanceExact(int target) throws IOException {
+                                      docID = target;
+                                      return target == 0;
+                                    }
+
+                                     @Override
+                                     public long cost() {
+                                       return 1;
+                                     }
+
+                                     @Override
+                                     public long longValue() {
+                                       return 5;
+                                     }
+                                   };
+                                 }
+
+                               @Override
+                               public void checkIntegrity() {
+                               }
+
+                               @Override
+                               public void close() {
+                               }
+
+                               @Override
+                               public long ramBytesUsed() {
+                                 return 0;
+                               }
+                             });
       IOUtils.close(consumer);
       IOUtils.close(consumer);
     }
@@ -393,7 +502,6 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
     MockDirectoryWrapper dir = newMockDirectory();
     dir.setThrottling(MockDirectoryWrapper.Throttling.NEVER);
     dir.setUseSlowOpenClosers(false);
-    dir.setPreventDoubleWrite(false);
     dir.setRandomIOExceptionRate(0.001); // more rare
     
     // log all exceptions we hit, in case we fail (for debugging)
@@ -436,14 +544,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
           conf.setMergeScheduler(new SerialMergeScheduler());
           conf.setCodec(getCodec());
           iw = new IndexWriter(dir, conf);            
-        } catch (Exception e) {
-          if (e.getMessage() != null && e.getMessage().startsWith("a random IOException")) {
-            exceptionStream.println("\nTEST: got expected fake exc:" + e.getMessage());
-            e.printStackTrace(exceptionStream);
-            allowAlreadyClosed = true;
-          } else {
-            Rethrow.rethrow(e);
-          }
+        } catch (IOException e) {
+          handleFakeIOException(e, exceptionStream);
+          allowAlreadyClosed = true;
         }
         
         if (random().nextInt(10) == 0) {
@@ -477,14 +580,9 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
             conf.setMergeScheduler(new SerialMergeScheduler());
             conf.setCodec(getCodec());
             iw = new IndexWriter(dir, conf);            
-          } catch (Exception e) {
-            if (e.getMessage() != null && e.getMessage().startsWith("a random IOException")) {
-              exceptionStream.println("\nTEST: got expected fake exc:" + e.getMessage());
-              e.printStackTrace(exceptionStream);
-              allowAlreadyClosed = true;
-            } else {
-              Rethrow.rethrow(e);
-            }
+          } catch (IOException e) {
+            handleFakeIOException(e, exceptionStream);
+            allowAlreadyClosed = true;
           }
         }
       }
@@ -493,16 +591,11 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
         dir.setRandomIOExceptionRateOnOpen(0.0); // disable exceptions on openInput until next iteration: 
                                                  // or we make slowExists angry and trip a scarier assert!
         iw.close();
-      } catch (Exception e) {
-        if (e.getMessage() != null && e.getMessage().startsWith("a random IOException")) {
-          exceptionStream.println("\nTEST: got expected fake exc:" + e.getMessage());
-          e.printStackTrace(exceptionStream);
-          try {
-            iw.rollback();
-          } catch (Throwable t) {}
-        } else {
-          Rethrow.rethrow(e);
-        }
+      } catch (IOException e) {
+        handleFakeIOException(e, exceptionStream);
+        try {
+          iw.rollback();
+        } catch (Throwable t) {}
       }
       dir.close();
     } catch (Throwable t) {
@@ -517,5 +610,19 @@ abstract class BaseIndexFileFormatTestCase extends LuceneTestCase {
       System.out.println("TEST PASSED: dumping fake-exception-log:...");
       System.out.println(exceptionLog.toString("UTF-8"));
     }
+  }
+  
+  private void handleFakeIOException(IOException e, PrintStream exceptionStream) {
+    Throwable ex = e;
+    while (ex != null) {
+      if (ex.getMessage() != null && ex.getMessage().startsWith("a random IOException")) {
+        exceptionStream.println("\nTEST: got expected fake exc:" + ex.getMessage());
+        ex.printStackTrace(exceptionStream);
+        return;
+      }
+      ex = ex.getCause();
+    }
+    
+    Rethrow.rethrow(e);
   }
 }

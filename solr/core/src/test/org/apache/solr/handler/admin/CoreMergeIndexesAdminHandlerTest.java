@@ -19,14 +19,12 @@ package org.apache.solr.handler.admin;
 import java.io.File;
 import java.io.IOException;
 
-import org.apache.commons.io.FileUtils;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.LockFactory;
-import org.apache.lucene.util.LuceneTestCase;
-import org.apache.lucene.util.TestUtil;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.core.DirectoryFactory;
 import org.apache.solr.core.MockFSDirectoryFactory;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.response.SolrQueryResponse;
@@ -78,7 +76,8 @@ public class CoreMergeIndexesAdminHandlerTest extends SolrTestCaseJ4 {
     final CoreAdminHandler admin = new CoreAdminHandler(cores);
 
     try (SolrCore core = cores.getCore("collection1")) {
-      FailingDirectoryFactory dirFactory = (FailingDirectoryFactory)core.getDirectoryFactory();
+      DirectoryFactory df = core.getDirectoryFactory();
+      FailingDirectoryFactory dirFactory = (FailingDirectoryFactory) df;
 
       try {
         dirFactory.fail = true;

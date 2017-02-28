@@ -21,8 +21,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.lucene.index.MultiPostingsEnum.EnumWithSlice;
-import org.apache.lucene.util.Bits;
 import org.apache.lucene.util.BytesRef;
 
 /**
@@ -64,7 +62,7 @@ final class MappingMultiPostingsEnum extends PostingsEnum {
     for(int i=0;i<allSubs.length;i++) {
       allSubs[i] = new MappingPostingsSub(mergeState.docMaps[i]);
     }
-    this.docIDMerger = new DocIDMerger<MappingPostingsSub>(subs, allSubs.length, mergeState.segmentInfo.getIndexSort() != null);
+    this.docIDMerger = DocIDMerger.of(subs, allSubs.length, mergeState.needsIndexSort);
   }
 
   MappingMultiPostingsEnum reset(MultiPostingsEnum postingsEnum) throws IOException {

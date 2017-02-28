@@ -24,16 +24,17 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.apache.solr.api.ApiBag;
+import org.apache.solr.api.SpecProvider;
+import org.apache.solr.common.util.ValidatingJsonMap;
 import org.apache.solr.util.CommandOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static java.util.Arrays.asList;
-import static java.util.Collections.emptyIterator;
 import static java.util.Collections.unmodifiableMap;
 import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
@@ -41,7 +42,7 @@ import static org.apache.solr.handler.admin.SecurityConfHandler.getListValue;
 import static org.apache.solr.handler.admin.SecurityConfHandler.getMapValue;
 
 
-public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, ConfigEditablePlugin {
+public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, ConfigEditablePlugin, SpecProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, Set<String>> usersVsRoles = new HashMap<>();
@@ -234,4 +235,10 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
 
   private static final Map<String, AutorizationEditOperation> ops = unmodifiableMap(asList(AutorizationEditOperation.values()).stream().collect(toMap(AutorizationEditOperation::getOperationName, identity())));
 
+
+  @Override
+  public ValidatingJsonMap getSpec() {
+    return ApiBag.getSpec("cluster.security.RuleBasedAuthorization").getSpec();
+
+  }
 }

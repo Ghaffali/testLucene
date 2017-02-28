@@ -134,7 +134,7 @@ public class TopGroupsResultTransformer implements ShardResultTransformer<List<C
 
         @SuppressWarnings("unchecked")
         List<NamedList<Object>> documents = (List<NamedList<Object>>) groupResult.get("documents");
-        ScoreDoc[] scoreDocs = transformToNativeShardDoc(documents, groupSort, shard, schema);
+        ScoreDoc[] scoreDocs = transformToNativeShardDoc(documents, sortWithinGroup, shard, schema);
 
         BytesRef groupValueRef = groupValue != null ? new BytesRef(groupValue) : null;
         groupDocs.add(new GroupDocs<>(Float.NaN, maxScore, totalGroupHits, scoreDocs, groupValueRef, null));
@@ -174,12 +174,7 @@ public class TopGroupsResultTransformer implements ShardResultTransformer<List<C
         for (int k = 0; k < sortValues.length; k++) {
           SchemaField field = groupSort.getSort()[k].getField() != null
               ? schema.getFieldOrNull(groupSort.getSort()[k].getField()) : null;
-          if (field != null) {
-            FieldType fieldType = field.getType();
-            if (sortValues[k] != null) {
-              sortValues[k] = fieldType.unmarshalSortValue(sortValues[k]);
-            }
-          }
+          sortValues[k] = ShardResultTransformerUtils.unmarshalSortValue(sortValues[k], field);
         }
       } else {
         log.debug("doc {} has null 'sortValues'", document);
@@ -277,13 +272,7 @@ public class TopGroupsResultTransformer implements ShardResultTransformer<List<C
         Sort groupSort = rb.getGroupingSpec().getGroupSort();
         SchemaField field = groupSort.getSort()[j].getField() != null
                           ? schema.getFieldOrNull(groupSort.getSort()[j].getField()) : null;
-        if (field != null) {
-          FieldType fieldType = field.getType();
-          if (sortValue != null) {
-            sortValue = fieldType.marshalSortValue(sortValue);
-          }
-        }
-        convertedSortValues[j] = sortValue;
+        convertedSortValues[j] = ShardResultTransformerUtils.marshalSortValue(sortValue, field);
       }
       document.add("sortValues", convertedSortValues);
     }

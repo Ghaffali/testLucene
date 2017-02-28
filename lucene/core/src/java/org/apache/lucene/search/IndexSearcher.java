@@ -87,18 +87,8 @@ public class IndexSearcher {
     }
 
     @Override
-    public SimWeight computeWeight(CollectionStatistics collectionStats, TermStatistics... termStats) {
-      return new SimWeight() {
-
-        @Override
-        public float getValueForNormalization() {
-          return 1f;
-        }
-
-        @Override
-        public void normalize(float queryNorm, float boost) {}
-
-      };
+    public SimWeight computeWeight(float boost, CollectionStatistics collectionStats, TermStatistics... termStats) {
+      return new SimWeight() {};
     }
 
     @Override
@@ -442,7 +432,7 @@ public class IndexSearcher {
         for (TopScoreDocCollector collector : collectors) {
           topDocs[i++] = collector.topDocs();
         }
-        return TopDocs.merge(cappedNumHits, topDocs);
+        return TopDocs.merge(0, cappedNumHits, topDocs, true);
       }
 
     };
@@ -569,7 +559,7 @@ public class IndexSearcher {
         for (TopFieldCollector collector : collectors) {
           topDocs[i++] = collector.topDocs();
         }
-        return TopDocs.merge(sort, cappedNumHits, topDocs);
+        return TopDocs.merge(sort, 0, cappedNumHits, topDocs, true);
       }
 
     };
@@ -732,14 +722,7 @@ public class IndexSearcher {
    */
   public Weight createNormalizedWeight(Query query, boolean needsScores) throws IOException {
     query = rewrite(query);
-    Weight weight = createWeight(query, needsScores);
-    float v = weight.getValueForNormalization();
-    float norm = getSimilarity(needsScores).queryNorm(v);
-    if (Float.isInfinite(norm) || Float.isNaN(norm)) {
-      norm = 1.0f;
-    }
-    weight.normalize(norm, 1.0f);
-    return weight;
+    return createWeight(query, needsScores, 1f);
   }
 
   /**
@@ -747,9 +730,9 @@ public class IndexSearcher {
    * if possible and configured.
    * @lucene.experimental
    */
-  public Weight createWeight(Query query, boolean needsScores) throws IOException {
+  public Weight createWeight(Query query, boolean needsScores, float boost) throws IOException {
     final QueryCache queryCache = this.queryCache;
-    Weight weight = query.createWeight(this, needsScores);
+    Weight weight = query.createWeight(this, needsScores, boost);
     if (needsScores == false && queryCache != null) {
       weight = queryCache.doCache(weight, queryCachingPolicy);
     }
