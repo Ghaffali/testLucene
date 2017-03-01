@@ -423,8 +423,12 @@ final class ShardLeaderElectionContext extends ShardLeaderElectionContextBase {
           
           super.runLeaderProcess(weAreReplacement, 0);
           try (SolrCore core = cc.getCore(coreName)) {
-            core.getCoreDescriptor().getCloudDescriptor().setLeader(true);
-            publishActiveIfRegisteredAndNotActive(core);
+            if (core != null) {
+              core.getCoreDescriptor().getCloudDescriptor().setLeader(true);
+              publishActiveIfRegisteredAndNotActive(core);
+            } else {
+              return;
+            }
           }
           log.info("I am the new leader: " + ZkCoreNodeProps.getCoreUrl(leaderProps) + " " + shardId);
           
@@ -484,6 +488,7 @@ final class ShardLeaderElectionContext extends ShardLeaderElectionContextBase {
   public void checkLIR(String coreName, boolean allReplicasInLine)
       throws InterruptedException, KeeperException, IOException {
     if (allReplicasInLine) {
+      log.info("Found all replicas participating in election, clear LIR");
       // SOLR-8075: A bug may allow the proper leader to get marked as LIR DOWN and
       // if we are marked as DOWN but were able to become the leader, we remove
       // the DOWN entry here so that we don't fail publishing ACTIVE due to being in LIR.
@@ -742,13 +747,19 @@ final class OverseerElectionContext extends ElectionContext {
         log.warn("Wait interrupted ", e);
       }
     }
-    
-    overseer.start(id);
+    if (overseer.getZkController() == null || overseer.getZkController().getCoreContainer() == null || !overseer.getZkController().getCoreContainer().isShutDown()) {
+      overseer.start(id);
+    }
   }
   
   @Override
   public void cancelElection() throws InterruptedException, KeeperException {
     super.cancelElection();
+    overseer.close();
+  }
+  
+  @Override
+  public void close() {
     overseer.close();
   }
 

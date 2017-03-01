@@ -317,7 +317,6 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       }
     }
 
-    Document luceneDocument = cmd.getLuceneDocument();
     Term idTerm = getIdTerm(cmd);
 
     RefCounted<IndexWriter> iw = solrCoreState.getIndexWriter(core);
@@ -328,6 +327,9 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
       synchronized (solrCoreState.getUpdateLock()) {
         updateDocOrDocValues(cmd, writer, idTerm);
 
+        if (cmd.isInPlaceUpdate() && ulog != null) {
+          ulog.openRealtimeSearcher(); // This is needed due to LUCENE-7344.
+        }
         for (Query q : dbqList) {
           writer.deleteDocuments(new DeleteByQueryWrapper(q, core.getLatestSchema()));
         }

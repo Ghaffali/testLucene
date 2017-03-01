@@ -5,6 +5,12 @@ http://s.apache.org/luceneversions
 
 ======================= Lucene 7.0.0 =======================
 
+New Features
+
+* LUCENE-7703: SegmentInfos now record the Lucene version at index creation
+  time. (Adrien Grand)
+
+
 API Changes
 
 * LUCENE-2605: Classic QueryParser no longer splits on whitespace by default.
@@ -26,6 +32,10 @@ API Changes
   actually used. (Adrien Grand)
 
 * LUCENE-7494: Points now have a per-field API, like doc values. (Adrien Grand)
+
+* LUCENE-7410: Cache keys and close listeners have been refactored in order
+  to be less trappy. See IndexReader.getReaderCacheHelper and
+  LeafReader.getCoreCacheHelper. (Adrien Grand)
 
 Bug Fixes
 
@@ -61,6 +71,8 @@ Other
 
 * LUCENE-7360: Remove Explanation.toHtml() (Alan Woodward)
 
+* LUCENE-7681: MemoryIndex uses new DocValues API (Alan Woodward)
+
 ======================= Lucene 6.5.0 =======================
 
 API Changes
@@ -88,7 +100,22 @@ API Changes
   after the main query has been executed. (Adrien Grand, Martijn van Groningen,
   Mike McCandless)
 
+* LUCENE-7628: Scorer.getChildren() now only returns Scorers that are
+  positioned on the current document, and can throw an IOException.
+  AssertingScorer checks that getChildren() is not called on an unpositioned
+  Scorer.  (Alan Woodward, Adrien Grand)
+
+* LUCENE-7702: Removed GraphQuery in favour of simple boolean query. (Matt Webber via Jim Ferenczi)
+
+* LUCENE-7707: TopDocs.merge now takes a boolean option telling it
+  when to use the incoming shard index versus when to assign the shard
+  index itself, allowing users to merge shard responses incrementally
+  instead of once all shard responses are present. (Simon Willnauer,
+  Mike McCandless)
+
 New Features
+
+* LUCENE-7449: Add CROSSES relation support to RangeFieldQuery. (Nick Knize)
 
 * LUCENE-7623: Add FunctionScoreQuery and FunctionMatchQuery (Alan Woodward,
   Adrien Grand, David Smiley)
@@ -112,16 +139,35 @@ New Features
   implementation for analysis/tokenization (Clinton Gormley, Mike
   McCandless)
 
+* LUCENE-7688: Add OneMergeWrappingMergePolicy class.
+  (Keith Laban, Christine Poerschke)
+
+* LUCENE-7686: The near-real-time document suggester can now
+  efficiently filter out duplicate suggestions (Uwe Schindler, Mike
+  McCandless)
+
 Bug Fixes
 
 * LUCENE-7630: Fix (Edge)NGramTokenFilter to no longer drop payloads
   and preserve all attributes. (Nathan Gass via Uwe Schindler)
 
-* LUCENE-7676: Fixed FilterCodecReader to override more super-class methods.
-  Also added TestFilterCodecReader class. (Christine Poerschke)
-
 * LUCENE-7679: MemoryIndex was ignoring omitNorms settings on passed-in
   IndexableFields. (Alan Woodward)
+
+* LUCENE-7692: PatternReplaceCharFilterFactory now implements MultiTermAware.
+  (Adrien Grand)
+
+* LUCENE-7685: ToParentBlockJoinQuery and ToChildBlockJoinQuery now use the
+  rewritten child query in their equals and hashCode implementations.
+  (Adrien Grand)
+
+* LUCENE-7698: CommonGramsQueryFilter was producing a disconnected
+  token graph, messing up phrase queries when it was used during query
+  parsing (Ere Maijala via Mike McCandless)
+
+* LUCENE-7708: ShingleFilter without unigram was producing a disconnected
+  token graph, messing up queries when it was used during query
+  parsing (Jim Ferenczi)
 
 Improvements
 
@@ -137,6 +183,18 @@ Improvements
 * LUCENE-7662: If index files are missing, throw CorruptIndexException instead
   of the less descriptive FileNotFound or NoSuchFileException (Mike Drob via 
   Mike McCandless, Erick Erickson)
+
+* LUCENE-7680: UsageTrackingQueryCachingPolicy never caches term filters anymore
+  since they are plenty fast. This also has the side-effect of leaving more
+  space in the history for costly filters. (Adrien Grand)
+
+* LUCENE-7677: UsageTrackingQueryCachingPolicy now caches compound queries a bit
+  earlier than regular queries in order to improve cache efficiency.
+  (Adrien Grand)
+
+* LUCENE-7710: BlockPackedReader throws CorruptIndexException and includes
+  IndexInput description instead of plain IOException (Mike Drob via
+  Mike McCandless)
 
 Optimizations
 
@@ -165,6 +223,9 @@ Optimizations
   points (or cut vertices) in order to create more efficient queries for
   multi-token synonyms. (Jim Ferenczi)
 
+* LUCENE-7699: Query parsers now use span queries to produce more efficient
+  phrase queries for multi-token synonyms. (Matt Webber via Jim Ferenczi)
+
 Build
 
 * LUCENE-7653: Update randomizedtesting to version 2.5.0. (Dawid Weiss)
@@ -188,6 +249,17 @@ Other
 
 * LUCENE-7658: queryparser/xml CoreParser now implements SpanQueryBuilder interface.
   (Daniel Collins, Christine Poerschke)
+
+======================= Lucene 6.4.2 =======================
+
+Bug Fixes
+
+* LUCENE-7676: Fixed FilterCodecReader to override more super-class methods.
+  Also added TestFilterCodecReader class. (Christine Poerschke)
+
+* LUCENE-7717: The UnifiedHighlighter and PostingsHighlighter were not highlighting
+  prefix queries with multi-byte characters. TermRangeQuery is affected too.
+  (Dmitry Malinin, David Smiley)
 
 ======================= Lucene 6.4.1 =======================
 

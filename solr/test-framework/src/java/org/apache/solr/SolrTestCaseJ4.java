@@ -274,6 +274,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     System.setProperty("tests.shardhandler.randomSeed", Long.toString(random().nextLong()));
     System.setProperty("solr.clustering.enabled", "false");
     System.setProperty("solr.peerSync.useRangeVersions", String.valueOf(random().nextBoolean()));
+    System.setProperty("solr.cloud.wait-for-updates-with-stale-state-pause", "500");
     startTrackingSearchers();
     ignoreException("ignore_exception");
     newRandomConfig();
@@ -322,7 +323,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
       System.clearProperty("useCompoundFile");
       System.clearProperty("urlScheme");
       System.clearProperty("solr.peerSync.useRangeVersions");
-      
+      System.clearProperty("solr.cloud.wait-for-updates-with-stale-state-pause");
       HttpClientUtil.resetHttpClientBuilder();
 
       // clean up static
@@ -1302,8 +1303,15 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
 
   public SolrInputDocument sdocWithChildren(String id, String version, int childCount) {
     SolrInputDocument doc = sdoc("id", id, "_version_", version);
-    for (int i = 0; i < childCount; i++) {
+    for (int i = 1; i <= childCount; i++) {
       doc.addChildDocument(sdoc("id", id + "_child" + i));
+    }
+    return doc;
+  }
+  public SolrInputDocument sdocWithChildren(Integer id, String version, int childCount) {
+    SolrInputDocument doc = sdoc("id", id, "_version_", version);
+    for (int i = 1; i <= childCount; i++) {
+      doc.addChildDocument(sdoc("id", (1000)*id + i));
     }
     return doc;
   }
@@ -2011,6 +2019,10 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
   // the string to write to the core.properties file may be null in which case nothing is done with it.
   // propertiesContent may be an empty string, which will actually work.
   public static void copyMinConf(File dstRoot, String propertiesContent) throws IOException {
+    copyMinConf(dstRoot, propertiesContent, "solrconfig-minimal.xml");
+  }
+
+  public static void copyMinConf(File dstRoot, String propertiesContent, String solrconfigXmlName) throws IOException {
 
     File subHome = new File(dstRoot, "conf");
     if (! dstRoot.exists()) {
@@ -2022,7 +2034,7 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     }
     String top = SolrTestCaseJ4.TEST_HOME() + "/collection1/conf";
     FileUtils.copyFile(new File(top, "schema-tiny.xml"), new File(subHome, "schema.xml"));
-    FileUtils.copyFile(new File(top, "solrconfig-minimal.xml"), new File(subHome, "solrconfig.xml"));
+    FileUtils.copyFile(new File(top, solrconfigXmlName), new File(subHome, "solrconfig.xml"));
     FileUtils.copyFile(new File(top, "solrconfig.snippet.randomindexconfig.xml"), new File(subHome, "solrconfig.snippet.randomindexconfig.xml"));
   }
 

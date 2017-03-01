@@ -31,13 +31,11 @@ import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.handler.component.MergeStrategy;
 import org.apache.solr.handler.component.ShardResponse;
 
-import org.junit.Ignore;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.io.IOException;
 
-@Ignore
-public class TestAnalyticsQParserPlugin extends QParserPlugin {
+public class AnalyticsTestQParserPlugin extends QParserPlugin {
 
 
   public QParser createParser(String query, SolrParams localParams, SolrParams params, SolrQueryRequest req) {

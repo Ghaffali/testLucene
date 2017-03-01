@@ -87,6 +87,7 @@ public class SharedFSAutoReplicaFailoverTest extends AbstractFullDistribZkTestBa
   public static void hdfsFailoverBeforeClass() throws Exception {
     System.setProperty("solr.hdfs.blockcache.blocksperbank", "512");
     dfsCluster = HdfsTestUtil.setupClass(createTempDir().toFile().getAbsolutePath());
+    System.setProperty("solr.hdfs.blockcache.global", "true"); // always use global cache, this test can create a lot of directories
     schemaString = "schema15.xml"; 
   }
   
