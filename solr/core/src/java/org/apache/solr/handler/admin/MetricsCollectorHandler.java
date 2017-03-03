@@ -52,7 +52,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Handler to collect and aggregate metric reports.  Each report indicates the target registry where
- * metrics values should be collected and aggregated. Mtrics with the same names are
+ * metrics values should be collected and aggregated. Metrics with the same names are
  * aggregated using {@link AggregateMetric} instances, which track the source of updates and
  * their count, as well as providing simple statistics over collected values.
  *
@@ -116,6 +116,9 @@ public class MetricsCollectorHandler extends RequestHandlerBase {
       return;
     }
     //log.info("#### " + req.toString());
+    if (req.getContentStreams() == null) { // no content
+      return;
+    }
     for (ContentStream cs : req.getContentStreams()) {
       if (cs.getContentType() == null) {
         log.warn("Missing content type - ignoring");

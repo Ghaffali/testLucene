@@ -272,6 +272,16 @@ public class SolrReporter extends ScheduledReporter {
       this.registryPattern = Pattern.compile(report.registryPattern);
       this.filter = new SolrMetricManager.RegexFilter(report.metricFilters);
     }
+
+    @Override
+    public String toString() {
+      return "CompiledReport{" +
+          "group='" + group + '\'' +
+          ", label='" + label + '\'' +
+          ", registryPattern=" + registryPattern +
+          ", filter=" + filter +
+          '}';
+    }
   }
 
   public SolrReporter(HttpClient httpClient, Supplier<String> urlProvider, SolrMetricManager metricManager,
@@ -361,6 +371,10 @@ public class SolrReporter extends ScheduledReporter {
       });
     });
 
+    // if no docs added then don't send a report
+    if (req.getDocuments() == null || req.getDocuments().isEmpty()) {
+      return;
+    }
     try {
       //log.info("%%% sending to " + url + ": " + req.getParams());
       solr.request(req);

@@ -37,6 +37,7 @@ public class SolrCoreMetricManager implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final SolrCore core;
+  private final String tag;
   private final SolrMetricManager metricManager;
   private String registryName;
   private String collectionName;
@@ -52,6 +53,7 @@ public class SolrCoreMetricManager implements Closeable {
    */
   public SolrCoreMetricManager(SolrCore core) {
     this.core = core;
+    this.tag = String.valueOf(core.hashCode());
     this.metricManager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
     initCloudMode();
     registryName = createRegistryName(cloudMode, collectionName, shardName, replicaName, core.getName());
@@ -75,9 +77,10 @@ public class SolrCoreMetricManager implements Closeable {
   public void loadReporters() {
     NodeConfig nodeConfig = core.getCoreDescriptor().getCoreContainer().getConfig();
     PluginInfo[] pluginInfos = nodeConfig.getMetricReporterPlugins();
-    metricManager.loadReporters(pluginInfos, core.getResourceLoader(), SolrInfoMBean.Group.core, registryName);
+    metricManager.loadReporters(pluginInfos, core.getResourceLoader(), tag,
+        SolrInfoMBean.Group.core, registryName);
     if (cloudMode) {
-      metricManager.loadReplicaReporters(pluginInfos, core, leaderRegistryName, registryName);
+      metricManager.loadShardReporters(pluginInfos, core);
     }
   }
 
@@ -96,9 +99,9 @@ public class SolrCoreMetricManager implements Closeable {
       return;
     }
     // close old reporters
-    metricManager.closeReporters(oldRegistryName);
+    metricManager.closeReporters(oldRegistryName, tag);
     if (oldLeaderRegistryName != null) {
-      metricManager.closeReporters(oldLeaderRegistryName);
+      metricManager.closeReporters(oldLeaderRegistryName, tag);
     }
     // load reporters again, using the new core name
     loadReporters();
@@ -123,7 +126,7 @@ public class SolrCoreMetricManager implements Closeable {
    */
   @Override
   public void close() throws IOException {
-    metricManager.closeReporters(getRegistryName());
+    metricManager.closeReporters(getRegistryName(), tag);
   }
 
   public SolrCore getCore() {
@@ -157,6 +160,13 @@ public class SolrCoreMetricManager implements Closeable {
    */
   public String getLeaderRegistryName() {
     return leaderRegistryName;
+  }
+
+  /**
+   * Return a tag specific to this instance.
+   */
+  public String getTag() {
+    return tag;
   }
 
   public static String createRegistryName(boolean cloud, String collectionName, String shardName, String replicaName, String coreName) {

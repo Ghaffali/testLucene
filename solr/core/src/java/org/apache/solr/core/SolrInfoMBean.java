@@ -38,7 +38,7 @@ public interface SolrInfoMBean {
   /**
    * Top-level group of beans for a subsystem.
    */
-  enum Group { jvm, jetty, node, core, replica, overseer }
+  enum Group { jvm, jetty, node, core, shard, overseer }
 
   /**
    * Simple common usage name, e.g. BasicQueryHandler,

@@ -860,6 +860,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     this.configSetProperties = configSetProperties;
     // Initialize the metrics manager
     this.coreMetricManager = initCoreMetricManager(config);
+    this.coreMetricManager.loadReporters();
 
     if (updateHandler == null) {
       directoryFactory = initDirectoryFactory();
@@ -1098,7 +1099,6 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
    */
   private SolrCoreMetricManager initCoreMetricManager(SolrConfig config) {
     SolrCoreMetricManager coreMetricManager = new SolrCoreMetricManager(this);
-    coreMetricManager.loadReporters();
     return coreMetricManager;
   }
 

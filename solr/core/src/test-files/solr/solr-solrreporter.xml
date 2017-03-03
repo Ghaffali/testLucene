@@ -38,7 +38,7 @@
   </solrcloud>
 
   <metrics>
-    <reporter name="test" group="replica">
+    <reporter name="test" group="shard">
       <int name="period">5</int>
       <str name="filter">UPDATE\./update/.*requests</str>
       <str name="filter">QUERY\./select.*requests</str>

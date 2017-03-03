@@ -20,6 +20,7 @@ import javax.management.Attribute;
 import javax.management.AttributeList;
 import javax.management.AttributeNotFoundException;
 import javax.management.DynamicMBean;
+import javax.management.InstanceNotFoundException;
 import javax.management.InvalidAttributeValueException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanException;
@@ -165,6 +166,8 @@ public class JmxMonitoredMap<K, V> extends
         for (ObjectName name : objectNames) {
           try {
             server.unregisterMBean(name);
+          } catch (InstanceNotFoundException ie) {
+            // ignore - someone else already deleted this one
           } catch (Exception e) {
             log.warn("Exception un-registering mbean {}", name, e);
           }

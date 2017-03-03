@@ -104,7 +104,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
   }};
 
   private String handler = MetricsCollectorHandler.HANDLER_PATH;
-  private int period = 60;
+  private int period = SolrMetricManager.DEFAULT_CLOUD_REPORTER_PERIOD;
   private List<SolrReporter.Report> reports = new ArrayList<>();
 
   private SolrReporter reporter;
@@ -171,6 +171,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
     }
     // start reporter only in cloud mode
     if (!cc.isZooKeeperAware()) {
+      log.warn("Not ZK-aware, not starting...");
       return;
     }
     if (period < 1) { // don't start it
@@ -190,7 +191,6 @@ public class SolrOverseerReporter extends SolrMetricReporter {
         .build(httpClient, new OverseerUrlSupplier(zk));
 
     reporter.start(period, TimeUnit.SECONDS);
-
   }
 
   // TODO: fix this when there is an elegant way to retrieve URL of a node that runs Overseer leader.
