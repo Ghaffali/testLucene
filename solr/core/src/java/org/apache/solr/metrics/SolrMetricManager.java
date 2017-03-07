@@ -52,7 +52,7 @@ import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
-import org.apache.solr.metrics.reporters.solr.SolrOverseerReporter;
+import org.apache.solr.metrics.reporters.solr.SolrClusterReporter;
 import org.apache.solr.metrics.reporters.solr.SolrShardReporter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -889,7 +889,7 @@ public class SolrMetricManager {
         result.add(info);
       }
     }
-    if (result.isEmpty()) {
+    if (result.isEmpty() && defaultPlugin != null) {
       defaultPlugin = preparePlugin(defaultPlugin, className, defaultAttributes, defaultInitArgs);
       if (defaultPlugin != null) {
         result.add(defaultPlugin);
@@ -938,15 +938,14 @@ public class SolrMetricManager {
     // prepare default plugin if none present in the config
     Map<String, String> attrs = new HashMap<>();
     attrs.put("name", "shardDefault");
-    attrs.put("group", "shard");
+    attrs.put("group", SolrInfoMBean.Group.shard.toString());
     Map<String, Object> initArgs = new HashMap<>();
     initArgs.put("period", DEFAULT_CLOUD_REPORTER_PERIOD);
-    PluginInfo defaultPlugin = new PluginInfo("reporter", attrs, new NamedList(), null);
 
     String registryName = core.getCoreMetricManager().getRegistryName();
     // collect infos and normalize
-    List<PluginInfo> infos = prepareCloudPlugins(pluginInfos, "shard", SolrShardReporter.class.getName(),
-        attrs, initArgs, defaultPlugin);
+    List<PluginInfo> infos = prepareCloudPlugins(pluginInfos, SolrInfoMBean.Group.shard.toString(), SolrShardReporter.class.getName(),
+        attrs, initArgs, null);
     for (PluginInfo info : infos) {
       try {
         SolrMetricReporter reporter = loadReporter(registryName, core.getResourceLoader(), info,
@@ -958,24 +957,23 @@ public class SolrMetricManager {
     }
   }
 
-  public void loadOverseerReporters(PluginInfo[] pluginInfos, CoreContainer cc) {
+  public void loadClusterReporters(PluginInfo[] pluginInfos, CoreContainer cc) {
     // don't load for non-cloud instances
     if (!cc.isZooKeeperAware()) {
       return;
     }
     Map<String, String> attrs = new HashMap<>();
-    attrs.put("name", "overseerDefault");
-    attrs.put("group", "overseer");
+    attrs.put("name", "clusterDefault");
+    attrs.put("group", SolrInfoMBean.Group.cluster.toString());
     Map<String, Object> initArgs = new HashMap<>();
     initArgs.put("period", DEFAULT_CLOUD_REPORTER_PERIOD);
-    PluginInfo defaultPlugin = new PluginInfo("reporter", attrs, new NamedList(), null);
-    List<PluginInfo> infos = prepareCloudPlugins(pluginInfos, "overseer", SolrOverseerReporter.class.getName(),
-        attrs, initArgs, defaultPlugin);
-    String registryName = getRegistryName(SolrInfoMBean.Group.overseer);
+    List<PluginInfo> infos = prepareCloudPlugins(pluginInfos, SolrInfoMBean.Group.cluster.toString(), SolrClusterReporter.class.getName(),
+        attrs, initArgs, null);
+    String registryName = getRegistryName(SolrInfoMBean.Group.cluster);
     for (PluginInfo info : infos) {
       try {
         SolrMetricReporter reporter = loadReporter(registryName, cc.getResourceLoader(), info, null);
-        ((SolrOverseerReporter)reporter).setCoreContainer(cc);
+        ((SolrClusterReporter)reporter).setCoreContainer(cc);
       } catch (Exception e) {
         log.warn("Could not load node reporter, pluginInfo=" + info, e);
       }

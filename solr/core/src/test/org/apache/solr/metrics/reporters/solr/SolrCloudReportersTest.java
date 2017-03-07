@@ -37,7 +37,7 @@ import org.junit.Test;
  */
 public class SolrCloudReportersTest extends SolrCloudTestCase {
   int leaderRegistries;
-  int overseerRegistries;
+  int clusterRegistries;
 
 
   @BeforeClass
@@ -49,7 +49,7 @@ public class SolrCloudReportersTest extends SolrCloudTestCase {
   public void closePreviousCluster() throws Exception {
     shutdownCluster();
     leaderRegistries = 0;
-    overseerRegistries = 0;
+    clusterRegistries = 0;
   }
 
   @Test
@@ -66,15 +66,36 @@ public class SolrCloudReportersTest extends SolrCloudTestCase {
     Thread.sleep(15000);
     cluster.getJettySolrRunners().forEach(jetty -> {
       CoreContainer cc = jetty.getCoreContainer();
+      // verify registry names
+      for (String name : cc.getCoreNames()) {
+        SolrCore core = cc.getCore(name);
+        try {
+          String registryName = core.getCoreMetricManager().getRegistryName();
+          String leaderRegistryName = core.getCoreMetricManager().getLeaderRegistryName();
+          String coreName = core.getName();
+          String collectionName = core.getCoreDescriptor().getCollectionName();
+          String coreNodeName = core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName();
+          String replicaName = coreName.split("_")[3];
+          String shardId = core.getCoreDescriptor().getCloudDescriptor().getShardId();
+
+          assertEquals("solr.core." + collectionName + "." + shardId + "." + replicaName, registryName);
+          assertEquals("solr.collection." + collectionName + "." + shardId + ".leader", leaderRegistryName);
+
+        } finally {
+          if (core != null) {
+            core.close();
+          }
+        }
+      }
       SolrMetricManager metricManager = cc.getMetricManager();
-      Map<String, SolrMetricReporter> reporters = metricManager.getReporters("solr.overseer");
+      Map<String, SolrMetricReporter> reporters = metricManager.getReporters("solr.cluster");
       assertEquals(reporters.toString(), 1, reporters.size());
       SolrMetricReporter reporter = reporters.get("test");
       assertNotNull(reporter);
-      assertTrue(reporter.toString(), reporter instanceof SolrOverseerReporter);
-      SolrOverseerReporter sor = (SolrOverseerReporter)reporter;
+      assertTrue(reporter.toString(), reporter instanceof SolrClusterReporter);
+      SolrClusterReporter sor = (SolrClusterReporter)reporter;
       assertEquals(5, sor.getPeriod());
-      for (String registryName : metricManager.registryNames(".*\\.shard[0-9]\\.core.*")) {
+      for (String registryName : metricManager.registryNames(".*\\.shard[0-9]\\.replica.*")) {
         reporters = metricManager.getReporters(registryName);
         assertEquals(reporters.toString(), 1, reporters.size());
         reporter = null;
@@ -102,9 +123,9 @@ public class SolrCloudReportersTest extends SolrCloudTestCase {
         assertTrue(key, metrics.containsKey(key));
         assertTrue(key, metrics.get(key) instanceof AggregateMetric);
       }
-      if (metricManager.registryNames().contains("solr.overseer")) {
-        overseerRegistries++;
-        Map<String,Metric> metrics = metricManager.registry("solr.overseer").getMetrics();
+      if (metricManager.registryNames().contains("solr.cluster")) {
+        clusterRegistries++;
+        Map<String,Metric> metrics = metricManager.registry("solr.cluster").getMetrics();
         String key = "jvm.memory.heap.init.value";
         assertTrue(key, metrics.containsKey(key));
         assertTrue(key, metrics.get(key) instanceof AggregateMetric);
@@ -114,7 +135,7 @@ public class SolrCloudReportersTest extends SolrCloudTestCase {
       }
     });
     assertEquals("leaderRegistries", 2, leaderRegistries);
-    assertEquals("overseerRegistries", 1, overseerRegistries);
+    assertEquals("clusterRegistries", 1, clusterRegistries);
   }
 
   @Test
@@ -128,72 +149,15 @@ public class SolrCloudReportersTest extends SolrCloudTestCase {
         .setMaxShardsPerNode(4)
         .process(cluster.getSolrClient());
     waitForState("Expected test_collection with 2 shards and 2 replicas", "test_collection", clusterShape(2, 2));
-    // has to wait at least twice the SolrMetricManager.DEFAULT_CLOUD_REPORTER_PERIOD for the first
-    // report to aggregate into a *.leader registry, and for the second report to aggregate from *.leader
-    // into solr.overseer
-    Thread.sleep(SolrMetricManager.DEFAULT_CLOUD_REPORTER_PERIOD * 3 * 1000);
     cluster.getJettySolrRunners().forEach(jetty -> {
       CoreContainer cc = jetty.getCoreContainer();
-      // verify registry names
-      for (String name : cc.getCoreNames()) {
-        SolrCore core = cc.getCore(name);
-        try {
-          String registryName = core.getCoreMetricManager().getRegistryName();
-          String leaderRegistryName = core.getCoreMetricManager().getLeaderRegistryName();
-          String coreName = core.getName();
-          String collectionName = core.getCoreDescriptor().getCollectionName();
-          String coreNodeName = core.getCoreDescriptor().getCloudDescriptor().getCoreNodeName();
-          String shardId = core.getCoreDescriptor().getCloudDescriptor().getShardId();
-
-          assertEquals("solr.core." + collectionName + "." + shardId + "." + coreNodeName, registryName);
-          assertEquals("solr.core." + collectionName + "." + shardId + ".leader", leaderRegistryName);
-
-        } finally {
-          if (core != null) {
-            core.close();
-          }
-        }
-      }
       SolrMetricManager metricManager = cc.getMetricManager();
-      Map<String, SolrMetricReporter> reporters = metricManager.getReporters("solr.overseer");
-      assertEquals(reporters.toString(), 1, reporters.size());
-      SolrMetricReporter reporter = reporters.get("overseerDefault");
-      assertNotNull(reporter);
-      assertTrue(reporter.toString(), reporter instanceof SolrOverseerReporter);
-      SolrOverseerReporter sor = (SolrOverseerReporter)reporter;
-      assertEquals(SolrMetricManager.DEFAULT_CLOUD_REPORTER_PERIOD, sor.getPeriod());
-      for (String registryName : metricManager.registryNames(".*\\.shard[0-9]\\.core.*")) {
+      Map<String, SolrMetricReporter> reporters = metricManager.getReporters("solr.cluster");
+      assertEquals(reporters.toString(), 0, reporters.size());
+      for (String registryName : metricManager.registryNames(".*\\.shard[0-9]\\.replica.*")) {
         reporters = metricManager.getReporters(registryName);
-        assertEquals(reporters.toString(), 1, reporters.size());
-        reporter = null;
-        for (String name : reporters.keySet()) {
-          if (name.startsWith("shardDefault")) {
-            reporter = reporters.get(name);
-          }
-        }
-        assertNotNull(reporter);
-        assertTrue(reporter.toString(), reporter instanceof SolrShardReporter);
-        SolrShardReporter srr = (SolrShardReporter)reporter;
-        assertEquals(SolrMetricManager.DEFAULT_CLOUD_REPORTER_PERIOD, srr.getPeriod());
-      }
-      for (String registryName : metricManager.registryNames(".*\\.leader")) {
-        leaderRegistries++;
-        reporters = metricManager.getReporters(registryName);
-        // no reporters registered for leader registry
         assertEquals(reporters.toString(), 0, reporters.size());
       }
-      if (metricManager.registryNames().contains("solr.overseer")) {
-        overseerRegistries++;
-        Map<String,Metric> metrics = metricManager.registry("solr.overseer").getMetrics();
-        String key = "jvm.memory.heap.init.value";
-        assertTrue(key, metrics.containsKey(key));
-        assertTrue(key, metrics.get(key) instanceof AggregateMetric);
-        key = "leader.test_collection.shard1.UPDATE./update/json.requests.count.max";
-        assertTrue(key, metrics.containsKey(key));
-        assertTrue(key, metrics.get(key) instanceof AggregateMetric);
-      }
     });
-    assertEquals("leaderRegistries", 2, leaderRegistries);
-    assertEquals("overseerRegistries", 1, overseerRegistries);
   }
 }

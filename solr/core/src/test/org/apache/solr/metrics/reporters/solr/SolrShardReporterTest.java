@@ -12,6 +12,7 @@ import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.CoreDescriptor;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.metrics.AggregateMetric;
 import org.apache.solr.metrics.SolrCoreMetricManager;
 import org.apache.solr.metrics.SolrMetricManager;
@@ -54,8 +55,12 @@ public class SolrShardReporterTest extends AbstractFullDistribZkTestBase {
         }
         CloudDescriptor cloudDesc = cd.getCloudDescriptor();
         DocCollection docCollection = state.getCollection(cloudDesc.getCollectionName());
+        String replicaName = SolrCoreMetricManager.parseReplicaName(cloudDesc.getCollectionName(), coreName);
+        if (replicaName == null) {
+          replicaName = cloudDesc.getCoreNodeName();
+        }
         String registryName = SolrCoreMetricManager.createRegistryName(true,
-            cloudDesc.getCollectionName(), cloudDesc.getShardId(), cloudDesc.getCoreNodeName(), null);
+            cloudDesc.getCollectionName(), cloudDesc.getShardId(), replicaName, null);
         String leaderRegistryName = SolrCoreMetricManager.createLeaderRegistryName(true,
             cloudDesc.getCollectionName(), cloudDesc.getShardId());
         boolean leader = cloudDesc.isLeader();
@@ -92,7 +97,6 @@ public class SolrShardReporterTest extends AbstractFullDistribZkTestBase {
       }
     }
     SolrMetricManager metricManager = controlJetty.getCoreContainer().getMetricManager();
-    assertTrue(metricManager.registryNames().contains("solr.overseer"));
-    Map<String, Metric> metrics = metricManager.registry("solr.overseer").getMetrics();
+    assertTrue(metricManager.registryNames().contains("solr.cluster"));
   }
 }

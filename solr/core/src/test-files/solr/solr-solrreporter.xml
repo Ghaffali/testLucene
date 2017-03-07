@@ -43,11 +43,11 @@
       <str name="filter">UPDATE\./update/.*requests</str>
       <str name="filter">QUERY\./select.*requests</str>
     </reporter>
-    <reporter name="test" group="overseer">
+    <reporter name="test" group="cluster">
       <str name="handler">/admin/metrics/collector</str>
       <int name="period">5</int>
       <lst name="report">
-        <str name="group">overseer</str>
+        <str name="group">cluster</str>
         <str name="label">jvm</str>
         <str name="registry">solr\.jvm</str>
         <str name="filter">memory\.total\..*</str>
@@ -56,9 +56,9 @@
         <str name="filter">threads\.count</str>
       </lst>
       <lst name="report">
-        <str name="group">overseer</str>
+        <str name="group">cluster</str>
         <str name="label">leader.$1</str>
-        <str name="registry">solr\.core\.(.*)\.leader</str>
+        <str name="registry">solr\.collection\.(.*)\.leader</str>
         <str name="filter">UPDATE\./update/.*</str>
       </lst>
     </reporter>

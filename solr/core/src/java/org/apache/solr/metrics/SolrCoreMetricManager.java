@@ -66,7 +66,12 @@ public class SolrCoreMetricManager implements Closeable {
       cloudMode = true;
       collectionName = core.getCoreDescriptor().getCollectionName();
       shardName = cd.getShardId();
-      replicaName = cd.getCoreNodeName();
+      //replicaName = cd.getCoreNodeName();
+      String coreName = core.getName();
+      replicaName = parseReplicaName(collectionName, coreName);
+      if (replicaName == null) {
+        replicaName = cd.getCoreNodeName();
+      }
     }
   }
 
@@ -170,46 +175,56 @@ public class SolrCoreMetricManager implements Closeable {
   }
 
   public static String createRegistryName(boolean cloud, String collectionName, String shardName, String replicaName, String coreName) {
-    if (collectionName == null) {
-      // single core
-      return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, coreName);
-    }
     if (cloud) { // build registry name from logical names
       return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, collectionName, shardName, replicaName);
     } else {
-      if (!coreName.startsWith(collectionName)) {
-        // unknown naming scheme
-        return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, coreName);
-      }
-      String shard;
-      String replica = null;
-      // split "collection1_shard1_1_replica1" into parts
-      String str = coreName.substring(collectionName.length() + 1);
-      int pos = str.lastIndexOf("_replica");
-      if (pos == -1) { // ?? no _replicaN part ??
-        shard = str;
-      } else {
-        shard = str.substring(0, pos);
-        replica = str.substring(pos + 1);
-      }
-      return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, collectionName, shard, replica);
+      return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.core, coreName);
     }
   }
 
+  /**
+   * This method is used by {@link org.apache.solr.core.CoreContainer#rename(String, String)}.
+   * @param aCore existing core with old name
+   * @param coreName new name
+   * @return new registry name
+   */
   public static String createRegistryName(SolrCore aCore, String coreName) {
     CloudDescriptor cd = aCore.getCoreDescriptor().getCloudDescriptor();
+    String replicaName = null;
+    if (cd != null) {
+      replicaName = parseReplicaName(cd.getCollectionName(), coreName);
+    }
     return createRegistryName(
         cd != null,
         cd != null ? cd.getCollectionName() : null,
         cd != null ? cd.getShardId() : null,
-        cd != null ? cd.getCoreNodeName() : null,
+        replicaName,
         coreName
         );
   }
 
+  public static String parseReplicaName(String collectionName, String coreName) {
+    if (collectionName == null || !coreName.startsWith(collectionName)) {
+      return null;
+    } else {
+      // split "collection1_shard1_1_replica1" into parts
+      if (coreName.length() > collectionName.length()) {
+        String str = coreName.substring(collectionName.length() + 1);
+        int pos = str.lastIndexOf("_replica");
+        if (pos == -1) { // ?? no _replicaN part ??
+          return str;
+        } else {
+          return str.substring(pos + 1);
+        }
+      } else {
+        return null;
+      }
+    }
+  }
+
   public static String createLeaderRegistryName(boolean cloud, String collectionName, String shardName) {
     if (cloud) {
-      return createRegistryName(cloud, collectionName, shardName, "leader", null);
+      return SolrMetricManager.getRegistryName(SolrInfoMBean.Group.collection, collectionName, shardName, "leader");
     } else {
       return null;
     }

@@ -71,16 +71,16 @@ import org.slf4j.LoggerFactory;
  * </pre>
  *
  */
-public class SolrOverseerReporter extends SolrMetricReporter {
+public class SolrClusterReporter extends SolrMetricReporter {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public static final String OVERSEER_GROUP = SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.overseer.toString());
+  public static final String CLUSTER_GROUP = SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.cluster.toString());
 
   public static final List<SolrReporter.Report> DEFAULT_REPORTS = new ArrayList<SolrReporter.Report>() {{
-    add(new SolrReporter.Report(OVERSEER_GROUP, "jetty",
+    add(new SolrReporter.Report(CLUSTER_GROUP, "jetty",
         SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.jetty.toString()),
         Collections.emptySet())); // all metrics
-    add(new SolrReporter.Report(OVERSEER_GROUP, "jvm",
+    add(new SolrReporter.Report(CLUSTER_GROUP, "jvm",
         SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.jvm.toString()),
         new HashSet<String>() {{
           add("memory\\.total\\..*");
@@ -94,7 +94,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
     // XXX anything interesting here?
     //add(new SolrReporter.Specification(OVERSEER_GROUP, "node", SolrMetricManager.overridableRegistryName(SolrInfoMBean.Group.node.toString()),
     //    Collections.emptySet())); // all metrics
-    add(new SolrReporter.Report(OVERSEER_GROUP, "leader.$1", "solr\\.core\\.(.*)\\.leader",
+    add(new SolrReporter.Report(CLUSTER_GROUP, "leader.$1", "solr\\.collection\\.(.*)\\.leader",
         new HashSet<String>(){{
           add("UPDATE\\./update/.*");
           add("QUERY\\./select.*");
@@ -115,7 +115,7 @@ public class SolrOverseerReporter extends SolrMetricReporter {
    * @param metricManager metric manager
    * @param registryName  this is ignored
    */
-  public SolrOverseerReporter(SolrMetricManager metricManager, String registryName) {
+  public SolrClusterReporter(SolrMetricManager metricManager, String registryName) {
     super(metricManager, registryName);
   }
 
