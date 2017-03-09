@@ -33,11 +33,13 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 
 import com.codahale.metrics.Counter;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Metric;
@@ -54,6 +56,7 @@ import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.metrics.reporters.solr.SolrClusterReporter;
 import org.apache.solr.metrics.reporters.solr.SolrShardReporter;
+import org.apache.solr.util.stats.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -520,7 +523,9 @@ public class SolrMetricManager {
     }
   }
 
-
+  public void registerGauge(String registry, Gauge<?> gauge, boolean force, String metricName, String... metricPath) {
+    register(registry, gauge, force, metricName, metricPath);
+  }
 
   /**
    * This method creates a hierarchical name with arbitrary levels of hierarchy
