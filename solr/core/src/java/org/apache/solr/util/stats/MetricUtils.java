@@ -109,16 +109,17 @@ public class MetricUtils {
    * @param mustMatchFilter a {@link MetricFilter}.
    *                        A metric <em>must</em> match this filter to be included in the output.
    * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
+   * @param compact use compact representation for counters and gauges.
    * @param metadata optional metadata. If not null and not empty then this map will be added under a
    *                 {@code _metadata_} key.
    * @return a {@link NamedList}
    */
   public static NamedList toNamedList(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                       MetricFilter mustMatchFilter, boolean skipHistograms,
-                                      boolean skipAggregateValues, boolean flatten,
+                                      boolean skipAggregateValues, boolean compact,
                                       Map<String, Object> metadata) {
     NamedList result = new NamedList();
-    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, flatten, (k, v) -> {
+    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, (k, v) -> {
       if (v instanceof Map) {
         result.add(k, new NamedList((Map)v));
       } else {
@@ -143,17 +144,18 @@ public class MetricUtils {
    * @param mustMatchFilter a {@link MetricFilter}.
    *                        A metric <em>must</em> match this filter to be included in the output.
    * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
+   * @param compact use compact representation for counters and gauges.
    * @param metadata optional metadata. If not null and not empty then this map will be added under a
    *                 {@code _metadata_} key.
    * @return a list of {@link SolrInputDocument}-s
    */
   public static List<SolrInputDocument> toSolrInputDocuments(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                                              MetricFilter mustMatchFilter, boolean skipHistograms,
-                                                             boolean skipAggregateValues, boolean flatten,
+                                                             boolean skipAggregateValues, boolean compact,
                                                              Map<String, Object> metadata) {
     List<SolrInputDocument> result = new LinkedList<>();
     toSolrInputDocuments(registry, shouldMatchFilters, mustMatchFilter, skipHistograms,
-        skipAggregateValues, flatten, metadata, doc -> {
+        skipAggregateValues, compact, metadata, doc -> {
       result.add(doc);
     });
     return result;
@@ -161,10 +163,10 @@ public class MetricUtils {
 
   public static void toSolrInputDocuments(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                           MetricFilter mustMatchFilter, boolean skipHistograms,
-                                          boolean skipAggregateValues, boolean flatten,
+                                          boolean skipAggregateValues, boolean compact,
                                           Map<String, Object> metadata, Consumer<SolrInputDocument> consumer) {
     boolean addMetadata = metadata != null && !metadata.isEmpty();
-    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, flatten, (k, v) -> {
+    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, (k, v) -> {
       SolrInputDocument doc = new SolrInputDocument();
       doc.setField(METRIC_NAME, k);
       toSolrInputDocument(null, doc, v);
@@ -193,7 +195,7 @@ public class MetricUtils {
 
   public static void toMaps(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                             MetricFilter mustMatchFilter, boolean skipHistograms, boolean skipAggregateValues,
-                            boolean flatten,
+                            boolean compact,
                             BiConsumer<String, Object> consumer) {
     Map<String, Metric> metrics = registry.getMetrics();
     SortedSet<String> names = registry.getNames();
@@ -204,10 +206,10 @@ public class MetricUtils {
           Metric metric = metrics.get(n);
           if (metric instanceof Counter) {
             Counter counter = (Counter) metric;
-            consumer.accept(n, convertCounter(counter, flatten));
+            consumer.accept(n, convertCounter(counter, compact));
           } else if (metric instanceof Gauge) {
             Gauge gauge = (Gauge) metric;
-            consumer.accept(n, convertGauge(gauge, flatten));
+            consumer.accept(n, convertGauge(gauge, compact));
           } else if (metric instanceof Meter) {
             Meter meter = (Meter) metric;
             consumer.accept(n, convertMeter(meter));
@@ -301,8 +303,8 @@ public class MetricUtils {
     return response;
   }
 
-  static Object convertGauge(Gauge gauge, boolean flatten) {
-    if (flatten) {
+  static Object convertGauge(Gauge gauge, boolean compact) {
+    if (compact) {
       return gauge.getValue();
     } else {
       Map<String, Object> response = new LinkedHashMap<>();
@@ -311,8 +313,8 @@ public class MetricUtils {
     }
   }
 
-  static Object convertCounter(Counter counter, boolean flatten) {
-    if (flatten) {
+  static Object convertCounter(Counter counter, boolean compact) {
+    if (compact) {
       return counter.getCount();
     } else {
       Map<String, Object> response = new LinkedHashMap<>();
