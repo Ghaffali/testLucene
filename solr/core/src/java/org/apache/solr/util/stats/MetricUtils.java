@@ -185,7 +185,7 @@ public class MetricUtils {
     Map<String, Object> map = (Map<String, Object>)o;
     for (Map.Entry<String, Object> entry : map.entrySet()) {
       if (entry.getValue() instanceof Map) { // flatten recursively
-        toSolrInputDocument(entry.getKey(), doc, (Map<String, Object>)entry.getValue());
+        toSolrInputDocument(entry.getKey(), doc, entry.getValue());
       } else {
         String key = prefix != null ? prefix + "." + entry.getKey() : entry.getKey();
         doc.addField(key, entry.getValue());

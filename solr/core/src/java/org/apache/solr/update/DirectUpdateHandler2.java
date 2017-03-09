@@ -160,11 +160,11 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
     splitCommands = manager.meter(registry, "splits", getCategory().toString(), scope);
     mergeIndexesCommands = manager.meter(registry, "merges", getCategory().toString(), scope);
     expungeDeleteCommands = manager.meter(registry, "expungeDeletes", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> numDocsPending, true, "docsPending", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> addCommands, true, "adds", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> deleteByIdCommands, true, "deletesById", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> deleteByQueryCommands, true, "deletesByQuery", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> numErrors, true, "errors", getCategory().toString(), scope);
+    manager.registerGauge(registry, () -> numDocsPending.longValue(), true, "docsPending", getCategory().toString(), scope);
+    manager.registerGauge(registry, () -> addCommands.longValue(), true, "adds", getCategory().toString(), scope);
+    manager.registerGauge(registry, () -> deleteByIdCommands.longValue(), true, "deletesById", getCategory().toString(), scope);
+    manager.registerGauge(registry, () -> deleteByQueryCommands.longValue(), true, "deletesByQuery", getCategory().toString(), scope);
+    manager.registerGauge(registry, () -> numErrors.longValue(), true, "errors", getCategory().toString(), scope);
 
     addCommandsCumulative = manager.meter(registry, "cumulativeAdds", getCategory().toString(), scope);
     deleteByIdCommandsCumulative = manager.meter(registry, "cumulativeDeletesById", getCategory().toString(), scope);

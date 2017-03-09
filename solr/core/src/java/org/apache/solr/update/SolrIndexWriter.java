@@ -157,12 +157,12 @@ public class SolrIndexWriter extends IndexWriter {
         minorMerge = metricManager.timer(registry, "minor", SolrInfoMBean.Category.INDEX.toString(), "merge");
         majorMerge = metricManager.timer(registry, "major", SolrInfoMBean.Category.INDEX.toString(), "merge");
         mergeErrors = metricManager.counter(registry, "errors", SolrInfoMBean.Category.INDEX.toString(), "merge");
-        metricManager.registerGauge(registry, () -> runningMajorMerges, true, "running", SolrInfoMBean.Category.INDEX.toString(), "merge", "major");
-        metricManager.registerGauge(registry, () -> runningMinorMerges, true, "running", SolrInfoMBean.Category.INDEX.toString(), "merge", "minor");
-        metricManager.registerGauge(registry, () -> runningMajorMergesDocs, true, "running.docs", SolrInfoMBean.Category.INDEX.toString(), "merge", "major");
-        metricManager.registerGauge(registry, () -> runningMinorMergesDocs, true, "running.docs", SolrInfoMBean.Category.INDEX.toString(), "merge", "minor");
-        metricManager.registerGauge(registry, () -> runningMajorMergesSegments, true, "running.segments", SolrInfoMBean.Category.INDEX.toString(), "merge", "major");
-        metricManager.registerGauge(registry, () -> runningMinorMergesSegments, true, "running.segments", SolrInfoMBean.Category.INDEX.toString(), "merge", "minor");
+        metricManager.registerGauge(registry, () -> runningMajorMerges.get(), true, "running", SolrInfoMBean.Category.INDEX.toString(), "merge", "major");
+        metricManager.registerGauge(registry, () -> runningMinorMerges.get(), true, "running", SolrInfoMBean.Category.INDEX.toString(), "merge", "minor");
+        metricManager.registerGauge(registry, () -> runningMajorMergesDocs.get(), true, "running.docs", SolrInfoMBean.Category.INDEX.toString(), "merge", "major");
+        metricManager.registerGauge(registry, () -> runningMinorMergesDocs.get(), true, "running.docs", SolrInfoMBean.Category.INDEX.toString(), "merge", "minor");
+        metricManager.registerGauge(registry, () -> runningMajorMergesSegments.get(), true, "running.segments", SolrInfoMBean.Category.INDEX.toString(), "merge", "major");
+        metricManager.registerGauge(registry, () -> runningMinorMergesSegments.get(), true, "running.segments", SolrInfoMBean.Category.INDEX.toString(), "merge", "minor");
         flushMeter = metricManager.meter(registry, "flush", SolrInfoMBean.Category.INDEX.toString());
       }
     }

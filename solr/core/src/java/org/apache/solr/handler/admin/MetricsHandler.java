@@ -50,6 +50,10 @@ public class MetricsHandler extends RequestHandlerBase implements PermissionName
   final CoreContainer container;
   final SolrMetricManager metricManager;
 
+  public static final String VERSION_PARAM = "version";
+  public static final int VERSION_1 = 1;
+  public static final int VERSION_2 = 2;
+
   public MetricsHandler() {
     this.container = null;
     this.metricManager = null;
@@ -71,6 +75,8 @@ public class MetricsHandler extends RequestHandlerBase implements PermissionName
       throw new SolrException(SolrException.ErrorCode.INVALID_STATE, "Core container instance not initialized");
     }
 
+    int version = req.getParams().getInt(VERSION_PARAM, VERSION_1);
+    boolean compact = version == VERSION_2;
     MetricFilter mustMatchFilter = parseMustMatchFilter(req);
     List<MetricType> metricTypes = parseMetricTypes(req);
     List<MetricFilter> metricFilters = metricTypes.stream().map(MetricType::asMetricFilter).collect(Collectors.toList());
@@ -79,7 +85,8 @@ public class MetricsHandler extends RequestHandlerBase implements PermissionName
     NamedList response = new NamedList();
     for (String registryName : requestedRegistries) {
       MetricRegistry registry = metricManager.registry(registryName);
-      response.add(registryName, MetricUtils.toNamedList(registry, metricFilters, mustMatchFilter, false, false, false, null));
+      response.add(registryName, MetricUtils.toNamedList(registry, metricFilters, mustMatchFilter, false,
+          false, compact, null));
     }
     rsp.getValues().add("metrics", response);
   }
