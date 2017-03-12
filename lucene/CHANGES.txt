@@ -41,6 +41,9 @@ API Changes
   index-time scoring factors should be indexed into a doc value field and
   combined at query time using eg. FunctionScoreQuery. (Adrien Grand)
 
+* LUCENE-7734: FieldType's copy constructor was widened to accept any IndexableFieldType.
+  (David Smiley)
+
 Bug Fixes
 
 * LUCENE-7626: IndexWriter will no longer accept broken token offsets
@@ -116,6 +119,15 @@ API Changes
   index itself, allowing users to merge shard responses incrementally
   instead of once all shard responses are present. (Simon Willnauer,
   Mike McCandless)
+
+* LUCENE-7700: A cleanup of merge throughput control logic. Refactored all the
+  code previously scattered throughout the IndexWriter and 
+  ConcurrentMergeScheduler into a more accessible set of public methods (see 
+  MergePolicy.OneMergeProgress, MergeScheduler.wrapForMerge and 
+  OneMerge.mergeInit). (Dawid Weiss, Mike McCandless).
+
+* LUCENE-7734: FieldType's copy constructor was widened to accept any IndexableFieldType.
+  (David Smiley)
 
 New Features
 
