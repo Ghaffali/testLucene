@@ -19,6 +19,7 @@ package org.apache.solr.handler;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import org.apache.solr.client.solrj.io.Tuple;
 import org.apache.solr.client.solrj.io.stream.ExceptionStream;
@@ -69,6 +70,9 @@ public class TestSQLHandler extends AbstractFullDistribZkTestBase {
 
   @Test
   public void doTest() throws Exception {
+
+    assumeFalse("This test fails on UNIX with Turkish default locale", new Locale("tr").getLanguage().equals(Locale.getDefault().getLanguage()));
+
     waitForRecoveriesToFinish(false);
 
     testBasicSelect();
@@ -317,6 +321,14 @@ public class TestSQLHandler extends AbstractFullDistribZkTestBase {
       assert(tuple.getLong("myInt") == 7);
       assert(tuple.get("myString").equals("a"));
 
+      // SOLR-8845 - Test to make sure that 1 = 0 works for things like Spark SQL
+      sParams = mapParams(CommonParams.QT, "/sql",
+          "stmt", "select id, field_i, str_s from collection1 where 1 = 0");
+
+      solrStream = new SolrStream(jetty.url, sParams);
+      tuples = getTuples(solrStream);
+
+      assertEquals(0, tuples.size());
     } finally {
       delete();
     }
