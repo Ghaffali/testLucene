@@ -130,7 +130,7 @@ public abstract class ConfigSetService {
   protected NamedList getConfigSetFlags(CoreDescriptor cd, SolrResourceLoader loader) {
     if (loader instanceof ZkSolrResourceLoader) {
       try {
-        return ConfigSetProperties.readFromResourceLoader(loader, "");
+        return ConfigSetProperties.readFromResourceLoader(loader, ".");
       } catch (Exception ex) {
         return null;
       }
