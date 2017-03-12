@@ -187,6 +187,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   private final SolrResourceLoader resourceLoader;
   private volatile IndexSchema schema;
   private final NamedList configSetProperties;
+  private final boolean isConfigSetTrusted;
   private final String dataDir;
   private final String ulogDir;
   private final UpdateHandler updateHandler;
@@ -635,7 +636,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
         CoreDescriptor cd = new CoreDescriptor(coreDescriptor.getName(), coreDescriptor);
         cd.loadExtraProperties(); //Reload the extra properties
         core = new SolrCore(getName(), getDataDir(), coreConfig.getSolrConfig(),
-            coreConfig.getIndexSchema(), coreConfig.getProperties(),
+            coreConfig.getIndexSchema(), coreConfig.getProperties(), coreConfig.isTrusted(),
             cd, updateHandler, solrDelPolicy, currentCore, true);
         
         // we open a new IndexWriter to pick up the latest config
@@ -827,7 +828,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
 
   public SolrCore(CoreDescriptor cd, ConfigSet coreConfig) {
     this(cd.getName(), null, coreConfig.getSolrConfig(), coreConfig.getIndexSchema(), coreConfig.getProperties(),
-        cd, null, null, null, false);
+        coreConfig.isTrusted(), cd, null, null, null, false);
   }
 
   
@@ -845,7 +846,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
    * @since solr 1.3
    */
   public SolrCore(String name, String dataDir, SolrConfig config,
-      IndexSchema schema, NamedList configSetProperties,
+      IndexSchema schema, NamedList configSetProperties, boolean isConfigSetTrusted,
       CoreDescriptor coreDescriptor, UpdateHandler updateHandler,
       IndexDeletionPolicyWrapper delPolicy, SolrCore prev, boolean reload) {
     
@@ -858,6 +859,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     resourceLoader = config.getResourceLoader();
     this.solrConfig = config;
     this.configSetProperties = configSetProperties;
+    this.isConfigSetTrusted = isConfigSetTrusted;
     // Initialize the metrics manager
     this.coreMetricManager = initCoreMetricManager(config);
     this.coreMetricManager.loadReporters();
@@ -922,7 +924,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       // Processors initialized before the handlers
       updateProcessorChains = loadUpdateProcessorChains();
       reqHandlers = new RequestHandlers(this);
-      reqHandlers.initHandlersFromConfig(solrConfig);
+      reqHandlers.initHandlersFromConfig(solrConfig, isConfigSetTrusted);
 
       statsCache = initStatsCache();
 

@@ -40,19 +40,27 @@ import org.apache.http.entity.ByteArrayEntity;
 import org.apache.http.util.EntityUtils;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.SolrQuery;
+import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest;
+import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest.Create;
 import org.apache.solr.client.solrj.request.ConfigSetAdminRequest.Delete;
-import org.apache.solr.client.solrj.request.ConfigSetAdminRequest.List;
+import org.apache.solr.client.solrj.response.CollectionAdminResponse;
 import org.apache.solr.client.solrj.response.ConfigSetAdminResponse;
+import org.apache.solr.common.SolrException;
+import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkConfigManager;
+import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.ConfigSetParams;
 import org.apache.solr.common.params.ConfigSetParams.ConfigSetAction;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.params.CollectionParams.CollectionAction;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.ConfigSetProperties;
@@ -317,23 +325,77 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
       long statusCode = (long) getObjectByPath(map, false, Arrays.asList("responseHeader", "status"));
       assertEquals(0l, statusCode);
 
-      assertTrue("schema-minimal.xml file should have been uploaded",
-          zkClient.exists("/configs/newzkconf/schema-minimal.xml", true));
-      assertTrue("schema-minimal.xml file contents on zookeeper are not exactly same as that of the file uploaded in config",
-          Arrays.equals(zkClient.getData("/configs/newzkconf/schema-minimal.xml", null, null, true),
-              readFile("solr/configsets/upload/schema-minimal.xml")));
+      assertTrue("managed-schema file should have been uploaded",
+          zkClient.exists("/configs/newzkconf/managed-schema", true));
+      assertTrue("managed-schema file contents on zookeeper are not exactly same as that of the file uploaded in config",
+          Arrays.equals(zkClient.getData("/configs/newzkconf/managed-schema", null, null, true),
+              readFile("solr/configsets/upload/managed-schema")));
 
-      assertTrue("solrconfig-minimal.xml file should have been uploaded",
-          zkClient.exists("/configs/newzkconf/solrconfig-minimal.xml", true));
-      assertTrue("solrconfig-minimal.xml file contents on zookeeper are not exactly same as that of the file uploaded in config",
-          Arrays.equals(zkClient.getData("/configs/newzkconf/solrconfig-minimal.xml", null, null, true),
-              readFile("solr/configsets/upload/solrconfig-minimal.xml")));
+      assertTrue("solrconfig.xml file should have been uploaded",
+          zkClient.exists("/configs/newzkconf/solrconfig.xml", true));
+      byte data[] = zkClient.getData("/configs/newzkconf", null, null, true);
+      //assertEquals("{\"trusted\": false}", new String(data, StandardCharsets.UTF_8));
+      assertTrue("solrconfig.xml file contents on zookeeper are not exactly same as that of the file uploaded in config",
+          Arrays.equals(zkClient.getData("/configs/newzkconf/solrconfig.xml", null, null, true),
+              readFile("solr/configsets/upload/solrconfig.xml")));
+      
+      // try to create a collection with the uploaded configset
+      createCollection("newcollection", "newzkconf", 1, 1, solrClient);
+      xsltRequest("newcollection");
     } finally {
       zkClient.close();
     }
     solrClient.close();
   }
+  
+  public void xsltRequest(String collection) throws SolrServerException, IOException {
+    String baseUrl = solrCluster.getJettySolrRunners().get(0).getBaseUrl().toString();
+    try (HttpSolrClient client = new HttpSolrClient(baseUrl + "/" + collection)) {
+      String xml = 
+          "<random>" +
+              " <document>" +
+              "  <node name=\"id\" value=\"12345\"/>" +
+              "  <node name=\"name\" value=\"kitten\"/>" +
+              "  <node name=\"text\" enhance=\"3\" value=\"some other day\"/>" +
+              "  <node name=\"title\" enhance=\"4\" value=\"A story\"/>" +
+              "  <node name=\"timestamp\" enhance=\"5\" value=\"2011-07-01T10:31:57.140Z\"/>" +
+              " </document>" +
+              "</random>";
 
+      SolrQuery query = new SolrQuery();
+      query.setQuery( "*:*" );//for anything
+      query.add("qt","/update");
+      query.add(CommonParams.TR, "xsl-update-handler-test.xsl");
+      query.add("stream.body", xml);
+      query.add("commit", "true");
+      try {
+        client.query(query);
+        fail("This should've returned a 401.");
+      } catch (SolrException ex) {
+        assertEquals(ErrorCode.UNAUTHORIZED.code, ex.code());
+      }
+
+      //System.out.println("Results: "+client.query(params("q", "*:*")));
+    }
+  }
+  
+
+  protected CollectionAdminResponse createCollection(String collectionName, String confSetName, int numShards,
+      int replicationFactor, SolrClient client)  throws SolrServerException, IOException {
+    ModifiableSolrParams params = new ModifiableSolrParams();
+    params.set("action", CollectionAction.CREATE.toString());
+    params.set("collection.configName", confSetName);
+    params.set("name", collectionName);
+    params.set("numShards", numShards);
+    params.set("replicationFactor", replicationFactor);
+    SolrRequest request = new QueryRequest(params);
+    request.setPath("/admin/collections");
+
+    CollectionAdminResponse res = new CollectionAdminResponse();
+    res.setResponse(client.request(request));
+    return res;
+  }
+  
   public static Map postDataAndGetResponse(CloudSolrClient cloudClient,
       String uri, ByteBuffer bytarr) throws IOException {
     HttpPost httpPost = null;
@@ -462,7 +524,7 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
         AbstractZkTestCase.TIMEOUT, AbstractZkTestCase.TIMEOUT, null);
     try {
       // test empty
-      List list = new List();
+      ConfigSetAdminRequest.List list = new ConfigSetAdminRequest.List();
       ConfigSetAdminResponse.List response = list.process(solrClient);
       Collection<String> actualConfigSets = response.getConfigSets();
       assertEquals(0, actualConfigSets.size());

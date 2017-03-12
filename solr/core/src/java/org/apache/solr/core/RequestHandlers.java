@@ -114,7 +114,7 @@ public final class RequestHandlers {
    * Handlers will be registered and initialized in the order they appear in solrconfig.xml
    */
 
-  void initHandlersFromConfig(SolrConfig config) {
+  void initHandlersFromConfig(SolrConfig config, boolean isConfigSetTrusted) {
     List<PluginInfo> implicits = core.getImplicitHandlers();
     // use link map so we iterate in the same order
     Map<String, PluginInfo> infoMap= new LinkedHashMap<>();
@@ -125,8 +125,9 @@ public final class RequestHandlers {
 
     List<PluginInfo> modifiedInfos = new ArrayList<>();
     for (PluginInfo info : infos) {
-      modifiedInfos.add(applyInitParams(config, info));
+      modifiedInfos.add(applyInitParams(config, isConfigSetTrusted, info));
     }
+    System.out.println("Handlers infos: "+modifiedInfos); // nocommit
     handlers.init(Collections.emptyMap(),core, modifiedInfos);
     handlers.alias(handlers.getDefault(), "");
     log.debug("Registered paths: {}" , StrUtils.join(new ArrayList<>(handlers.keySet()) , ',' ));
@@ -137,7 +138,7 @@ public final class RequestHandlers {
     }
   }
 
-  private PluginInfo applyInitParams(SolrConfig config, PluginInfo info) {
+  private PluginInfo applyInitParams(SolrConfig config, boolean isConfigSetTrusted, PluginInfo info) {
     List<InitParams> ags = new ArrayList<>();
     String p = info.attributes.get(InitParams.TYPE);
     if(p!=null) {
@@ -148,12 +149,17 @@ public final class RequestHandlers {
     }
     for (InitParams args : config.getInitParams().values())
       if(args.matchPath(info.name)) ags.add(args);
+
+    // nocommit review to make sure no plugin actually uses that keyname
+    info.initArgs.add("trusted", isConfigSetTrusted);
+    
     if(!ags.isEmpty()){
       info = info.copy();
       for (InitParams initParam : ags) {
         initParam.apply(info);
       }
     }
+    
     return info;
   }
 

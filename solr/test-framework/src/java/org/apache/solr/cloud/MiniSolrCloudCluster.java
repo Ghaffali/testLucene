@@ -438,6 +438,16 @@ public class MiniSolrCloudCluster {
       }
     }
   }
+  
+  /*public void createCollection(String collectionName, String configName, int numShards,
+      int replicationFactor) throws Exception {
+    try (ZkStateReader reader = new ZkStateReader(solrClient.getZkStateReader().getZkClient())) {
+      reader.createClusterStateWatchersAndUpdate();
+      for (String collection : reader.getClusterState().getCollectionStates().keySet()) {
+        CollectionAdminRequest.deleteCollection(collection).process(solrClient);
+      }
+    }
+  }*/
 
   /**
    * Shut down the cluster, including all Solr nodes and ZooKeeper

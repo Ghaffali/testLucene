@@ -82,6 +82,9 @@ public class ZkSolrResourceLoader extends SolrResourceLoader {
   public InputStream openResource(String resource) throws IOException {
     InputStream is;
     String file = configSetZkPath + "/" + resource;
+    if (file.endsWith("/")) {
+      file = file.substring(0, file.length()-1);
+    }
     int maxTries = 10;
     Exception exception = null;
     while (maxTries -- > 0) {

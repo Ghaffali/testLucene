@@ -144,12 +144,6 @@ public class ConfigSetsHandler extends RequestHandlerBase {
 
   private void handleConfigUploadRequest(SolrQueryRequest req, SolrQueryResponse rsp) throws Exception {
 
-    String httpMethod = (String) req.getContext().get(ConfigSetParams.HTTP_METHOD);
-    if (!"POST".equals(httpMethod)) {
-      throw new SolrException(ErrorCode.BAD_REQUEST,
-          "The upload action supports POST requests only");
-    }
-
     String configSetName = req.getParams().get(NAME);
     if (StringUtils.isBlank(configSetName)) {
       throw new SolrException(ErrorCode.BAD_REQUEST,
@@ -173,8 +167,8 @@ public class ConfigSetsHandler extends RequestHandlerBase {
 
     InputStream inputStream = contentStreamsIterator.next().getStream();
 
-    // Create a node for the configuration in zookeeper
-    zkClient.makePath(configPathInZk, true);
+    // Create a node for the configuration in zookeeper nocommit: do this only if /admin is not protected by authz/authc
+    zkClient.makePath(configPathInZk, "{\"trusted\": false}".getBytes(StandardCharsets.UTF_8), true);
 
     ZipInputStream zis = new ZipInputStream(inputStream, StandardCharsets.UTF_8);
     ZipEntry zipEntry = null;

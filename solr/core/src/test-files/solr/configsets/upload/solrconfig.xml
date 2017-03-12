@@ -52,7 +52,9 @@
 
   </requestHandler>
 
-  <requestHandler name="/admin/" class="org.apache.solr.handler.admin.AdminHandlers" />
+  <requestHandler name="/update/xslt"
+                   startup="lazy"
+                   class="solr.XsltUpdateRequestHandler"/>
 
   <requestHandler name="/update" class="solr.UpdateRequestHandler"  />
 </config>
