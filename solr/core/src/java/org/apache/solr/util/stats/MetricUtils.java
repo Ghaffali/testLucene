@@ -38,6 +38,7 @@ import com.codahale.metrics.Snapshot;
 import com.codahale.metrics.Timer;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.metrics.AggregateMetric;
 
 /**
@@ -119,16 +120,12 @@ public class MetricUtils {
                                       MetricFilter mustMatchFilter, boolean skipHistograms,
                                       boolean skipAggregateValues, boolean compact,
                                       Map<String, Object> metadata) {
-    NamedList result = new NamedList();
+    NamedList result = new SimpleOrderedMap();
     toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, (k, v) -> {
-      if (v instanceof Map) {
-        result.add(k, new NamedList((Map)v));
-      } else {
-        result.add(k, v);
-      }
+      result.add(k, v);
     });
     if (metadata != null && !metadata.isEmpty()) {
-      result.add("_metadata_", new NamedList(metadata));
+      result.add("_metadata_", metadata);
     }
     return result;
   }
