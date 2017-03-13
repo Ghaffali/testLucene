@@ -164,6 +164,11 @@ New Features
 
 * SOLR-9986: Implement DatePointField (Cao Manh Dat, Tomás Fernández Löbbe)
 
+* SOLR-8045: Deploy V2 API at /v2 instead of /solr/v2 (Cao Manh Dat, Noble Paul)
+
+* SOLR-10039: New LatLonPointSpatialField replacement for LatLonType (and some uses of RPT).  Multi-value capable
+  indexed geo lat-lon points, query by rect or circle.  Efficient distance sorting/boosting too. (David Smiley)
+
 Bug Fixes
 ----------------------
 
@@ -309,6 +314,8 @@ Other Changes
   uses a fully implemented Driver instance returning a mock connection. The test also works
   correct now if other drivers were installed before test execution (e.g., through IDE).
   (hossman, Uwe Schindler)
+
+* SOLR-8876: change morphline test config files to work around 'importCommands' bug when using java9 (hossman)
 
 ==================  6.4.2 ==================
 
