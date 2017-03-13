@@ -37,6 +37,13 @@ API Changes
   to be less trappy. See IndexReader.getReaderCacheHelper and
   LeafReader.getCoreCacheHelper. (Adrien Grand)
 
+* LUCENE-6819: Index-time boosts are not supported anymore. As a replacement,
+  index-time scoring factors should be indexed into a doc value field and
+  combined at query time using eg. FunctionScoreQuery. (Adrien Grand)
+
+* LUCENE-7734: FieldType's copy constructor was widened to accept any IndexableFieldType.
+  (David Smiley)
+
 Bug Fixes
 
 * LUCENE-7626: IndexWriter will no longer accept broken token offsets
@@ -77,6 +84,10 @@ Other
 
 API Changes
 
+* LUCENE-7740: Refactor Range Fields to remove Field suffix (e.g., DoubleRange),
+  move InetAddressRange and InetAddressPoint from sandbox to misc module, and
+  refactor all other range fields from sandbox to core. (Nick Knize)
+
 * LUCENE-7624: TermsQuery has been renamed as TermInSetQuery and moved to core.
   (Alan Woodward)
 
@@ -113,7 +124,19 @@ API Changes
   instead of once all shard responses are present. (Simon Willnauer,
   Mike McCandless)
 
+* LUCENE-7700: A cleanup of merge throughput control logic. Refactored all the
+  code previously scattered throughout the IndexWriter and 
+  ConcurrentMergeScheduler into a more accessible set of public methods (see 
+  MergePolicy.OneMergeProgress, MergeScheduler.wrapForMerge and 
+  OneMerge.mergeInit). (Dawid Weiss, Mike McCandless).
+
+* LUCENE-7734: FieldType's copy constructor was widened to accept any IndexableFieldType.
+  (David Smiley)
+
 New Features
+
+* LUCENE-7738: Add new InetAddressRange for indexing and querying InetAddress
+  ranges. (Nick Knize)
 
 * LUCENE-7449: Add CROSSES relation support to RangeFieldQuery. (Nick Knize)
 
@@ -145,6 +168,10 @@ New Features
 * LUCENE-7686: The near-real-time document suggester can now
   efficiently filter out duplicate suggestions (Uwe Schindler, Mike
   McCandless)
+
+* LUCENE-7712: SimpleQueryParser now supports default fuzziness
+  syntax, mapping foo~ to a FuzzyQuery with edit distance 2.  (Lee
+  Hinman, David Pilato via Mike McCandless)
 
 Bug Fixes
 
@@ -196,6 +223,9 @@ Improvements
   IndexInput description instead of plain IOException (Mike Drob via
   Mike McCandless)
 
+* LUCENE-7695: ComplexPhraseQueryParser to support query time synonyms (Markus Jelsma
+  via Mikhail Khludnev) 
+
 Optimizations
 
 * LUCENE-7641: Optimized point range queries to compute documents that do not
@@ -242,6 +272,12 @@ Build
 * LUCENE-7693: Replace "org.apache." logic in GetMavenDependenciesTask.
   (Daniel Collins, Christine Poerschke)
 
+* LUCENE-7726: Fix HTML entity bugs in Javadocs to be able to build with
+  Java 9. (Uwe Schindler, Hossman)
+
+* LUCENE-7727: Replace end-of-life Markdown parser "Pegdown" by "Flexmark"
+  for compatibility with Java 9. (Uwe Schindler)
+
 Other
 
 * LUCENE-7666: Fix typos in lucene-join package info javadoc.
@@ -250,12 +286,19 @@ Other
 * LUCENE-7658: queryparser/xml CoreParser now implements SpanQueryBuilder interface.
   (Daniel Collins, Christine Poerschke)
 
+* LUCENE-7715: NearSpansUnordered simplifications.
+  (Paul Elschot via Adrien Grand)
+
 ======================= Lucene 6.4.2 =======================
 
 Bug Fixes
 
 * LUCENE-7676: Fixed FilterCodecReader to override more super-class methods.
   Also added TestFilterCodecReader class. (Christine Poerschke)
+
+* LUCENE-7717: The UnifiedHighlighter and PostingsHighlighter were not highlighting
+  prefix queries with multi-byte characters. TermRangeQuery is affected too.
+  (Dmitry Malinin, David Smiley)
 
 ======================= Lucene 6.4.1 =======================
 

@@ -878,6 +878,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     this.configSetProperties = configSetProperties;
     // Initialize the metrics manager
     this.coreMetricManager = initCoreMetricManager(config);
+    this.coreMetricManager.loadReporters();
 
     if (updateHandler == null) {
       directoryFactory = initDirectoryFactory();
@@ -1092,6 +1093,9 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     } else {
       newUpdateHandler = createUpdateHandler(updateHandlerClass, updateHandler);
     }
+    if (newUpdateHandler instanceof SolrMetricProducer) {
+      coreMetricManager.registerMetricProducer("updateHandler", (SolrMetricProducer)newUpdateHandler);
+    }
     infoRegistry.put("updateHandler", newUpdateHandler);
     return newUpdateHandler;
   }
@@ -1118,13 +1122,12 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
    */
   private SolrCoreMetricManager initCoreMetricManager(SolrConfig config) {
     SolrCoreMetricManager coreMetricManager = new SolrCoreMetricManager(this);
-    coreMetricManager.loadReporters();
     return coreMetricManager;
   }
 
   private Map<String,SolrInfoMBean> initInfoRegistry(String name, SolrConfig config) {
     if (config.jmxConfig.enabled) {
-      return new JmxMonitoredMap<String, SolrInfoMBean>(name, String.valueOf(this.hashCode()), config.jmxConfig);
+      return new JmxMonitoredMap<String, SolrInfoMBean>(name, coreMetricManager.getRegistryName(), String.valueOf(this.hashCode()), config.jmxConfig);
     } else  {
       log.debug("JMX monitoring not detected for core: " + name);
       return new ConcurrentHashMap<>();

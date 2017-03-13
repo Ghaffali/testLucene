@@ -45,6 +45,15 @@ Upgrading from Solr 6.x
 * Deprecated collection and configset methods on MiniSolrCloudCluster have been
   removed
 
+* Index-time boosts are not supported anymore. If any boosts are provided, they
+  will be ignored by the indexing chain. As a replacement, index-time scoring
+  factors should be indexed in a separate field and combined with the query
+  score using a function query.
+
+New Features
+----------------------
+* SOLR-9857, SOLR-9858: Collect aggregated metrics from nodes and shard leaders in overseer. (ab)
+
 Bug Fixes
 ----------------------
 * SOLR-9262: Connection and read timeouts are being ignored by UpdateShardHandler after SOLR-4509.
@@ -91,6 +100,10 @@ Detailed Change List
 
 Upgrade Notes
 ----------------------
+* SOLR-10226: JMX metric "avgTimePerRequest" (and the corresponding metric in the metrics API for
+  each handler) used to be a simple non-decaying average based on total cumulative time and the
+  number of requests. New Codahale Metrics implementation applies exponential decay to this value,
+  which heavily biases the average towards the last 5 minutes. (ab)
 
 New Features
 ----------------------
@@ -123,7 +136,7 @@ New Features
   numeric, and conditional evaluators. BooleanOperations have been removed in preference of
   BooleanEvaluators. (Dennis Gove)
 
-* SOLR-9903: Stop interrupting the update executor on shutdown, it can cause graceful shutdowns to put replicas into Leader 
+* SOLR-9903: Stop interrupting the update executor on shutdown, it can cause graceful shutdowns to put replicas into Leader
   Initiated Recovery among other undesirable things. (Mark Miller)
 
 * SOLR-8396: Add support for PointFields in Solr (Ishan Chattopadhyaya, Tomás Fernández Löbbe)
@@ -136,6 +149,29 @@ New Features
 
 * SOLR-10158: Add support for "preload" option in MMapDirectoryFactory.
   (Amrit Sarkar via Uwe Schindler)
+
+* SOLR-10153 & SOLR-10152: The Unified and Postings based highlighters: Add hl.bs.type=SEPARATOR along with new param
+  hl.bs.separator to break passages by a provided single character. (Amrit Sarkar, David Smiley)
+
+* SOLR-10156: Add significantTerms Streaming Expression (Joel Bernstein)
+
+* SOLR-8593: Integrate Apache Calcite into the SQLHandler (Kevin Risden, Cao Manh Dat, Joel Bernstein)
+
+* SOLR-10146: Added button to the Admin UI 'Collection' tab for deleting an inactive shard (Amrit Sarkar, janhoy)
+
+* SOLR-9999: Instrument DirectUpdateHandler2. This registers existing statistics under metrics API and adds
+  more metrics to track the rates of update and delete commands. (ab)
+
+* SOLR-9986: Implement DatePointField (Cao Manh Dat, Tomás Fernández Löbbe)
+
+* SOLR-8045: Deploy V2 API at /v2 instead of /solr/v2 (Cao Manh Dat, Noble Paul)
+
+* SOLR-10039: New LatLonPointSpatialField replacement for LatLonType (and some uses of RPT).  Multi-value capable
+  indexed geo lat-lon points, query by rect or circle.  Efficient distance sorting/boosting too. (David Smiley)
+
+* SOLR-10250: CloudSolrClient can now return versions for documents added or deleted when "versions=true" is passed.
+  However, if there is a leader election while this request is in transit, the versions may not be returned from that
+  shard. (Boris Naguet, Ishan Chattopadhyaya)
 
 Bug Fixes
 ----------------------
@@ -188,6 +224,15 @@ Bug Fixes
 
 * SOLR-10196: ElectionContext#runLeaderProcess can hit NPE on core close. (Mark Miller)
 
+* SOLR-10225: Fix HDFS BlockCache evictions metric to not count explicit removal
+  due to a directory close. (yonik)
+
+* SOLR-10088: Installer script does not put zoo.cfg in SOLR_HOME (janhoy)
+
+* SOLR-10226: add back "totalTime" metric to all handlers. See also the back-compat note. (ab)
+
+* SOLR-9838: "inc" atomic update doesn't respect default field value (hoss, Amrit Sarkar, Ishan Chattopadhyaya)
+
 Optimizations
 ----------------------
 
@@ -217,9 +262,9 @@ Other Changes
 
 * SOLR-10018: Increase the default hl.maxAnalyzedChars to 51200 for the Unified & Postings Highlighter so that all
   highlighters now have this same default. (David Smiley)
-  
-* SOLR-6246: Added tests to check that the changes in LUCENE-7564 and LUCENE-7670 
-  enable AnalyzingInfixSuggester and BlendedInfixSuggester to play nicely with core reload.  
+
+* SOLR-6246: Added tests to check that the changes in LUCENE-7564 and LUCENE-7670
+  enable AnalyzingInfixSuggester and BlendedInfixSuggester to play nicely with core reload.
   SolrSuggester.build() now throws SolrCoreState.CoreIsClosedException when interrupted
   by a core reload/shutdown. (Steve Rowe)
 
@@ -246,8 +291,8 @@ Other Changes
 * SOLR-9842: UpdateRequestProcessors have no way to guarantee the closing of resources used for a request.
   (Mark Miller)
 
-* SOLR-9848: Lower solr.cloud.wait-for-updates-with-stale-state-pause back down from 7 seconds. 
-  (Mark Miller) 
+* SOLR-9848: Lower solr.cloud.wait-for-updates-with-stale-state-pause back down from 7 seconds.
+  (Mark Miller)
 
 * SOLR-10020: Cannot reload a core if it fails initialization. (Mike Drob via Erick Erickson)
 
@@ -255,6 +300,28 @@ Other Changes
   to the online documentation, reducing the size of the download (janhoy, Shawn Heisey, Uwe Schindler)
 
 * SOLR-7453: Remove replication & backup scripts in the solr/scripts directory of the checkout (Varun Thacker)
+
+* SOLR-10214: Remove unused HDFS BlockCache metrics and add storeFails, as well as adding total
+  counts for lookups, hits, and evictions. (yonik)
+
+* SOLR-10134: EmbeddedSolrServer responds on Schema API requests (Robert Alexandersson via Mikhail Khludnev)
+
+* SOLR-10219: re-enable HDFS tests under JDK9 (hossman, Uwe Schindler)
+
+* SOLR-10155: For numeric types facet.contains= and facet.prefix= are now rejected.
+  (Gus Heck, Christine Poerschke)
+
+* SOLR-10171: Add Constant Reduction Rules to Calcite Planner (Kevin Risden)
+
+* SOLR-10230: default TTL of PKIAuthenticationPlugin increased to 10secs (noble)
+
+* SOLR-10235: Fix DIH's TestJdbcDataSource to work with Java 9 and other Java runtimes that
+  do not use the same DriverManager implementation like Oracle's original one. The test now
+  uses a fully implemented Driver instance returning a mock connection. The test also works
+  correct now if other drivers were installed before test execution (e.g., through IDE).
+  (hossman, Uwe Schindler)
+
+* SOLR-8876: change morphline test config files to work around 'importCommands' bug when using java9 (hossman)
 
 ==================  6.4.2 ==================
 
