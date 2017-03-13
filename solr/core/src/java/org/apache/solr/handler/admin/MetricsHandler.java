@@ -50,9 +50,7 @@ public class MetricsHandler extends RequestHandlerBase implements PermissionName
   final CoreContainer container;
   final SolrMetricManager metricManager;
 
-  public static final String VERSION_PARAM = "version";
-  public static final int VERSION_1 = 1;
-  public static final int VERSION_2 = 2;
+  public static final String COMPACT_PARAM = "compact";
 
   public MetricsHandler() {
     this.container = null;
@@ -75,8 +73,7 @@ public class MetricsHandler extends RequestHandlerBase implements PermissionName
       throw new SolrException(SolrException.ErrorCode.INVALID_STATE, "Core container instance not initialized");
     }
 
-    int version = req.getParams().getInt(VERSION_PARAM, VERSION_1);
-    boolean compact = version == VERSION_2;
+    boolean compact = req.getParams().getBool(COMPACT_PARAM, false);
     MetricFilter mustMatchFilter = parseMustMatchFilter(req);
     List<MetricType> metricTypes = parseMetricTypes(req);
     List<MetricFilter> metricFilters = metricTypes.stream().map(MetricType::asMetricFilter).collect(Collectors.toList());
