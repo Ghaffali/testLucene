@@ -46,6 +46,7 @@ import org.apache.solr.metrics.AggregateMetric;
 public class MetricUtils {
 
   public static final String METRIC_NAME = "metric";
+  public static final String VALUE = "value";
   public static final String VALUES = "values";
 
   static final String MS = "_ms";
@@ -179,7 +180,8 @@ public class MetricUtils {
 
   public static void toSolrInputDocument(String prefix, SolrInputDocument doc, Object o) {
     if (!(o instanceof Map)) {
-      doc.addField("value", o);
+      String key = prefix != null ? prefix : VALUE;
+      doc.addField(key, o);
       return;
     }
     Map<String, Object> map = (Map<String, Object>)o;
