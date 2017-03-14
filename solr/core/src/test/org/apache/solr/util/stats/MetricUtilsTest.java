@@ -108,7 +108,7 @@ public class MetricUtilsTest extends SolrTestCaseJ4 {
         assertEquals(2, update.get("updateCount"));
       }
     });
-    // test flattening
+    // test compact format
     MetricUtils.toMaps(registry, Collections.singletonList(MetricFilter.ALL), MetricFilter.ALL,
         false, false, true, (k, o) -> {
           if (k.startsWith("counter")) {
