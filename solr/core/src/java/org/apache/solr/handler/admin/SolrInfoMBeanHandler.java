@@ -41,7 +41,7 @@ import java.util.HashSet;
  * registered SolrInfoMBeans.
  */
 @SuppressWarnings("unchecked")
-public class SolrInfoBeanHandler extends RequestHandlerBase {
+public class SolrInfoMBeanHandler extends RequestHandlerBase {
 
   /**
    * Take an array of any type and generate a Set containing the toString.

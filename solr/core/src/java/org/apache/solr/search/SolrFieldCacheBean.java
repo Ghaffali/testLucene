@@ -16,19 +16,28 @@
  */
 package org.apache.solr.search;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Metric;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.SolrInfoBean;
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.uninverting.UninvertingReader;
 
 /**
  * A SolrInfoBean that provides introspection of the Solr FieldCache
  *
  */
-public class SolrFieldCacheBean implements SolrInfoBean {
+public class SolrFieldCacheBean implements SolrInfoBean, SolrMetricProducer {
 
   private boolean disableEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryList");
-  private boolean disableJmxEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryListJmx");
+
+  private MetricsMap metricsMap;
 
   @Override
   public String getName() { return this.getClass().getName(); }
@@ -40,29 +49,27 @@ public class SolrFieldCacheBean implements SolrInfoBean {
   public Category getCategory() { return Category.CACHE; } 
   @Override
   public NamedList getStatistics() {
-    return getStats(!disableEntryList);
+    return new NamedList(metricsMap.getValue(!disableEntryList));
   }
 
-  //nocommit
-  //@Override
-  public NamedList getStatisticsForJmx() {
-    return getStats(!disableEntryList && !disableJmxEntryList);
-  }
-
-  private NamedList getStats(boolean listEntries) {
-    NamedList stats = new SimpleOrderedMap();
-    if (listEntries) {
-      UninvertingReader.FieldCacheStats fieldCacheStats = UninvertingReader.getUninvertedStats();
-      String[] entries = fieldCacheStats.info;
-      stats.add("entries_count", entries.length);
-      stats.add("total_size", fieldCacheStats.totalSize);
-      for (int i = 0; i < entries.length; i++) {
-        stats.add("entry#" + i, entries[i]);
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    metricsMap = detailed -> {
+      Map<String, Metric> map = new ConcurrentHashMap<>();
+      if (detailed && !disableEntryList) {
+        UninvertingReader.FieldCacheStats fieldCacheStats = UninvertingReader.getUninvertedStats();
+        String[] entries = fieldCacheStats.info;
+        map.put("entries_count", (Gauge<?>)() -> entries.length);
+        map.put("total_size", (Gauge<?>)() -> fieldCacheStats.totalSize);
+        for (int i = 0; i < entries.length; i++) {
+          final String entry = entries[i];
+          map.put("entry#" + i, (Gauge<?>)() -> entry);
+        }
+      } else {
+        map.put("entries_count", (Gauge<?>)() -> UninvertingReader.getUninvertedStatsSize());
       }
-    } else {
-      stats.add("entries_count", UninvertingReader.getUninvertedStatsSize());
-    }
-    return stats;
+      return map;
+    };
+    manager.register(registry, metricsMap, true, "fieldCache", Category.CACHE.toString(), scope);
   }
-
 }
