@@ -190,15 +190,9 @@ public class JmxMonitoredMap<K, V> extends
   public SolrInfoMBean put(String key, SolrInfoMBean infoBean) {
     if (server != null && infoBean != null) {
       try {
-        // back-compat name
-        ObjectName name = getObjectName(key, infoBean);
-        if (server.isRegistered(name))
-          server.unregisterMBean(name);
         SolrDynamicMBean mbean = new SolrDynamicMBean(coreHashCode, infoBean, useCachedStatsBetweenGetMBeanInfoCalls);
-        server.registerMBean(mbean, name);
-        // now register it also under new name
         String beanName = createBeanName(infoBean, key);
-        name = nameFactory.createName(null, registryName, beanName);
+        ObjectName name = nameFactory.createName(null, registryName, beanName);
         if (server.isRegistered(name))
           server.unregisterMBean(name);
         server.registerMBean(mbean, name);
@@ -247,14 +241,8 @@ public class JmxMonitoredMap<K, V> extends
       return;
 
     try {
-      // remove legacy name
-      ObjectName name = getObjectName(key, infoBean);
-      if (server.isRegistered(name) && coreHashCode.equals(server.getAttribute(name, "coreHashCode"))) {
-        server.unregisterMBean(name);
-      }
-      // remove new name
       String beanName = createBeanName(infoBean, key);
-      name = nameFactory.createName(null, registryName, beanName);
+      ObjectName name = nameFactory.createName(null, registryName, beanName);
       if (server.isRegistered(name)) {
         server.unregisterMBean(name);
       }
@@ -262,16 +250,6 @@ public class JmxMonitoredMap<K, V> extends
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
               "Failed to unregister info bean: " + key, e);
     }
-  }
-
-  private ObjectName getObjectName(String key, SolrInfoMBean infoBean)
-          throws MalformedObjectNameException {
-    Hashtable<String, String> map = new Hashtable<>();
-    map.put("type", key);
-    if (infoBean.getName() != null && !"".equals(infoBean.getName())) {
-      map.put("id", infoBean.getName());
-    }
-    return ObjectName.getInstance(jmxRootName, map);
   }
 
   /** For test verification */
@@ -313,10 +291,8 @@ public class JmxMonitoredMap<K, V> extends
 
       // For which getters are already available in SolrInfoMBean
       staticStats.add(NAME);
-      staticStats.add("version");
       staticStats.add("description");
       staticStats.add("category");
-      staticStats.add("source");
       this.coreHashCode = coreHashCode;
     }
 

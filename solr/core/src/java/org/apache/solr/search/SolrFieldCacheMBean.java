@@ -16,12 +16,9 @@
  */
 package org.apache.solr.search;
 
-import java.net.URL;
-
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.JmxMonitoredMap.JmxAugmentedSolrInfoMBean;
-import org.apache.solr.core.SolrCore;
 import org.apache.solr.uninverting.UninvertingReader;
 
 /**
