@@ -18,14 +18,14 @@ package org.apache.solr.search;
 
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
-import org.apache.solr.core.JmxMonitoredMap.JmxAugmentedSolrInfoMBean;
+import org.apache.solr.core.SolrInfoMBean;
 import org.apache.solr.uninverting.UninvertingReader;
 
 /**
  * A SolrInfoMBean that provides introspection of the Solr FieldCache
  *
  */
-public class SolrFieldCacheMBean implements JmxAugmentedSolrInfoMBean {
+public class SolrFieldCacheMBean implements SolrInfoMBean {
 
   private boolean disableEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryList");
   private boolean disableJmxEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryListJmx");
@@ -43,7 +43,8 @@ public class SolrFieldCacheMBean implements JmxAugmentedSolrInfoMBean {
     return getStats(!disableEntryList);
   }
 
-  @Override
+  //nocommit
+  //@Override
   public NamedList getStatisticsForJmx() {
     return getStats(!disableEntryList && !disableJmxEntryList);
   }

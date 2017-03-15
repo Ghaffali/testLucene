@@ -278,16 +278,6 @@ public class SolrConfig extends Config implements MapSerializable {
 
     httpCachingConfig = new HttpCachingConfig(this);
 
-    Node jmx = getNode("jmx", false);
-    if (jmx != null) {
-      jmxConfig = new JmxConfiguration(true,
-          get("jmx/@agentId", null),
-          get("jmx/@serviceUrl", null),
-          get("jmx/@rootName", null));
-
-    } else {
-      jmxConfig = new JmxConfiguration(false, null, null, null);
-    }
     maxWarmingSearchers = getInt("query/maxWarmingSearchers", 1);
     slowQueryThresholdMillis = getInt("query/slowQueryThresholdMillis", -1);
     for (SolrPluginInfo plugin : plugins) loadPluginInfo(plugin);
@@ -509,9 +499,6 @@ public class SolrConfig extends Config implements MapSerializable {
   public final Version luceneMatchVersion;
   protected String dataDir;
   public final int slowQueryThresholdMillis;  // threshold above which a query is considered slow
-
-  //JMX configuration
-  public final JmxConfiguration jmxConfig;
 
   private final HttpCachingConfig httpCachingConfig;
 
@@ -858,7 +845,6 @@ public class SolrConfig extends Config implements MapSerializable {
     m.put("queryResultMaxDocsCached", queryResultMaxDocsCached);
     m.put("enableLazyFieldLoading", enableLazyFieldLoading);
     m.put("maxBooleanClauses", booleanQueryMaxClauseCount);
-    if (jmxConfig != null) result.put("jmx", jmxConfig);
     for (SolrPluginInfo plugin : plugins) {
       List<PluginInfo> infos = getPluginInfos(plugin.clazz.getName());
       if (infos == null || infos.isEmpty()) continue;
@@ -884,7 +870,6 @@ public class SolrConfig extends Config implements MapSerializable {
 
 
     addCacheConfig(m, filterCacheConfig, queryResultCacheConfig, documentCacheConfig, fieldValueCacheConfig);
-    if (jmxConfig != null) result.put("jmx", jmxConfig);
     m = new LinkedHashMap();
     result.put("requestDispatcher", m);
     m.put("handleSelect", handleSelect);
