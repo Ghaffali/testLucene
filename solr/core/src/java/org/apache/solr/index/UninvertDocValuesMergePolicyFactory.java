@@ -36,6 +36,7 @@ import org.apache.lucene.index.SegmentCommitInfo;
 import org.apache.lucene.index.SortedDocValues;
 import org.apache.lucene.index.SortedNumericDocValues;
 import org.apache.lucene.index.SortedSetDocValues;
+import org.apache.lucene.util.Bits;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.schema.IndexSchema;
 import org.apache.solr.schema.SchemaField;
@@ -183,6 +184,12 @@ public class UninvertDocValuesMergePolicyFactory extends WrapperMergePolicyFacto
         public long ramBytesUsed() {
           return 0;
         }
+
+        @Override
+        public Bits getDocsWithField(FieldInfo field) throws IOException {
+          return uninvertingReader.getDocsWithField(field.name);
+        }
+
       };
     }
     
@@ -203,16 +210,6 @@ public class UninvertDocValuesMergePolicyFactory extends WrapperMergePolicyFacto
       return uninvertingReader.getFieldInfos();
     }
 
-    @Override
-    public CacheHelper getCoreCacheHelper() {
-      return in.getCoreCacheHelper();
-    }
-
-    @Override
-    public CacheHelper getReaderCacheHelper() {
-      return in.getReaderCacheHelper();
-    }
-    
   }
 
 }
