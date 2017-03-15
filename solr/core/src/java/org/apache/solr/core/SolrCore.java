@@ -132,7 +132,7 @@ import org.apache.solr.schema.IndexSchemaFactory;
 import org.apache.solr.schema.ManagedIndexSchema;
 import org.apache.solr.schema.SimilarityFactory;
 import org.apache.solr.search.QParserPlugin;
-import org.apache.solr.search.SolrFieldCacheMBean;
+import org.apache.solr.search.SolrFieldCacheBean;
 import org.apache.solr.search.SolrIndexSearcher;
 import org.apache.solr.search.ValueSourceParser;
 import org.apache.solr.search.stats.LocalStatsCache;
@@ -170,7 +170,7 @@ import static org.apache.solr.common.params.CommonParams.PATH;
 /**
  *
  */
-public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closeable {
+public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeable {
 
   public static final String version="1.0";
 
@@ -201,7 +201,7 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
   private final PluginBag<UpdateRequestProcessorFactory> updateProcessors = new PluginBag<>(UpdateRequestProcessorFactory.class, this, true);
   private final Map<String,UpdateRequestProcessorChain> updateProcessorChains;
   private final SolrCoreMetricManager coreMetricManager;
-  private final Map<String, SolrInfoMBean> infoRegistry = new ConcurrentHashMap<>();
+  private final Map<String, SolrInfoBean> infoRegistry = new ConcurrentHashMap<>();
   private final IndexDeletionPolicyWrapper solrDelPolicy;
   private final SolrSnapshotMetaDataManager snapshotMgr;
   private final DirectoryFactory directoryFactory;
@@ -447,14 +447,14 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
   }
 
   /**
-   * Returns a Map of name vs SolrInfoMBean objects. The returned map is an instance of
+   * Returns a Map of name vs SolrInfoBean objects. The returned map is an instance of
    * a ConcurrentHashMap and therefore no synchronization is needed for putting, removing
    * or iterating over it.
    *
-   * @return the Info Registry map which contains SolrInfoMBean objects keyed by name
+   * @return the Info Registry map which contains SolrInfoBean objects keyed by name
    * @since solr 1.3
    */
-  public Map<String, SolrInfoMBean> getInfoRegistry() {
+  public Map<String, SolrInfoBean> getInfoRegistry() {
     return infoRegistry;
   }
 
@@ -904,7 +904,7 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
     // initialize searcher-related metrics
     initializeMetrics(metricManager, coreMetricManager.getRegistryName(), null);
 
-    infoRegistry.put("fieldCache", new SolrFieldCacheMBean());
+    infoRegistry.put("fieldCache", new SolrFieldCacheBean());
 
     initSchema(config, schema);
 
@@ -995,7 +995,7 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
     resourceLoader.inform(infoRegistry);
 
     // Allow the directory factory to register MBeans as well
-    for (SolrInfoMBean bean : directoryFactory.offerMBeans()) {
+    for (SolrInfoBean bean : directoryFactory.offerMBeans()) {
       log.debug("Registering JMX bean [{}] from directory factory.", bean.getName());
       // Not worried about concurrency, so no reason to use putIfAbsent
       if (infoRegistry.containsKey(bean.getName())){
@@ -2762,7 +2762,7 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
   }
 
   /////////////////////////////////////////////////////////////////////
-  // SolrInfoMBean stuff: Statistics and Module Info
+  // SolrInfoBean stuff: Statistics and Module Info
   /////////////////////////////////////////////////////////////////////
 
   @Override
@@ -2955,11 +2955,11 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
     };
   }
 
-  public void registerInfoBean(String name, SolrInfoMBean solrInfoMBean) {
-    infoRegistry.put(name, solrInfoMBean);
+  public void registerInfoBean(String name, SolrInfoBean solrInfoBean) {
+    infoRegistry.put(name, solrInfoBean);
 
-    if (solrInfoMBean instanceof SolrMetricProducer) {
-      SolrMetricProducer producer = (SolrMetricProducer) solrInfoMBean;
+    if (solrInfoBean instanceof SolrMetricProducer) {
+      SolrMetricProducer producer = (SolrMetricProducer) solrInfoBean;
       coreMetricManager.registerMetricProducer(name, producer);
     }
   }

@@ -66,7 +66,7 @@ import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.NodeConfig;
 import org.apache.solr.core.SolrCore;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.core.SolrXmlConfig;
 import org.apache.solr.metrics.OperatingSystemMetricSet;
@@ -188,7 +188,7 @@ public class SolrDispatchFilter extends BaseSolrFilter {
     MBeanServer platformMBeanServer = ManagementFactory.getPlatformMBeanServer();
     SolrMetricManager metricManager = cores.getMetricManager();
     try {
-      String registry = SolrMetricManager.getRegistryName(SolrInfoMBean.Group.jvm);
+      String registry = SolrMetricManager.getRegistryName(SolrInfoBean.Group.jvm);
       metricManager.registerAll(registry, new BufferPoolMetricSet(platformMBeanServer), true, "buffers");
       metricManager.registerAll(registry, new ClassLoadingGaugeSet(), true, "classes");
       metricManager.registerAll(registry, new OperatingSystemMetricSet(platformMBeanServer), true, "os");

@@ -324,7 +324,7 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
   /**
    * Optionally allow the DirectoryFactory to request registration of some MBeans.
    */
-  public Collection<SolrInfoMBean> offerMBeans() {
+  public Collection<SolrInfoBean> offerMBeans() {
     return Collections.emptySet();
   }
 

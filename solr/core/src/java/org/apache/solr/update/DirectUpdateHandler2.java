@@ -951,7 +951,7 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
 
 
   /////////////////////////////////////////////////////////////////////
-  // SolrInfoMBean stuff: Statistics and Module Info
+  // SolrInfoBean stuff: Statistics and Module Info
   /////////////////////////////////////////////////////////////////////
 
   @Override

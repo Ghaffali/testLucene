@@ -55,9 +55,9 @@ public class MBeansHandlerTest extends SolrTestCaseJ4 {
     req.setContentStreams(streams);
     
     xml = h.query(req);
-    NamedList<NamedList<NamedList<Object>>> diff = SolrInfoMBeanHandler.fromXML(xml);
+    NamedList<NamedList<NamedList<Object>>> diff = SolrInfoBeanHandler.fromXML(xml);
 
-    // The stats bean for SolrInfoMBeanHandler
+    // The stats bean for SolrInfoBeanHandler
     NamedList stats = (NamedList)diff.get("ADMIN").get("/admin/mbeans").get("stats");
     
     //System.out.println("stats:"+stats);
@@ -78,7 +78,7 @@ public class MBeansHandlerTest extends SolrTestCaseJ4 {
         "stats","true",
         "key","org.apache.solr.handler.admin.CollectionsHandler"
     ));
-    NamedList<NamedList<NamedList<Object>>> nl = SolrInfoMBeanHandler.fromXML(xml);
+    NamedList<NamedList<NamedList<Object>>> nl = SolrInfoBeanHandler.fromXML(xml);
     assertNotNull( nl.get("ADMIN").get("org.apache.solr.handler.admin.CollectionsHandler"));
   }
 
@@ -92,7 +92,7 @@ public class MBeansHandlerTest extends SolrTestCaseJ4 {
         "<lst name=\"responseHeader\"><int name=\"status\">0</int><int name=\"QTime\">31</int></lst><lst name=\"solr-mbeans\"></lst>\n" +
         "</response>";
 
-    NamedList<NamedList<NamedList<Object>>> nl = SolrInfoMBeanHandler.fromXML(xml);
+    NamedList<NamedList<NamedList<Object>>> nl = SolrInfoBeanHandler.fromXML(xml);
 
     assertTrue("external entity ignored properly", true);
   }

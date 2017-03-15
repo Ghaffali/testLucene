@@ -18,14 +18,14 @@ package org.apache.solr.search;
 
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.uninverting.UninvertingReader;
 
 /**
- * A SolrInfoMBean that provides introspection of the Solr FieldCache
+ * A SolrInfoBean that provides introspection of the Solr FieldCache
  *
  */
-public class SolrFieldCacheMBean implements SolrInfoMBean {
+public class SolrFieldCacheBean implements SolrInfoBean {
 
   private boolean disableEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryList");
   private boolean disableJmxEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryListJmx");

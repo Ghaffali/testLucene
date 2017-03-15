@@ -380,7 +380,7 @@ public class DebugComponent extends SearchComponent
 
   
   /////////////////////////////////////////////
-  ///  SolrInfoMBean
+  ///  SolrInfoBean
   ////////////////////////////////////////////
 
   @Override

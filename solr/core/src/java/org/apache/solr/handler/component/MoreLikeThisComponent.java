@@ -412,7 +412,7 @@ public class MoreLikeThisComponent extends SearchComponent {
   }
   
   // ///////////////////////////////////////////
-  // / SolrInfoMBean
+  // / SolrInfoBean
   // //////////////////////////////////////////
   
   @Override

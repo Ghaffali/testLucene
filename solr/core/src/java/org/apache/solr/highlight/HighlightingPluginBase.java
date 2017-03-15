@@ -16,18 +16,16 @@
  */
 package org.apache.solr.highlight;
 
-import java.net.URL;
-
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 
 /**
  * 
  * @since solr 1.3
  */
-public abstract class HighlightingPluginBase implements SolrInfoMBean
+public abstract class HighlightingPluginBase implements SolrInfoBean
 {
   protected long numRequests;
   protected SolrParams defaults;

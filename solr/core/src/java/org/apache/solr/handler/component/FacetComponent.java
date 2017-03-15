@@ -1212,7 +1212,7 @@ public class FacetComponent extends SearchComponent {
 
 
   /////////////////////////////////////////////
-  ///  SolrInfoMBean
+  ///  SolrInfoBean
   ////////////////////////////////////////////
 
   @Override

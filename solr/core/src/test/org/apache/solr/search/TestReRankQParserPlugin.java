@@ -20,7 +20,7 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.util.NamedList;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -376,7 +376,7 @@ public class TestReRankQParserPlugin extends SolrTestCaseJ4 {
         "//result/doc[5]/float[@name='id'][.='2.0']"
     );
 
-    SolrInfoMBean info  = h.getCore().getInfoRegistry().get("queryResultCache");
+    SolrInfoBean info  = h.getCore().getInfoRegistry().get("queryResultCache");
     NamedList stats = info.getStatistics();
 
     long inserts = (Long) stats.get("inserts");

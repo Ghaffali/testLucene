@@ -19,13 +19,11 @@ package org.apache.solr.core;
 import org.apache.solr.common.util.NamedList;
 
 /**
- * MBean interface for getting various ui friendly strings and URLs
+ * Interface for getting various ui friendly strings and URLs
  * for use by objects which are 'pluggable' to make server administration
  * easier.
- *
- *
  */
-public interface SolrInfoMBean {
+public interface SolrInfoBean {
 
   /**
    * Category of Solr component.
@@ -40,13 +38,13 @@ public interface SolrInfoMBean {
 
   /**
    * Simple common usage name, e.g. BasicQueryHandler,
-   * or fully qualified clas name.
+   * or fully qualified class name.
    */
-  public String getName();
+  String getName();
   /** Simple one or two line description */
-  public String getDescription();
-  /** Purpose of this Class */
-  public Category getCategory();
+  String getDescription();
+  /** Category of this component */
+  Category getCategory();
   /**
    * Any statistics this instance would like to be publicly available via
    * the Solr Administration interface.
@@ -56,6 +54,6 @@ public interface SolrInfoMBean {
    * <code>toString()</code> representation will be used.
    * </p>
    */
-  public NamedList getStatistics();
+  NamedList getStatistics();
 
 }

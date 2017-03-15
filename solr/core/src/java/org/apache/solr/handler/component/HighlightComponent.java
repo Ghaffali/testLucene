@@ -266,7 +266,7 @@ public class HighlightComponent extends SearchComponent implements PluginInfoIni
   }
 
   ////////////////////////////////////////////
-  ///  SolrInfoMBean
+  ///  SolrInfoBean
   ////////////////////////////////////////////
   
   @Override

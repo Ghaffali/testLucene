@@ -21,11 +21,11 @@ import org.apache.lucene.search.vectorhighlight.FragmentsBuilder;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.HighlightParams;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.util.plugin.NamedListInitializedPlugin;
 
 public abstract class SolrFragmentsBuilder extends HighlightingPluginBase
-  implements SolrInfoMBean, NamedListInitializedPlugin {
+  implements SolrInfoBean, NamedListInitializedPlugin {
   
   public static final String DEFAULT_PRE_TAGS = "<em>";
   public static final String DEFAULT_POST_TAGS = "</em>";

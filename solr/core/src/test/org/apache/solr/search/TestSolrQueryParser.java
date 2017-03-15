@@ -28,7 +28,7 @@ import org.apache.lucene.search.Query;
 import org.apache.lucene.search.TermInSetQuery;
 import org.apache.lucene.search.TermQuery;
 import org.apache.solr.SolrTestCaseJ4;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.parser.QueryParser;
 import org.apache.solr.query.FilterQuery;
 import org.apache.solr.request.SolrQueryRequest;
@@ -353,10 +353,10 @@ public class TestSolrQueryParser extends SolrTestCaseJ4 {
     assertU(commit());  // arg... commit no longer "commits" unless there has been a change.
 
 
-    final SolrInfoMBean filterCacheStats
+    final SolrInfoBean filterCacheStats
         = h.getCore().getInfoRegistry().get("filterCache");
     assertNotNull(filterCacheStats);
-    final SolrInfoMBean queryCacheStats
+    final SolrInfoBean queryCacheStats
         = h.getCore().getInfoRegistry().get("queryResultCache");
 
     assertNotNull(queryCacheStats);

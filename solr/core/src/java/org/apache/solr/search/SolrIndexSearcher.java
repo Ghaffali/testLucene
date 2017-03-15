@@ -19,7 +19,6 @@ package org.apache.solr.search;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -111,7 +110,7 @@ import org.apache.solr.core.DirectoryFactory;
 import org.apache.solr.core.DirectoryFactory.DirContext;
 import org.apache.solr.core.SolrConfig;
 import org.apache.solr.core.SolrCore;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.index.SlowCompositeReaderWrapper;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
@@ -141,7 +140,7 @@ import com.google.common.collect.Iterables;
  *
  * @since solr 0.9
  */
-public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrInfoMBean {
+public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrInfoBean {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -482,7 +481,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
    * Register sub-objects such as caches
    */
   public void register() {
-    final Map<String,SolrInfoMBean> infoRegistry = core.getInfoRegistry();
+    final Map<String,SolrInfoBean> infoRegistry = core.getInfoRegistry();
     // register self
     infoRegistry.put(STATISTICS_KEY, this);
     infoRegistry.put(name, this);
@@ -2587,7 +2586,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
 
 
   /////////////////////////////////////////////////////////////////////
-  // SolrInfoMBean stuff: Statistics and Module Info
+  // SolrInfoBean stuff: Statistics and Module Info
   /////////////////////////////////////////////////////////////////////
 
   @Override

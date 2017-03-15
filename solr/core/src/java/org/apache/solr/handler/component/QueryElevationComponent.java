@@ -595,7 +595,7 @@ public class QueryElevationComponent extends SearchComponent implements SolrCore
   }
 
   //---------------------------------------------------------------------------------
-  // SolrInfoMBean
+  // SolrInfoBean
   //---------------------------------------------------------------------------------
 
   @Override

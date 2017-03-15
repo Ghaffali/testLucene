@@ -111,7 +111,7 @@ public class StatsReloadRaceTest extends SolrTestCaseJ4 {
         CommonParams.QT, "/admin/mbeans",
         "stats", "true"));
 
-    NamedList<NamedList<Object>> actualStats = SolrInfoMBeanHandler.fromXML(stats).get("CORE");
+    NamedList<NamedList<Object>> actualStats = SolrInfoBeanHandler.fromXML(stats).get("CORE");
     
     for (Map.Entry<String, NamedList<Object>> tuple : actualStats) {
       if (tuple.getKey().contains("earcher")) { // catches "searcher" and "Searcher@345345 blah"

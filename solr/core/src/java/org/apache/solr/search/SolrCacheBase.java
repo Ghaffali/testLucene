@@ -22,7 +22,7 @@ import java.net.URL;
 import java.util.Map;
 
 import org.apache.solr.core.SolrCore;
-import org.apache.solr.core.SolrInfoMBean.Category;
+import org.apache.solr.core.SolrInfoBean.Category;
 import org.apache.solr.search.SolrCache.State;
 
 import static org.apache.solr.common.params.CommonParams.NAME;

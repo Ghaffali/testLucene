@@ -21,7 +21,7 @@ import java.util.Map;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.SolrCore;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
@@ -46,13 +46,13 @@ public class PluginInfoHandler extends RequestHandlerBase
   private static SimpleOrderedMap<Object> getSolrInfoBeans( SolrCore core, boolean stats )
   {
     SimpleOrderedMap<Object> list = new SimpleOrderedMap<>();
-    for (SolrInfoMBean.Category cat : SolrInfoMBean.Category.values()) 
+    for (SolrInfoBean.Category cat : SolrInfoBean.Category.values())
     {
       SimpleOrderedMap<Object> category = new SimpleOrderedMap<>();
       list.add( cat.name(), category );
-      Map<String, SolrInfoMBean> reg = core.getInfoRegistry();
-      for (Map.Entry<String,SolrInfoMBean> entry : reg.entrySet()) {
-        SolrInfoMBean m = entry.getValue();
+      Map<String, SolrInfoBean> reg = core.getInfoRegistry();
+      for (Map.Entry<String,SolrInfoBean> entry : reg.entrySet()) {
+        SolrInfoBean m = entry.getValue();
         if (m.getCategory() != cat) continue;
 
         String na = "Not Declared";

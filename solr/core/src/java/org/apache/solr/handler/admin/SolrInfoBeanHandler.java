@@ -20,7 +20,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.client.solrj.impl.XMLResponseParser;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.util.ContentStream;
@@ -30,10 +30,7 @@ import org.apache.solr.response.BinaryResponseWriter;
 import org.apache.solr.response.SolrQueryResponse;
 
 import java.io.StringReader;
-import java.net.URL;
 import java.text.NumberFormat;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.Map;
@@ -44,7 +41,7 @@ import java.util.HashSet;
  * registered SolrInfoMBeans.
  */
 @SuppressWarnings("unchecked")
-public class SolrInfoMBeanHandler extends RequestHandlerBase {
+public class SolrInfoBeanHandler extends RequestHandlerBase {
 
   /**
    * Take an array of any type and generate a Set containing the toString.
@@ -117,7 +114,7 @@ public class SolrInfoMBeanHandler extends RequestHandlerBase {
     
     String[] requestedCats = req.getParams().getParams("cat");
     if (null == requestedCats || 0 == requestedCats.length) {
-      for (SolrInfoMBean.Category cat : SolrInfoMBean.Category.values()) {
+      for (SolrInfoBean.Category cat : SolrInfoBean.Category.values()) {
         cats.add(cat.name(), new SimpleOrderedMap<NamedList<Object>>());
       }
     } else {
@@ -128,18 +125,18 @@ public class SolrInfoMBeanHandler extends RequestHandlerBase {
          
     Set<String> requestedKeys = arrayToSet(req.getParams().getParams("key"));
     
-    Map<String, SolrInfoMBean> reg = req.getCore().getInfoRegistry();
-    for (Map.Entry<String, SolrInfoMBean> entry : reg.entrySet()) {
+    Map<String, SolrInfoBean> reg = req.getCore().getInfoRegistry();
+    for (Map.Entry<String, SolrInfoBean> entry : reg.entrySet()) {
       addMBean(req, cats, requestedKeys, entry.getKey(),entry.getValue());
     }
 
-    for (SolrInfoMBean infoMBean : req.getCore().getCoreDescriptor().getCoreContainer().getResourceLoader().getInfoMBeans()) {
+    for (SolrInfoBean infoMBean : req.getCore().getCoreDescriptor().getCoreContainer().getResourceLoader().getInfoMBeans()) {
       addMBean(req,cats,requestedKeys,infoMBean.getName(),infoMBean);
     }
     return cats;
   }
 
-  private void addMBean(SolrQueryRequest req, NamedList<NamedList<NamedList<Object>>> cats, Set<String> requestedKeys, String key, SolrInfoMBean m) {
+  private void addMBean(SolrQueryRequest req, NamedList<NamedList<NamedList<Object>>> cats, Set<String> requestedKeys, String key, SolrInfoBean m) {
     if ( ! ( requestedKeys.isEmpty() || requestedKeys.contains(key) ) ) return;
     NamedList<NamedList<Object>> catInfo = cats.get(m.getCategory().name());
     if ( null == catInfo ) return;

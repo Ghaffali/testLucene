@@ -17,7 +17,6 @@
 package org.apache.solr.update;
 
 import java.lang.invoke.MethodHandles;
-import java.net.URL;
 import java.util.concurrent.ExecutorService;
 
 import com.codahale.metrics.InstrumentedExecutorService;
@@ -31,7 +30,7 @@ import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SolrjNamedThreadFactory;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.util.stats.HttpClientMetricNameStrategy;
@@ -42,7 +41,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.util.stats.InstrumentedHttpRequestExecutor.KNOWN_METRIC_NAME_STRATEGIES;
 
-public class UpdateShardHandler implements SolrMetricProducer, SolrInfoMBean {
+public class UpdateShardHandler implements SolrMetricProducer, SolrInfoBean {
   
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 

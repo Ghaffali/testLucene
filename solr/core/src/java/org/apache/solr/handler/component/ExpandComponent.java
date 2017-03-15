@@ -737,7 +737,7 @@ public class ExpandComponent extends SearchComponent implements PluginInfoInitia
 
 
   ////////////////////////////////////////////
-  ///  SolrInfoMBean
+  ///  SolrInfoBean
   ////////////////////////////////////////////
 
   @Override

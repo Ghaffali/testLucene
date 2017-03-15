@@ -88,10 +88,10 @@ public class ExitableDirectoryReaderTest extends SolrTestCaseJ4 {
   public void testCacheAssumptions() throws Exception {
     String fq= "name:d*";
     SolrCore core = h.getCore();
-    SolrInfoMBean filterCacheStats = core.getInfoRegistry().get("filterCache");
+    SolrInfoBean filterCacheStats = core.getInfoRegistry().get("filterCache");
     long fqInserts = (long) filterCacheStats.getStatistics().get("inserts");
 
-    SolrInfoMBean queryCacheStats = core.getInfoRegistry().get("queryResultCache");
+    SolrInfoBean queryCacheStats = core.getInfoRegistry().get("queryResultCache");
     long qrInserts = (long) queryCacheStats.getStatistics().get("inserts");
 
     // This gets 0 docs back. Use 10000 instead of 1 for timeAllowed and it gets 100 back and the for loop below
@@ -130,7 +130,7 @@ public class ExitableDirectoryReaderTest extends SolrTestCaseJ4 {
   public void testQueryResults() throws Exception {
     String q = "name:e*";
     SolrCore core = h.getCore();
-    SolrInfoMBean queryCacheStats = core.getInfoRegistry().get("queryResultCache");
+    SolrInfoBean queryCacheStats = core.getInfoRegistry().get("queryResultCache");
     NamedList nl = queryCacheStats.getStatistics();
     long inserts = (long) nl.get("inserts");
 

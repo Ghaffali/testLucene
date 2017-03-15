@@ -16,20 +16,19 @@
  */
 package org.apache.solr.store.blockcache;
 
-import java.net.URL;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.search.SolrCacheBase;
 
 /**
- * A {@link SolrInfoMBean} that provides metrics on block cache operations.
+ * A {@link SolrInfoBean} that provides metrics on block cache operations.
  *
  * @lucene.experimental
  */
-public class Metrics extends SolrCacheBase implements SolrInfoMBean {
+public class Metrics extends SolrCacheBase implements SolrInfoBean {
 
 
   public AtomicLong blockCacheSize = new AtomicLong(0);
@@ -105,7 +104,7 @@ public class Metrics extends SolrCacheBase implements SolrInfoMBean {
     return (float) (value / seconds);
   }
 
-  // SolrInfoMBean methods
+  // SolrInfoBean methods
 
   @Override
   public String getName() {

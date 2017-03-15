@@ -19,7 +19,7 @@ package org.apache.solr;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.SentinelIntSet;
 import org.apache.lucene.util.mutable.MutableValueInt;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.CursorMarkParams;
 import org.apache.solr.common.params.SolrParams;
@@ -521,10 +521,10 @@ public class CursorPagingTest extends SolrTestCaseJ4 {
 
     final Collection<String> allFieldNames = getAllSortFieldNames();
 
-    final SolrInfoMBean filterCacheStats 
+    final SolrInfoBean filterCacheStats
       = h.getCore().getInfoRegistry().get("filterCache");
     assertNotNull(filterCacheStats);
-    final SolrInfoMBean queryCacheStats 
+    final SolrInfoBean queryCacheStats
       = h.getCore().getInfoRegistry().get("queryResultCache");
     assertNotNull(queryCacheStats);
 

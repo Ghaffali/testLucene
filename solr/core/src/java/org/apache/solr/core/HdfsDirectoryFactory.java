@@ -493,8 +493,8 @@ public class HdfsDirectoryFactory extends CachingDirectoryFactory implements Sol
   }
 
   @Override
-  public Collection<SolrInfoMBean> offerMBeans() {
-    return Arrays.<SolrInfoMBean>asList(MetricsHolder.metrics, LocalityHolder.reporter);
+  public Collection<SolrInfoBean> offerMBeans() {
+    return Arrays.<SolrInfoBean>asList(MetricsHolder.metrics, LocalityHolder.reporter);
   }
 
   @Override

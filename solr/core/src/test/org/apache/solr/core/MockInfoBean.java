@@ -14,37 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.core;
-
-import java.net.URL;
 
 import org.apache.solr.common.util.NamedList;
 
-/**
- * Wraps a {@link SolrInfoMBean}.
- */
-public class SolrInfoMBeanWrapper implements SolrInfoMBean {
-  private final SolrInfoMBean mbean;
-
-  public SolrInfoMBeanWrapper(SolrInfoMBean mbean) {
-    this.mbean = mbean;
+class MockInfoBean implements SolrInfoBean {
+  @Override
+  public String getName() {
+    return "mock";
   }
 
-  /** {@inheritDoc} */
   @Override
-  public String getName() { return mbean.getName(); }
+  public Category getCategory() {
+    return Category.OTHER;
+  }
 
-  /** {@inheritDoc} */
   @Override
-  public String getDescription() { return mbean.getDescription(); }
+  public String getDescription() {
+    return "mock";
+  }
 
-  /** {@inheritDoc} */
   @Override
-  public Category getCategory() { return mbean.getCategory(); }
-
-  /** {@inheritDoc} */
-  @Override
-  public NamedList getStatistics() { return mbean.getStatistics(); }
-
+  @SuppressWarnings("unchecked")
+  public NamedList getStatistics() {
+    NamedList myList = new NamedList<Integer>();
+    myList.add("Integer", 123);
+    myList.add("Double",567.534);
+    myList.add("Long", 32352463l);
+    myList.add("Short", (short) 32768);
+    myList.add("Byte", (byte) 254);
+    myList.add("Float", 3.456f);
+    myList.add("String","testing");
+    myList.add("Object", new Object());
+    return myList;
+  }
 }

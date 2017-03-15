@@ -16,7 +16,7 @@
  */
 package org.apache.solr.search;
 
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 
 import java.util.Map;
 
@@ -24,7 +24,7 @@ import java.util.Map;
 /**
  * Primary API for dealing with Solr's internal caches.
  */
-public interface SolrCache<K,V> extends SolrInfoMBean {
+public interface SolrCache<K,V> extends SolrInfoBean {
 
   /**
    * The initialization routine. Instance specific arguments are passed in

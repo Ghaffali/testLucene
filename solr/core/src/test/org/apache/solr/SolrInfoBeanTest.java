@@ -16,7 +16,7 @@
  */
 package org.apache.solr;
 
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.handler.StandardRequestHandler;
 import org.apache.solr.handler.admin.LukeRequestHandler;
 import org.apache.solr.handler.component.SearchComponent;
@@ -33,7 +33,7 @@ import java.util.List;
 /**
  * A simple test used to increase code coverage for some standard things...
  */
-public class SolrInfoMBeanTest extends SolrTestCaseJ4
+public class SolrInfoBeanTest extends SolrTestCaseJ4
 {
   @BeforeClass
   public static void beforeClass() throws Exception {
@@ -55,9 +55,9 @@ public class SolrInfoMBeanTest extends SolrTestCaseJ4
     
     int checked = 0;
     for( Class clazz : classes ) {
-      if( SolrInfoMBean.class.isAssignableFrom( clazz ) ) {
+      if( SolrInfoBean.class.isAssignableFrom( clazz ) ) {
         try {
-          SolrInfoMBean info = (SolrInfoMBean)clazz.newInstance();
+          SolrInfoBean info = (SolrInfoBean)clazz.newInstance();
           
           //System.out.println( info.getClass() );
           assertNotNull( info.getName() );
@@ -79,7 +79,7 @@ public class SolrInfoMBeanTest extends SolrTestCaseJ4
         }
       }
     }
-    assertTrue( "there are at least 10 SolrInfoMBean that should be found in the classpath, found " + checked, checked > 10 );
+    assertTrue( "there are at least 10 SolrInfoBean that should be found in the classpath, found " + checked, checked > 10 );
   }
   
   private static List<Class> getClassesForPackage(String pckgname) throws Exception {

@@ -31,7 +31,7 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
-import org.apache.solr.core.SolrInfoMBean;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.SolrCoreMetricManager;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
@@ -114,7 +114,7 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
 
     Map<String, Counter> registered = new HashMap<>();
     String scope = SolrMetricTestUtils.getRandomScope(random, true);
-    SolrInfoMBean.Category category = SolrMetricTestUtils.getRandomCategory(random, true);
+    SolrInfoBean.Category category = SolrMetricTestUtils.getRandomCategory(random, true);
 
     int iterations = TestUtil.nextInt(random, 0, MAX_ITERATIONS);
     for (int i = 0; i < iterations; ++i) {
@@ -135,7 +135,7 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     Random random = random();
 
     String scope = SolrMetricTestUtils.getRandomScope(random, true);
-    SolrInfoMBean.Category category = SolrMetricTestUtils.getRandomCategory(random, true);
+    SolrInfoBean.Category category = SolrMetricTestUtils.getRandomCategory(random, true);
     Map<String, Counter> metrics = SolrMetricTestUtils.getRandomMetrics(random, true);
     SolrMetricProducer producer = SolrMetricTestUtils.getProducerOf(metricManager, category, scope, metrics);
     coreMetricManager.registerMetricProducer(scope, producer);

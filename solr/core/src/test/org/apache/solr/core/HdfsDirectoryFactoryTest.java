@@ -184,9 +184,9 @@ public class HdfsDirectoryFactoryTest extends SolrTestCaseJ4 {
     props.put(HdfsDirectoryFactory.LOCALITYMETRICS_ENABLED, "true");
     factory.init(new NamedList<>(props));
     
-    Iterator<SolrInfoMBean> it = factory.offerMBeans().iterator();
+    Iterator<SolrInfoBean> it = factory.offerMBeans().iterator();
     it.next(); // skip
-    SolrInfoMBean localityBean = it.next(); // brittle, but it's ok
+    SolrInfoBean localityBean = it.next(); // brittle, but it's ok
     
     // Make sure we have the right bean.
     assertEquals("Got the wrong bean: " + localityBean.getName(), "hdfs-locality", localityBean.getName());
