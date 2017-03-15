@@ -47,14 +47,6 @@ public class StandardRequestHandler extends SearchHandler
   public String getDescription() {
     return "The standard Solr request handler";
   }
-
-  @Override
-  public URL[] getDocs() {
-    try {
-      return new URL[] { new URL("http://wiki.apache.org/solr/StandardRequestHandler") };
-    }
-    catch( MalformedURLException ex ) { return null; }
-  }
 }
 
 

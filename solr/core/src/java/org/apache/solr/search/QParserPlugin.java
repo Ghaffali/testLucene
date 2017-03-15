@@ -99,11 +99,6 @@ public abstract class QParserPlugin implements NamedListInitializedPlugin, SolrI
   }
 
   @Override
-  public String getVersion() {
-    return null;
-  }
-
-  @Override
   public String getDescription() {
     return "";  // UI required non-null to work
   }
@@ -111,16 +106,6 @@ public abstract class QParserPlugin implements NamedListInitializedPlugin, SolrI
   @Override
   public Category getCategory() {
     return Category.QUERYPARSER;
-  }
-
-  @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
-  public URL[] getDocs() {
-    return new URL[0];
   }
 
   @Override

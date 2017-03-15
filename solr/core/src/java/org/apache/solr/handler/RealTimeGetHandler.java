@@ -43,11 +43,6 @@ public class RealTimeGetHandler extends SearchHandler {
   }
 
   @Override
-  public URL[] getDocs() {
-    return null;
-  }
-
-  @Override
   public Collection<Api> getApis() {
     return ApiBag.wrapRequestHandlers(this, "core.RealtimeGet");
   }

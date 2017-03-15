@@ -36,19 +36,11 @@ public class SolrFieldCacheMBean implements JmxAugmentedSolrInfoMBean {
   @Override
   public String getName() { return this.getClass().getName(); }
   @Override
-  public String getVersion() { return SolrCore.version; }
-  @Override
   public String getDescription() {
     return "Provides introspection of the Solr FieldCache ";
   }
   @Override
   public Category getCategory() { return Category.CACHE; } 
-  @Override
-  public String getSource() { return null; }
-  @Override
-  public URL[] getDocs() {
-    return null;
-  }
   @Override
   public NamedList getStatistics() {
     return getStats(!disableEntryList);

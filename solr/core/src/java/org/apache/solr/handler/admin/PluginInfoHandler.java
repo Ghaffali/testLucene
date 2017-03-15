@@ -16,8 +16,6 @@
  */
 package org.apache.solr.handler.admin;
 
-import java.net.URL;
-import java.util.ArrayList;
 import java.util.Map;
 
 import org.apache.solr.common.params.SolrParams;
@@ -62,18 +60,7 @@ public class PluginInfoHandler extends RequestHandlerBase
         category.add( entry.getKey(), info );
 
         info.add( NAME,          (m.getName()       !=null ? m.getName()        : na) );
-        info.add( "version",     (m.getVersion()    !=null ? m.getVersion()     : na) );
         info.add( "description", (m.getDescription()!=null ? m.getDescription() : na) );
-        info.add( "source",      (m.getSource()     !=null ? m.getSource()      : na) );
-
-        URL[] urls = m.getDocs();
-        if ((urls != null) && (urls.length > 0)) {
-          ArrayList<String> docs = new ArrayList<>(urls.length);
-          for( URL u : urls ) {
-            docs.add( u.toExternalForm() );
-          }
-          info.add( "docs", docs );
-        }
 
         if( stats ) {
           info.add( "stats", m.getStatistics() );

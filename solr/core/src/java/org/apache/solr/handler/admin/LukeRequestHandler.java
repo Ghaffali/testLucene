@@ -707,14 +707,6 @@ public class LukeRequestHandler extends RequestHandlerBase
     return Category.ADMIN;
   }
 
-  @Override
-  public URL[] getDocs() {
-    try {
-      return new URL[] { new URL("http://wiki.apache.org/solr/LukeRequestHandler") };
-    }
-    catch( MalformedURLException ex ) { return null; }
-  }
-
   ///////////////////////////////////////////////////////////////////////////////////////
 
   static class TermHistogram

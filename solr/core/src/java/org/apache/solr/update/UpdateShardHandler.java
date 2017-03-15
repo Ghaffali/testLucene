@@ -104,11 +104,6 @@ public class UpdateShardHandler implements SolrMetricProducer, SolrInfoMBean {
   }
 
   @Override
-  public String getVersion() {
-    return getClass().getPackage().getSpecificationVersion();
-  }
-
-  @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
     String expandedScope = SolrMetricManager.mkName(scope, getCategory().name());
     clientConnectionManager.initializeMetrics(manager, registry, expandedScope);
@@ -129,16 +124,6 @@ public class UpdateShardHandler implements SolrMetricProducer, SolrInfoMBean {
   @Override
   public Category getCategory() {
     return Category.UPDATE;
-  }
-
-  @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
-  public URL[] getDocs() {
-    return new URL[0];
   }
 
   @Override

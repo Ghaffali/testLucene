@@ -278,9 +278,4 @@ public class HighlightComponent extends SearchComponent implements PluginInfoIni
   public Category getCategory() {
     return Category.HIGHLIGHTER;
   }
-  
-  @Override
-  public URL[] getDocs() {
-    return null;
-  }
 }

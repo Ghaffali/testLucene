@@ -960,23 +960,8 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
   }
 
   @Override
-  public String getVersion() {
-    return SolrCore.version;
-  }
-
-  @Override
   public String getDescription() {
     return "Update handler that efficiently directly updates the on-disk main lucene index";
-  }
-
-  @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
-  public URL[] getDocs() {
-    return null;
   }
 
   @Override

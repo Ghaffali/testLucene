@@ -319,11 +319,6 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
   }
 
   @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
   public NamedList getStatistics() {
     NamedList lst = new SimpleOrderedMap();
     synchronized (map) {

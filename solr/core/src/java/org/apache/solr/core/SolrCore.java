@@ -2778,11 +2778,6 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
   /////////////////////////////////////////////////////////////////////
 
   @Override
-  public String getVersion() {
-    return SolrCore.version;
-  }
-
-  @Override
   public String getDescription() {
     return "SolrCore";
   }
@@ -2790,16 +2785,6 @@ public final class SolrCore implements SolrInfoMBean, SolrMetricProducer, Closea
   @Override
   public Category getCategory() {
     return Category.CORE;
-  }
-
-  @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
-  public URL[] getDocs() {
-    return null;
   }
 
   @Override

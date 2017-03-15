@@ -225,24 +225,11 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
 
   @Override
   public abstract String getDescription();
-  @Override
-  public String getSource() { return null; }
-  
-  @Override
-  public String getVersion() {
-    return getClass().getPackage().getSpecificationVersion();
-  }
-  
+
   @Override
   public Category getCategory() {
     return Category.QUERY;
   }
-
-  @Override
-  public URL[] getDocs() {
-    return null;  // this can be overridden, but not required
-  }
-
 
   @Override
   public SolrRequestHandler getSubHandler(String subPath) {

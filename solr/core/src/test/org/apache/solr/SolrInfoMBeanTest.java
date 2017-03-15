@@ -70,7 +70,6 @@ public class SolrInfoMBeanTest extends SolrTestCaseJ4
           
           assertNotNull( info.toString() );
           // increase code coverage...
-          assertNotNull( info.getDocs() + "" );
           assertNotNull( info.getStatistics()+"" );
           checked++;
         }

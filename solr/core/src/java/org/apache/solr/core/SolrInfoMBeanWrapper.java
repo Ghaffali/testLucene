@@ -37,23 +37,11 @@ public class SolrInfoMBeanWrapper implements SolrInfoMBean {
 
   /** {@inheritDoc} */
   @Override
-  public String getVersion() { return mbean.getVersion(); }
-
-  /** {@inheritDoc} */
-  @Override
   public String getDescription() { return mbean.getDescription(); }
 
   /** {@inheritDoc} */
   @Override
   public Category getCategory() { return mbean.getCategory(); }
-
-  /** {@inheritDoc} */
-  @Override
-  public String getSource() { return mbean.getSource(); }
-
-  /** {@inheritDoc} */
-  @Override
-  public URL[] getDocs() { return mbean.getDocs(); }
 
   /** {@inheritDoc} */
   @Override

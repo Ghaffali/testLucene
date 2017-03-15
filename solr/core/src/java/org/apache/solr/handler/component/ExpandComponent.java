@@ -750,17 +750,6 @@ public class ExpandComponent extends SearchComponent implements PluginInfoInitia
     return Category.QUERY;
   }
 
-  @Override
-  public URL[] getDocs() {
-    try {
-      return new URL[]{
-          new URL("http://wiki.apache.org/solr/ExpandComponent")
-      };
-    } catch (MalformedURLException e) {
-      throw new RuntimeException(e);
-    }
-  }
-
   // this reader alters the content of the given reader so it should not
   // delegate the caching stuff
   private class ReaderWrapper extends FilterLeafReader {

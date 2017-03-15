@@ -16,8 +16,6 @@
  */
 package org.apache.solr.core;
 
-import java.net.URL;
-
 import org.apache.solr.common.util.NamedList;
 
 /**
@@ -45,23 +43,10 @@ public interface SolrInfoMBean {
    * or fully qualified clas name.
    */
   public String getName();
-  /** Simple common usage version, e.g. 2.0 */
-  public String getVersion();
   /** Simple one or two line description */
   public String getDescription();
   /** Purpose of this Class */
   public Category getCategory();
-  /** CVS Source, SVN Source, etc */
-  public String getSource();
-  /**
-   * Documentation URL list.
-   *
-   * <p>
-   * Suggested documentation URLs: Homepage for sponsoring project,
-   * FAQ on class usage, Design doc for class, Wiki, bug reporting URL, etc...
-   * </p>
-   */
-  public URL[] getDocs();
   /**
    * Any statistics this instance would like to be publicly available via
    * the Solr Administration interface.

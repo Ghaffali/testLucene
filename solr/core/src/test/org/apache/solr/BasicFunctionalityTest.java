@@ -378,8 +378,6 @@ public class BasicFunctionalityTest extends SolrTestCaseJ4 {
         @Override
         public String getDescription() { return tmp; }
         @Override
-        public String getSource() { return tmp; }
-        @Override
         public void handleRequestBody
           ( SolrQueryRequest req, SolrQueryResponse rsp ) {
           throw new RuntimeException(tmp);

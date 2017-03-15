@@ -80,11 +80,6 @@ public class AnalyticsComponent extends SearchComponent {
   }
 
   @Override
-  public String getVersion() {
-    return getClass().getPackage().getSpecificationVersion();
-  }
-
-  @Override
   public NamedList getStatistics() {
     return analyticsCollector.getStatistics();
   }

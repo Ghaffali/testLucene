@@ -37,22 +37,6 @@ class MockInfoMBean implements SolrInfoMBean {
   }
 
   @Override
-  public URL[] getDocs() {
-    // TODO Auto-generated method stub
-    return null;
-  }
-
-  @Override
-  public String getVersion() {
-    return "mock";
-  }
-
-  @Override
-  public String getSource() {
-    return "mock";
-  }
-
-  @Override
   @SuppressWarnings("unchecked")
   public NamedList getStatistics() {
     NamedList myList = new NamedList<Integer>();

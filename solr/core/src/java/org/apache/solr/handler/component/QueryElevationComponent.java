@@ -603,16 +603,6 @@ public class QueryElevationComponent extends SearchComponent implements SolrCore
     return "Query Boosting -- boost particular documents for a given query";
   }
 
-  @Override
-  public URL[] getDocs() {
-    try {
-      return new URL[]{
-          new URL("http://wiki.apache.org/solr/QueryElevationComponent")
-      };
-    } catch (MalformedURLException e) {
-      throw new RuntimeException(e);
-    }
-  }
   class ElevationComparatorSource extends FieldComparatorSource {
   private QueryElevationComponent.ElevationObj elevations;
   private SentinelIntSet ordSet; //the key half of the map

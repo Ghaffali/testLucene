@@ -145,19 +145,7 @@ public class SolrInfoMBeanHandler extends RequestHandlerBase {
     if ( null == catInfo ) return;
     NamedList<Object> mBeanInfo = new SimpleOrderedMap<>();
     mBeanInfo.add("class", m.getName());
-    mBeanInfo.add("version", m.getVersion());
     mBeanInfo.add("description", m.getDescription());
-    mBeanInfo.add("src", m.getSource());
-
-    // Use an external form
-    URL[] urls = m.getDocs();
-    if(urls!=null) {
-      List<String> docs = new ArrayList<>(urls.length);
-      for(URL url : urls) {
-        docs.add(url.toExternalForm());
-      }
-      mBeanInfo.add("docs", docs);
-    }
 
     if (req.getParams().getFieldBool(key, "stats", false))
       mBeanInfo.add("stats", m.getStatistics());

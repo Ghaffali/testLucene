@@ -481,12 +481,4 @@ public class MoreLikeThisHandler extends RequestHandlerBase
   public String getDescription() {
     return "Solr MoreLikeThis";
   }
-
-  @Override
-  public URL[] getDocs() {
-    try {
-      return new URL[] { new URL("http://wiki.apache.org/solr/MoreLikeThis") };
-    }
-    catch( MalformedURLException ex ) { return null; }
-  }
 }

@@ -1388,11 +1388,6 @@ public class QueryComponent extends SearchComponent
     return Category.QUERY;
   }
 
-  @Override
-  public URL[] getDocs() {
-    return null;
-  }
-
   /**
    * Fake scorer for a single document
    *

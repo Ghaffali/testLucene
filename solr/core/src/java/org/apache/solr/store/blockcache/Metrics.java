@@ -116,14 +116,4 @@ public class Metrics extends SolrCacheBase implements SolrInfoMBean {
   public String getDescription() {
     return "Provides metrics for the HdfsDirectoryFactory BlockCache.";
   }
-
-  @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
-  public URL[] getDocs() {
-    return null;
-  }
 }

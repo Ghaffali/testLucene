@@ -212,11 +212,6 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
   }
 
   @Override
-  public String getVersion() {
-    return SolrCore.version;
-  }
-
-  @Override
   public String getDescription() {
     return description;
   }
@@ -224,16 +219,6 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
   @Override
   public Category getCategory() {
     return Category.CACHE;
-  }
-
-  @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
-  public URL[] getDocs() {
-    return null;
   }
 
   // returns a ratio, not a percent.

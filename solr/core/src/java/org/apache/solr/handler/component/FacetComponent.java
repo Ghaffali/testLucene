@@ -1225,11 +1225,6 @@ public class FacetComponent extends SearchComponent {
     return Category.QUERY;
   }
 
-  @Override
-  public URL[] getDocs() {
-    return null;
-  }
-
   /**
    * This class is used exclusively for merging results from each shard
    * in a distributed facet request. It plays no role in the computation

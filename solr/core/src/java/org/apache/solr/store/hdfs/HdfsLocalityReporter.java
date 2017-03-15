@@ -67,11 +67,6 @@ public class HdfsLocalityReporter implements SolrInfoMBean {
   }
 
   @Override
-  public String getVersion() {
-    return getClass().getPackage().getSpecificationVersion();
-  }
-
-  @Override
   public String getDescription() {
     return "Provides metrics for HDFS data locality.";
   }
@@ -79,16 +74,6 @@ public class HdfsLocalityReporter implements SolrInfoMBean {
   @Override
   public Category getCategory() {
     return Category.OTHER;
-  }
-
-  @Override
-  public String getSource() {
-    return null;
-  }
-
-  @Override
-  public URL[] getDocs() {
-    return null;
   }
 
   /**

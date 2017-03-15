@@ -905,13 +905,6 @@ public class RealTimeGetComponent extends SearchComponent
     return Category.QUERY;
   }
 
-  @Override
-  public URL[] getDocs() {
-    return null;
-  }
-
-  
-  
   public void processGetFingeprint(ResponseBuilder rb) throws IOException {
     SolrQueryRequest req = rb.req;
     SolrParams params = req.getParams();
