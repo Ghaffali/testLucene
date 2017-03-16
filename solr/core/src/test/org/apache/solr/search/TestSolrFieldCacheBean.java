@@ -16,8 +16,6 @@
  */
 package org.apache.solr.search;
 
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Metric;
 import org.apache.lucene.util.TestUtil;
 import org.apache.solr.SolrTestCaseJ4;
 
@@ -68,8 +66,8 @@ public class TestSolrFieldCacheBean extends SolrTestCaseJ4 {
     SolrMetricManager metricManager = h.getCoreContainer().getMetricManager();
     mbean.initializeMetrics(metricManager, registryName, null);
     MetricsMap metricsMap = (MetricsMap)metricManager.registry(registryName).getMetrics().get("CACHE.fieldCache");
-    Map<String, Metric> metrics = metricsMap.getValue(details);
-    assert(((Gauge<Number>)metrics.get("entries_count")).getValue().longValue() > 0);
+    Map<String, Object> metrics = metricsMap.getValue(details);
+    assertTrue(((Number)metrics.get("entries_count")).longValue() > 0);
     assertNotNull(metrics.get("total_size"));
     assertNotNull(metrics.get("entry#0"));
   }
@@ -81,8 +79,8 @@ public class TestSolrFieldCacheBean extends SolrTestCaseJ4 {
     SolrMetricManager metricManager = h.getCoreContainer().getMetricManager();
     mbean.initializeMetrics(metricManager, registryName, null);
     MetricsMap metricsMap = (MetricsMap)metricManager.registry(registryName).getMetrics().get("CACHE.fieldCache");
-    Map<String, Metric> metrics = metricsMap.getValue(details);
-    assert(((Gauge<Number>)metrics.get("entries_count")).getValue().longValue() > 0);
+    Map<String, Object> metrics = metricsMap.getValue(details);
+    assertTrue(((Number)metrics.get("entries_count")).longValue() > 0);
     assertNull(metrics.get("total_size"));
     assertNull(metrics.get("entry#0"));
   }

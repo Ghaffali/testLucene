@@ -55,18 +55,18 @@ public class SolrFieldCacheBean implements SolrInfoBean, SolrMetricProducer {
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
     metricsMap = detailed -> {
-      Map<String, Metric> map = new ConcurrentHashMap<>();
+      Map<String, Object> map = new ConcurrentHashMap<>();
       if (detailed && !disableEntryList) {
         UninvertingReader.FieldCacheStats fieldCacheStats = UninvertingReader.getUninvertedStats();
         String[] entries = fieldCacheStats.info;
-        map.put("entries_count", (Gauge<?>)() -> entries.length);
-        map.put("total_size", (Gauge<?>)() -> fieldCacheStats.totalSize);
+        map.put("entries_count", entries.length);
+        map.put("total_size", fieldCacheStats.totalSize);
         for (int i = 0; i < entries.length; i++) {
           final String entry = entries[i];
-          map.put("entry#" + i, (Gauge<?>)() -> entry);
+          map.put("entry#" + i, entry);
         }
       } else {
-        map.put("entries_count", (Gauge<?>)() -> UninvertingReader.getUninvertedStatsSize());
+        map.put("entries_count", UninvertingReader.getUninvertedStatsSize());
       }
       return map;
     };

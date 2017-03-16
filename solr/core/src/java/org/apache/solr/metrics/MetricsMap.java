@@ -11,11 +11,11 @@ import com.codahale.metrics.Metric;
  * <p>Note: this awkwardly extends {@link Gauge} and not {@link Metric} because awkwardly {@link Metric} instances
  * are not supported by {@link com.codahale.metrics.MetricRegistryListener} :(</p>
  */
-public interface MetricsMap extends Gauge<Map<String, Metric>> {
+public interface MetricsMap extends Gauge<Map<String, Object>> {
 
-  Map<String, Metric> getValue(boolean detailed);
+  Map<String, Object> getValue(boolean detailed);
 
-  default Map<String, Metric> getValue() {
-    return getValue(false);
+  default Map<String, Object> getValue() {
+    return getValue(true);
   }
 }
