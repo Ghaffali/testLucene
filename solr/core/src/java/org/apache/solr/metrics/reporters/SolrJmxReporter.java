@@ -34,6 +34,8 @@ import org.slf4j.LoggerFactory;
 /**
  * A {@link SolrMetricReporter} that finds (or creates) a MBeanServer from
  * the given configuration and registers metrics to it with JMX.
+ * <p>NOTE: {@link JmxReporter} that this class uses exports only newly added metrics (it doesn't
+ * process already existing metrics in a registry)</p>
  */
 public class SolrJmxReporter extends SolrMetricReporter {
 

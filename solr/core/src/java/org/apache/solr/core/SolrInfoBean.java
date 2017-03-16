@@ -19,7 +19,7 @@ package org.apache.solr.core;
 import org.apache.solr.common.util.NamedList;
 
 /**
- * Interface for getting various ui friendly strings and URLs
+ * Interface for getting various ui friendly strings
  * for use by objects which are 'pluggable' to make server administration
  * easier.
  */
