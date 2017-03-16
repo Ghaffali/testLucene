@@ -21,6 +21,8 @@ import org.apache.solr.handler.StandardRequestHandler;
 import org.apache.solr.handler.admin.LukeRequestHandler;
 import org.apache.solr.handler.component.SearchComponent;
 import org.apache.solr.highlight.DefaultSolrHighlighter;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.search.LRUCache;
 import org.junit.BeforeClass;
 import java.io.File;
@@ -54,10 +56,15 @@ public class SolrInfoBeanTest extends SolrTestCaseJ4
    // System.out.println(classes);
     
     int checked = 0;
+    SolrMetricManager metricManager = h.getCoreContainer().getMetricManager();
+    String registry = h.getCore().getCoreMetricManager().getRegistryName();
     for( Class clazz : classes ) {
       if( SolrInfoBean.class.isAssignableFrom( clazz ) ) {
         try {
           SolrInfoBean info = (SolrInfoBean)clazz.newInstance();
+          if (info instanceof SolrMetricProducer) {
+            ((SolrMetricProducer)info).initializeMetrics(metricManager, registry, null);
+          }
           
           //System.out.println( info.getClass() );
           assertNotNull( info.getName() );

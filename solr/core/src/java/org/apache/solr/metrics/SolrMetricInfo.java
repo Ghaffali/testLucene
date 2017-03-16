@@ -45,7 +45,7 @@ public final class SolrMetricInfo {
       return null;
     }
     String[] names = fullName.split("\\.");
-    if (names.length < 3) { // not a valid info
+    if (names.length < 2) { // not a valid info
       return null;
     }
     // check top-level name for valid category
@@ -55,8 +55,15 @@ public final class SolrMetricInfo {
     } catch (IllegalArgumentException e) { // not a valid category
       return null;
     }
-    String scope = names[1];
-    String name = fullName.substring(names[0].length() + names[1].length() + 2);
+    String scope;
+    String name;
+    if (names.length == 2) {
+      scope = null;
+      name = fullName.substring(names[0].length() + 1);
+    } else {
+      scope = names[1];
+      name = fullName.substring(names[0].length() + names[1].length() + 2);
+    }
     return new SolrMetricInfo(category, scope, name);
   }
 
