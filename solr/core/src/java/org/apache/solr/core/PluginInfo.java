@@ -35,6 +35,8 @@ import static org.apache.solr.schema.FieldType.CLASS_NAME;
  *
  */
 public class PluginInfo implements MapSerializable {
+  public static final String TRUSTED = "trusted";
+  
   public final String name, className, type;
   public final NamedList initArgs;
   public final Map<String, String> attributes;
@@ -42,27 +44,55 @@ public class PluginInfo implements MapSerializable {
   private boolean isFromSolrConfig;
 
   public PluginInfo(String type, Map<String, String> attrs, NamedList initArgs, List<PluginInfo> children) {
+    this(type, attrs, initArgs, children, null);
+  }
+
+  public PluginInfo(String type, Map<String, String> attrs, NamedList initArgs, List<PluginInfo> children, Boolean trusted) {
     this.type = type;
     this.name = attrs.get(NAME);
     this.className = attrs.get(CLASS_NAME);
     this.initArgs = initArgs;
+    if (trusted != null && initArgs != null) {
+      initArgs.remove(TRUSTED);
+      initArgs.add(TRUSTED, trusted.booleanValue());
+    }
     attributes = unmodifiableMap(attrs);
     this.children = children == null ? Collections.<PluginInfo>emptyList(): unmodifiableList(children);
+    if (trusted != null && children != null) {
+      for (PluginInfo child: this.children) {
+        if (child.initArgs != null) {
+          child.initArgs.remove(TRUSTED);
+          child.initArgs.add(TRUSTED, trusted.booleanValue());
+        }
+      }
+    }
     isFromSolrConfig = false;
   }
 
-
   public PluginInfo(Node node, String err, boolean requireName, boolean requireClass) {
+    this(node, err, requireName, requireClass, null);
+  }
+  
+  public PluginInfo(Node node, String err, boolean requireName, boolean requireClass, Boolean trusted) {
     type = node.getNodeName();
     name = DOMUtil.getAttr(node, NAME, requireName ? err : null);
     className = DOMUtil.getAttr(node, CLASS_NAME, requireClass ? err : null);
     initArgs = DOMUtil.childNodesToNamedList(node);
     attributes = unmodifiableMap(DOMUtil.toMap(node.getAttributes()));
-    children = loadSubPlugins(node);
+    children = loadSubPlugins(node, trusted);
     isFromSolrConfig = true;
+    
+    if (trusted != null) {
+      initArgs.remove(TRUSTED);
+      initArgs.add(TRUSTED, trusted.booleanValue());
+    }
   }
 
   public PluginInfo(String type, Map<String,Object> map) {
+    this(type, map, (Boolean)null);
+  }
+
+  public PluginInfo(String type, Map<String,Object> map, Boolean trusted) {
     LinkedHashMap m = new LinkedHashMap<>(map);
     initArgs = new NamedList();
     for (Map.Entry<String, Object> entry : map.entrySet()) {
@@ -83,6 +113,11 @@ public class PluginInfo implements MapSerializable {
         initArgs.add(entry.getKey(), value);
       }
     }
+    
+    if (trusted != null) {
+      initArgs.remove(TRUSTED);
+      initArgs.add(TRUSTED, trusted.booleanValue());
+    }
     this.type = type;
     this.name = (String) m.get(NAME);
     this.className = (String) m.get(CLASS_NAME);
@@ -90,8 +125,8 @@ public class PluginInfo implements MapSerializable {
     this.children =  Collections.<PluginInfo>emptyList();
     isFromSolrConfig = true;
   }
-
-  private List<PluginInfo> loadSubPlugins(Node node) {
+    
+  private List<PluginInfo> loadSubPlugins(Node node, boolean trusted) {
     List<PluginInfo> children = new ArrayList<>();
     //if there is another sub tag with a non namedlist tag that has to be another plugin
     NodeList nlst = node.getChildNodes();
@@ -99,7 +134,7 @@ public class PluginInfo implements MapSerializable {
       Node nd = nlst.item(i);
       if (nd.getNodeType() != Node.ELEMENT_NODE) continue;
       if (NL_TAGS.contains(nd.getNodeName())) continue;
-      PluginInfo pluginInfo = new PluginInfo(nd, null, false, false);
+      PluginInfo pluginInfo = new PluginInfo(nd, null, false, false, trusted);
       if (pluginInfo.isEnabled()) children.add(pluginInfo);
     }
     return children.isEmpty() ? Collections.<PluginInfo>emptyList() : unmodifiableList(children);
@@ -160,12 +195,12 @@ public class PluginInfo implements MapSerializable {
    * @return The mathcing children
    */
   public List<PluginInfo> getChildren(String type){
-    if(children.isEmpty()) return children;
+    if(children.isEmpty()) return children; 
     List<PluginInfo> result = new ArrayList<>();
     for (PluginInfo child : children) if(type.equals(child.type)) result.add(child);
     return result;
   }
-  public static final PluginInfo EMPTY_INFO = new PluginInfo("",Collections.<String,String>emptyMap(), new NamedList(),Collections.<PluginInfo>emptyList());
+  public static final PluginInfo EMPTY_INFO = new PluginInfo("",Collections.<String,String>emptyMap(), new NamedList(),Collections.<PluginInfo>emptyList(), true);
 
   private static final HashSet<String> NL_TAGS = new HashSet<>
     (asList("lst", "arr",
@@ -183,7 +218,7 @@ public class PluginInfo implements MapSerializable {
   }
   public PluginInfo copy() {
     PluginInfo result = new PluginInfo(type, attributes,
-        initArgs != null ? initArgs.clone() : null, children);
+        initArgs != null ? initArgs.clone() : null, children, initArgs.getBooleanArg(TRUSTED));
     result.isFromSolrConfig = isFromSolrConfig;
     return result;
   }

@@ -71,5 +71,5 @@ public interface PermissionNameProvider {
 
   Map<String, Name> values = unmodifiableMap(asList(Name.values()).stream().collect(toMap(Name::getPermissionName, identity())));
 
-  Name getPermissionName(AuthorizationContext request);
+  Name getPermissionName(AuthorizationContext ctx);
 }

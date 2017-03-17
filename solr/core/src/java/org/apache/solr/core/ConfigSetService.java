@@ -75,8 +75,6 @@ public abstract class ConfigSetService {
     SolrResourceLoader coreLoader = createCoreResourceLoader(dcore);
 
     try {
-      SolrConfig solrConfig = createSolrConfig(dcore, coreLoader);
-      IndexSchema schema = createIndexSchema(dcore, solrConfig);
       
       // nocommit javadocs difference between properties and flags
       NamedList properties = createConfigSetProperties(dcore, coreLoader);
@@ -88,6 +86,10 @@ public abstract class ConfigSetService {
               && flags.get("trusted") != null
               && !flags.getBooleanArg("trusted")
           ) ? false: true;
+      
+      SolrConfig solrConfig = createSolrConfig(dcore, coreLoader, trusted);
+      IndexSchema schema = createIndexSchema(dcore, solrConfig);
+
       return new ConfigSet(configName(dcore), solrConfig, schema, properties, trusted);
     } catch (Exception e) {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
@@ -103,8 +105,8 @@ public abstract class ConfigSetService {
    * @param loader the core's resource loader
    * @return a SolrConfig object
    */
-  protected SolrConfig createSolrConfig(CoreDescriptor cd, SolrResourceLoader loader) {
-    return SolrConfig.readFromResourceLoader(loader, cd.getConfigName());
+  protected SolrConfig createSolrConfig(CoreDescriptor cd, SolrResourceLoader loader, boolean trusted) {
+    return SolrConfig.readFromResourceLoader(loader, cd.getConfigName(), trusted);
   }
 
   /**

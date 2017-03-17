@@ -16,6 +16,15 @@
  */
 package org.apache.solr.handler.admin;
 
+import static org.apache.solr.cloud.Overseer.QUEUE_OPERATION;
+import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.BASE_CONFIGSET;
+import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.CONFIGSETS_ACTION_PREFIX;
+import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.PROPERTY_PREFIX;
+import static org.apache.solr.common.params.CommonParams.NAME;
+import static org.apache.solr.common.params.ConfigSetParams.ConfigSetAction.CREATE;
+import static org.apache.solr.common.params.ConfigSetParams.ConfigSetAction.DELETE;
+import static org.apache.solr.common.params.ConfigSetParams.ConfigSetAction.LIST;
+
 import java.io.InputStream;
 import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
@@ -50,24 +59,17 @@ import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.security.AuthorizationContext;
+import org.apache.solr.security.PermissionNameProvider;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.BASE_CONFIGSET;
-import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.CONFIGSETS_ACTION_PREFIX;
-import static org.apache.solr.cloud.OverseerConfigSetMessageHandler.PROPERTY_PREFIX;
-import static org.apache.solr.common.params.CommonParams.NAME;
-import static org.apache.solr.common.params.ConfigSetParams.ConfigSetAction.*;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-
-import static org.apache.solr.cloud.Overseer.QUEUE_OPERATION;
 
 /**
  * A {@link org.apache.solr.request.SolrRequestHandler} for ConfigSets API requests.
  */
-public class ConfigSetsHandler extends RequestHandlerBase {
+public class ConfigSetsHandler extends RequestHandlerBase implements PermissionNameProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer coreContainer;
   public static long DEFAULT_ZK_TIMEOUT = 300*1000;
@@ -300,5 +302,18 @@ public class ConfigSetsHandler extends RequestHandlerBase {
   @Override
   public Boolean registerV2() {
     return Boolean.TRUE;
+  }
+
+
+  @Override
+  public Name getPermissionName(AuthorizationContext ctx) {
+    switch (ctx.getHttpMethod()) {
+      case "GET":
+        return Name.CONFIG_READ_PERM;
+      case "POST":
+        return Name.CONFIG_EDIT_PERM;
+      default:
+        return null;
+    }
   }
 }

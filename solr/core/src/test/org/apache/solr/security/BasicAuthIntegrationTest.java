@@ -300,7 +300,7 @@ public class BasicAuthIntegrationTest extends SolrCloudTestCase {
 
   //the password is 'SolrRocks'
   //this could be generated everytime. But , then we will not know if there is any regression
-  protected static final String STD_CONF = "{\n" +
+  public static final String STD_CONF = "{\n" +
       "  'authentication':{\n" +
       "    'class':'solr.BasicAuthPlugin',\n" +
       "    'credentials':{'solr':'orwp2Ghgj39lmnrZOTm7Qtre1VqHFDfwAEzr0ApbN3Y= Ju5osoAqOX8iafhWpPP01E5P+sg8tK8tHON7rCYZRRw='}},\n" +

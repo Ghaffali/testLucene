@@ -480,7 +480,11 @@ public class MiniSolrCloudCluster {
       }
     }
   }
-  
+
+  public Path getBaseDir() {
+    return baseDir;
+  }
+
   public CloudSolrClient getSolrClient() {
     return solrClient;
   }

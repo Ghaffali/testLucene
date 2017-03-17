@@ -431,7 +431,7 @@ public class SolrXmlConfig {
 
   private static PluginInfo getShardHandlerFactoryPluginInfo(Config config) {
     Node node = config.getNode("solr/shardHandlerFactory", false);
-    return (node == null) ? null : new PluginInfo(node, "shardHandlerFactory", false, true);
+    return (node == null) ? null : new PluginInfo(node, "shardHandlerFactory", false, true, true); //nocommit revisit?
   }
 
   private static PluginInfo[] getBackupRepositoryPluginInfos(Config config) {
@@ -440,7 +440,7 @@ public class SolrXmlConfig {
       return new PluginInfo[0];
     PluginInfo[] configs = new PluginInfo[nodes.getLength()];
     for (int i = 0; i < nodes.getLength(); i++) {
-      configs[i] = new PluginInfo(nodes.item(i), "BackupRepositoryFactory", true, true);
+      configs[i] = new PluginInfo(nodes.item(i), "BackupRepositoryFactory", true, true, true); // nocommit revisit?
     }
     return configs;
   }
@@ -452,7 +452,7 @@ public class SolrXmlConfig {
     PluginInfo[] configs = new PluginInfo[nodes.getLength()];
     for (int i = 0; i < nodes.getLength(); i++) {
       // we don't require class in order to support predefined replica and node reporter classes
-      configs[i] = new PluginInfo(nodes.item(i), "SolrMetricReporter", true, false);
+      configs[i] = new PluginInfo(nodes.item(i), "SolrMetricReporter", true, false, true); // nocommit revisit
     }
     return configs;
   }

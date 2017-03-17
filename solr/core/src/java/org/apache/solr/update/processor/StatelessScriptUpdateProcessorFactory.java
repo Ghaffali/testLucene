@@ -17,6 +17,7 @@
 package org.apache.solr.update.processor;
 
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.core.SolrCore;
@@ -171,6 +172,11 @@ public class StatelessScriptUpdateProcessorFactory extends UpdateRequestProcesso
 
   @Override
   public void init(NamedList args) {
+    if (args.getBooleanArg("trusted") == Boolean.FALSE) {
+      throw new SolrException(ErrorCode.UNAUTHORIZED, "The configset for this collection was uploaded without any authorization in place,"
+          + " and this operation is not available for collections with untrusted configsets. To have this feature, re-upload the configset"
+          + " after enabling authentication and authorization for the /admin endpoints.");
+    }
     Collection<String> scripts = 
       args.removeConfigArgs(SCRIPT_ARG);
     if (scripts.isEmpty()) {

@@ -128,13 +128,15 @@ public class SolrConfig extends Config implements MapSerializable {
   private boolean addHttpRequestToContext;
 
   private final SolrRequestParsers solrRequestParsers;
+  
+  private boolean isTrusted = true; 
 
   /**
    * Creates a default instance from the solrconfig.xml.
    */
   public SolrConfig()
       throws ParserConfigurationException, IOException, SAXException {
-    this((SolrResourceLoader) null, DEFAULT_CONF_FILE, null);
+    this((SolrResourceLoader) null, DEFAULT_CONF_FILE, null, true);
   }
 
   /**
@@ -145,7 +147,7 @@ public class SolrConfig extends Config implements MapSerializable {
    */
   public SolrConfig(String name)
       throws ParserConfigurationException, IOException, SAXException {
-    this((SolrResourceLoader) null, name, null);
+    this((SolrResourceLoader) null, name, null, true); // nocommit
   }
 
   /**
@@ -159,7 +161,7 @@ public class SolrConfig extends Config implements MapSerializable {
    */
   public SolrConfig(String name, InputSource is)
       throws ParserConfigurationException, IOException, SAXException {
-    this((SolrResourceLoader) null, name, is);
+    this((SolrResourceLoader) null, name, is, true); // nocommit
   }
 
   /**
@@ -171,12 +173,12 @@ public class SolrConfig extends Config implements MapSerializable {
    */
   public SolrConfig(Path instanceDir, String name, InputSource is)
       throws ParserConfigurationException, IOException, SAXException {
-    this(new SolrResourceLoader(instanceDir), name, is);
+    this(new SolrResourceLoader(instanceDir), name, is, true);
   }
 
-  public static SolrConfig readFromResourceLoader(SolrResourceLoader loader, String name) {
+  public static SolrConfig readFromResourceLoader(SolrResourceLoader loader, String name, boolean trusted) {
     try {
-      return new SolrConfig(loader, name, null);
+      return new SolrConfig(loader, name, null, trusted);
     } catch (Exception e) {
       String resource;
       if (loader instanceof ZkSolrResourceLoader) {
@@ -188,6 +190,11 @@ public class SolrConfig extends Config implements MapSerializable {
     }
   }
 
+  public SolrConfig(SolrResourceLoader loader, String name, InputSource is) throws ParserConfigurationException, IOException, SAXException {
+    //nocommit
+    this(loader, name, is, true);
+  }
+
   /**
    * Creates a configuration instance from a resource loader, a configuration name and a stream.
    * If the stream is null, the resource loader will open the configuration stream.
@@ -197,9 +204,10 @@ public class SolrConfig extends Config implements MapSerializable {
    * @param name   the configuration name
    * @param is     the configuration stream
    */
-  public SolrConfig(SolrResourceLoader loader, String name, InputSource is)
+  public SolrConfig(SolrResourceLoader loader, String name, InputSource is, boolean trusted)
       throws ParserConfigurationException, IOException, SAXException {
     super(loader, name, is, "/config/");
+    this.isTrusted = trusted;
     getOverlay();//just in case it is not initialized
     getRequestParams();
     initLibs();
@@ -455,6 +463,7 @@ public class SolrConfig extends Config implements MapSerializable {
               "Found " + result.size() + " configuration sections when at most "
                   + "1 is allowed matching expression: " + pluginInfo.getCleanTag());
     }
+    if (result.size()>0)
     if (!result.isEmpty()) pluginStore.put(pluginInfo.clazz.getName(), result);
   }
 
@@ -462,7 +471,7 @@ public class SolrConfig extends Config implements MapSerializable {
     ArrayList<PluginInfo> result = new ArrayList<>();
     NodeList nodes = (NodeList) evaluate(tag, XPathConstants.NODESET);
     for (int i = 0; i < nodes.getLength(); i++) {
-      PluginInfo pluginInfo = new PluginInfo(nodes.item(i), "[solrconfig.xml] " + tag, requireName, requireClass);
+      PluginInfo pluginInfo = new PluginInfo(nodes.item(i), "[solrconfig.xml] " + tag, requireName, requireClass, isTrusted);
       if (pluginInfo.isEnabled()) result.add(pluginInfo);
     }
     return result;
@@ -729,7 +738,8 @@ public class SolrConfig extends Config implements MapSerializable {
           map.put(name, pluginInfo);
         }
         for (Map.Entry<String, Map> e : infos.entrySet()) {
-          map.put(e.getKey(), new PluginInfo(info.getCleanTag(), e.getValue()));
+          PluginInfo newPluginInfo = new PluginInfo(info.getCleanTag(), e.getValue(), isTrusted);
+          map.put(e.getKey(), newPluginInfo);
         }
         result = new ArrayList<>(map.values());
       }
@@ -937,6 +947,14 @@ public class SolrConfig extends Config implements MapSerializable {
     requestParams = RequestParams.getFreshRequestParams(getResourceLoader(), requestParams);
     log.debug("current version of requestparams : {}", requestParams.getZnodeVersion());
     return requestParams;
+  }
+
+  public boolean isTrusted() {
+    return isTrusted;
+  }
+
+  public void setTrusted(boolean isTrusted) {
+    this.isTrusted = isTrusted;
   }
 
 }

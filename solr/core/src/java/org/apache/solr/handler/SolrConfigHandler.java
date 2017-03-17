@@ -306,7 +306,7 @@ public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAwa
 
         LocalSolrQueryRequest r = new LocalSolrQueryRequest(req.getCore(), req.getOriginalParams());
         r.getContext().put(USEPARAM, useParams);
-        NamedList nl = new PluginInfo(SolrRequestHandler.TYPE, pluginInfo).initArgs;
+        NamedList nl = new PluginInfo(SolrRequestHandler.TYPE, pluginInfo, true).initArgs; // nocommit duplicate?
         SolrPluginUtils.setDefaults(r,
             getSolrParamsFromNamedList(nl, DEFAULTS),
             getSolrParamsFromNamedList(nl, APPENDS),
@@ -553,7 +553,7 @@ public class SolrConfigHandler extends RequestHandlerBase implements SolrCoreAwa
       if (!"true".equals(String.valueOf(op.getStr("runtimeLib", null)))) {
         //this is not dynamically loaded so we can verify the class right away
         try {
-          req.getCore().createInitInstance(new PluginInfo(SolrRequestHandler.TYPE, op.getDataMap()), expected, clz, "");
+          req.getCore().createInitInstance(new PluginInfo(SolrRequestHandler.TYPE, op.getDataMap(), true), expected, clz, "");
         } catch (Exception e) {
           op.addError(e.getMessage());
           return false;

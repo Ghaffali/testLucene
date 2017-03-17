@@ -914,7 +914,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       memClassLoader = new MemClassLoader(PluginBag.RuntimeLib.getLibObjects(this, solrConfig.getPluginInfos(PluginBag.RuntimeLib.class.getName())), getResourceLoader());
       initIndex(prev != null, reload);
 
-      initWriters();
+      initWriters(); // nocommit add trusted features to all these classes of plugins
       qParserPlugins.init(createInstances(QParserPlugin.standardPlugins), this);
       valueSourceParsers.init(ValueSourceParser.standardValueSourceParsers, this);
       transformerFactories.init(TransformerFactory.defaultFactories, this);
@@ -2643,6 +2643,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   public <T> T initPlugins(List<PluginInfo> pluginInfos, Map<String, T> registry, Class<T> type, String defClassName) {
     T def = null;
     for (PluginInfo info : pluginInfos) {
+      //info.initArgs.add("trusted", isConfigSetTrusted);
       T o = createInitInstance(info,type, type.getSimpleName(), defClassName);
       registry.put(info.name, o);
       if(info.isDefault()){
@@ -2659,7 +2660,9 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
   public <T> List<T> initPlugins(List<PluginInfo> pluginInfos, Class<T> type, String defClassName) {
     if(pluginInfos.isEmpty()) return Collections.emptyList();
     List<T> result = new ArrayList<>(pluginInfos.size());
-    for (PluginInfo info : pluginInfos) result.add(createInitInstance(info,type, type.getSimpleName(), defClassName));
+    for (PluginInfo info : pluginInfos) {
+      result.add(createInitInstance(info,type, type.getSimpleName(), defClassName));
+    }
     return result;
   }
 
@@ -3003,7 +3006,7 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       Map.Entry<String, Map> entry = (Map.Entry<String, Map>) o;
       Map info = Utils.getDeepCopy(entry.getValue(), 4);
       info.put(NAME, entry.getKey());
-      implicits.add(new PluginInfo(SolrRequestHandler.TYPE, info));
+      implicits.add(new PluginInfo(SolrRequestHandler.TYPE, info, isConfigSetTrusted));
     }
     return implicits;
   }
@@ -3038,6 +3041,11 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
       }
     });
     return blobRef;
+  }
+  
+  // nocommit javadocs
+  public boolean isConfigSetTrusted() {
+    return isConfigSetTrusted;
   }
 }
 

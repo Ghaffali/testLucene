@@ -102,7 +102,7 @@ public class SolrIndexConfig implements MapSerializable {
     mergeSchedulerInfo = null;
     mergedSegmentWarmerInfo = null;
     // enable coarse-grained metrics by default
-    metricsInfo = new PluginInfo("metrics", Collections.emptyMap(), null, null);
+    metricsInfo = new PluginInfo("metrics", Collections.emptyMap(), null, null, true);
   }
   
   /**
