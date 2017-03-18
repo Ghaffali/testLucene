@@ -157,6 +157,7 @@ import org.apache.solr.util.RefCounted;
 import org.apache.solr.util.plugin.NamedListInitializedPlugin;
 import org.apache.solr.util.plugin.PluginInfoInitialized;
 import org.apache.solr.util.plugin.SolrCoreAware;
+import org.apache.solr.util.plugin.Vulnerable;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
@@ -808,8 +809,27 @@ public final class SolrCore implements SolrInfoMBean, Closeable {
     if(info == null) return null;
     T o = createInstance(info.className == null ? defClassName : info.className ,cast, msg,this, getResourceLoader());
     if (o instanceof PluginInfoInitialized) {
+      if (o instanceof Vulnerable) {
+        System.out.println("Vulnerable plugin: "+o);
+        if (info.trusted != null) {
+          info.initArgs.remove(PluginInfo.TRUSTED);
+          info.initArgs.add(PluginInfo.TRUSTED, info.trusted);
+        }
+      } else {
+        System.out.println("Not vulnerable plugin: "+o);
+        info.initArgs.remove(PluginInfo.TRUSTED);
+      }
       ((PluginInfoInitialized) o).init(info);
     } else if (o instanceof NamedListInitializedPlugin) {
+      if (o instanceof Vulnerable) {
+        System.out.println("Vulnerable plugin: "+o);
+        if (info.trusted != null) {
+          info.initArgs.remove(PluginInfo.TRUSTED);
+          info.initArgs.add(PluginInfo.TRUSTED, info.trusted);
+        }
+      } else {
+        System.out.println("Not vulnerable plugin: "+o);
+      }
       ((NamedListInitializedPlugin) o).init(info.initArgs);
     }
     if(o instanceof SearchComponent) {

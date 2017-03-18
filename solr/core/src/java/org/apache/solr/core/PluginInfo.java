@@ -42,6 +42,7 @@ public class PluginInfo implements MapSerializable {
   public final Map<String, String> attributes;
   public final List<PluginInfo> children;
   private boolean isFromSolrConfig;
+  public Boolean trusted;
 
   public PluginInfo(String type, Map<String, String> attrs, NamedList initArgs, List<PluginInfo> children) {
     this(type, attrs, initArgs, children, null);
@@ -52,20 +53,9 @@ public class PluginInfo implements MapSerializable {
     this.name = attrs.get(NAME);
     this.className = attrs.get(CLASS_NAME);
     this.initArgs = initArgs;
-    if (trusted != null && initArgs != null) {
-      initArgs.remove(TRUSTED);
-      initArgs.add(TRUSTED, trusted.booleanValue());
-    }
+    this.trusted = trusted;
     attributes = unmodifiableMap(attrs);
     this.children = children == null ? Collections.<PluginInfo>emptyList(): unmodifiableList(children);
-    if (trusted != null && children != null) {
-      for (PluginInfo child: this.children) {
-        if (child.initArgs != null) {
-          child.initArgs.remove(TRUSTED);
-          child.initArgs.add(TRUSTED, trusted.booleanValue());
-        }
-      }
-    }
     isFromSolrConfig = false;
   }
 
@@ -81,11 +71,7 @@ public class PluginInfo implements MapSerializable {
     attributes = unmodifiableMap(DOMUtil.toMap(node.getAttributes()));
     children = loadSubPlugins(node, trusted);
     isFromSolrConfig = true;
-    
-    if (trusted != null) {
-      initArgs.remove(TRUSTED);
-      initArgs.add(TRUSTED, trusted.booleanValue());
-    }
+    this.trusted = trusted;
   }
 
   public PluginInfo(String type, Map<String,Object> map) {
@@ -114,19 +100,16 @@ public class PluginInfo implements MapSerializable {
       }
     }
     
-    if (trusted != null) {
-      initArgs.remove(TRUSTED);
-      initArgs.add(TRUSTED, trusted.booleanValue());
-    }
     this.type = type;
     this.name = (String) m.get(NAME);
     this.className = (String) m.get(CLASS_NAME);
     attributes = unmodifiableMap(m);
     this.children =  Collections.<PluginInfo>emptyList();
     isFromSolrConfig = true;
+    this.trusted = trusted;
   }
     
-  private List<PluginInfo> loadSubPlugins(Node node, boolean trusted) {
+  private List<PluginInfo> loadSubPlugins(Node node, Boolean trusted) {
     List<PluginInfo> children = new ArrayList<>();
     //if there is another sub tag with a non namedlist tag that has to be another plugin
     NodeList nlst = node.getChildNodes();
@@ -217,7 +200,6 @@ public class PluginInfo implements MapSerializable {
 
   }
   public PluginInfo copy() {
-    Boolean trusted = initArgs == null ? null: initArgs.getBooleanArg(TRUSTED);
     PluginInfo result = new PluginInfo(type, attributes,
         initArgs != null ? initArgs.clone() : null, children, trusted);
     result.isFromSolrConfig = isFromSolrConfig;

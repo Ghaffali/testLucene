@@ -368,7 +368,7 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
       CollectionAdminResponse resp = createCollection("newcollection2", "with-script-processor",
           1, 1, solrCluster.getSolrClient());
       System.out.println("Client saw errors: "+resp.getErrorMessages());
-      assertTrue(resp.getErrorMessages().size() > 0);
+      assertTrue(resp.getErrorMessages() != null && resp.getErrorMessages().size() > 0);
       assertTrue(resp.getErrorMessages().getVal(0).
           contains("The configset for this collection was uploaded without any authorization"));
       //scriptRequest("newcollection2");
