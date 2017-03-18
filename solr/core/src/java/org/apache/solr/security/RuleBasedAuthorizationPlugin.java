@@ -99,32 +99,34 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
   public AuthorizationResponse authorize(AuthorizationContext context) {
     List<AuthorizationContext.CollectionRequest> collectionRequests = context.getCollectionRequests();
     if (context.getRequestType() == AuthorizationContext.RequestType.ADMIN) {
-      MatchStatus flag = checkCollPerm(mapping.get(null), context);
-      return flag.rsp;
+      return checkCollPerm(mapping.get(null), context);
     }
 
     for (AuthorizationContext.CollectionRequest collreq : collectionRequests) {
       //check permissions for each collection
-      MatchStatus flag = checkCollPerm(mapping.get(collreq.collectionName), context);
-      if (flag != MatchStatus.NO_PERMISSIONS_FOUND) return flag.rsp;
+      AuthorizationResponse rsp = checkCollPerm(mapping.get(collreq.collectionName), context);
+      if (rsp.getPermission() == null) return rsp;
     }
     //check wildcard (all=*) permissions.
-    MatchStatus flag = checkCollPerm(mapping.get("*"), context);
-    return flag.rsp;
+    return checkCollPerm(mapping.get("*"), context);
   }
 
-  private MatchStatus checkCollPerm(Map<String, List<Permission>> pathVsPerms,
+  private AuthorizationResponse checkCollPerm(Map<String, List<Permission>> pathVsPerms,
                                     AuthorizationContext context) {
-    if (pathVsPerms == null) return MatchStatus.NO_PERMISSIONS_FOUND;
+    if (pathVsPerms == null) {
+      return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, null);
+    }
 
     String path = context.getResource();
-    MatchStatus flag = checkPathPerm(pathVsPerms.get(path), context);
-    if (flag != MatchStatus.NO_PERMISSIONS_FOUND) return flag;
+    AuthorizationResponse rsp = checkPathPerm(pathVsPerms.get(path), context);
+    if (rsp.getPermission() != null) return rsp;
     return checkPathPerm(pathVsPerms.get(null), context);
   }
 
-  private MatchStatus checkPathPerm(List<Permission> permissions, AuthorizationContext context) {
-    if (permissions == null || permissions.isEmpty()) return MatchStatus.NO_PERMISSIONS_FOUND;
+  private AuthorizationResponse checkPathPerm(List<Permission> permissions, AuthorizationContext context) {
+    if (permissions == null || permissions.isEmpty()) {
+      return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, null);
+    }
     Principal principal = context.getUserPrincipal();
     loopPermissions:
     for (int i = 0; i < permissions.size(); i++) {
@@ -155,26 +157,28 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
 
       if (permission.role == null) {
         //no role is assigned permission.That means everybody is allowed to access
-        return MatchStatus.PERMITTED;
+        return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, permission);
       }
       if (principal == null) {
         log.info("request has come without principal. failed permission {} ",permission);
         //this resource needs a principal but the request has come without
         //any credential.
-        return MatchStatus.USER_REQUIRED;
+        return new AuthorizationResponse(AuthorizationResponse.PROMPT_STATUS, permission);
       } else if (permission.role.contains("*")) {
-        return MatchStatus.PERMITTED;
+        return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, permission);
       }
 
       for (String role : permission.role) {
         Set<String> userRoles = usersVsRoles.get(principal.getName());
-        if (userRoles != null && userRoles.contains(role)) return MatchStatus.PERMITTED;
+        if (userRoles != null && userRoles.contains(role)) {
+          return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, permission); //nocommit should we send the role as well?
+        }
       }
       log.info("This resource is configured to have a permission {}, The principal {} does not have the right role ", permission, principal);
-      return MatchStatus.FORBIDDEN;
+      return new AuthorizationResponse(AuthorizationResponse.FORBIDDEN_STATUS, permission);
     }
     log.debug("No permissions configured for the resource {} . So allowed to access", context.getResource());
-    return MatchStatus.NO_PERMISSIONS_FOUND;
+    return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, null);
   }
 
   @Override
@@ -217,7 +221,7 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
   @Override
   public void close() throws IOException { }
 
-  enum MatchStatus {
+  /*enum MatchStatus {
     USER_REQUIRED(AuthorizationResponse.PROMPT),
     NO_PERMISSIONS_FOUND(AuthorizationResponse.OK),
     PERMITTED(AuthorizationResponse.OK),
@@ -228,7 +232,7 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
     MatchStatus(AuthorizationResponse rsp) {
       this.rsp = rsp;
     }
-  }
+  }*/
 
 
 

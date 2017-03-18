@@ -461,6 +461,12 @@ public class HttpSolrCall {
     }
   }
 
+  private AuthorizationResponse authorizationResponse = null;
+
+  public AuthorizationResponse getAuthorizationResponse() {
+    return authorizationResponse;
+  }
+
   /**
    * This method processes the request.
    */
@@ -488,7 +494,8 @@ public class HttpSolrCall {
         AuthorizationContext context = getAuthorizationContext();
         log.debug("AuthorizationContext : {}", context);
         AuthorizationResponse authResponse = cores.getAuthorizationPlugin().authorize(context);
-        if (authResponse.statusCode == AuthorizationResponse.PROMPT.statusCode) {
+        this.authorizationResponse = authResponse; // downstream processing might need this
+        if (authResponse.statusCode == AuthorizationResponse.PROMPT_STATUS) {
           Map<String, String> headers = (Map) getReq().getAttribute(AuthenticationPlugin.class.getName());
           if (headers != null) {
             for (Map.Entry<String, String> e : headers.entrySet()) response.setHeader(e.getKey(), e.getValue());

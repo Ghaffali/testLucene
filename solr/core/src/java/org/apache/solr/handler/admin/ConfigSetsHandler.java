@@ -60,7 +60,10 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.security.AuthorizationContext;
+import org.apache.solr.security.AuthorizationPlugin;
+import org.apache.solr.security.AuthorizationResponse;
 import org.apache.solr.security.PermissionNameProvider;
+import org.apache.solr.security.RuleBasedAuthorizationPlugin;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -170,23 +173,7 @@ public class ConfigSetsHandler extends RequestHandlerBase implements PermissionN
     InputStream inputStream = contentStreamsIterator.next().getStream();
 
     // Create a node for the configuration in zookeeper nocommit: do this only if /admin is not protected by authz/authc
-    boolean trusted = false;
-    /*AuthorizationPlugin authz = coreContainer.getAuthorizationPlugin();
-    if (authz == null) {
-      trusted = false;
-    } else {
-      if (authz instanceof RuleBasedAuthorizationPlugin) {
-        List<Permission> permissions = ((RuleBasedAuthorizationPlugin) authz).getPermissions("/admin/config");
-        System.out.println("Permissions for this path: "+permissions);
-        if (permissions.isEmpty()) {
-          trusted = false;
-        } else {
-          trusted = true;
-        }
-      } else {
-        trusted = true;
-      }
-    }*/
+    boolean trusted = getTrusted(req);
     zkClient.makePath(configPathInZk, ("{\"trusted\": "+Boolean.toString(trusted)+"}").getBytes(StandardCharsets.UTF_8), true);
 
     ZipInputStream zis = new ZipInputStream(inputStream, StandardCharsets.UTF_8);
@@ -206,7 +193,28 @@ public class ConfigSetsHandler extends RequestHandlerBase implements PermissionN
     rsp.add("message", configSetName + " successfully uploaded!");
   }
 
-      private void createZkNodeIfNotExistsAndSetData(SolrZkClient zkClient,
+  boolean getTrusted(SolrQueryRequest req) {
+    AuthorizationPlugin authzPlugin = coreContainer.getAuthorizationPlugin();
+    AuthorizationResponse authzResponse = req.getHttpSolrCall().getAuthorizationResponse();
+
+    System.out.println("Authz plugin: "+authzPlugin);
+    System.out.println("Authz permission: "+authzResponse.getPermission());
+    if (authzPlugin != null) {
+      if (authzPlugin instanceof RuleBasedAuthorizationPlugin) {
+        if (authzResponse.getPermission() == null) { // this request was permitted since this endpoint was not protected
+          return false;
+        } else {
+          return true; // there was a particular permission that passed, and hence this endpoint is protected
+        }
+      } else {
+        return true; // trust all other authz plugins to have done the authorization properly
+      }
+    } else {
+      return false;
+    }
+  }
+
+  private void createZkNodeIfNotExistsAndSetData(SolrZkClient zkClient,
           String filePathInZk, byte[] data) throws Exception {
         if (!zkClient.exists(filePathInZk, true)) {
           zkClient.create(filePathInZk, data, CreateMode.PERSISTENT, true);

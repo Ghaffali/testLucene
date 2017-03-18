@@ -38,9 +38,9 @@ public class MockAuthorizationPlugin implements AuthorizationPlugin {
     if (predicate != null) {
       try {
         predicate.test(context);
-        return new AuthorizationResponse(200);
+        return new AuthorizationResponse(200, null);
       } catch (SolrException e) {
-        return new AuthorizationResponse(e.code());
+        return new AuthorizationResponse(e.code(), null);
       }
     }
 
@@ -48,9 +48,9 @@ public class MockAuthorizationPlugin implements AuthorizationPlugin {
     if (uname == null) uname = context.getParams().get("uname");
     log.info("User request: " + uname);
     if (denyUsers.contains(uname))
-      return new AuthorizationResponse(403);
+      return new AuthorizationResponse(403, null);
     else
-      return new AuthorizationResponse(200);
+      return new AuthorizationResponse(200, null);
   }
 
   @Override

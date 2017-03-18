@@ -20,14 +20,21 @@ package org.apache.solr.security;
    be used to return ACLs and other information from the authorization plugin.
  */
 public class AuthorizationResponse {
-  public static final AuthorizationResponse OK = new AuthorizationResponse(200);
-  public static final AuthorizationResponse FORBIDDEN = new AuthorizationResponse(403);
-  public static final AuthorizationResponse PROMPT = new AuthorizationResponse(401);
+  public static final int OK_STATUS = 200;
+  public static final int FORBIDDEN_STATUS = 403;
+  public static final int PROMPT_STATUS = 401;
+
   public final int statusCode;
+  
+  /**
+   * nocommit javadocs
+   */
+  private final Permission permission;
   String message;
 
-  public AuthorizationResponse(int httpStatusCode) {
+  public AuthorizationResponse(int httpStatusCode, Permission permission) {
     this.statusCode = httpStatusCode;
+    this.permission = permission;
   }
   
   public String getMessage() {
@@ -36,5 +43,9 @@ public class AuthorizationResponse {
 
   public void setMessage(String message) {
     this.message = message;
+  }
+
+  public Permission getPermission() {
+    return permission;
   }
 }
