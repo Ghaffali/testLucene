@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -78,6 +79,19 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
         }
       }
       return result;
+    }
+  }
+  
+  public List<Permission> getPermissions(String path) {
+    Map<String, List<Permission>> pathVsPerms = mapping.get(null);
+    if (pathVsPerms == null) {
+      return Collections.emptyList();
+    }
+    List<Permission> permissions = pathVsPerms.get(path);
+    if (permissions == null) {
+      return Collections.emptyList();
+    } else {
+      return permissions;
     }
   }
 

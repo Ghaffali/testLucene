@@ -335,8 +335,17 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
 
   @Test
   public void testUploadWithScriptUpdateProcessor() throws Exception {
-    /*String authcPrefix = "/admin/authentication";
+    String authcPrefix = "/admin/authentication";
     String authzPrefix = "/admin/authorization";
+
+    String securityJson = "{\n" +
+        "  'authentication':{\n" +
+        "    'class':'solr.BasicAuthPlugin',\n" +
+        "    'credentials':{'solr':'orwp2Ghgj39lmnrZOTm7Qtre1VqHFDfwAEzr0ApbN3Y= Ju5osoAqOX8iafhWpPP01E5P+sg8tK8tHON7rCYZRRw='}},\n" +
+        "  'authorization':{\n" +
+        "    'class':'solr.RuleBasedAuthorizationPlugin',\n" +
+        "    'user-role':{'solr':'admin'},\n" +
+        "    'permissions':[{'name':'security-edit','role':'admin'}, {'name':'config-edit','role':'admin'}]}}";
 
     HttpClient cl = null;
     try {
@@ -344,7 +353,7 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
       JettySolrRunner randomJetty = solrCluster.getRandomJetty(random());
       String baseUrl = randomJetty.getBaseUrl().toString();
 
-      zkClient().setData("/security.json", BasicAuthIntegrationTest.STD_CONF.replaceAll("'", "\"").getBytes(UTF_8), true);
+      zkClient().setData("/security.json", securityJson.replaceAll("'", "\"").getBytes(UTF_8), true);
       BasicAuthIntegrationTest.verifySecurityStatus(cl, baseUrl + authcPrefix, "authentication/class", "solr.BasicAuthPlugin", 20);
       BasicAuthIntegrationTest.verifySecurityStatus(cl, baseUrl + authzPrefix, "authorization/class", "solr.RuleBasedAuthorizationPlugin", 20);
 
@@ -352,7 +361,7 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
       if (cl != null) {
         HttpClientUtil.close(cl);
       }
-    }*/
+    }
     
     uploadConfigSet("with-script-processor");
       // try to create a collection with the uploaded configset

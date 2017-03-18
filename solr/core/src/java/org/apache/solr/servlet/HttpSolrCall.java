@@ -485,7 +485,7 @@ public class HttpSolrCall {
        2. The requested resource is not a known static file
         */
       if (cores.getAuthorizationPlugin() != null && shouldAuthorize()) {
-        AuthorizationContext context = getAuthCtx();
+        AuthorizationContext context = getAuthorizationContext();
         log.debug("AuthorizationContext : {}", context);
         AuthorizationResponse authResponse = cores.getAuthorizationPlugin().authorize(context);
         if (authResponse.statusCode == AuthorizationResponse.PROMPT.statusCode) {
@@ -978,7 +978,7 @@ public class HttpSolrCall {
     return handler;
   }
 
-  private AuthorizationContext getAuthCtx() {
+  public AuthorizationContext getAuthorizationContext() {
 
     String resource = getPath();
 

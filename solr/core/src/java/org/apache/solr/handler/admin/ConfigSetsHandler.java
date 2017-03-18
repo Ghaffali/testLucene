@@ -60,7 +60,10 @@ import org.apache.solr.handler.RequestHandlerBase;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.security.AuthorizationContext;
+import org.apache.solr.security.AuthorizationPlugin;
+import org.apache.solr.security.Permission;
 import org.apache.solr.security.PermissionNameProvider;
+import org.apache.solr.security.RuleBasedAuthorizationPlugin;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -170,7 +173,24 @@ public class ConfigSetsHandler extends RequestHandlerBase implements PermissionN
     InputStream inputStream = contentStreamsIterator.next().getStream();
 
     // Create a node for the configuration in zookeeper nocommit: do this only if /admin is not protected by authz/authc
-    zkClient.makePath(configPathInZk, "{\"trusted\": false}".getBytes(StandardCharsets.UTF_8), true);
+    boolean trusted;
+    AuthorizationPlugin authz = coreContainer.getAuthorizationPlugin();
+    if (authz == null) {
+      trusted = false;
+    } else {
+      if (authz instanceof RuleBasedAuthorizationPlugin) {
+        List<Permission> permissions = ((RuleBasedAuthorizationPlugin) authz).getPermissions("/admin/config");
+        System.out.println("Permissions for this path: "+permissions);
+        if (permissions.isEmpty()) {
+          trusted = false;
+        } else {
+          trusted = true;
+        }
+      } else {
+        trusted = true;
+      }
+    }
+    zkClient.makePath(configPathInZk, ("{\"trusted\": "+Boolean.toString(trusted)+"}").getBytes(StandardCharsets.UTF_8), true);
 
     ZipInputStream zis = new ZipInputStream(inputStream, StandardCharsets.UTF_8);
     ZipEntry zipEntry = null;

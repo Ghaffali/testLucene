@@ -36,7 +36,7 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.singletonList;
 import static org.apache.solr.common.params.CommonParams.NAME;
 
-class Permission {
+public class Permission {
   String name;
   Set<String> path, role, collections, method;
   Map<String, Function<String[], Boolean>> params;

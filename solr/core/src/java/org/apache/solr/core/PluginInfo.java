@@ -217,8 +217,9 @@ public class PluginInfo implements MapSerializable {
 
   }
   public PluginInfo copy() {
+    Boolean trusted = initArgs == null ? null: initArgs.getBooleanArg(TRUSTED);
     PluginInfo result = new PluginInfo(type, attributes,
-        initArgs != null ? initArgs.clone() : null, children, initArgs.getBooleanArg(TRUSTED));
+        initArgs != null ? initArgs.clone() : null, children, trusted);
     result.isFromSolrConfig = isFromSolrConfig;
     return result;
   }

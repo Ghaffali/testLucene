@@ -20,6 +20,7 @@ import java.lang.invoke.MethodHandles;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.core.PluginInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -29,7 +30,7 @@ public class ClassicIndexSchemaFactory extends IndexSchemaFactory {
   @Override
   public void init(NamedList args) {
     // no arguments expected
-    if (args.size() > 0) {
+    if (args.size() > 0 && !(args.size() == 1 && args.getName(0).equals(PluginInfo.TRUSTED))) {
       String msg = "Unexpected arg(s): " + args;
       log.error(msg);
       throw new SolrException(ErrorCode.SERVER_ERROR, msg);
