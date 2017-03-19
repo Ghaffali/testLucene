@@ -95,6 +95,8 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
     }
   }
 
+  AuthorizationResponse NO_PERMISSIONS_FOUND = new AuthorizationResponse(AuthorizationResponse.OK_STATUS, null);
+
   @Override
   public AuthorizationResponse authorize(AuthorizationContext context) {
     List<AuthorizationContext.CollectionRequest> collectionRequests = context.getCollectionRequests();
@@ -105,7 +107,7 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
     for (AuthorizationContext.CollectionRequest collreq : collectionRequests) {
       //check permissions for each collection
       AuthorizationResponse rsp = checkCollPerm(mapping.get(collreq.collectionName), context);
-      if (rsp.getPermission() == null) return rsp;
+      if (rsp != NO_PERMISSIONS_FOUND) return rsp;
     }
     //check wildcard (all=*) permissions.
     return checkCollPerm(mapping.get("*"), context);
@@ -114,18 +116,18 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
   private AuthorizationResponse checkCollPerm(Map<String, List<Permission>> pathVsPerms,
                                     AuthorizationContext context) {
     if (pathVsPerms == null) {
-      return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, null);
+      return NO_PERMISSIONS_FOUND;
     }
 
     String path = context.getResource();
     AuthorizationResponse rsp = checkPathPerm(pathVsPerms.get(path), context);
-    if (rsp.getPermission() != null) return rsp;
+    if (rsp != NO_PERMISSIONS_FOUND) return rsp;
     return checkPathPerm(pathVsPerms.get(null), context);
   }
 
   private AuthorizationResponse checkPathPerm(List<Permission> permissions, AuthorizationContext context) {
     if (permissions == null || permissions.isEmpty()) {
-      return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, null);
+      return NO_PERMISSIONS_FOUND;
     }
     Principal principal = context.getUserPrincipal();
     loopPermissions:
@@ -178,7 +180,7 @@ public class RuleBasedAuthorizationPlugin implements AuthorizationPlugin, Config
       return new AuthorizationResponse(AuthorizationResponse.FORBIDDEN_STATUS, permission);
     }
     log.debug("No permissions configured for the resource {} . So allowed to access", context.getResource());
-    return new AuthorizationResponse(AuthorizationResponse.OK_STATUS, null);
+    return NO_PERMISSIONS_FOUND;
   }
 
   @Override
