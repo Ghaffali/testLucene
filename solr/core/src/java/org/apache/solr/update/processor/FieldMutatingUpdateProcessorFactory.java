@@ -27,7 +27,6 @@ import java.util.regex.PatternSyntaxException;
 
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.NamedList;
-import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.update.processor.FieldMutatingUpdateProcessor.FieldNameSelector;
 import org.apache.solr.util.plugin.SolrCoreAware;
@@ -208,7 +207,7 @@ public abstract class FieldMutatingUpdateProcessorFactory
     inclusions = parseSelectorParams(args);
     exclusions = parseSelectorExclusionParams(args);
 
-    if (0 < args.size() && !(args.size() == 1 && args.getName(0).equals(PluginInfo.TRUSTED))) {
+    if (0 < args.size()) {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
           "Unexpected init param(s): '" + args.getName(0) + "'");
     }

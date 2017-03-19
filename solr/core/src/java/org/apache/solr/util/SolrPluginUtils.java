@@ -53,7 +53,6 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.StrUtils;
-import org.apache.solr.core.PluginInfo;
 import org.apache.solr.core.RequestParams;
 import org.apache.solr.handler.component.HighlightComponent;
 import org.apache.solr.handler.component.ResponseBuilder;
@@ -1070,9 +1069,6 @@ public class SolrPluginUtils {
     final Class<?> clazz = bean.getClass();
     for (Map.Entry<String,Object> entry : initArgs) {
       String key = entry.getKey();
-      if (key.equals(PluginInfo.TRUSTED)) {
-        continue;
-      }
       String setterName = "set" + String.valueOf(Character.toUpperCase(key.charAt(0))) + key.substring(1);
       try {
         final Object val = entry.getValue();
