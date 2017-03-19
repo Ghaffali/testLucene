@@ -198,7 +198,10 @@ public class ConfigSetsHandler extends RequestHandlerBase implements PermissionN
     AuthorizationResponse authzResponse = req.getHttpSolrCall().getAuthorizationResponse();
 
     System.out.println("Authz plugin: "+authzPlugin);
-    System.out.println("Authz permission: "+authzResponse.getPermission());
+    System.out.println("Authz response: "+authzResponse);
+    if (authzResponse != null) {
+      System.out.println("Authz permission: "+authzResponse.getPermission());
+    }
     if (authzPlugin != null) {
       if (authzPlugin instanceof RuleBasedAuthorizationPlugin) {
         if (authzResponse.getPermission() == null) { // this request was permitted since this endpoint was not protected
