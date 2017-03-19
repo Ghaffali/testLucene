@@ -325,7 +325,7 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
     String suffix = "-untrusted";
     uploadConfigSet("regular", suffix, null, null);
     // try to create a collection with the uploaded configset
-    createCollection("newcollection" + suffix, "regular", 1, 1, solrCluster.getSolrClient());
+    createCollection("newcollection", "regular" + suffix, 1, 1, solrCluster.getSolrClient());
     xsltRequest("newcollection");
   }
   
@@ -398,7 +398,7 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
     // Read zipped sample config
     ByteBuffer sampleZippedConfig = TestDynamicLoading
         .getFileContent(
-            createTempZipFile("solr/core/src/test-files/solr/configsets/upload/"+configSetName), false);
+            createTempZipFile("solr/configsets/upload/"+configSetName), false);
 
     SolrZkClient zkClient = new SolrZkClient(solrCluster.getZkServer().getZkAddress(),
         AbstractZkTestCase.TIMEOUT, 45000, null);
@@ -436,12 +436,15 @@ public class TestConfigSetsAPI extends SolrTestCaseJ4 {
    * and return the path for the zip file.
    */
   private String createTempZipFile(String directoryPath) {
-    File f = new File(solrCluster.getBaseDir().toFile().getAbsolutePath() +
+    File zipFile = new File(solrCluster.getBaseDir().toFile().getAbsolutePath() +
         File.separator + TestUtil.randomSimpleString(random(), 6, 8) + ".zip");
 
+    File directory = TestDynamicLoading.getFile(directoryPath);
+    System.out.println("Directory: "+directory.getAbsolutePath());
     try {
-      zip (new File(directoryPath), f);
-      return f.getAbsolutePath();
+      zip (directory, zipFile);
+      System.out.println("Zipfile: "+zipFile.getAbsolutePath());
+      return zipFile.getAbsolutePath();
     } catch (IOException e) {
       throw new RuntimeException(e);
     }
