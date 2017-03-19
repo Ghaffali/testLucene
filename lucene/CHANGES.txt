@@ -80,9 +80,16 @@ Other
 
 * LUCENE-7681: MemoryIndex uses new DocValues API (Alan Woodward)
 
+======================= Lucene 6.6.0 =======================
+(No Changes)
+
 ======================= Lucene 6.5.0 =======================
 
 API Changes
+
+* LUCENE-7740: Refactor Range Fields to remove Field suffix (e.g., DoubleRange),
+  move InetAddressRange and InetAddressPoint from sandbox to misc module, and
+  refactor all other range fields from sandbox to core. (Nick Knize)
 
 * LUCENE-7624: TermsQuery has been renamed as TermInSetQuery and moved to core.
   (Alan Woodward)
@@ -130,6 +137,9 @@ API Changes
   (David Smiley)
 
 New Features
+
+* LUCENE-7738: Add new InetAddressRange for indexing and querying InetAddress
+  ranges. (Nick Knize)
 
 * LUCENE-7449: Add CROSSES relation support to RangeFieldQuery. (Nick Knize)
 
@@ -219,6 +229,9 @@ Improvements
 * LUCENE-7695: ComplexPhraseQueryParser to support query time synonyms (Markus Jelsma
   via Mikhail Khludnev) 
 
+* LUCENE-7747: QueryBuilder now iterates lazily over the possible paths when building a graph query
+  (Jim Ferenczi)
+
 Optimizations
 
 * LUCENE-7641: Optimized point range queries to compute documents that do not
@@ -248,6 +261,13 @@ Optimizations
 
 * LUCENE-7699: Query parsers now use span queries to produce more efficient
   phrase queries for multi-token synonyms. (Matt Webber via Jim Ferenczi)
+
+* LUCENE-7742: Fix places where we were unboxing and then re-boxing
+  according to FindBugs (Daniel Jelinski via Mike McCandless)
+
+* LUCENE-7739: Fix places where we unnecessarily boxed while parsing
+  a numeric value according to FindBugs (Daniel Jelinski via Mike
+  McCandless)
 
 Build
 

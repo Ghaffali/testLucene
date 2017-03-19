@@ -39,7 +39,6 @@ import org.apache.lucene.document.Field;
 import org.apache.lucene.document.SortedSetDocValuesField;
 import org.apache.lucene.index.IndexableField;
 import org.apache.lucene.index.Term;
-import org.apache.lucene.legacy.LegacyNumericType;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
@@ -610,16 +609,6 @@ public abstract class FieldType extends FieldProperties {
     return similarityFactory;
   }
 
-
-  /** Return the numeric type of this field, or null if this field is not a
-   *  numeric field. 
-   *  @deprecated Please use {@link FieldType#getNumberType()} instead
-   */
-  @Deprecated
-  public LegacyNumericType getNumericType() {
-    return null;
-  }
-  
   /**
    * Return the numeric type of this field, or null if this field is not a
    * numeric field. 
@@ -802,17 +791,27 @@ public abstract class FieldType extends FieldProperties {
    *
    * <p>
    * This method is called by the <code>SchemaField</code> constructor to 
-   * check that its initialization does not violate any fundemental 
-   * requirements of the <code>FieldType</code>.  The default implementation 
-   * does nothing, but subclasses may chose to throw a {@link SolrException}  
+   * check that its initialization does not violate any fundamental
+   * requirements of the <code>FieldType</code>.
+   * Subclasses may choose to throw a {@link SolrException}
    * if invariants are violated by the <code>SchemaField.</code>
    * </p>
    */
   public void checkSchemaField(final SchemaField field) {
-    // override if your field type supports doc values
     if (field.hasDocValues()) {
-      throw new SolrException(ErrorCode.SERVER_ERROR, "Field type " + this + " does not support doc values");
+      checkSupportsDocValues();
     }
+    if (field.isLarge() && field.multiValued()) {
+      throw new SolrException(ErrorCode.SERVER_ERROR, "Field type " + this + " is 'large'; can't support multiValued");
+    }
+    if (field.isLarge() && getNumberType() != null) {
+      throw new SolrException(ErrorCode.SERVER_ERROR, "Field type " + this + " is 'large'; can't support numerics");
+    }
+  }
+
+  /** Called by {@link #checkSchemaField(SchemaField)} if the field has docValues. By default none do. */
+  protected void checkSupportsDocValues() {
+    throw new SolrException(ErrorCode.SERVER_ERROR, "Field type " + this + " does not support doc values");
   }
 
   public static final String TYPE = "type";

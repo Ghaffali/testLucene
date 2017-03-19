@@ -50,9 +50,13 @@ Upgrading from Solr 6.x
   factors should be indexed in a separate field and combined with the query
   score using a function query.
 
+* Deprecated method getNumericType() has been removed from FieldType. Use getNumberType() instead
+
 New Features
 ----------------------
 * SOLR-9857, SOLR-9858: Collect aggregated metrics from nodes and shard leaders in overseer. (ab)
+
+* SOLR-9835: Create another replication mode for SolrCloud
 
 Bug Fixes
 ----------------------
@@ -80,7 +84,26 @@ Optimizations
   (yonik)
 
 Other Changes
+* SOLR-10236: Removed FieldType.getNumericType(). Use getNumberType() instead. (Tomás Fernández Löbbe)
+
 ----------------------
+
+==================  6.6.0 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.6
+Jetty 9.3.14.v20161028
+
+
+(No Changes)
+
 
 ==================  6.5.0 ==================
 
@@ -94,6 +117,7 @@ Velocity 1.7 and Velocity Tools 2.0
 Apache UIMA 2.3.1
 Apache ZooKeeper 3.4.6
 Jetty 9.3.14.v20161028
+Apache Calcite 1.11.0
 
 Detailed Change List
 ----------------------
@@ -104,6 +128,11 @@ Upgrade Notes
   each handler) used to be a simple non-decaying average based on total cumulative time and the
   number of requests. New Codahale Metrics implementation applies exponential decay to this value,
   which heavily biases the average towards the last 5 minutes. (ab)
+
+* SOLR-8593: Parallel SQL now uses Apache Calcite as its SQL framework. As part of this change
+  the default aggregation mode has been changed to facet rather than map_reduce. There has also been changes
+  to the SQL aggregate response and some SQL syntax changes. Consult the documentation for full details.
+
 
 New Features
 ----------------------
@@ -166,6 +195,38 @@ New Features
 
 * SOLR-8045: Deploy V2 API at /v2 instead of /solr/v2 (Cao Manh Dat, Noble Paul)
 
+* SOLR-10039: New LatLonPointSpatialField replacement for LatLonType (and some uses of RPT).  Multi-value capable
+  indexed geo lat-lon points, query by rect or circle.  Efficient distance sorting/boosting too. (David Smiley)
+
+* SOLR-10250: CloudSolrClient can now return versions for documents added or deleted when "versions=true" is passed.
+  However, if there is a leader election while this request is in transit, the versions may not be returned from that
+  shard. (Boris Naguet, Ishan Chattopadhyaya)
+
+* SOLR-9045: Make RecoveryStrategy settings configurable. (Christine Poerschke)
+
+* SOLR-10076: Hide keystore and truststore passwords from /admin/info/* outputs. (Mano Kovacs via Mark Miller)
+
+* SOLR-10224: Add disk total and disk free metrics. (ab)
+
+* SOLR-10046: Add UninvertDocValuesMergePolicyFactory class. (Keith Laban, Christine Poerschke)
+
+* SOLR-10085: SQL result set fields should be ordered by the field list (Joel Bernstein)
+
+* SOLR-10254: significantTerms Streaming Expression should work in non-SolrCloud mode (Joel Bernstein)
+
+* SOLR-10286: string/text fields may now declare themselves as large="true" in the schema.  Large fields are always
+  lazy loaded and will only take up space in the document cache if the actual value is < 512KB.  This option
+  requires "stored" and must not be multiValued.  It's intended for fields that might have very large values so that
+  they don't get cached in memory. (David Smiley)
+
+* SOLR-9185: Solr's edismax and "Lucene"/standard query parsers will no longer split on whitespace before sending
+  terms to analysis, if given the "sow=false" request param ("sow"=>"split on whitespace").  This enables multi-term
+  source synonyms to match at query-time using SynonymGraphFilterFactory; other analysis components will also now
+  work at query time, e.g. ShingleFilterFactory.  By default, and when the "sow=true" param is specified, these
+  parsers' behavior remains the same: queries will be split on whitespace before sending individual terms to analysis.
+  (Steve Rowe)
+
+
 Bug Fixes
 ----------------------
 
@@ -224,6 +285,29 @@ Bug Fixes
 
 * SOLR-10226: add back "totalTime" metric to all handlers. See also the back-compat note. (ab)
 
+* SOLR-9838: "inc" atomic update doesn't respect default field value (hoss, Amrit Sarkar, Ishan Chattopadhyaya)
+
+* SOLR-10269: MetricsHandler JSON output incorrect. (ab)
+
+* SOLR-10279: The autoAddReplica feature can result in SolrCores being assigned new shards when using
+  legacyCloud=false and will also fail on a state check when taking over a core registration with a new
+  core. (Mark Miller, Hrishikesh Gadre, Patrick Dvorack)
+
+* SOLR-10184: Fix bin/solr so it can run properly on java9 (hossman, Uwe Schindler)
+
+* SOLR-9516: Admin UI (angular) now works with Kerberos, by excluding serving of /solr/libs/* through
+  SolrDispatchFilter. (Cassandra Targett, Amrit Sarkar via Ishan Chattopadhyaya)
+
+* SOLR-10302: Solr's zkcli scripts now able to find the metrics libraries, which it couldn't earlier (kiran, Ishan Chattopadhyaya)
+
+* SOLR-10283: Learning to Rank (LTR) SolrFeature to reject searches with missing efi (External Feature Information) used by fq.
+  (Christine Poerschke)
+
+* SOLR-10237: Poly-fields should work with subfields that have docValues=true (Tomás Fernández Löbbe, David Smiley)
+
+* SOLR-10218: The Schema API commands "add-field-type" and "replace-field-type" improperly specify SimilarityFactory params.
+  (Benjamin Deininger, Troy Mohl, Steve Rowe)
+
 Optimizations
 ----------------------
 
@@ -238,6 +322,10 @@ Optimizations
 
 * SOLR-10143: PointFields will create IndexOrDocValuesQuery when a field is both, indexed=true and docValues=true
   (Tomás Fernández Löbbe)
+
+* SOLR-10273: The field with the longest value (if it exceeds 4K) is moved to be last in the Lucene Document in order
+  to benefit from stored field optimizations in Lucene that can avoid reading it when it's not needed.  If the field is
+  multi-valued, they all move together to the end to retain order. (David Smiley)
 
 Other Changes
 ----------------------
@@ -313,6 +401,10 @@ Other Changes
   (hossman, Uwe Schindler)
 
 * SOLR-8876: change morphline test config files to work around 'importCommands' bug when using java9 (hossman)
+
+* SOLR-10247: Support non-numeric metrics and a "compact" format of /admin/metrics output. (ab)
+
+* SOLR-9990: Add PointFields in example/default schemas (Tomás Fernández Löbbe)
 
 ==================  6.4.2 ==================
 

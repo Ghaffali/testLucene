@@ -233,15 +233,6 @@ public class EnumField extends PrimitiveFieldType {
    * {@inheritDoc}
    */
   @Override
-  @Deprecated
-  public LegacyNumericType getNumericType() {
-    return LegacyNumericType.INT;
-  }
-  
-  /**
-   * {@inheritDoc}
-   */
-  @Override
   public NumberType getNumberType() {
     return NumberType.INTEGER;
   }
@@ -284,13 +275,6 @@ public class EnumField extends PrimitiveFieldType {
     }
 
     return query;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public void checkSchemaField(SchemaField field) {
   }
 
   /**
