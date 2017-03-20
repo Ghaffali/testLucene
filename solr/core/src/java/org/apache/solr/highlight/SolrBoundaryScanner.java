@@ -25,7 +25,7 @@ public abstract class SolrBoundaryScanner extends HighlightingPluginBase impleme
     SolrInfoBean, NamedListInitializedPlugin {
 
   public BoundaryScanner getBoundaryScanner(String fieldName, SolrParams params){
-    numRequests++;
+    numRequests.inc();
     params = SolrParams.wrapDefaults(params, defaults);
 
     return get(fieldName, params);

@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -31,6 +32,8 @@ import org.apache.lucene.util.RamUsageEstimator;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +58,7 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
   static final long LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY =
       HASHTABLE_RAM_BYTES_PER_ENTRY
           + 2 * RamUsageEstimator.NUM_BYTES_OBJECT_REF; // previous & next references
+
   /// End copied code
 
   /* An instance of this class will be shared across multiple instances
@@ -82,6 +86,7 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
 
   private Map<K,V> map;
   private String description="LRU Cache";
+  private MetricsMap cacheMap;
 
   private long maxRamBytes = Long.MAX_VALUE;
   // The synchronization used for the map will be used to update this,
@@ -319,40 +324,43 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
   }
 
   @Override
-  public NamedList getStatistics() {
-    NamedList lst = new SimpleOrderedMap();
-    synchronized (map) {
-      lst.add("lookups", lookups);
-      lst.add("hits", hits);
-      lst.add("hitratio", calcHitRatio(lookups,hits));
-      lst.add("inserts", inserts);
-      lst.add("evictions", evictions);
-      lst.add("size", map.size());
-      if (maxRamBytes != Long.MAX_VALUE)  {
-        lst.add("maxRamMB", maxRamBytes / 1024L / 1024L);
-        lst.add("ramBytesUsed", ramBytesUsed());
-        lst.add("evictionsRamUsage", evictionsRamUsage);
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    cacheMap = detailed -> {
+      Map<String, Object> res = new ConcurrentHashMap<>();
+      synchronized (map) {
+        res.put("lookups", lookups);
+        res.put("hits", hits);
+        res.put("hitratio", calcHitRatio(lookups,hits));
+        res.put("inserts", inserts);
+        res.put("evictions", evictions);
+        res.put("size", map.size());
+        if (maxRamBytes != Long.MAX_VALUE)  {
+          res.put("maxRamMB", maxRamBytes / 1024L / 1024L);
+          res.put("ramBytesUsed", ramBytesUsed());
+          res.put("evictionsRamUsage", evictionsRamUsage);
+        }
       }
-    }
-    lst.add("warmupTime", warmupTime);
-    
-    long clookups = stats.lookups.longValue();
-    long chits = stats.hits.longValue();
-    lst.add("cumulative_lookups", clookups);
-    lst.add("cumulative_hits", chits);
-    lst.add("cumulative_hitratio", calcHitRatio(clookups, chits));
-    lst.add("cumulative_inserts", stats.inserts.longValue());
-    lst.add("cumulative_evictions", stats.evictions.longValue());
-    if (maxRamBytes != Long.MAX_VALUE)  {
-      lst.add("cumulative_evictionsRamUsage", stats.evictionsRamUsage.longValue());
-    }
-    
-    return lst;
-  }
+      res.put("warmupTime", warmupTime);
 
+      long clookups = stats.lookups.longValue();
+      long chits = stats.hits.longValue();
+      res.put("cumulative_lookups", clookups);
+      res.put("cumulative_hits", chits);
+      res.put("cumulative_hitratio", calcHitRatio(clookups, chits));
+      res.put("cumulative_inserts", stats.inserts.longValue());
+      res.put("cumulative_evictions", stats.evictions.longValue());
+      if (maxRamBytes != Long.MAX_VALUE)  {
+        res.put("cumulative_evictionsRamUsage", stats.evictionsRamUsage.longValue());
+      }
+
+      return res;
+    };
+    manager.registerGauge(registry, cacheMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
+  }
+  
   @Override
   public String toString() {
-    return name() + getStatistics().toString();
+    return name() + cacheMap != null ? cacheMap.getValue().toString() : "";
   }
 
   @Override

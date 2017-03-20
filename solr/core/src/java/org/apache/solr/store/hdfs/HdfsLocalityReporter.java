@@ -32,10 +32,13 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.SolrInfoBean;
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class HdfsLocalityReporter implements SolrInfoBean {
+public class HdfsLocalityReporter implements SolrInfoBean, SolrMetricProducer {
   public static final String LOCALITY_BYTES_TOTAL = "locality.bytes.total";
   public static final String LOCALITY_BYTES_LOCAL = "locality.bytes.local";
   public static final String LOCALITY_BYTES_RATIO = "locality.bytes.ratio";
@@ -79,76 +82,59 @@ public class HdfsLocalityReporter implements SolrInfoBean {
    * Provide statistics on HDFS block locality, both in terms of bytes and block counts.
    */
   @Override
-  public NamedList getStatistics() {
-    long totalBytes = 0;
-    long localBytes = 0;
-    int totalCount = 0;
-    int localCount = 0;
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    MetricsMap metricsMap = detailed -> {
+      Map<String, Object> map = new ConcurrentHashMap<>();
+      long totalBytes = 0;
+      long localBytes = 0;
+      int totalCount = 0;
+      int localCount = 0;
 
-    for (Iterator<HdfsDirectory> iterator = cache.keySet().iterator(); iterator.hasNext();) {
-      HdfsDirectory hdfsDirectory = iterator.next();
+      for (Iterator<HdfsDirectory> iterator = cache.keySet().iterator(); iterator.hasNext();) {
+        HdfsDirectory hdfsDirectory = iterator.next();
 
-      if (hdfsDirectory.isClosed()) {
-        iterator.remove();
-      } else {
-        try {
-          refreshDirectory(hdfsDirectory);
-          Map<FileStatus,BlockLocation[]> blockMap = cache.get(hdfsDirectory);
+        if (hdfsDirectory.isClosed()) {
+          iterator.remove();
+        } else {
+          try {
+            refreshDirectory(hdfsDirectory);
+            Map<FileStatus,BlockLocation[]> blockMap = cache.get(hdfsDirectory);
 
-          // For every block in every file in this directory, count it
-          for (BlockLocation[] locations : blockMap.values()) {
-            for (BlockLocation bl : locations) {
-              totalBytes += bl.getLength();
-              totalCount++;
+            // For every block in every file in this directory, count it
+            for (BlockLocation[] locations : blockMap.values()) {
+              for (BlockLocation bl : locations) {
+                totalBytes += bl.getLength();
+                totalCount++;
 
-              if (Arrays.asList(bl.getHosts()).contains(hostname)) {
-                localBytes += bl.getLength();
-                localCount++;
+                if (Arrays.asList(bl.getHosts()).contains(hostname)) {
+                  localBytes += bl.getLength();
+                  localCount++;
+                }
               }
             }
+          } catch (IOException e) {
+            logger.warn("Could not retrieve locality information for {} due to exception: {}",
+                hdfsDirectory.getHdfsDirPath(), e);
           }
-        } catch (IOException e) {
-          logger.warn("Could not retrieve locality information for {} due to exception: {}",
-              hdfsDirectory.getHdfsDirPath(), e);
         }
       }
-    }
-
-    return createStatistics(totalBytes, localBytes, totalCount, localCount);
-  }
-
-  /**
-   * Generate a statistics object based on the given measurements for all files monitored by this reporter.
-   * 
-   * @param totalBytes
-   *          The total bytes used
-   * @param localBytes
-   *          The amount of bytes found on local nodes
-   * @param totalCount
-   *          The total block count
-   * @param localCount
-   *          The amount of blocks found on local nodes
-   * @return HDFS block locality statistics
-   */
-  private NamedList<Number> createStatistics(long totalBytes, long localBytes, int totalCount, int localCount) {
-    NamedList<Number> statistics = new SimpleOrderedMap<Number>();
-
-    statistics.add(LOCALITY_BYTES_TOTAL, totalBytes);
-    statistics.add(LOCALITY_BYTES_LOCAL, localBytes);
-    if (localBytes == 0) {
-      statistics.add(LOCALITY_BYTES_RATIO, 0);
-    } else {
-      statistics.add(LOCALITY_BYTES_RATIO, localBytes / (double) totalBytes);
-    }
-    statistics.add(LOCALITY_BLOCKS_TOTAL, totalCount);
-    statistics.add(LOCALITY_BLOCKS_LOCAL, localCount);
-    if (localCount == 0) {
-      statistics.add(LOCALITY_BLOCKS_RATIO, 0);
-    } else {
-      statistics.add(LOCALITY_BLOCKS_RATIO, localCount / (double) totalCount);
-    }
-
-    return statistics;
+      map.put(LOCALITY_BYTES_TOTAL, totalBytes);
+      map.put(LOCALITY_BYTES_LOCAL, localBytes);
+      if (localBytes == 0) {
+        map.put(LOCALITY_BYTES_RATIO, 0);
+      } else {
+        map.put(LOCALITY_BYTES_RATIO, localBytes / (double) totalBytes);
+      }
+      map.put(LOCALITY_BLOCKS_TOTAL, totalCount);
+      map.put(LOCALITY_BLOCKS_LOCAL, localCount);
+      if (localCount == 0) {
+        map.put(LOCALITY_BLOCKS_RATIO, 0);
+      } else {
+        map.put(LOCALITY_BLOCKS_RATIO, localCount / (double) totalCount);
+      }
+      return map;
+    };
+    manager.registerGauge(registry, metricsMap, true, "hdfsLocality", getCategory().toString(), scope);
   }
 
   /**
@@ -193,4 +179,5 @@ public class HdfsLocalityReporter implements SolrInfoBean {
       }
     }
   }
+
 }

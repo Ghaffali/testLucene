@@ -106,10 +106,6 @@ public abstract class SolrCacheBase {
     return Category.CACHE;
   }
 
-  public URL[] getDocs() {
-    return null;
-  }
-  
   public void init(Map<String, String> args, CacheRegenerator regenerator) {
     this.regenerator = regenerator;
     state = State.CREATED;

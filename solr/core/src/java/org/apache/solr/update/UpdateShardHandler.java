@@ -125,11 +125,6 @@ public class UpdateShardHandler implements SolrMetricProducer, SolrInfoBean {
     return Category.UPDATE;
   }
 
-  @Override
-  public NamedList getStatistics() {
-    return null;
-  }
-
   public HttpClient getHttpClient() {
     return client;
   }

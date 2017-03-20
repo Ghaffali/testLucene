@@ -144,6 +144,7 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
     requests = manager.counter(registryName, "requests", getCategory().toString(), scope);
     requestTimes = manager.timer(registryName, "requestTimes", getCategory().toString(), scope);
     totalTime = manager.counter(registryName, "totalTime", getCategory().toString(), scope);
+    manager.registerGauge(registryName, () -> handlerStart, true, "handlerStart", getCategory().toString(), scope);
   }
 
   public static SolrParams getSolrParamsFromNamedList(NamedList args, String key) {
@@ -269,22 +270,6 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
 
   public PluginInfo getPluginInfo(){
     return  pluginInfo;
-  }
-
-
-  @Override
-  public NamedList<Object> getStatistics() {
-    NamedList<Object> lst = new SimpleOrderedMap<>();
-    lst.add("handlerStart",handlerStart);
-    lst.add("requests", requests.getCount());
-    lst.add("errors", numErrors.getCount());
-    lst.add("serverErrors", numServerErrors.getCount());
-    lst.add("clientErrors", numClientErrors.getCount());
-    lst.add("timeouts", numTimeouts.getCount());
-    // convert totalTime to ms
-    lst.add("totalTime", MetricUtils.nsToMs(totalTime.getCount()));
-    MetricUtils.addMetrics(lst, requestTimes);
-    return lst;
   }
 
   @Override

@@ -21,6 +21,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -28,6 +29,8 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.SolrCore;
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.util.ConcurrentLFUCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,6 +67,7 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
   private ConcurrentLFUCache<K, V> cache;
   private int showItems = 0;
   private Boolean timeDecay = true;
+  private MetricsMap cacheMap;
 
   @Override
   public Object init(Map args, Object persistence, CacheRegenerator regenerator) {
@@ -231,62 +235,67 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
   }
 
   @Override
-  public NamedList getStatistics() {
-    NamedList<Serializable> lst = new SimpleOrderedMap<>();
-    if (cache == null) return lst;
-    ConcurrentLFUCache.Stats stats = cache.getStats();
-    long lookups = stats.getCumulativeLookups();
-    long hits = stats.getCumulativeHits();
-    long inserts = stats.getCumulativePuts();
-    long evictions = stats.getCumulativeEvictions();
-    long size = stats.getCurrentSize();
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    cacheMap = detailed -> {
+      Map<String, Object> map = new ConcurrentHashMap<>();
+      if (cache != null) {
+        ConcurrentLFUCache.Stats stats = cache.getStats();
+        long lookups = stats.getCumulativeLookups();
+        long hits = stats.getCumulativeHits();
+        long inserts = stats.getCumulativePuts();
+        long evictions = stats.getCumulativeEvictions();
+        long size = stats.getCurrentSize();
 
-    lst.add("lookups", lookups);
-    lst.add("hits", hits);
-    lst.add("hitratio", calcHitRatio(lookups, hits));
-    lst.add("inserts", inserts);
-    lst.add("evictions", evictions);
-    lst.add("size", size);
+        map.put("lookups", lookups);
+        map.put("hits", hits);
+        map.put("hitratio", calcHitRatio(lookups, hits));
+        map.put("inserts", inserts);
+        map.put("evictions", evictions);
+        map.put("size", size);
 
-    lst.add("warmupTime", warmupTime);
-    lst.add("timeDecay", timeDecay);
+        map.put("warmupTime", warmupTime);
+        map.put("timeDecay", timeDecay);
 
-    long clookups = 0;
-    long chits = 0;
-    long cinserts = 0;
-    long cevictions = 0;
+        long clookups = 0;
+        long chits = 0;
+        long cinserts = 0;
+        long cevictions = 0;
 
-    // NOTE: It is safe to iterate on a CopyOnWriteArrayList
-    for (ConcurrentLFUCache.Stats statistics : statsList) {
-      clookups += statistics.getCumulativeLookups();
-      chits += statistics.getCumulativeHits();
-      cinserts += statistics.getCumulativePuts();
-      cevictions += statistics.getCumulativeEvictions();
-    }
-    lst.add("cumulative_lookups", clookups);
-    lst.add("cumulative_hits", chits);
-    lst.add("cumulative_hitratio", calcHitRatio(clookups, chits));
-    lst.add("cumulative_inserts", cinserts);
-    lst.add("cumulative_evictions", cevictions);
+        // NOTE: It is safe to iterate on a CopyOnWriteArrayList
+        for (ConcurrentLFUCache.Stats statistics : statsList) {
+          clookups += statistics.getCumulativeLookups();
+          chits += statistics.getCumulativeHits();
+          cinserts += statistics.getCumulativePuts();
+          cevictions += statistics.getCumulativeEvictions();
+        }
+        map.put("cumulative_lookups", clookups);
+        map.put("cumulative_hits", chits);
+        map.put("cumulative_hitratio", calcHitRatio(clookups, chits));
+        map.put("cumulative_inserts", cinserts);
+        map.put("cumulative_evictions", cevictions);
 
-    if (showItems != 0) {
-      Map items = cache.getMostUsedItems(showItems == -1 ? Integer.MAX_VALUE : showItems);
-      for (Map.Entry e : (Set<Map.Entry>) items.entrySet()) {
-        Object k = e.getKey();
-        Object v = e.getValue();
+        if (detailed && showItems != 0) {
+          Map items = cache.getMostUsedItems(showItems == -1 ? Integer.MAX_VALUE : showItems);
+          for (Map.Entry e : (Set<Map.Entry>) items.entrySet()) {
+            Object k = e.getKey();
+            Object v = e.getValue();
 
-        String ks = "item_" + k;
-        String vs = v.toString();
-        lst.add(ks, vs);
+            String ks = "item_" + k;
+            String vs = v.toString();
+            map.put(ks, vs);
+          }
+
+        }
+
       }
-
-    }
-
-    return lst;
+      return map;
+    };
+    manager.registerGauge(registry, cacheMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
   }
 
   @Override
   public String toString() {
-    return name + getStatistics().toString();
+    return name + cacheMap != null ? cacheMap.getValue().toString() : "";
   }
+
 }

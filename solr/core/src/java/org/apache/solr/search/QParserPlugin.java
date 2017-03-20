@@ -107,10 +107,6 @@ public abstract class QParserPlugin implements NamedListInitializedPlugin, SolrI
     return Category.QUERYPARSER;
   }
 
-  @Override
-  public NamedList getStatistics() {
-    return null;
-  }
 }
 
 

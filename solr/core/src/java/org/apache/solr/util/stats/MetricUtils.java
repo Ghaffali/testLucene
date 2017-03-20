@@ -226,7 +226,7 @@ public class MetricUtils {
         });
   }
 
-  static Map<String, Object> convertAggregateMetric(AggregateMetric metric, boolean skipAggregateValues) {
+  public static Map<String, Object> convertAggregateMetric(AggregateMetric metric, boolean skipAggregateValues) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", metric.size());
     response.put(MAX, metric.getMax());
@@ -247,7 +247,7 @@ public class MetricUtils {
     return response;
   }
 
-  static Map<String, Object> convertHistogram(Histogram histogram) {
+  public static Map<String, Object> convertHistogram(Histogram histogram) {
     Map<String, Object> response = new LinkedHashMap<>();
     Snapshot snapshot = histogram.getSnapshot();
     response.put("count", histogram.getCount());
@@ -266,7 +266,7 @@ public class MetricUtils {
   }
 
   // some snapshots represent time in ns, other snapshots represent raw values (eg. chunk size)
-  static void addSnapshot(Map<String, Object> response, Snapshot snapshot, boolean ms) {
+  public static void addSnapshot(Map<String, Object> response, Snapshot snapshot, boolean ms) {
     response.put((ms ? MIN_MS: MIN), nsToMs(ms, snapshot.getMin()));
     response.put((ms ? MAX_MS: MAX), nsToMs(ms, snapshot.getMax()));
     response.put((ms ? MEAN_MS : MEAN), nsToMs(ms, snapshot.getMean()));
@@ -278,7 +278,7 @@ public class MetricUtils {
     response.put((ms ? P999_MS: P999), nsToMs(ms, snapshot.get999thPercentile()));
   }
 
-  static Map<String,Object> convertTimer(Timer timer, boolean skipHistograms) {
+  public static Map<String,Object> convertTimer(Timer timer, boolean skipHistograms) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", timer.getCount());
     response.put("meanRate", timer.getMeanRate());
@@ -292,7 +292,7 @@ public class MetricUtils {
     return response;
   }
 
-  static Map<String, Object> convertMeter(Meter meter) {
+  public static Map<String, Object> convertMeter(Meter meter) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", meter.getCount());
     response.put("meanRate", meter.getMeanRate());
@@ -302,7 +302,7 @@ public class MetricUtils {
     return response;
   }
 
-  static Object convertGauge(Gauge gauge, boolean compact) {
+  public static Object convertGauge(Gauge gauge, boolean compact) {
     if (compact) {
       return gauge.getValue();
     } else {
@@ -312,7 +312,7 @@ public class MetricUtils {
     }
   }
 
-  static Object convertCounter(Counter counter, boolean compact) {
+  public static Object convertCounter(Counter counter, boolean compact) {
     if (compact) {
       return counter.getCount();
     } else {

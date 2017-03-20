@@ -32,6 +32,8 @@ import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.handler.RequestHandlerBase;
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.response.RawResponseWriter;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
@@ -42,6 +44,7 @@ import org.apache.solr.util.plugin.SolrCoreAware;
 import java.util.*;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +76,8 @@ public class DataImportHandler extends RequestHandlerBase implements
   private boolean debugEnabled = true;
 
   private String myName = "dataimport";
+
+  private MetricsMap metrics;
 
   private static final String PARAM_WRITER_IMPL = "writerImpl";
   private static final String DEFAULT_WRITER_NAME = "SolrWriter";
@@ -260,41 +265,35 @@ public class DataImportHandler extends RequestHandlerBase implements
       };
     }
   }
-  
+
   @Override
-  @SuppressWarnings("unchecked")
-  public NamedList getStatistics() {
-    if (importer == null)
-      return super.getStatistics();
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    super.initializeMetrics(manager, registryName, scope);
+    metrics = detailed -> {
+      Map<String, Object> map = new ConcurrentHashMap<>();
+      if (importer != null) {
+        DocBuilder.Statistics cumulative = importer.cumulativeStatistics;
 
-    DocBuilder.Statistics cumulative = importer.cumulativeStatistics;
-    SimpleOrderedMap result = new SimpleOrderedMap();
+        map.put("Status", importer.getStatus().toString());
 
-    result.add("Status", importer.getStatus().toString());
+        if (importer.docBuilder != null) {
+          DocBuilder.Statistics running = importer.docBuilder.importStatistics;
+          map.put("Documents Processed", running.docCount);
+          map.put("Requests made to DataSource", running.queryCount);
+          map.put("Rows Fetched", running.rowsCount);
+          map.put("Documents Deleted", running.deletedDocCount);
+          map.put("Documents Skipped", running.skipDocCount);
+        }
 
-    if (importer.docBuilder != null) {
-      DocBuilder.Statistics running = importer.docBuilder.importStatistics;
-      result.add("Documents Processed", running.docCount);
-      result.add("Requests made to DataSource", running.queryCount);
-      result.add("Rows Fetched", running.rowsCount);
-      result.add("Documents Deleted", running.deletedDocCount);
-      result.add("Documents Skipped", running.skipDocCount);
-    }
-
-    result.add(DataImporter.MSG.TOTAL_DOC_PROCESSED, cumulative.docCount);
-    result.add(DataImporter.MSG.TOTAL_QUERIES_EXECUTED, cumulative.queryCount);
-    result.add(DataImporter.MSG.TOTAL_ROWS_EXECUTED, cumulative.rowsCount);
-    result.add(DataImporter.MSG.TOTAL_DOCS_DELETED, cumulative.deletedDocCount);
-    result.add(DataImporter.MSG.TOTAL_DOCS_SKIPPED, cumulative.skipDocCount);
-
-    NamedList requestStatistics = super.getStatistics();
-    if (requestStatistics != null) {
-      for (int i = 0; i < requestStatistics.size(); i++) {
-        result.add(requestStatistics.getName(i), requestStatistics.getVal(i));
+        map.put(DataImporter.MSG.TOTAL_DOC_PROCESSED, cumulative.docCount);
+        map.put(DataImporter.MSG.TOTAL_QUERIES_EXECUTED, cumulative.queryCount);
+        map.put(DataImporter.MSG.TOTAL_ROWS_EXECUTED, cumulative.rowsCount);
+        map.put(DataImporter.MSG.TOTAL_DOCS_DELETED, cumulative.deletedDocCount);
+        map.put(DataImporter.MSG.TOTAL_DOCS_SKIPPED, cumulative.skipDocCount);
       }
-    }
-
-    return result;
+      return map;
+    };
+    manager.registerGauge(registryName, metrics, true, "importer", getCategory().toString(), scope);
   }
 
   // //////////////////////SolrInfoMBeans methods //////////////////////

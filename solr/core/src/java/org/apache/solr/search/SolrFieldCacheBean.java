@@ -47,10 +47,6 @@ public class SolrFieldCacheBean implements SolrInfoBean, SolrMetricProducer {
   }
   @Override
   public Category getCategory() { return Category.CACHE; } 
-  @Override
-  public NamedList getStatistics() {
-    return new NamedList(metricsMap.getValue(!disableEntryList));
-  }
 
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {

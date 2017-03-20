@@ -37,7 +37,7 @@ public abstract class SolrFragmentsBuilder extends HighlightingPluginBase
    * @return An appropriate {@link org.apache.lucene.search.vectorhighlight.FragmentsBuilder}.
    */
   public FragmentsBuilder getFragmentsBuilder(SolrParams params, BoundaryScanner bs) {
-    numRequests++;
+    numRequests.inc();
     params = SolrParams.wrapDefaults(params, defaults);
 
     return getFragmentsBuilder( params, getPreTags( params, null ), getPostTags( params, null ), bs );

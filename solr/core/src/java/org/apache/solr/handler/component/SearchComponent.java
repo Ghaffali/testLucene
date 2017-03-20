@@ -108,11 +108,6 @@ public abstract class SearchComponent implements SolrInfoBean, NamedListInitiali
     return Category.OTHER;
   }
 
-  @Override
-  public NamedList getStatistics() {
-    return null;
-  }
-
   public static final Map<String, Class<? extends SearchComponent>> standard_components;
   ;
 

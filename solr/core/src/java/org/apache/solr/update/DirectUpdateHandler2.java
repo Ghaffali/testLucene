@@ -165,6 +165,22 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
     commitCommands = manager.meter(registry, "commits", getCategory().toString(), scope);
     manager.registerGauge(registry, () -> commitTracker.getCommitCount(), true, "autoCommits", getCategory().toString(), scope);
     manager.registerGauge(registry, () -> softCommitTracker.getCommitCount(), true, "softAutoCommits", getCategory().toString(), scope);
+    if (commitTracker.getDocsUpperBound() > 0) {
+      manager.registerGauge(registry, () -> commitTracker.getDocsUpperBound(), true, "autoCommitMaxDocs",
+          getCategory().toString(), scope);
+    }
+    if (commitTracker.getTimeUpperBound() > 0) {
+      manager.registerGauge(registry, () -> "" + commitTracker.getTimeUpperBound() + "ms", true, "autoCommitMaxTime",
+          getCategory().toString(), scope);
+    }
+    if (softCommitTracker.getDocsUpperBound() > 0) {
+      manager.registerGauge(registry, () -> softCommitTracker.getDocsUpperBound(), true, "softAutoCommitMaxDocs",
+          getCategory().toString(), scope);
+    }
+    if (softCommitTracker.getTimeUpperBound() > 0) {
+      manager.registerGauge(registry, () -> "" + softCommitTracker.getTimeUpperBound() + "ms", true, "softAutoCommitMaxTime",
+          getCategory().toString(), scope);
+    }
     optimizeCommands = manager.meter(registry, "optimizes", getCategory().toString(), scope);
     rollbackCommands = manager.meter(registry, "rollbacks", getCategory().toString(), scope);
     splitCommands = manager.meter(registry, "splits", getCategory().toString(), scope);
@@ -964,50 +980,6 @@ public class DirectUpdateHandler2 extends UpdateHandler implements SolrCoreState
     return "Update handler that efficiently directly updates the on-disk main lucene index";
   }
 
-  @Override
-  public NamedList getStatistics() {
-    NamedList lst = new SimpleOrderedMap();
-    lst.add("commits", commitCommands.getCount());
-    if (commitTracker.getDocsUpperBound() > 0) {
-      lst.add("autocommit maxDocs", commitTracker.getDocsUpperBound());
-    }
-    if (commitTracker.getTimeUpperBound() > 0) {
-      lst.add("autocommit maxTime", "" + commitTracker.getTimeUpperBound() + "ms");
-    }
-    lst.add("autocommits", commitTracker.getCommitCount());
-    if (softCommitTracker.getDocsUpperBound() > 0) {
-      lst.add("soft autocommit maxDocs", softCommitTracker.getDocsUpperBound());
-    }
-    if (softCommitTracker.getTimeUpperBound() > 0) {
-      lst.add("soft autocommit maxTime", "" + softCommitTracker.getTimeUpperBound() + "ms");
-    }
-    lst.add("soft autocommits", softCommitTracker.getCommitCount());
-    lst.add("optimizes", optimizeCommands.getCount());
-    lst.add("rollbacks", rollbackCommands.getCount());
-    lst.add("expungeDeletes", expungeDeleteCommands.getCount());
-    lst.add("docsPending", numDocsPending.longValue());
-    // pset.size() not synchronized, but it should be fine to access.
-    // lst.add("deletesPending", pset.size());
-    lst.add("adds", addCommands.longValue());
-    lst.add("deletesById", deleteByIdCommands.longValue());
-    lst.add("deletesByQuery", deleteByQueryCommands.longValue());
-    lst.add("errors", numErrors.longValue());
-    lst.add("cumulative_adds", addCommandsCumulative.getCount());
-    lst.add("cumulative_deletesById", deleteByIdCommandsCumulative.getCount());
-    lst.add("cumulative_deletesByQuery", deleteByQueryCommandsCumulative.getCount());
-    lst.add("cumulative_errors", numErrorsCumulative.getCount());
-    if (this.ulog != null) {
-      lst.add("transaction_logs_total_size", ulog.getTotalLogsSize());
-      lst.add("transaction_logs_total_number", ulog.getTotalLogsNumber());
-    }
-    return lst;
-  }
-
-  @Override
-  public String toString() {
-    return "DirectUpdateHandler2" + getStatistics();
-  }
-  
   @Override
   public SolrCoreState getSolrCoreState() {
     return solrCoreState;

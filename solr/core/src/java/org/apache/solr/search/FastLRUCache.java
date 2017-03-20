@@ -16,6 +16,8 @@
  */
 package org.apache.solr.search;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.util.ConcurrentLRUCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +29,7 @@ import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -56,6 +59,8 @@ public class FastLRUCache<K, V> extends SolrCacheBase implements SolrCache<K,V> 
   private int showItems = 0;
 
   private long maxRamBytes;
+
+  private MetricsMap cacheMap;
 
   @Override
   public Object init(Map args, Object persistence, CacheRegenerator regenerator) {
@@ -215,62 +220,66 @@ public class FastLRUCache<K, V> extends SolrCacheBase implements SolrCache<K,V> 
   }
 
   @Override
-  public NamedList getStatistics() {
-    NamedList<Serializable> lst = new SimpleOrderedMap<>();
-    if (cache == null)  return lst;
-    ConcurrentLRUCache.Stats stats = cache.getStats();
-    long lookups = stats.getCumulativeLookups();
-    long hits = stats.getCumulativeHits();
-    long inserts = stats.getCumulativePuts();
-    long evictions = stats.getCumulativeEvictions();
-    long size = stats.getCurrentSize();
-    long clookups = 0;
-    long chits = 0;
-    long cinserts = 0;
-    long cevictions = 0;
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    cacheMap = detailed -> {
+      Map<String, Object> map = new ConcurrentHashMap<>();
+      if (cache != null) {
+        ConcurrentLRUCache.Stats stats = cache.getStats();
+        long lookups = stats.getCumulativeLookups();
+        long hits = stats.getCumulativeHits();
+        long inserts = stats.getCumulativePuts();
+        long evictions = stats.getCumulativeEvictions();
+        long size = stats.getCurrentSize();
+        long clookups = 0;
+        long chits = 0;
+        long cinserts = 0;
+        long cevictions = 0;
 
-    // NOTE: It is safe to iterate on a CopyOnWriteArrayList
-    for (ConcurrentLRUCache.Stats statistiscs : statsList) {
-      clookups += statistiscs.getCumulativeLookups();
-      chits += statistiscs.getCumulativeHits();
-      cinserts += statistiscs.getCumulativePuts();
-      cevictions += statistiscs.getCumulativeEvictions();
-    }
+        // NOTE: It is safe to iterate on a CopyOnWriteArrayList
+        for (ConcurrentLRUCache.Stats statistiscs : statsList) {
+          clookups += statistiscs.getCumulativeLookups();
+          chits += statistiscs.getCumulativeHits();
+          cinserts += statistiscs.getCumulativePuts();
+          cevictions += statistiscs.getCumulativeEvictions();
+        }
 
-    lst.add("lookups", lookups);
-    lst.add("hits", hits);
-    lst.add("hitratio", calcHitRatio(lookups, hits));
-    lst.add("inserts", inserts);
-    lst.add("evictions", evictions);
-    lst.add("size", size);
+        map.put("lookups", lookups);
+        map.put("hits", hits);
+        map.put("hitratio", calcHitRatio(lookups, hits));
+        map.put("inserts", inserts);
+        map.put("evictions", evictions);
+        map.put("size", size);
 
-    lst.add("warmupTime", warmupTime);
-    lst.add("cumulative_lookups", clookups);
-    lst.add("cumulative_hits", chits);
-    lst.add("cumulative_hitratio", calcHitRatio(clookups, chits));
-    lst.add("cumulative_inserts", cinserts);
-    lst.add("cumulative_evictions", cevictions);
+        map.put("warmupTime", warmupTime);
+        map.put("cumulative_lookups", clookups);
+        map.put("cumulative_hits", chits);
+        map.put("cumulative_hitratio", calcHitRatio(clookups, chits));
+        map.put("cumulative_inserts", cinserts);
+        map.put("cumulative_evictions", cevictions);
 
-    if (showItems != 0) {
-      Map items = cache.getLatestAccessedItems( showItems == -1 ? Integer.MAX_VALUE : showItems );
-      for (Map.Entry e : (Set <Map.Entry>)items.entrySet()) {
-        Object k = e.getKey();
-        Object v = e.getValue();
+        if (detailed && showItems != 0) {
+          Map items = cache.getLatestAccessedItems( showItems == -1 ? Integer.MAX_VALUE : showItems );
+          for (Map.Entry e : (Set <Map.Entry>)items.entrySet()) {
+            Object k = e.getKey();
+            Object v = e.getValue();
 
-        String ks = "item_" + k;
-        String vs = v.toString();
-        lst.add(ks,vs);
+            String ks = "item_" + k;
+            String vs = v.toString();
+            map.put(ks,vs);
+          }
+
+        }
       }
-      
-    }
-
-    return lst;
+      return map;
+    };
+    manager.registerGauge(registry, cacheMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
   }
 
   @Override
   public String toString() {
-    return name() + getStatistics().toString();
+    return name() + cacheMap != null ? cacheMap.getValue().toString() : "";
   }
+
 }
 
 

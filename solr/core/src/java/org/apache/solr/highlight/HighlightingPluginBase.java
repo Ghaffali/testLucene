@@ -16,18 +16,21 @@
  */
 package org.apache.solr.highlight;
 
+import com.codahale.metrics.Counter;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.SolrInfoBean;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 
 /**
  * 
  * @since solr 1.3
  */
-public abstract class HighlightingPluginBase implements SolrInfoBean
+public abstract class HighlightingPluginBase implements SolrInfoBean, SolrMetricProducer
 {
-  protected long numRequests;
+  protected Counter numRequests;
   protected SolrParams defaults;
 
   public void init(NamedList args) {
@@ -56,10 +59,8 @@ public abstract class HighlightingPluginBase implements SolrInfoBean
   }
 
   @Override
-  public NamedList getStatistics() {
-    NamedList<Long> lst = new SimpleOrderedMap<>();
-    lst.add("requests", numRequests);
-    return lst;
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    manager.counter(registry, "requests", getCategory().toString(), scope);
   }
 }
 

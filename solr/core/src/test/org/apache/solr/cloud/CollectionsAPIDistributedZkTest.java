@@ -558,7 +558,7 @@ public class CollectionsAPIDistributedZkTest extends SolrCloudTestCase {
     for (SolrCore core : theCores) {
 
       // look for core props file
-      Path instancedir = (Path) core.getStatistics().get("instanceDir");
+      Path instancedir = (Path) core.getResourceLoader().getInstancePath();
       assertTrue("Could not find expected core.properties file", Files.exists(instancedir.resolve("core.properties")));
 
       Path expected = Paths.get(jetty.getSolrHome()).toAbsolutePath().resolve(core.getName());

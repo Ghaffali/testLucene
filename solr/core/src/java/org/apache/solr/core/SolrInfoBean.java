@@ -45,15 +45,4 @@ public interface SolrInfoBean {
   String getDescription();
   /** Category of this component */
   Category getCategory();
-  /**
-   * Any statistics this instance would like to be publicly available via
-   * the Solr Administration interface.
-   *
-   * <p>
-   * Any Object type may be stored in the list, but only the
-   * <code>toString()</code> representation will be used.
-   * </p>
-   */
-  NamedList getStatistics();
-
 }

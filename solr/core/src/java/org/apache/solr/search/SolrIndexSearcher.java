@@ -103,15 +103,15 @@ import org.apache.solr.common.SolrDocumentBase;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.params.ModifiableSolrParams;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.ObjectReleaseTracker;
-import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.DirectoryFactory;
 import org.apache.solr.core.DirectoryFactory.DirContext;
 import org.apache.solr.core.SolrConfig;
 import org.apache.solr.core.SolrCore;
 import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.index.SlowCompositeReaderWrapper;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestInfo;
@@ -140,7 +140,7 @@ import com.google.common.collect.Iterables;
  *
  * @since solr 0.9
  */
-public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrInfoBean {
+public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrInfoBean, SolrMetricProducer {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -200,8 +200,6 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
 
   private final String path;
   private boolean releaseDirectory;
-
-  private final NamedList<Object> readerStats;
 
   private static DirectoryReader getReader(SolrCore core, SolrIndexConfig config, DirectoryFactory directoryFactory,
       String path) throws IOException {
@@ -388,7 +386,6 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
     // We already have our own filter cache
     setQueryCache(null);
 
-    readerStats = snapStatistics(reader);
     // do this at the end since an exception in the constructor means we won't close
     numOpens.incrementAndGet();
     assert ObjectReleaseTracker.track(this);
@@ -2605,28 +2602,23 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   }
 
   @Override
-  public NamedList<Object> getStatistics() {
-    final NamedList<Object> lst = new SimpleOrderedMap<>();
-    lst.add("searcherName", name);
-    lst.add("caching", cachingEnabled);
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
 
-    lst.addAll(readerStats);
+    manager.registerGauge(registry, () -> name, true, "searcherName", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> cachingEnabled, true, "caching", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> openTime, true, "openedAt", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> warmupTime, true, "warmupTime", Category.SEARCHER.toString(), scope);
+    if (registerTime != null) {
+      manager.registerGauge(registry, () -> registerTime, true, "registeredAt", Category.SEARCHER.toString(), scope);
+    }
+    // reader stats
+    manager.registerGauge(registry, () -> reader.numDocs(), true, "numDocs", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> reader.maxDoc(), true, "maxDoc", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> reader.maxDoc() - reader.numDocs(), true, "deletedDocs", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> reader.toString(), true, "reader", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> reader.directory().toString(), true, "readerDir", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(registry, () -> reader.getVersion(), true, "indexVersion", Category.SEARCHER.toString(), scope);
 
-    lst.add("openedAt", openTime);
-    if (registerTime != null) lst.add("registeredAt", registerTime);
-    lst.add("warmupTime", warmupTime);
-    return lst;
-  }
-
-  static private NamedList<Object> snapStatistics(DirectoryReader reader) {
-    final NamedList<Object> lst = new SimpleOrderedMap<>();
-    lst.add("numDocs", reader.numDocs());
-    lst.add("maxDoc", reader.maxDoc());
-    lst.add("deletedDocs", reader.maxDoc() - reader.numDocs());
-    lst.add("reader", reader.toString());
-    lst.add("readerDir", reader.directory());
-    lst.add("indexVersion", reader.getVersion());
-    return lst;
   }
 
   private static class FilterImpl extends Filter {
