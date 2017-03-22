@@ -1,20 +1,6 @@
 <project xmlns:asciidoctor="antlib:org.asciidoctor.ant" xmlns:ivy="antlib:org.apache.ivy.ant" >
 
-  <!-- TODO: once we're part of the lucene-solr git repo,
-       remove these lines and replace them with an import of common-build.xml -->
-  <property name="version.base" value="6.2.42" />
-  <tstamp>
-    <format property="current.year" pattern="yyyy"/>
-    <format property="DSTAMP" pattern="yyyy-MM-dd"/>
-  </tstamp>
-  <property name="ivy.sync" value="true"/>
-    <condition property="ivy.symlink">
-    <os family="unix"/>
-  </condition>
-  <!-- <import file="....../common-build.xml"/> -->
-
-
-
+  <import file="../../lucene/common-build.xml"/>
 
   <!-- properties to use in our docs -->
   <loadresource property="solr-docs-version">
