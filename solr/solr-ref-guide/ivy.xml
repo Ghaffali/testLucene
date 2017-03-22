@@ -18,11 +18,12 @@
 -->
 <ivy-module version="2.0">
   <info organisation="org.apache.solr" module="ref-guide-tools"/>
+  <configurations defaultconfmapping="compile->master">
+    <conf name="compile" transitive="false" />
+  </configurations>
   <dependencies>
-    <!-- v1.5.3 of asciidoctor-ant includes asciidoctorj-pdf 1.5.0-alpha.11,
-         which is the same as asciidoctor-pdf 1.5.0-alpha.11  -->
-    <dependency org="org.asciidoctor" name="asciidoctor-ant" rev="1.5.3" />
-    <dependency org="org.json" name="json" rev="20160810" />
-    <dependency org="org.jsoup" name="jsoup" rev="1.8.2" />
+    <dependency org="org.asciidoctor" name="asciidoctor-ant" rev="${/org.asciidoctor/asciidoctor-ant}" conf="compile" />
+    <dependency org="org.json" name="json" rev="${/org.json/json}" conf="compile" />
+    <dependency org="org.jsoup" name="jsoup" rev="${/org.jsoup/jsoup}" conf="compile" />
   </dependencies>
 </ivy-module>

@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <!--
    Licensed to the Apache Software Foundation (ASF) under one
    or more contributor license agreements.  See the NOTICE file
@@ -16,9 +17,9 @@
    specific language governing permissions and limitations
    under the License.    
 -->
-<project xmlns:asciidoctor="antlib:org.asciidoctor.ant" xmlns:ivy="antlib:org.apache.ivy.ant" >
+<project name="solr-ref-guide" default="default" xmlns:asciidoctor="antlib:org.asciidoctor.ant" >
 
-  <import file="../../lucene/common-build.xml"/>
+  <import file="../common-build.xml"/>
 
   <!-- properties to use in our docs -->
   <loadresource property="solr-docs-version">
@@ -42,51 +43,48 @@
   <property name="solr-javadocs" value="https://lucene.apache.org/solr/${solr-docs-version-path}/" />
   <property name="lucene-javadocs" value="https://lucene.apache.org/core/${solr-docs-version-path}/" />
 
-  <target name="resolve">
-    <mkdir dir="build/lib"/>
-    <ivy:retrieve type="jar,bundle" sync="${ivy.sync}" log="download-only" symlink="${ivy.symlink}"
-                  pattern="build/lib/[artifact]-[revision].[ext]" />
-  </target>
-
-  <property name="build.content.dir" location="build/content" />
+  <property name="build.content.dir" location="${build.dir}/content" />
   <property name="main-page" value="apache-solr-reference-guide" />
   <property name="pdf-filename" value="apache-solr-ref-guide-${solr-docs-version}.pdf" />
 
   <!-- ====== TOOLS FOR GENERATING/VALIDATING BITS OF THE SITE / PDF ======= -->
   <property name="tools-jar-name" value="solr-ref-guide-tools.jar" />
   <path id="tools-compile-classpath">
-    <fileset dir="build/lib">
+    <fileset dir="lib">
       <include name="**/*.jar"/>
       <exclude name="**/${tools-jar-name}" />
     </fileset>
   </path>
   <path id="tools-run-classpath">
-    <fileset dir="build/lib">
+    <fileset dir="lib">
+      <include name="**/*.jar"/>
+    </fileset>
+    <fileset dir="${build.dir}">
       <include name="**/*.jar"/>
     </fileset>
   </path>
 
   <target name="clean">
-    <delete dir="build"/>
+    <delete dir="${build.dir}"/>
   </target>
 
   <target name="build-tools-jar" depends="resolve" description="Builds the custom java tools use use for generating some data files from page metdata">
-    <mkdir dir="build/classes"/>
+    <mkdir dir="${build.dir}/classes"/>
     <javac debug="yes"
            debuglevel="source,lines,vars"
-           destdir="build/classes"
+           destdir="${build.dir}/classes"
            includeantruntime="false">
       <compilerarg value="-Xlint:all"/>
       <classpath refid="tools-compile-classpath"/>
       <src path="tools/"/>
     </javac>
-    <jar destfile="build/lib/${tools-jar-name}">
-      <fileset dir="build/classes"
+    <jar destfile="${build.dir}/${tools-jar-name}">
+      <fileset dir="${build.dir}/classes"
                includes="**/*.class"/>
     </jar>
   </target>
 
-  <target name="build-init" description="Prepares the build/content dir, copying over src files and transforming *.template files in the process">
+  <target name="build-init" description="Prepares the build's 'content' dir, copying over src files and transforming *.template files in the process">
     <delete dir="${build.content.dir}" />
     <mkdir dir="${build.content.dir}" />
     <echo>Copying all non template files from src ...</echo>
@@ -123,7 +121,7 @@
           failonerror="true"
           fork="true">
       <classpath refid="tools-run-classpath"/>
-      <arg value="${basedir}/build/html-site"/>
+      <arg value="${build.dir}/html-site"/>
     </java>
   </target>
   
@@ -137,7 +135,7 @@
                  sourceDirectory="${build.content.dir}/pdf"
                  sourceDocumentName="SolrRefGuide-all.adoc"
                  baseDir="${build.content.dir}"
-                 outputDirectory="build"
+                 outputDirectory="${build.dir}"
                  backend="pdf"
                  extensions="adoc"
                  sourceHighlighter="coderay"
@@ -165,8 +163,8 @@
       <attribute key="build-date" value="${DSTAMP}" />
       <attribute key="build-year" value="${current.year}" />
     </asciidoctor:convert>
-    <move file="build/SolrRefGuide-all.pdf" tofile="build/${pdf-filename}" />
-    <echo>Finished Building ${basedir}/build/${pdf-filename}</echo>
+    <move file="${build.dir}/SolrRefGuide-all.pdf" tofile="${build.dir}/${pdf-filename}" />
+    <echo>Finished Building ${build.dir}/${pdf-filename}</echo>
   </target>
 
   <!-- ======= HTML Site Build =======
@@ -179,14 +177,14 @@
     <exec executable="jekyll" dir="${build.content.dir}">
       <arg value="build"/>
     </exec>
-    <echo>Ready to browse site: ${basedir}/build/html-site/${main-page}.html</echo>
+    <echo>Ready to browse site: ${build.dir}/html-site/${main-page}.html</echo>
   </target>
 
-  <target name="build"
+  <target name="default"
           description="Builds both a PDF and HTML versions of the ref guide"
           depends="build-pdf,build-site">
-    <echo>PDF: ${basedir}/build/${pdf-filename}</echo>
-    <echo>SITE: ${basedir}/build/html-site/${main-page}.html</echo>
+    <echo>PDF: ${build.dir}/${pdf-filename}</echo>
+    <echo>SITE: ${build.dir}/html-site/${main-page}.html</echo>
   </target>
 
 </project>
