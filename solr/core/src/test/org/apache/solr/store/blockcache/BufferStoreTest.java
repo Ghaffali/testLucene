@@ -17,9 +17,13 @@
 package org.apache.solr.store.blockcache;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 import org.apache.lucene.util.LuceneTestCase;
+import org.apache.lucene.util.TestUtil;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -27,12 +31,18 @@ public class BufferStoreTest extends LuceneTestCase {
   private final static int blockSize = 1024;
 
   private Metrics metrics;
+  private MetricsMap metricsMap;
 
   private Store store;
 
   @Before
   public void setup() {
     metrics = new Metrics();
+    SolrMetricManager metricManager = new SolrMetricManager();
+    String registry = TestUtil.randomSimpleString(random(), 2, 10);
+    String scope = TestUtil.randomSimpleString(random(), 2, 10);
+    metrics.initializeMetrics(metricManager, registry, scope);
+    metricsMap = (MetricsMap) metricManager.registry(registry).getMetrics().get("CACHE." + scope + ".hdfsBlockCache");
     BufferStore.initNewBuffer(blockSize, blockSize, metrics);
     store = BufferStore.instance(blockSize);
   }
@@ -77,7 +87,7 @@ public class BufferStoreTest extends LuceneTestCase {
    *          whether buffers should have been lost since the last call
    */
   private void assertGaugeMetricsChanged(boolean allocated, boolean lost) {
-    NamedList<Number> stats = metrics.getStatistics();
+    Map<String,Object> stats = metricsMap.getValue();
 
     assertEquals("Buffer allocation metric not updating correctly.",
         allocated, isMetricPositive(stats, "buffercache.allocations"));
@@ -85,7 +95,7 @@ public class BufferStoreTest extends LuceneTestCase {
         lost, isMetricPositive(stats, "buffercache.lost"));
   }
 
-  private boolean isMetricPositive(NamedList<Number> stats, String metric) {
+  private boolean isMetricPositive(Map<String,Object> stats, String metric) {
     return new BigDecimal(stats.get(metric).toString()).compareTo(BigDecimal.ZERO) > 0;
   }
 

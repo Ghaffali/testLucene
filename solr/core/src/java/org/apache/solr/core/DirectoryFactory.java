@@ -321,13 +321,6 @@ public abstract class DirectoryFactory implements NamedListInitializedPlugin,
     return cd.getInstanceDir().resolve(cd.getDataDir()).toAbsolutePath().toString();
   }
 
-  /**
-   * Optionally allow the DirectoryFactory to request registration of some MBeans.
-   */
-  public Collection<SolrInfoBean> offerMBeans() {
-    return Collections.emptySet();
-  }
-
   public void cleanupOldIndexDirectories(final String dataDirPath, final String currentIndexDirPath, boolean afterCoreReload) {
     File dataDir = new File(dataDirPath);
     if (!dataDir.isDirectory()) {

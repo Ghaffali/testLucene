@@ -76,8 +76,6 @@ public class SolrInfoBeanTest extends SolrTestCaseJ4
           }
           
           assertNotNull( info.toString() );
-          // increase code coverage...
-          assertNotNull( info.getStatistics()+"" );
           checked++;
         }
         catch( InstantiationException ex ) {

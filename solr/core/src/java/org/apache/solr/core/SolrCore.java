@@ -998,15 +998,9 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
     // from the core.
     resourceLoader.inform(infoRegistry);
 
-    // Allow the directory factory to register MBeans as well
-    for (SolrInfoBean bean : directoryFactory.offerMBeans()) {
-      log.debug("Registering JMX bean [{}] from directory factory.", bean.getName());
-      // Not worried about concurrency, so no reason to use putIfAbsent
-      if (infoRegistry.containsKey(bean.getName())){
-        log.debug("Ignoring JMX bean [{}] due to name conflict.", bean.getName());
-      } else {
-        infoRegistry.put(bean.getName(), bean);
-      }
+    // Allow the directory factory to report metrics
+    if (directoryFactory instanceof SolrMetricProducer) {
+      ((SolrMetricProducer)directoryFactory).initializeMetrics(metricManager, coreMetricManager.getRegistryName(), "directoryFactory");
     }
 
     // seed version buckets with max from index during core initialization ... requires a searcher!
@@ -2697,11 +2691,20 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
     for (PluginInfo info : pluginInfos) {
       T o = createInitInstance(info,type, type.getSimpleName(), defClassName);
       registry.put(info.name, o);
+      if (o instanceof SolrMetricProducer) {
+        coreMetricManager.registerMetricProducer(type.getSimpleName() + "." + info.name, (SolrMetricProducer)o);
+      }
       if(info.isDefault()){
         def = o;
       }
     }
     return def;
+  }
+
+  public void initDefaultPlugin(Object plugin, Class type) {
+    if (plugin instanceof SolrMetricProducer) {
+      coreMetricManager.registerMetricProducer(type.getSimpleName() + ".default", (SolrMetricProducer)plugin);
+    }
   }
 
   /**For a given List of PluginInfo return the instances as a List

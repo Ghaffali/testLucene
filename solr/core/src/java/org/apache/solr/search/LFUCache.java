@@ -290,7 +290,12 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
       }
       return map;
     };
-    manager.registerGauge(registry, cacheMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
+    manager.registerGauge(registry, cacheMap, true, scope, getCategory().toString());
+  }
+
+  // for unit tests only
+  MetricsMap getMetrics() {
+    return cacheMap;
   }
 
   @Override

@@ -45,4 +45,7 @@ public interface SolrInfoBean {
   String getDescription();
   /** Category of this component */
   Category getCategory();
+
+  // nocommit
+  //default NamedList getStatistics() { return null;}
 }

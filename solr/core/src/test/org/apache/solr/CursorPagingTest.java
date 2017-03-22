@@ -32,6 +32,7 @@ import static org.apache.solr.common.params.CursorMarkParams.CURSOR_MARK_START;
 
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
+import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.search.CursorMark; //jdoc
 import org.noggit.ObjectBuilder;
@@ -521,16 +522,16 @@ public class CursorPagingTest extends SolrTestCaseJ4 {
 
     final Collection<String> allFieldNames = getAllSortFieldNames();
 
-    final SolrInfoBean filterCacheStats
-      = h.getCore().getInfoRegistry().get("filterCache");
+    final MetricsMap filterCacheStats =
+        (MetricsMap)h.getCore().getCoreMetricManager().getRegistry().getMetrics().get("CACHE.searcher.filterCache");
     assertNotNull(filterCacheStats);
-    final SolrInfoBean queryCacheStats
-      = h.getCore().getInfoRegistry().get("queryResultCache");
+    final MetricsMap queryCacheStats =
+        (MetricsMap)h.getCore().getCoreMetricManager().getRegistry().getMetrics().get("CACHE.searcher.queryResultCache");
     assertNotNull(queryCacheStats);
 
-    final long preQcIn = (Long) queryCacheStats.getStatistics().get("inserts");
-    final long preFcIn = (Long) filterCacheStats.getStatistics().get("inserts");
-    final long preFcHits = (Long) filterCacheStats.getStatistics().get("hits");
+    final long preQcIn = (Long) queryCacheStats.getValue().get("inserts");
+    final long preFcIn = (Long) filterCacheStats.getValue().get("inserts");
+    final long preFcHits = (Long) filterCacheStats.getValue().get("hits");
 
     SentinelIntSet ids = assertFullWalkNoDups
       (10, params("q", "*:*",
@@ -542,9 +543,9 @@ public class CursorPagingTest extends SolrTestCaseJ4 {
     
     assertEquals(6, ids.size());
 
-    final long postQcIn = (Long) queryCacheStats.getStatistics().get("inserts");
-    final long postFcIn = (Long) filterCacheStats.getStatistics().get("inserts");
-    final long postFcHits = (Long) filterCacheStats.getStatistics().get("hits");
+    final long postQcIn = (Long) queryCacheStats.getValue().get("inserts");
+    final long postFcIn = (Long) filterCacheStats.getValue().get("inserts");
+    final long postFcHits = (Long) filterCacheStats.getValue().get("hits");
     
     assertEquals("query cache inserts changed", preQcIn, postQcIn);
     // NOTE: use of pure negative filters causees "*:* to be tracked in filterCache

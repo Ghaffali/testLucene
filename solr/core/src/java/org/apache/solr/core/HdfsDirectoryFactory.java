@@ -51,6 +51,8 @@ import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.store.blockcache.BlockCache;
 import org.apache.solr.store.blockcache.BlockDirectory;
 import org.apache.solr.store.blockcache.BlockDirectoryCache;
@@ -70,7 +72,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.RemovalListener;
 import com.google.common.cache.RemovalNotification;
 
-public class HdfsDirectoryFactory extends CachingDirectoryFactory implements SolrCoreAware {
+public class HdfsDirectoryFactory extends CachingDirectoryFactory implements SolrCoreAware, SolrMetricProducer {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   
   public static final String BLOCKCACHE_SLAB_COUNT = "solr.hdfs.blockcache.slab.count";
@@ -493,8 +495,9 @@ public class HdfsDirectoryFactory extends CachingDirectoryFactory implements Sol
   }
 
   @Override
-  public Collection<SolrInfoBean> offerMBeans() {
-    return Arrays.<SolrInfoBean>asList(MetricsHolder.metrics, LocalityHolder.reporter);
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    MetricsHolder.metrics.initializeMetrics(manager, registry, scope);
+    LocalityHolder.reporter.initializeMetrics(manager, registry, scope);
   }
 
   @Override

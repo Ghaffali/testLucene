@@ -16,9 +16,14 @@
  */
 package org.apache.solr.core;
 
-import org.apache.solr.common.util.NamedList;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
-class MockInfoBean implements SolrInfoBean {
+import org.apache.solr.metrics.MetricsMap;
+import org.apache.solr.metrics.SolrMetricManager;
+import org.apache.solr.metrics.SolrMetricProducer;
+
+class MockInfoBean implements SolrInfoBean, SolrMetricProducer {
   @Override
   public String getName() {
     return "mock";
@@ -35,17 +40,19 @@ class MockInfoBean implements SolrInfoBean {
   }
 
   @Override
-  @SuppressWarnings("unchecked")
-  public NamedList getStatistics() {
-    NamedList myList = new NamedList<Integer>();
-    myList.add("Integer", 123);
-    myList.add("Double",567.534);
-    myList.add("Long", 32352463l);
-    myList.add("Short", (short) 32768);
-    myList.add("Byte", (byte) 254);
-    myList.add("Float", 3.456f);
-    myList.add("String","testing");
-    myList.add("Object", new Object());
-    return myList;
+  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+    MetricsMap metricsMap = detailed -> {
+      Map<String, Object> map = new ConcurrentHashMap<>();
+      map.put("Integer", 123);
+      map.put("Double",567.534);
+      map.put("Long", 32352463l);
+      map.put("Short", (short) 32768);
+      map.put("Byte", (byte) 254);
+      map.put("Float", 3.456f);
+      map.put("String","testing");
+      map.put("Object", new Object());
+      return map;
+    };
+    manager.registerGauge(registry, metricsMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
   }
 }

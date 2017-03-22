@@ -355,7 +355,12 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
 
       return res;
     };
-    manager.registerGauge(registry, cacheMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
+    manager.registerGauge(registry, cacheMap, true, scope, getCategory().toString());
+  }
+
+  // for unit tests only
+  MetricsMap getMetrics() {
+    return cacheMap;
   }
   
   @Override

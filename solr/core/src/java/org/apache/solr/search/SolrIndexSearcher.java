@@ -475,7 +475,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   }
 
   /**
-   * Register sub-objects such as caches
+   * Register sub-objects such as caches and our own metrics
    */
   public void register() {
     final Map<String,SolrInfoBean> infoRegistry = core.getInfoRegistry();
@@ -486,6 +486,12 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
       cache.setState(SolrCache.State.LIVE);
       infoRegistry.put(cache.name(), cache);
     }
+    SolrMetricManager manager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
+    String registry = core.getCoreMetricManager().getRegistryName();
+    for (SolrCache cache : cacheList) {
+      cache.initializeMetrics(manager, registry, SolrMetricManager.mkName(cache.name(), STATISTICS_KEY));
+    }
+    initializeMetrics(manager, registry, STATISTICS_KEY);
     registerTime = new Date();
   }
 
@@ -2608,9 +2614,7 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
     manager.registerGauge(registry, () -> cachingEnabled, true, "caching", Category.SEARCHER.toString(), scope);
     manager.registerGauge(registry, () -> openTime, true, "openedAt", Category.SEARCHER.toString(), scope);
     manager.registerGauge(registry, () -> warmupTime, true, "warmupTime", Category.SEARCHER.toString(), scope);
-    if (registerTime != null) {
-      manager.registerGauge(registry, () -> registerTime, true, "registeredAt", Category.SEARCHER.toString(), scope);
-    }
+    manager.registerGauge(registry, () -> registerTime, true, "registeredAt", Category.SEARCHER.toString(), scope);
     // reader stats
     manager.registerGauge(registry, () -> reader.numDocs(), true, "numDocs", Category.SEARCHER.toString(), scope);
     manager.registerGauge(registry, () -> reader.maxDoc(), true, "maxDoc", Category.SEARCHER.toString(), scope);

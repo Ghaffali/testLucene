@@ -60,7 +60,7 @@ public abstract class HighlightingPluginBase implements SolrInfoBean, SolrMetric
 
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    manager.counter(registry, "requests", getCategory().toString(), scope);
+   numRequests = manager.counter(registry, "requests", getCategory().toString(), scope);
   }
 }
 

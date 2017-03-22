@@ -16,8 +16,13 @@
  */
 package org.apache.solr.core;
 
+import java.util.Map;
+
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.Metric;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.request.SolrRequestHandler;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -30,10 +35,11 @@ public class RequestHandlersTest extends SolrTestCaseJ4 {
 
   @Test
   public void testInitCount() {
-    SolrCore core = h.getCore();
-    SolrRequestHandler handler = core.getRequestHandler( "mock" );
+    String registry = h.getCore().getCoreMetricManager().getRegistryName();
+    SolrMetricManager manager = h.getCoreContainer().getMetricManager();
+    Gauge<Number> g = (Gauge<Number>)manager.registry(registry).getMetrics().get("QUERY.mock.initCount");
     assertEquals("Incorrect init count",
-                 1, handler.getStatistics().get("initCount"));
+                 1, g.getValue().intValue());
   }
 
   @Test
@@ -93,24 +99,5 @@ public class RequestHandlersTest extends SolrTestCaseJ4 {
     assertEquals( h1, h2 ); // the same object
     
     assertNull( core.getRequestHandler("/update/asdgadsgas" ) ); // prefix
-  }
-
-  @Test
-  public void testStatistics() {
-    SolrCore core = h.getCore();
-    SolrRequestHandler updateHandler = core.getRequestHandler("/update");
-    SolrRequestHandler termHandler = core.getRequestHandler("/terms");
-
-    assertU(adoc("id", "47",
-        "text", "line up and fly directly at the enemy death cannons, clogging them with wreckage!"));
-    assertU(commit());
-
-    NamedList updateStats = updateHandler.getStatistics();
-    NamedList termStats = termHandler.getStatistics();
-
-    Double updateTime = (Double) updateStats.get("avgTimePerRequest");
-    Double termTime = (Double) termStats.get("avgTimePerRequest");
-
-    assertFalse("RequestHandlers should not share statistics!", updateTime.equals(termTime));
   }
 }
