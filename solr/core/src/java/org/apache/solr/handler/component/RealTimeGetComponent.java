@@ -77,10 +77,13 @@ import org.apache.solr.update.DocumentBuilder;
 import org.apache.solr.update.IndexFingerprint;
 import org.apache.solr.update.PeerSync;
 import org.apache.solr.update.UpdateLog;
-import org.apache.solr.update.processor.DistributedUpdateProcessor;
 import org.apache.solr.util.RefCounted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.common.params.CommonParams.DISTRIB;
+import static org.apache.solr.common.params.CommonParams.ID;
+import static org.apache.solr.common.params.CommonParams.VERSION_FIELD;
 
 public class RealTimeGetComponent extends SearchComponent
 {
@@ -472,8 +475,8 @@ public class RealTimeGetComponent extends SearchComponent
       doc = toSolrDoc(luceneDocument, core.getLatestSchema());
       searcher.decorateDocValueFields(doc, docid, decorateFields);
 
-      long docVersion = (long) doc.getFirstValue(DistributedUpdateProcessor.VERSION_FIELD);
-      Object partialVersionObj = partialDoc.getFieldValue(DistributedUpdateProcessor.VERSION_FIELD);
+      long docVersion = (long) doc.getFirstValue(VERSION_FIELD);
+      Object partialVersionObj = partialDoc.getFieldValue(VERSION_FIELD);
       long partialDocVersion = partialVersionObj instanceof Field? ((Field) partialVersionObj).numericValue().longValue():
         partialVersionObj instanceof Number? ((Number) partialVersionObj).longValue(): Long.parseLong(partialVersionObj.toString());
       if (docVersion > partialDocVersion) {
@@ -620,8 +623,8 @@ public class RealTimeGetComponent extends SearchComponent
     }
 
     if (versionReturned != null) {
-      if (sid.containsKey(DistributedUpdateProcessor.VERSION_FIELD)) {
-        versionReturned.set((long)sid.getFieldValue(DistributedUpdateProcessor.VERSION_FIELD));
+      if (sid.containsKey(VERSION_FIELD)) {
+        versionReturned.set((long)sid.getFieldValue(VERSION_FIELD));
       }
     }
     return sid;
@@ -689,21 +692,49 @@ public class RealTimeGetComponent extends SearchComponent
           List<Object> vals = new ArrayList<>();
           if (f.fieldType().docValuesType() == DocValuesType.SORTED_NUMERIC) {
             // SORTED_NUMERICS store sortable bits version of the value, need to retrieve the original
-            vals.add(sf.getType().toObject(f));
+            vals.add(sf.getType().toObject(f)); // (will materialize by side-effect)
           } else {
-            vals.add( f );
+            vals.add( materialize(f) );
           }
           out.setField( f.name(), vals );
         }
         else{
-          out.setField( f.name(), f );
+          out.setField( f.name(), materialize(f) );
         }
       }
       else {
-        out.addField( f.name(), f );
+        out.addField( f.name(), materialize(f) );
       }
     }
     return out;
+  }
+
+  /**
+   * Ensure we don't have {@link org.apache.lucene.document.LazyDocument.LazyField} or equivalent.
+   * It can pose problems if the searcher is about to be closed and we haven't fetched a value yet.
+   */
+  private static IndexableField materialize(IndexableField in) {
+    if (in instanceof Field) { // already materialized
+      return in;
+    }
+    return new ClonedField(in);
+  }
+
+  private static class ClonedField extends Field { // TODO Lucene Field has no copy constructor; maybe it should?
+    ClonedField(IndexableField in) {
+      super(in.name(), in.fieldType());
+      this.fieldsData = in.numericValue();
+      if (this.fieldsData == null) {
+        this.fieldsData = in.binaryValue();
+        if (this.fieldsData == null) {
+          this.fieldsData = in.stringValue();
+          if (this.fieldsData == null) {
+            // fallback:
+            assert false : in; // unexpected
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -809,10 +840,10 @@ public class RealTimeGetComponent extends SearchComponent
 
     // TODO: how to avoid hardcoding this and hit the same handler?
     sreq.params.set(ShardParams.SHARDS_QT,"/get");      
-    sreq.params.set("distrib",false);
+    sreq.params.set(DISTRIB,false);
 
     sreq.params.remove(ShardParams.SHARDS);
-    sreq.params.remove("id");
+    sreq.params.remove(ID);
     sreq.params.remove("ids");
     sreq.params.set("ids", StrUtils.join(ids, ','));
     
@@ -1110,7 +1141,7 @@ public class RealTimeGetComponent extends SearchComponent
         return (IdsRequsted)req.getContext().get(contextKey);
       }
       final SolrParams params = req.getParams();
-      final String id[] = params.getParams("id");
+      final String id[] = params.getParams(ID);
       final String ids[] = params.getParams("ids");
       
       if (id == null && ids == null) {

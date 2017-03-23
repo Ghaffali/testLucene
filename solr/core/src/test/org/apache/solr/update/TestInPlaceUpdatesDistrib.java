@@ -323,9 +323,6 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
   }
 
   private void docValuesUpdateTest() throws Exception {
-    clearIndex();
-    commit();
-
     // number of docs we're testing (0 <= id), index may contain additional random docs (id < 0)
     final int numDocs = atLeast(100);
     log.info("Trying num docs = " + numDocs);
@@ -342,7 +339,7 @@ public class TestInPlaceUpdatesDistrib extends AbstractFullDistribZkTestBase {
     SolrDocumentList results = LEADER.query(params).getResults();
     assertEquals(numDocs, results.size());
     for (SolrDocument doc : results) {
-      luceneDocids.add((int) doc.get("[docid]"));
+      luceneDocids.add((Integer) doc.get("[docid]"));
       valuesList.add((Float) doc.get("inplace_updatable_float"));
     }
     log.info("Initial results: "+results);
