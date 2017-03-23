@@ -22,8 +22,6 @@ import static org.apache.lucene.index.IndexOptions.DOCS_AND_FREQS_AND_POSITIONS_
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;

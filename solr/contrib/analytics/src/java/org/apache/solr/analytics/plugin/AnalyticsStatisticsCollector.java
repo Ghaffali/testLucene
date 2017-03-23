@@ -17,12 +17,9 @@
 package org.apache.solr.analytics.plugin;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 import com.codahale.metrics.Timer;
-import org.apache.solr.common.util.NamedList;
-import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.util.stats.MetricUtils;
 
 public class AnalyticsStatisticsCollector {

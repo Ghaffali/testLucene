@@ -16,8 +16,6 @@
  */
 package org.apache.solr.core;
 
-import org.apache.solr.common.util.NamedList;
-
 /**
  * Interface for getting various ui friendly strings
  * for use by objects which are 'pluggable' to make server administration
@@ -45,7 +43,4 @@ public interface SolrInfoBean {
   String getDescription();
   /** Category of this component */
   Category getCategory();
-
-  // nocommit
-  //default NamedList getStatistics() { return null;}
 }

@@ -19,7 +19,6 @@ package org.apache.solr;
 import org.apache.lucene.util.TestUtil;
 import org.apache.lucene.util.SentinelIntSet;
 import org.apache.lucene.util.mutable.MutableValueInt;
-import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.CursorMarkParams;
 import org.apache.solr.common.params.SolrParams;

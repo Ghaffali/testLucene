@@ -19,10 +19,6 @@ package org.apache.solr.search;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Metric;
-import org.apache.solr.common.util.NamedList;
-import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;

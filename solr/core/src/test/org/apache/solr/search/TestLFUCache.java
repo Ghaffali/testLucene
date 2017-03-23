@@ -19,7 +19,6 @@ package org.apache.solr.search;
 import org.apache.lucene.util.TestUtil;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.util.ExecutorUtil;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.util.ConcurrentLFUCache;
 import org.apache.solr.util.DefaultSolrThreadFactory;

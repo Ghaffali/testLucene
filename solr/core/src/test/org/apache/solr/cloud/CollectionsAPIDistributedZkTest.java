@@ -17,7 +17,6 @@
 package org.apache.solr.cloud;
 
 import javax.management.MBeanAttributeInfo;
-import javax.management.MBeanInfo;
 import javax.management.MBeanServer;
 import javax.management.MBeanServerFactory;
 import javax.management.ObjectName;

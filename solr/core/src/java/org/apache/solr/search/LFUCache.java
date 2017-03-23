@@ -15,9 +15,8 @@
  * limitations under the License.
  */
 package org.apache.solr.search;
-import java.io.Serializable;
+
 import java.lang.invoke.MethodHandles;
-import java.net.URL;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,9 +25,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.NamedList;
-import org.apache.solr.common.util.SimpleOrderedMap;
-import org.apache.solr.core.SolrCore;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.util.ConcurrentLFUCache;

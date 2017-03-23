@@ -73,7 +73,7 @@ import org.slf4j.LoggerFactory;
  * <p>This class enforces a common prefix ({@link #REGISTRY_NAME_PREFIX}) in all registry
  * names.</p>
  * <p>Solr uses several different registries for collecting metrics belonging to different groups, using
- * {@link SolrInfoBean.Group} as the main name of the registry (plus the
+ * {@link org.apache.solr.core.SolrInfoBean.Group} as the main name of the registry (plus the
  * above-mentioned prefix). Instances of {@link SolrMetricManager} are created for each {@link org.apache.solr.core.CoreContainer},
  * and most registries are local to each instance, with the exception of two global registries:
  * <code>solr.jetty</code> and <code>solr.jvm</code>, which are shared between all {@link org.apache.solr.core.CoreContainer}-s</p>
@@ -569,7 +569,7 @@ public class SolrMetricManager {
    * </pre>
    * <b>NOTE:</b> Once a registry is renamed in a way that its metrics are combined with another repository
    * it is no longer possible to retrieve the original metrics until this renaming is removed and the Solr
-   * {@link SolrInfoBean.Group} of components that reported to that name is restarted.
+   * {@link org.apache.solr.core.SolrInfoBean.Group} of components that reported to that name is restarted.
    * @param registry The name of the registry
    * @return A potentially overridden (via System properties) registry name
    */
@@ -622,7 +622,7 @@ public class SolrMetricManager {
   // reporter management
 
   /**
-   * Create and register {@link SolrMetricReporter}-s specific to a {@link SolrInfoBean.Group}.
+   * Create and register {@link SolrMetricReporter}-s specific to a {@link org.apache.solr.core.SolrInfoBean.Group}.
    * Note: reporters that specify neither "group" nor "registry" attributes are treated as universal -
    * they will always be loaded for any group. These two attributes may also contain multiple comma- or
    * whitespace-separated values, in which case the reporter will be loaded for any matching value from

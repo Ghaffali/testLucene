@@ -77,7 +77,7 @@ public class SolrCoreMetricManager implements Closeable {
   }
 
   /**
-   * Load reporters configured globally and specific to {@link SolrInfoBean.Group#core}
+   * Load reporters configured globally and specific to {@link org.apache.solr.core.SolrInfoBean.Group#core}
    * group or with a registry name specific to this core.
    */
   public void loadReporters() {

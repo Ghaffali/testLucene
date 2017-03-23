@@ -22,7 +22,6 @@ import org.apache.solr.analytics.plugin.AnalyticsStatisticsCollector;
 import org.apache.solr.analytics.request.AnalyticsStats;
 import org.apache.solr.analytics.util.AnalyticsParams;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
@@ -84,9 +83,7 @@ public class AnalyticsComponent extends SearchComponent implements SolrMetricPro
 
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    MetricsMap metrics = detailed -> {
-      return analyticsCollector.getStatistics();
-    };
+    MetricsMap metrics = detailed -> analyticsCollector.getStatistics();
     manager.registerGauge(registry, metrics, true, getClass().getSimpleName(), getCategory().toString(), scope);
   }
 }

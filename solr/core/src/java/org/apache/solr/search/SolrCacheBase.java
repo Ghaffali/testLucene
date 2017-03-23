@@ -18,7 +18,6 @@ package org.apache.solr.search;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.net.URL;
 import java.util.Map;
 
 import org.apache.solr.core.SolrCore;

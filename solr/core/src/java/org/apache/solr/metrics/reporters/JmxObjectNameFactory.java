@@ -59,9 +59,6 @@ public class JmxObjectNameFactory implements ObjectNameFactory {
    */
   @Override
   public ObjectName createName(String type, String currentDomain, String name) {
-    if (name.contains("indexDir")) {
-      name = name;
-    }
     SolrMetricInfo metricInfo = SolrMetricInfo.of(name);
     String safeName = metricInfo != null ? metricInfo.name : name;
     safeName = safeName.replaceAll(":", "_");

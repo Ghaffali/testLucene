@@ -16,12 +16,8 @@
  */
 package org.apache.solr.core;
 
-import java.util.Map;
-
 import com.codahale.metrics.Gauge;
-import com.codahale.metrics.Metric;
 import org.apache.solr.SolrTestCaseJ4;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.request.SolrRequestHandler;
 import org.junit.BeforeClass;

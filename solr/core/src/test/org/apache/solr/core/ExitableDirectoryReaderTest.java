@@ -19,7 +19,6 @@ package org.apache.solr.core;
 import java.util.Map;
 
 import org.apache.solr.SolrTestCaseJ4;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.response.SolrQueryResponse;
 import org.junit.BeforeClass;

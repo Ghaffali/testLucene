@@ -24,14 +24,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
-import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Metric;
 import org.apache.lucene.search.BoostQuery;
 import org.apache.lucene.search.Query;
 import org.apache.lucene.search.join.ScoreMode;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.request.SolrQueryRequest;
 import org.apache.solr.request.SolrRequestInfo;

@@ -17,7 +17,6 @@
 package org.apache.solr.handler.component;
 
 import java.io.IOException;
-import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
