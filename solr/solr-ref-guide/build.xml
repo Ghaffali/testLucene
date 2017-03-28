@@ -15,7 +15,7 @@
    "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
    KIND, either express or implied.  See the License for the
    specific language governing permissions and limitations
-   under the License.    
+   under the License.
 -->
 <project name="solr-ref-guide" default="default" xmlns:asciidoctor="antlib:org.asciidoctor.ant" >
 
@@ -124,7 +124,7 @@
       <arg value="${build.dir}/html-site"/>
     </java>
   </target>
-  
+
   <!-- ====== PDF Build ======= -->
   <target name="build-pdf"
           depends="build-nav-data-files,resolve"
@@ -139,17 +139,14 @@
                  backend="pdf"
                  extensions="adoc"
                  sourceHighlighter="coderay"
-                 embedAssets="true"
                  imagesDir="${build.content.dir}"
                  doctype="book"
                  safemode="unsafe">
       <attribute key="icons" value="font" />
       <attribute key="icon-set" value="fa" />
-      <attribute key="docinfo!" value='' />
       <attribute key="pdf-stylesDir" value="./pdf/themes"/>
       <attribute key="pdf-style" value="refguide"/>
       <attribute key="pdf-fontsDir" value="./pdf/fonts"/>
-      <attribute key="pagenums" value='' />
       <attribute key="figure-caption!" value='' />
       <attribute key="idprefix" value='' />
       <attribute key="idseparator" value='-' />
