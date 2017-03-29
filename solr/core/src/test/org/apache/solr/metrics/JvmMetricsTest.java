@@ -16,8 +16,6 @@
  */
 package org.apache.solr.metrics;
 
-import javax.management.MBeanServer;
-import java.lang.management.ManagementFactory;
 import java.util.Map;
 
 import com.codahale.metrics.Gauge;
@@ -31,25 +29,64 @@ import org.junit.Test;
  */
 public class JvmMetricsTest extends SolrJettyTestBase {
 
+  static final String[] OS_METRICS = {
+      "availableProcessors",
+      "committedVirtualMemorySize",
+      "freePhysicalMemorySize",
+      "freeSwapSpaceSize",
+      "maxFileDescriptorCount",
+      "openFileDescriptorCount",
+      "processCpuLoad",
+      "processCpuTime",
+      "systemLoadAverage",
+      "totalPhysicalMemorySize",
+      "totalSwapSpaceSize"
+  };
+
+  static final String[] BUFFER_METRICS = {
+      "direct.Count",
+      "direct.MemoryUsed",
+      "direct.TotalCapacity",
+      "mapped.Count",
+      "mapped.MemoryUsed",
+      "mapped.TotalCapacity"
+  };
+
   @BeforeClass
   public static void beforeTest() throws Exception {
     createJetty(legacyExampleCollection1SolrHome());
   }
 
   @Test
-  public void testOperatingSystemMetricsSet() throws Exception {
-    MBeanServer mBeanServer = ManagementFactory.getPlatformMBeanServer();
-    OperatingSystemMetricSet set = new OperatingSystemMetricSet(mBeanServer);
+  public void testOperatingSystemMetricSet() throws Exception {
+    OperatingSystemMetricSet set = new OperatingSystemMetricSet();
     Map<String, Metric> metrics = set.getMetrics();
     assertTrue(metrics.size() > 0);
-    for (String metric : OperatingSystemMetricSet.METRICS) {
+    int found = 0;
+    for (String metric : OS_METRICS) {
       Gauge<?> gauge = (Gauge<?>)metrics.get(metric);
       if (gauge == null || gauge.getValue() == null) { // some are optional depending on OS
         continue;
       }
+      found++;
       double value = ((Number)gauge.getValue()).doubleValue();
       // SystemLoadAverage on Windows may be -1.0
       assertTrue("unexpected value of " + metric + ": " + value, value >= 0 || value == -1.0);
+    }
+    assertTrue("no known metrics found", found > 0);
+  }
+
+  @Test
+  public void testAltBufferPoolMetricSet() throws Exception {
+    AltBufferPoolMetricSet set = new AltBufferPoolMetricSet();
+    Map<String, Metric> metrics = set.getMetrics();
+    assertTrue(metrics.size() > 0);
+    for (String name : BUFFER_METRICS) {
+      assertNotNull(name, metrics.get(name));
+      Object g = metrics.get(name);
+      assertTrue(g instanceof Gauge);
+      Object v = ((Gauge)g).getValue();
+      assertTrue(v instanceof Long);
     }
   }
 

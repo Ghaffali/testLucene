@@ -16,6 +16,13 @@
  */
 package org.apache.solr.util.stats;
 
+import java.beans.BeanInfo;
+import java.beans.IntrospectionException;
+import java.beans.Introspector;
+import java.beans.PropertyDescriptor;
+import java.lang.invoke.MethodHandles;
+import java.lang.management.PlatformManagedObject;
+import java.lang.reflect.InvocationTargetException;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -40,11 +47,14 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.metrics.AggregateMetric;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Metrics specific utility functions.
  */
 public class MetricUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   public static final String METRIC_NAME = "metric";
   public static final String VALUE = "value";
@@ -131,11 +141,11 @@ public class MetricUtils {
   }
 
   /**
-   * Returns a representation of the given metric registry as a list of {@link SolrInputDocument}-s.
+   * Provides a representation of the given metric registry as {@link SolrInputDocument}-s.
    Only those metrics
-   * are converted to NamedList which match at least one of the given MetricFilter instances.
+   * are converted which match at least one of the given MetricFilter instances.
    *
-   * @param registry      the {@link MetricRegistry} to be converted to NamedList
+   * @param registry      the {@link MetricRegistry} to be converted
    * @param shouldMatchFilters a list of {@link MetricFilter} instances.
    *                           A metric must match <em>any one</em> of the filters from this list to be
    *                           included in the output
@@ -145,20 +155,8 @@ public class MetricUtils {
    * @param compact use compact representation for counters and gauges.
    * @param metadata optional metadata. If not null and not empty then this map will be added under a
    *                 {@code _metadata_} key.
-   * @return a list of {@link SolrInputDocument}-s
+   * @param consumer consumer that accepts produced {@link SolrInputDocument}-s
    */
-  public static List<SolrInputDocument> toSolrInputDocuments(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
-                                                             MetricFilter mustMatchFilter, boolean skipHistograms,
-                                                             boolean skipAggregateValues, boolean compact,
-                                                             Map<String, Object> metadata) {
-    List<SolrInputDocument> result = new LinkedList<>();
-    toSolrInputDocuments(registry, shouldMatchFilters, mustMatchFilter, skipHistograms,
-        skipAggregateValues, compact, metadata, doc -> {
-      result.add(doc);
-    });
-    return result;
-  }
-
   public static void toSolrInputDocuments(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                           MetricFilter mustMatchFilter, boolean skipHistograms,
                                           boolean skipAggregateValues, boolean compact,
@@ -175,7 +173,7 @@ public class MetricUtils {
     });
   }
 
-  public static void toSolrInputDocument(String prefix, SolrInputDocument doc, Object o) {
+  static void toSolrInputDocument(String prefix, SolrInputDocument doc, Object o) {
     if (!(o instanceof Map)) {
       String key = prefix != null ? prefix : VALUE;
       doc.addField(key, o);
@@ -192,7 +190,7 @@ public class MetricUtils {
     }
   }
 
-  public static void toMaps(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
+  static void toMaps(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                             MetricFilter mustMatchFilter, boolean skipHistograms, boolean skipAggregateValues,
                             boolean compact,
                             BiConsumer<String, Object> consumer) {
@@ -327,5 +325,46 @@ public class MetricUtils {
    */
   public static ExecutorService instrumentedExecutorService(ExecutorService delegate, MetricRegistry metricRegistry, String scope)  {
     return new InstrumentedExecutorService(delegate, metricRegistry, scope);
+  }
+
+  /**
+   * Creates a set of metrics (gauges) that correspond to available bean properties for the provided MXBean.
+   * @param obj an instance of MXBean
+   * @param intf MXBean interface, one of {@link PlatformManagedObject}-s
+   * @param <T> formal type
+   */
+  public static <T extends PlatformManagedObject> void addMXBeanMetrics(T obj, Class<? extends T> intf,
+      String prefix, BiConsumer<String, Metric> consumer) {
+    if (intf.isInstance(obj)) {
+      BeanInfo beanInfo;
+      try {
+        beanInfo = Introspector.getBeanInfo(intf, intf.getSuperclass(), Introspector.IGNORE_ALL_BEANINFO);
+      } catch (IntrospectionException e) {
+        LOG.warn("Unable to fetch properties of MXBean " + obj.getClass().getName());
+        return;
+      }
+      for (final PropertyDescriptor desc : beanInfo.getPropertyDescriptors()) {
+        final String name = desc.getName();
+        // test if it works at all
+        try {
+          desc.getReadMethod().invoke(obj);
+          // worked - consume it
+          final Gauge<?> gauge = () -> {
+            try {
+              return desc.getReadMethod().invoke(obj);
+            } catch (InvocationTargetException ite) {
+              // ignore (some properties throw UOE)
+              return null;
+            } catch (IllegalAccessException e) {
+              return null;
+            }
+          };
+          String metricName = MetricRegistry.name(prefix, name);
+          consumer.accept(metricName, gauge);
+        } catch (Exception e) {
+          // didn't work, skip it...
+        }
+      }
+    }
   }
 }

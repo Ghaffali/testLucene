@@ -81,6 +81,7 @@ import org.apache.solr.metrics.SolrCoreMetricManager;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.request.SolrRequestHandler;
+import org.apache.solr.search.SolrFieldCacheBean;
 import org.apache.solr.security.AuthenticationPlugin;
 import org.apache.solr.security.AuthorizationPlugin;
 import org.apache.solr.security.HttpClientBuilderPlugin;
@@ -548,6 +549,9 @@ public class CoreContainer {
         true, "specification", SolrInfoBean.Category.CONTAINER.toString(), "version");
     metricManager.registerGauge(registryName, () -> this.getClass().getPackage().getImplementationVersion(),
         true, "implementation", SolrInfoBean.Category.CONTAINER.toString(), "version");
+
+    SolrFieldCacheBean fieldCacheBean = new SolrFieldCacheBean();
+    fieldCacheBean.initializeMetrics(metricManager, registryName, null);
 
     if (isZooKeeperAware()) {
       metricManager.loadClusterReporters(cfg.getMetricReporterPlugins(), this);

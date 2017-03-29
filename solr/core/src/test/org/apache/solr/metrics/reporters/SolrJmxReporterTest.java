@@ -20,6 +20,7 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
+import java.lang.management.ManagementFactory;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -56,6 +57,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
 
   @Before
   public void beforeTest() throws Exception {
+    // make sure we're running an MBeanServer
+    ManagementFactory.getPlatformMBeanServer();
     initCore("solrconfig-basic.xml", "schema.xml");
 
     final SolrCore core = h.getCore();
