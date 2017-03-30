@@ -18,13 +18,13 @@ Since it is a binding for the Ruby implementations of these three projects, they
 
 Nearly all of the styling and layout of the PDF is controlled by a single YAML file that is called a theme.
 
-Our theme is `refguide-theme.yml`, found in `solr/solr-ref-guide/pdf/themes`.
-
-New themes must be named so they include `-theme.yml` at the end. They must also be in proper YAML format.
-
-See the section <<Modifying the Theme>> for more about how to update the theme.
+See the section <<Modifying the Theme>> for information on how to update the theme.
 
 === Declaring the Theme to Use
+
+Our theme is `refguide-theme.yml`, found in `solr/solr-ref-guide/pdf/themes`.
+
+New themes must be named to include `-theme.yml` at the end. They must also be in proper YAML format.
 
 The theme to use when generating the PDF is defined with the `pdf-style` attribute. Only the first part of the file name is used. So, a theme file named `refguide-theme.yml` is selected by defining `pdf-style=refguide`.
 
