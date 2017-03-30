@@ -42,10 +42,10 @@ exclude:
   - pdf/
 # these are the files and directories that jekyll will exclude from the build
 
-feedback_email: ctargett@apache.org
+# feedback_email: an_email@apache.org
 # used as a contact email for the Feedback link in the top navigation bar
 
-# feedback_disable: true
+feedback_disable: true
 # if you uncomment the previous line, the Feedback link gets removed
 
 # feedback_text: "Need help?"
