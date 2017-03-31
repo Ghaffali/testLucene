@@ -126,16 +126,19 @@
   </target>
 
   <!-- ====== PDF Build ======= -->
-  <target name="build-pdf"
-          depends="build-nav-data-files,resolve"
-          description="Builds a PDF">
+  <target name="build-pdf" depends="-build-raw-pdf,-reduce-pdf-size" description="Builds a PDF">
+    <echo>Finished Building ${build.dir}/${pdf-filename}</echo>
+  </target>
+  <target name="-build-raw-pdf"
+          depends="build-nav-data-files,resolve">
+    <mkdir dir="${build.dir}/pdf-tmp"/>
     <taskdef uri="antlib:org.asciidoctor.ant" resource="org/asciidoctor/ant/antlib.xml"
              classpathref="tools-run-classpath"/>
     <asciidoctor:convert
                  sourceDirectory="${build.content.dir}/pdf"
                  sourceDocumentName="SolrRefGuide-all.adoc"
                  baseDir="${build.content.dir}"
-                 outputDirectory="${build.dir}"
+                 outputDirectory="${build.dir}/pdf-tmp"
                  backend="pdf"
                  extensions="adoc"
                  sourceHighlighter="coderay"
@@ -160,10 +163,20 @@
       <attribute key="build-date" value="${DSTAMP}" />
       <attribute key="build-year" value="${current.year}" />
     </asciidoctor:convert>
-    <move file="${build.dir}/SolrRefGuide-all.pdf" tofile="${build.dir}/${pdf-filename}" />
-    <echo>Finished Building ${build.dir}/${pdf-filename}</echo>
+    <move file="${build.dir}/pdf-tmp/SolrRefGuide-all.pdf" tofile="${build.dir}/pdf-tmp/RAW-${pdf-filename}" />
   </target>
+  <target name="-reduce-pdf-size" depends="build-init,build-tools-jar">
+    <java classname="ReducePDFSize"
+          failonerror="true"
+          fork="true">
+      <classpath refid="tools-run-classpath"/>
+      <arg value="${build.dir}/pdf-tmp/RAW-${pdf-filename}"/>
+      <arg value="${build.dir}/${pdf-filename}"/>
+    </java>
+  </target>
+  
 
+  
   <!-- ======= HTML Site Build =======
        Builds site with Jekyll.
        This (for now) assumes that Jekyll (http://jekyllrb.com) is installed locally. -->
