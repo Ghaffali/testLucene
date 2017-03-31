@@ -5,66 +5,50 @@
 #
 #
 #
-#
 
-
+# Gems that are included for building the site. jekyll-asciidoc allows Jekyll to use Asciidoctor for variables and settings
 gems: [jekyll-asciidoc]
 
 destination: ../html-site
 
-output: web
 # this property is useful for conditional filtering of content that is separate from the PDF.
+output: web
 
-topnav_title: Solr Ref Guide
 # this appears on the top navigation bar next to the home button
+topnav_title: Solr Ref Guide
 
-site_title: Apache Solr Reference Guide
 # this appears in the html browser tab for the site title (seen mostly by search engines, not users)
+site_title: Apache Solr Reference Guide
 
-company_name: Apache Software Foundation
 # this appears in the footer
+company_name: Apache Software Foundation
 
-github_editme_path:
-# if you're using Github, provide the basepath to the branch you've created for reviews, following the sample here. if not, leave this value blank.
 
-disqus_shortname:
-# if you're using disqus for comments, add the shortname here. if not, leave this value blank.
-
-host: 127.0.0.1
 # the preview server used. Leave as is.
+host: 127.0.0.1
 
-port: 4015
 # the port where the preview is rendered. You can leave this as is unless you have other Jekyll builds using this same port that might cause conflicts. in that case, use another port such as 4006.
+port: 4015
 
+# these are the files and directories that jekyll will exclude from the build
 exclude:
   - .idea/
   - .gitignore
   - pdf/
-# these are the files and directories that jekyll will exclude from the build
 
-# feedback_email: an_email@apache.org
-# used as a contact email for the Feedback link in the top navigation bar
-
+# if you uncomment the next line, the Feedback link gets removed
 feedback_disable: true
-# if you uncomment the previous line, the Feedback link gets removed
 
+# used as a contact email for the Feedback link in the top navigation bar
+# feedback_email: an_email@apache.org
+
+# if you uncomment the next line, it changes the Feedback text
 # feedback_text: "Need help?"
-# if you uncomment the previous line, it changes the Feedback text
 
+# if you uncomment the next line, it changes where the feedback link points to
 # feedback_link: "http://helpy.io/"
-# if you uncomment the previous line, it changes where the feedback link points to
 
-highlighter: rouge
-# library used for syntax highlighting
-
-markdown: kramdown
-kramdown:
- input: GFM
- auto_ids: true
- hard_wrap: false
- syntax_highlighter: rouge
-# filter used to process markdown. note that kramdown differs from github-flavored markdown in some subtle ways
-
+# these are defaults used for the frontmatter for these file types
 defaults:
   -
     scope:
@@ -72,9 +56,7 @@ defaults:
       type: "pages"
     values:
       layout: "page"
-      comments: true
       search: true
-      sidebar: home_sidebar
 
   -
     scope:
@@ -82,26 +64,16 @@ defaults:
       type: "posts"
     values:
       layout: "post"
-      comments: true
       search: true
-      sidebar: home_sidebar
 
-# these are defaults used for the frontmatter for these file types
 
-sidebars:
-- home_sidebar
-- mydoc_sidebar
-- product1_sidebar
-- product2_sidebar
-- other
-
-description: "Intended as a documentation theme based on Jekyll for technical writers documenting software and other technical products, this theme has all the elements you would need to handle multiple products with both multi-level sidebar navigation, tags, and other documentation features."
 # the description is used in the feed.xml file
+description: "The Apache Solr Reference Guide is the official documentation for the Apache Solr project."
 
-# needed for sitemap.xml file only
+# needed for sitemap.xml and feed.xml files
 url: https://home.apache.org/~ctargett/RefGuidePOC/jekyll-full
 
-# Asciidoc settings - disabled so we can use asciidoctor
+# Asciidoc settings - disabled so we can use asciidoctor instead
 asciidoc: {}
 
 # Custom Attributes for use in our templates & adoc files.
