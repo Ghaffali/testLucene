@@ -16,6 +16,12 @@
  */
 package org.apache.solr.core;
 
+import java.util.Map;
+import java.util.Set;
+
+import com.codahale.metrics.MetricRegistry;
+import org.apache.solr.util.stats.MetricUtils;
+
 /**
  * Interface for getting various ui friendly strings
  * for use by objects which are 'pluggable' to make server administration
@@ -43,4 +49,32 @@ public interface SolrInfoBean {
   String getDescription();
   /** Category of this component */
   Category getCategory();
+
+  /** Optionally return metrics that this component reports, or null. */
+  default Map<String, Object> getMetrics() {
+    if (getMetricRegistry() == null || getMetricNames() == null) {
+      return null;
+    }
+    return MetricUtils.convertMetrics(getMetricRegistry(), getMetricNames());
+  }
+
+  /**
+   * Modifiable set of metric names that this component reports, or null if none.
+   */
+  Set<String> getMetricNames();
+
+  /**
+   * An instance of {@link MetricRegistry} that this component uses for keeping metrics, or null.
+   */
+  default MetricRegistry getMetricRegistry() {
+    return null;
+  }
+
+  /** Register a metric name that this component reports. */
+  default void registerMetricName(String name) {
+    Set<String> names = getMetricNames();
+    if (names != null) {
+      names.add(name);
+    }
+  }
 }

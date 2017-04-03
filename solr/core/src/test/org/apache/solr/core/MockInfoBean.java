@@ -16,14 +16,18 @@
  */
 package org.apache.solr.core;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
+import java.util.Set;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
 
 class MockInfoBean implements SolrInfoBean, SolrMetricProducer {
+  Set<String> metricNames = new HashSet<>();
+  MetricRegistry registry;
+
   @Override
   public String getName() {
     return "mock";
@@ -40,9 +44,19 @@ class MockInfoBean implements SolrInfoBean, SolrMetricProducer {
   }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    MetricsMap metricsMap = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
+  }
+
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    MetricsMap metricsMap = new MetricsMap((detailed, map) -> {
       map.put("Integer", 123);
       map.put("Double",567.534);
       map.put("Long", 32352463l);
@@ -51,8 +65,7 @@ class MockInfoBean implements SolrInfoBean, SolrMetricProducer {
       map.put("Float", 3.456f);
       map.put("String","testing");
       map.put("Object", new Object());
-      return map;
-    };
-    manager.registerGauge(registry, metricsMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
+    });
+    manager.registerGauge(this, registryName, metricsMap, true, getClass().getSimpleName(), getCategory().toString(), scope);
   }
 }

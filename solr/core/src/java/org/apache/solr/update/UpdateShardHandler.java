@@ -17,9 +17,13 @@
 package org.apache.solr.update;
 
 import java.lang.invoke.MethodHandles;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 
 import com.codahale.metrics.InstrumentedExecutorService;
+import com.codahale.metrics.MetricRegistry;
 import org.apache.http.client.HttpClient;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
@@ -35,6 +39,7 @@ import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.util.stats.HttpClientMetricNameStrategy;
 import org.apache.solr.util.stats.InstrumentedHttpRequestExecutor;
 import org.apache.solr.util.stats.InstrumentedPoolingHttpClientConnectionManager;
+import org.apache.solr.util.stats.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +67,9 @@ public class UpdateShardHandler implements SolrMetricProducer, SolrInfoBean {
   private final InstrumentedPoolingHttpClientConnectionManager clientConnectionManager;
 
   private final InstrumentedHttpRequestExecutor httpRequestExecutor;
+
+  private final Set<String> metricNames = new HashSet<>();
+  private MetricRegistry registry;
 
   public UpdateShardHandler(UpdateShardHandlerConfig cfg) {
     clientConnectionManager = new InstrumentedPoolingHttpClientConnectionManager(HttpClientUtil.getSchemaRegisteryProvider().getSchemaRegistry());
@@ -102,15 +110,14 @@ public class UpdateShardHandler implements SolrMetricProducer, SolrInfoBean {
   }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
     String expandedScope = SolrMetricManager.mkName(scope, getCategory().name());
-    clientConnectionManager.initializeMetrics(manager, registry, expandedScope);
-    httpRequestExecutor.initializeMetrics(manager, registry, expandedScope);
-    updateExecutor = new InstrumentedExecutorService(updateExecutor,
-        manager.registry(registry),
+    clientConnectionManager.initializeMetrics(manager, registryName, expandedScope);
+    httpRequestExecutor.initializeMetrics(manager, registryName, expandedScope);
+    updateExecutor = MetricUtils.instrumentedExecutorService(updateExecutor, this, registry,
         SolrMetricManager.mkName("updateExecutor", expandedScope, "threadPool"));
-    recoveryExecutor = new InstrumentedExecutorService(recoveryExecutor,
-        manager.registry(registry),
+    recoveryExecutor = MetricUtils.instrumentedExecutorService(recoveryExecutor, this, registry,
         SolrMetricManager.mkName("recoveryExecutor", expandedScope, "threadPool"));
   }
 
@@ -122,6 +129,16 @@ public class UpdateShardHandler implements SolrMetricProducer, SolrInfoBean {
   @Override
   public Category getCategory() {
     return Category.UPDATE;
+  }
+
+  @Override
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
   }
 
   public HttpClient getHttpClient() {

@@ -43,7 +43,6 @@ import org.apache.solr.util.plugin.SolrCoreAware;
 import java.util.*;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Constructor;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -268,8 +267,7 @@ public class DataImportHandler extends RequestHandlerBase implements
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
     super.initializeMetrics(manager, registryName, scope);
-    metrics = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
+    metrics = new MetricsMap((detailed, map) -> {
       if (importer != null) {
         DocBuilder.Statistics cumulative = importer.cumulativeStatistics;
 
@@ -290,9 +288,8 @@ public class DataImportHandler extends RequestHandlerBase implements
         map.put(DataImporter.MSG.TOTAL_DOCS_DELETED, cumulative.deletedDocCount);
         map.put(DataImporter.MSG.TOTAL_DOCS_SKIPPED, cumulative.skipDocCount);
       }
-      return map;
-    };
-    manager.registerGauge(registryName, metrics, true, "importer", getCategory().toString(), scope);
+    });
+    manager.registerGauge(this, registryName, metrics, true, "importer", getCategory().toString(), scope);
   }
 
   // //////////////////////SolrInfoMBeans methods //////////////////////

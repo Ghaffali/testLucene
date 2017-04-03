@@ -62,10 +62,10 @@ public class SolrMetricManagerTest extends SolrTestCaseJ4 {
     String toName = "to-" + TestUtil.randomSimpleString(r, 1, 10);
     // register test metrics
     for (Map.Entry<String, Counter> entry : metrics1.entrySet()) {
-      metricManager.register(fromName, entry.getValue(), false, entry.getKey(), "metrics1");
+      metricManager.register(null, fromName, entry.getValue(), false, entry.getKey(), "metrics1");
     }
     for (Map.Entry<String, Counter> entry : metrics2.entrySet()) {
-      metricManager.register(toName, entry.getValue(), false, entry.getKey(), "metrics2");
+      metricManager.register(null, toName, entry.getValue(), false, entry.getKey(), "metrics2");
     }
     assertEquals(metrics1.size(), metricManager.registry(fromName).getMetrics().size());
     assertEquals(metrics2.size(), metricManager.registry(toName).getMetrics().size());
@@ -125,13 +125,13 @@ public class SolrMetricManagerTest extends SolrTestCaseJ4 {
     String registryName = TestUtil.randomSimpleString(r, 1, 10);
 
     for (Map.Entry<String, Counter> entry : metrics.entrySet()) {
-      metricManager.register(registryName, entry.getValue(), false, entry.getKey(), "foo", "bar");
+      metricManager.register(null, registryName, entry.getValue(), false, entry.getKey(), "foo", "bar");
     }
     for (Map.Entry<String, Counter> entry : metrics.entrySet()) {
-      metricManager.register(registryName, entry.getValue(), false, entry.getKey(), "foo", "baz");
+      metricManager.register(null, registryName, entry.getValue(), false, entry.getKey(), "foo", "baz");
     }
     for (Map.Entry<String, Counter> entry : metrics.entrySet()) {
-      metricManager.register(registryName, entry.getValue(), false, entry.getKey(), "foo");
+      metricManager.register(null, registryName, entry.getValue(), false, entry.getKey(), "foo");
     }
 
     assertEquals(metrics.size() * 3, metricManager.registry(registryName).getMetrics().size());
@@ -163,10 +163,10 @@ public class SolrMetricManagerTest extends SolrTestCaseJ4 {
 
     String registryName = TestUtil.randomSimpleString(r, 1, 10);
 
-    metricManager.counter(registryName, "simple_counter", "foo", "bar");
-    metricManager.timer(registryName, "simple_timer", "foo", "bar");
-    metricManager.meter(registryName, "simple_meter", "foo", "bar");
-    metricManager.histogram(registryName, "simple_histogram", "foo", "bar");
+    metricManager.counter(null, registryName, "simple_counter", "foo", "bar");
+    metricManager.timer(null, registryName, "simple_timer", "foo", "bar");
+    metricManager.meter(null, registryName, "simple_meter", "foo", "bar");
+    metricManager.histogram(null, registryName, "simple_histogram", "foo", "bar");
     Map<String, Metric> metrics = metricManager.registry(registryName).getMetrics();
     assertEquals(4, metrics.size());
     for (Map.Entry<String, Metric> entry : metrics.entrySet()) {

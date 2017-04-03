@@ -45,7 +45,7 @@ public class TestFastLRUCache extends LuceneTestCase {
   public void testPercentageAutowarm() throws IOException {
     FastLRUCache<Object, Object> fastCache = new FastLRUCache<>();
     fastCache.initializeMetrics(metricManager, registry, scope);
-    MetricsMap metrics = fastCache.getMetrics();
+    MetricsMap metrics = fastCache.getMetricsMap();
     Map<String, String> params = new HashMap<>();
     params.put("size", "100");
     params.put("initialSize", "10");
@@ -65,7 +65,7 @@ public class TestFastLRUCache extends LuceneTestCase {
     assertEquals(null, fastCache.get(1));  // first item put in should be the first out
     FastLRUCache<Object, Object> fastCacheNew = new FastLRUCache<>();
     fastCacheNew.initializeMetrics(metricManager, registry, scope);
-    metrics = fastCacheNew.getMetrics();
+    metrics = fastCacheNew.getMetricsMap();
     fastCacheNew.init(params, o, cr);
     fastCacheNew.warm(null, fastCache);
     fastCacheNew.setState(SolrCache.State.LIVE);
@@ -120,7 +120,7 @@ public class TestFastLRUCache extends LuceneTestCase {
     for(int miss:misses) {
       assertEquals("The value " + miss + " should NOT be on new cache", null, fastCacheNew.get(miss));
     }
-    Map<String,Object> nl = fastCacheNew.getMetrics().getValue();
+    Map<String,Object> nl = fastCacheNew.getMetricsMap().getValue();
     assertEquals(Long.valueOf(hits.length + misses.length), nl.get("lookups"));
     assertEquals(Long.valueOf(hits.length), nl.get("hits"));
     fastCacheNew.close();
@@ -140,7 +140,7 @@ public class TestFastLRUCache extends LuceneTestCase {
     }
     assertEquals("25", fastCache.get(25));
     assertEquals(null, fastCache.get(110));
-    Map<String,Object> nl = fastCache.getMetrics().getValue();
+    Map<String,Object> nl = fastCache.getMetricsMap().getValue();
     assertEquals(2L, nl.get("lookups"));
     assertEquals(1L, nl.get("hits"));
     assertEquals(101L, nl.get("inserts"));
@@ -201,7 +201,7 @@ public class TestFastLRUCache extends LuceneTestCase {
     }
     assertEquals("25", sc.get(25));
     assertEquals(null, sc.get(110));
-    MetricsMap metrics = sc.getMetrics();
+    MetricsMap metrics = sc.getMetricsMap();
     Map<String,Object> nl = metrics.getValue();
     assertEquals(2L, nl.get("lookups"));
     assertEquals(1L, nl.get("hits"));
@@ -219,7 +219,7 @@ public class TestFastLRUCache extends LuceneTestCase {
     scNew.put(103, "103");
     assertEquals("90", scNew.get(90));
     assertEquals(null, scNew.get(50));
-    nl = scNew.getMetrics().getValue();
+    nl = scNew.getMetricsMap().getValue();
     assertEquals(2L, nl.get("lookups"));
     assertEquals(1L, nl.get("hits"));
     assertEquals(1L, nl.get("inserts"));

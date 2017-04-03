@@ -19,6 +19,7 @@ package org.apache.solr.store.hdfs;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +27,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.hadoop.fs.BlockLocation;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
@@ -48,6 +50,9 @@ public class HdfsLocalityReporter implements SolrInfoBean, SolrMetricProducer {
 
   private String hostname;
   private final ConcurrentMap<HdfsDirectory,ConcurrentMap<FileStatus,BlockLocation[]>> cache;
+
+  private final Set<String> metricNames = new HashSet<>();
+  private MetricRegistry registry;
 
   public HdfsLocalityReporter() {
     cache = new ConcurrentHashMap<>();
@@ -76,13 +81,23 @@ public class HdfsLocalityReporter implements SolrInfoBean, SolrMetricProducer {
     return Category.OTHER;
   }
 
+  @Override
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
+  }
+
   /**
    * Provide statistics on HDFS block locality, both in terms of bytes and block counts.
    */
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    MetricsMap metricsMap = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    MetricsMap metricsMap = new MetricsMap((detailed, map) -> {
       long totalBytes = 0;
       long localBytes = 0;
       int totalCount = 0;
@@ -130,9 +145,8 @@ public class HdfsLocalityReporter implements SolrInfoBean, SolrMetricProducer {
       } else {
         map.put(LOCALITY_BLOCKS_RATIO, localCount / (double) totalCount);
       }
-      return map;
-    };
-    manager.registerGauge(registry, metricsMap, true, "hdfsLocality", getCategory().toString(), scope);
+    });
+    manager.registerGauge(this, registryName, metricsMap, true, "hdfsLocality", getCategory().toString(), scope);
   }
 
   /**

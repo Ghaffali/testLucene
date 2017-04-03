@@ -480,7 +480,7 @@ public class CoreContainer {
     metricManager = new SolrMetricManager();
 
     coreContainerWorkExecutor = MetricUtils.instrumentedExecutorService(
-        coreContainerWorkExecutor,
+        coreContainerWorkExecutor, null,
         metricManager.registry(SolrMetricManager.getRegistryName(SolrInfoBean.Group.node)),
         SolrMetricManager.mkName("coreContainerWorkExecutor", SolrInfoBean.Category.CONTAINER.toString(), "threadPool"));
 
@@ -534,20 +534,20 @@ public class CoreContainer {
     // initialize gauges for reporting the number of cores and disk total/free
 
     String registryName = SolrMetricManager.getRegistryName(SolrInfoBean.Group.node);
-    metricManager.registerGauge(registryName, () -> solrCores.getCores().size(),
+    metricManager.registerGauge(null, registryName, () -> solrCores.getCores().size(),
         true, "loaded", SolrInfoBean.Category.CONTAINER.toString(), "cores");
-    metricManager.registerGauge(registryName, () -> solrCores.getCoreNames().size() - solrCores.getCores().size(),
+    metricManager.registerGauge(null, registryName, () -> solrCores.getCoreNames().size() - solrCores.getCores().size(),
         true, "lazy", SolrInfoBean.Category.CONTAINER.toString(), "cores");
-    metricManager.registerGauge(registryName, () -> solrCores.getAllCoreNames().size() - solrCores.getCoreNames().size(),
+    metricManager.registerGauge(null, registryName, () -> solrCores.getAllCoreNames().size() - solrCores.getCoreNames().size(),
         true, "unloaded", SolrInfoBean.Category.CONTAINER.toString(), "cores");
-    metricManager.registerGauge(registryName, () -> cfg.getCoreRootDirectory().toFile().getTotalSpace(),
+    metricManager.registerGauge(null, registryName, () -> cfg.getCoreRootDirectory().toFile().getTotalSpace(),
         true, "totalSpace", SolrInfoBean.Category.CONTAINER.toString(), "fs");
-    metricManager.registerGauge(registryName, () -> cfg.getCoreRootDirectory().toFile().getUsableSpace(),
+    metricManager.registerGauge(null, registryName, () -> cfg.getCoreRootDirectory().toFile().getUsableSpace(),
         true, "usableSpace", SolrInfoBean.Category.CONTAINER.toString(), "fs");
     // add version information
-    metricManager.registerGauge(registryName, () -> this.getClass().getPackage().getSpecificationVersion(),
+    metricManager.registerGauge(null, registryName, () -> this.getClass().getPackage().getSpecificationVersion(),
         true, "specification", SolrInfoBean.Category.CONTAINER.toString(), "version");
-    metricManager.registerGauge(registryName, () -> this.getClass().getPackage().getImplementationVersion(),
+    metricManager.registerGauge(null, registryName, () -> this.getClass().getPackage().getImplementationVersion(),
         true, "implementation", SolrInfoBean.Category.CONTAINER.toString(), "version");
 
     SolrFieldCacheBean fieldCacheBean = new SolrFieldCacheBean();
@@ -561,7 +561,7 @@ public class CoreContainer {
     ExecutorService coreLoadExecutor = MetricUtils.instrumentedExecutorService(
         ExecutorUtil.newMDCAwareFixedThreadPool(
             cfg.getCoreLoadThreadCount(isZooKeeperAware()),
-            new DefaultSolrThreadFactory("coreLoadExecutor")),
+            new DefaultSolrThreadFactory("coreLoadExecutor")), null,
         metricManager.registry(SolrMetricManager.getRegistryName(SolrInfoBean.Group.node)),
         SolrMetricManager.mkName("coreLoadExecutor", SolrInfoBean.Category.CONTAINER.toString(), "threadPool"));
     final List<Future<SolrCore>> futures = new ArrayList<>();

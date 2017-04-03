@@ -86,7 +86,7 @@ public final class SolrMetricTestUtils {
           return;
         }
         for (Map.Entry<String, Counter> entry : metrics.entrySet()) {
-          manager.counter(registry, entry.getKey(), category.toString(), scope);
+          manager.counter(null, registry, entry.getKey(), category.toString(), scope);
         }
       }
 

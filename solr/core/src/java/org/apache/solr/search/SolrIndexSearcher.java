@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.Iterables;
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.TokenStream;
@@ -84,6 +85,7 @@ import org.apache.solr.search.stats.StatsSource;
 import org.apache.solr.uninverting.UninvertingReader;
 import org.apache.solr.update.IndexFingerprint;
 import org.apache.solr.update.SolrIndexConfig;
+import org.apache.solr.util.stats.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,6 +159,8 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
 
   private final String path;
   private boolean releaseDirectory;
+
+  private Set<String> metricNames = new HashSet<>();
 
   private static DirectoryReader getReader(SolrCore core, SolrIndexConfig config, DirectoryFactory directoryFactory,
       String path) throws IOException {
@@ -2691,21 +2695,31 @@ public class SolrIndexSearcher extends IndexSearcher implements Closeable, SolrI
   }
 
   @Override
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
 
-    manager.registerGauge(registry, () -> name, true, "searcherName", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> cachingEnabled, true, "caching", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> openTime, true, "openedAt", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> warmupTime, true, "warmupTime", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> registerTime, true, "registeredAt", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> name, true, "searcherName", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> cachingEnabled, true, "caching", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> openTime, true, "openedAt", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> warmupTime, true, "warmupTime", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> registerTime, true, "registeredAt", Category.SEARCHER.toString(), scope);
     // reader stats
-    manager.registerGauge(registry, () -> reader.numDocs(), true, "numDocs", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> reader.maxDoc(), true, "maxDoc", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> reader.maxDoc() - reader.numDocs(), true, "deletedDocs", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> reader.toString(), true, "reader", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> reader.directory().toString(), true, "readerDir", Category.SEARCHER.toString(), scope);
-    manager.registerGauge(registry, () -> reader.getVersion(), true, "indexVersion", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> reader.numDocs(), true, "numDocs", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> reader.maxDoc(), true, "maxDoc", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> reader.maxDoc() - reader.numDocs(), true, "deletedDocs", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> reader.toString(), true, "reader", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> reader.directory().toString(), true, "readerDir", Category.SEARCHER.toString(), scope);
+    manager.registerGauge(this, registry, () -> reader.getVersion(), true, "indexVersion", Category.SEARCHER.toString(), scope);
 
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return core.getMetricRegistry();
   }
 
   private static class FilterImpl extends Filter {

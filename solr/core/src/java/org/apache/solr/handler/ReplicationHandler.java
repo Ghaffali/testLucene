@@ -42,7 +42,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Random;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -861,20 +860,19 @@ public class ReplicationHandler extends RequestHandlerBase implements SolrCoreAw
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
     super.initializeMetrics(manager, registry, scope);
 
-    manager.registerGauge(registry, () -> core != null ? NumberUtils.readableSize(core.getIndexSize()) : "", true,
+    manager.registerGauge(this, registry, () -> core != null ? NumberUtils.readableSize(core.getIndexSize()) : "", true,
         "indexSize", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> (core != null && !core.isClosed() ? getIndexVersion().toString() : ""), true,
+    manager.registerGauge(this, registry, () -> (core != null && !core.isClosed() ? getIndexVersion().toString() : ""), true,
         "indexVersion", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> (core != null && !core.isClosed() ? getIndexVersion().generation : 0), true,
+    manager.registerGauge(this, registry, () -> (core != null && !core.isClosed() ? getIndexVersion().generation : 0), true,
         GENERATION, getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> core != null ? core.getIndexDir() : "", true,
+    manager.registerGauge(this, registry, () -> core != null ? core.getIndexDir() : "", true,
         "indexPath", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> isMaster, true,
+    manager.registerGauge(this, registry, () -> isMaster, true,
         "isMaster", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> isSlave, true,
+    manager.registerGauge(this, registry, () -> isSlave, true,
         "isSlave", getCategory().toString(), scope);
-    final MetricsMap fetcherMap = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
+    final MetricsMap fetcherMap = new MetricsMap((detailed, map) -> {
       IndexFetcher fetcher = currentIndexFetcher;
       if (fetcher != null) {
         map.put(MASTER_URL, fetcher.getMasterUrl());
@@ -901,14 +899,13 @@ public class ReplicationHandler extends RequestHandlerBase implements SolrCoreAw
         addVal(map, IndexFetcher.TIMES_CONFIG_REPLICATED, props, Integer.class);
         addVal(map, IndexFetcher.CONF_FILES_REPLICATED, props, String.class);
       }
-      return map;
-    };
-    manager.registerGauge(registry, fetcherMap, true, "fetcher", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> isMaster && includeConfFiles != null ? includeConfFiles : "", true,
+    });
+    manager.registerGauge(this, registry, fetcherMap, true, "fetcher", getCategory().toString(), scope);
+    manager.registerGauge(this, registry, () -> isMaster && includeConfFiles != null ? includeConfFiles : "", true,
         "confFilesToReplicate", getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> isMaster ? getReplicateAfterStrings() : Collections.<String>emptyList(), true,
+    manager.registerGauge(this, registry, () -> isMaster ? getReplicateAfterStrings() : Collections.<String>emptyList(), true,
         REPLICATE_AFTER, getCategory().toString(), scope);
-    manager.registerGauge(registry, () -> isMaster && replicationEnabled.get(), true,
+    manager.registerGauge(this, registry, () -> isMaster && replicationEnabled.get(), true,
         "replicationEnabled", getCategory().toString(), scope);
   }
 

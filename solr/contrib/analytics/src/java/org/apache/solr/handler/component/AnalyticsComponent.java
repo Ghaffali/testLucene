@@ -83,7 +83,7 @@ public class AnalyticsComponent extends SearchComponent implements SolrMetricPro
 
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    MetricsMap metrics = detailed -> analyticsCollector.getStatistics();
-    manager.registerGauge(registry, metrics, true, getClass().getSimpleName(), getCategory().toString(), scope);
+    MetricsMap metrics = new MetricsMap((detailed, map) -> map.putAll(analyticsCollector.getStatistics()));
+    manager.registerGauge(this, registry, metrics, true, getClass().getSimpleName(), getCategory().toString(), scope);
   }
 }

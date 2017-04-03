@@ -348,17 +348,16 @@ public class SuggestComponent extends SearchComponent implements SolrCoreAware, 
   }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    manager.registerGauge(registry, () -> ramBytesUsed(), true, "totalSizeInBytes", getCategory().toString(), scope);
-    MetricsMap suggestersMap = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    manager.registerGauge(this, registryName, () -> ramBytesUsed(), true, "totalSizeInBytes", getCategory().toString(), scope);
+    MetricsMap suggestersMap = new MetricsMap((detailed, map) -> {
       for (Map.Entry<String, SolrSuggester> entry : suggesters.entrySet()) {
         SolrSuggester suggester = entry.getValue();
         map.put(entry.getKey(), suggester.toString());
       }
-      return map;
-    };
-    manager.registerGauge(registry, suggestersMap, true, "suggesters", getCategory().toString(), scope);
+    });
+    manager.registerGauge(this, registryName, suggestersMap, true, "suggesters", getCategory().toString(), scope);
   }
 
   @Override

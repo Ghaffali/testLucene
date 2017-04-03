@@ -16,12 +16,19 @@
  */
 package org.apache.solr.highlight;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
+import org.apache.solr.util.stats.MetricUtils;
 
 /**
  * 
@@ -31,6 +38,8 @@ public abstract class HighlightingPluginBase implements SolrInfoBean, SolrMetric
 {
   protected Counter numRequests;
   protected SolrParams defaults;
+  protected Set<String> metricNames = new HashSet<>(1);
+  protected MetricRegistry registry;
 
   public void init(NamedList args) {
     if( args != null ) {
@@ -58,8 +67,19 @@ public abstract class HighlightingPluginBase implements SolrInfoBean, SolrMetric
   }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-   numRequests = manager.counter(registry, "requests", getCategory().toString(), scope);
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
+  }
+
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    numRequests = manager.counter(this, registryName, "requests", getCategory().toString(), scope);
   }
 }
 

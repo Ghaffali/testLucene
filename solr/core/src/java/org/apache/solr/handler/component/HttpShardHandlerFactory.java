@@ -380,7 +380,7 @@ public class HttpShardHandlerFactory extends ShardHandlerFactory implements org.
     String expandedScope = SolrMetricManager.mkName(scope, SolrInfoBean.Category.QUERY.name());
     clientConnectionManager.initializeMetrics(manager, registry, expandedScope);
     httpRequestExecutor.initializeMetrics(manager, registry, expandedScope);
-    commExecutor = MetricUtils.instrumentedExecutorService(commExecutor,
+    commExecutor = MetricUtils.instrumentedExecutorService(commExecutor, null,
         manager.registry(registry),
         SolrMetricManager.mkName("httpShardExecutor", expandedScope, "threadPool"));
   }

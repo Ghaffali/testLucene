@@ -23,8 +23,9 @@ import java.beans.PropertyDescriptor;
 import java.lang.invoke.MethodHandles;
 import java.lang.management.PlatformManagedObject;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
@@ -46,6 +47,7 @@ import com.codahale.metrics.Timer;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
+import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.AggregateMetric;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -194,34 +196,56 @@ public class MetricUtils {
                             MetricFilter mustMatchFilter, boolean skipHistograms, boolean skipAggregateValues,
                             boolean compact,
                             BiConsumer<String, Object> consumer) {
-    Map<String, Metric> metrics = registry.getMetrics();
-    SortedSet<String> names = registry.getNames();
+    final Map<String, Metric> metrics = registry.getMetrics();
+    final SortedSet<String> names = registry.getNames();
     names.stream()
         .filter(s -> shouldMatchFilters.stream().anyMatch(metricFilter -> metricFilter.matches(s, metrics.get(s))))
         .filter(s -> mustMatchFilter.matches(s, metrics.get(s)))
         .forEach(n -> {
           Metric metric = metrics.get(n);
-          if (metric instanceof Counter) {
-            Counter counter = (Counter) metric;
-            consumer.accept(n, convertCounter(counter, compact));
-          } else if (metric instanceof Gauge) {
-            Gauge gauge = (Gauge) metric;
-            consumer.accept(n, convertGauge(gauge, compact));
-          } else if (metric instanceof Meter) {
-            Meter meter = (Meter) metric;
-            consumer.accept(n, convertMeter(meter));
-          } else if (metric instanceof Timer) {
-            Timer timer = (Timer) metric;
-            consumer.accept(n, convertTimer(timer, skipHistograms));
-          } else if (metric instanceof Histogram) {
-            if (!skipHistograms) {
-              Histogram histogram = (Histogram) metric;
-              consumer.accept(n, convertHistogram(histogram));
-            }
-          } else if (metric instanceof AggregateMetric) {
-            consumer.accept(n, convertAggregateMetric((AggregateMetric)metric, skipAggregateValues));
-          }
+          convertMetric(n, metric, skipHistograms, skipAggregateValues, compact, consumer);
         });
+  }
+
+  public static Map<String, Object> convertMetrics(MetricRegistry registry, Collection<String> names) {
+    final Map<String, Object> metrics = new HashMap<>();
+    convertMetrics(registry, names, false, true, true, (k, v) -> metrics.put(k, v));
+    return metrics;
+  }
+
+  public static void convertMetrics(MetricRegistry registry, Collection<String> names,
+                                    boolean skipHistograms, boolean skipAggregateValues, boolean compact,
+                                    BiConsumer<String, Object> consumer) {
+    final Map<String, Metric> metrics = registry.getMetrics();
+    names.stream()
+        .forEach(n -> {
+          Metric metric = metrics.get(n);
+          convertMetric(n, metric, skipHistograms, skipAggregateValues, compact, consumer);
+        });
+  }
+
+  public static void convertMetric(String n, Metric metric, boolean skipHistograms, boolean skipAggregateValues,
+                              boolean compact, BiConsumer<String, Object> consumer) {
+    if (metric instanceof Counter) {
+      Counter counter = (Counter) metric;
+      consumer.accept(n, convertCounter(counter, compact));
+    } else if (metric instanceof Gauge) {
+      Gauge gauge = (Gauge) metric;
+      consumer.accept(n, convertGauge(gauge, compact));
+    } else if (metric instanceof Meter) {
+      Meter meter = (Meter) metric;
+      consumer.accept(n, convertMeter(meter));
+    } else if (metric instanceof Timer) {
+      Timer timer = (Timer) metric;
+      consumer.accept(n, convertTimer(timer, skipHistograms));
+    } else if (metric instanceof Histogram) {
+      if (!skipHistograms) {
+        Histogram histogram = (Histogram) metric;
+        consumer.accept(n, convertHistogram(histogram));
+      }
+    } else if (metric instanceof AggregateMetric) {
+      consumer.accept(n, convertAggregateMetric((AggregateMetric)metric, skipAggregateValues));
+    }
   }
 
   public static Map<String, Object> convertAggregateMetric(AggregateMetric metric, boolean skipAggregateValues) {
@@ -323,7 +347,13 @@ public class MetricUtils {
   /**
    * Returns an instrumented wrapper over the given executor service.
    */
-  public static ExecutorService instrumentedExecutorService(ExecutorService delegate, MetricRegistry metricRegistry, String scope)  {
+  public static ExecutorService instrumentedExecutorService(ExecutorService delegate, SolrInfoBean info, MetricRegistry metricRegistry, String scope)  {
+    if (info != null) {
+      info.getMetricNames().add(MetricRegistry.name(scope, "submitted"));
+      info.getMetricNames().add(MetricRegistry.name(scope, "running"));
+      info.getMetricNames().add(MetricRegistry.name(scope, "completed"));
+      info.getMetricNames().add(MetricRegistry.name(scope, "duration"));
+    }
     return new InstrumentedExecutorService(delegate, metricRegistry, scope);
   }
 

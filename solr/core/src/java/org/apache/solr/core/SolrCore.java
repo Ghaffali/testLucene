@@ -57,6 +57,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 import com.codahale.metrics.Counter;
+import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.google.common.collect.MapMaker;
 import org.apache.commons.io.FileUtils;
@@ -159,6 +160,7 @@ import org.apache.solr.util.RefCounted;
 import org.apache.solr.util.plugin.NamedListInitializedPlugin;
 import org.apache.solr.util.plugin.PluginInfoInitialized;
 import org.apache.solr.util.plugin.SolrCoreAware;
+import org.apache.solr.util.stats.MetricUtils;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
@@ -220,6 +222,12 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
   private Counter newSearcherCounter;
   private Counter newSearcherMaxReachedCounter;
   private Counter newSearcherOtherErrorsCounter;
+
+  private Set<String> metricNames = new HashSet<>();
+
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
 
   public Date getStartTimeStamp() { return startTime; }
 
@@ -1120,24 +1128,24 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
 
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    newSearcherCounter = manager.counter(registry, "new", Category.SEARCHER.toString());
-    newSearcherTimer = manager.timer(registry, "time", Category.SEARCHER.toString(), "new");
-    newSearcherWarmupTimer = manager.timer(registry, "warmup", Category.SEARCHER.toString(), "new");
-    newSearcherMaxReachedCounter = manager.counter(registry, "maxReached", Category.SEARCHER.toString(), "new");
-    newSearcherOtherErrorsCounter = manager.counter(registry, "errors", Category.SEARCHER.toString(), "new");
+    newSearcherCounter = manager.counter(this, registry, "new", Category.SEARCHER.toString());
+    newSearcherTimer = manager.timer(this, registry, "time", Category.SEARCHER.toString(), "new");
+    newSearcherWarmupTimer = manager.timer(this, registry, "warmup", Category.SEARCHER.toString(), "new");
+    newSearcherMaxReachedCounter = manager.counter(this, registry, "maxReached", Category.SEARCHER.toString(), "new");
+    newSearcherOtherErrorsCounter = manager.counter(this, registry, "errors", Category.SEARCHER.toString(), "new");
 
-    manager.registerGauge(registry, () -> name == null ? "(null)" : name, true, "coreName", Category.CORE.toString());
-    manager.registerGauge(registry, () -> startTime, true, "startTime", Category.CORE.toString());
-    manager.registerGauge(registry, () -> getOpenCount(), true, "refCount", Category.CORE.toString());
-    manager.registerGauge(registry, () -> resourceLoader.getInstancePath().toString(), true, "instanceDir", Category.CORE.toString());
-    manager.registerGauge(registry, () -> getIndexDir(), true, "indexDir", Category.CORE.toString());
-    manager.registerGauge(registry, () -> getIndexSize(), true, "sizeInBytes", Category.INDEX.toString());
-    manager.registerGauge(registry, () -> NumberUtils.readableSize(getIndexSize()), true, "size", Category.INDEX.toString());
+    manager.registerGauge(this, registry, () -> name == null ? "(null)" : name, true, "coreName", Category.CORE.toString());
+    manager.registerGauge(this, registry, () -> startTime, true, "startTime", Category.CORE.toString());
+    manager.registerGauge(this, registry, () -> getOpenCount(), true, "refCount", Category.CORE.toString());
+    manager.registerGauge(this, registry, () -> resourceLoader.getInstancePath().toString(), true, "instanceDir", Category.CORE.toString());
+    manager.registerGauge(this, registry, () -> getIndexDir(), true, "indexDir", Category.CORE.toString());
+    manager.registerGauge(this, registry, () -> getIndexSize(), true, "sizeInBytes", Category.INDEX.toString());
+    manager.registerGauge(this, registry, () -> NumberUtils.readableSize(getIndexSize()), true, "size", Category.INDEX.toString());
     if (coreDescriptor != null && coreDescriptor.getCoreContainer() != null) {
-      manager.registerGauge(registry, () -> coreDescriptor.getCoreContainer().getCoreNames(this), true, "aliases", Category.CORE.toString());
+      manager.registerGauge(this, registry, () -> coreDescriptor.getCoreContainer().getCoreNames(this), true, "aliases", Category.CORE.toString());
       final CloudDescriptor cd = coreDescriptor.getCloudDescriptor();
       if (cd != null) {
-        manager.registerGauge(registry, () -> {
+        manager.registerGauge(this, registry, () -> {
           if (cd.getCollectionName() != null) {
             return cd.getCollectionName();
           } else {
@@ -1145,7 +1153,7 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
           }
         }, true, "collection", Category.CORE.toString());
 
-        manager.registerGauge(registry, () -> {
+        manager.registerGauge(this, registry, () -> {
           if (cd.getShardId() != null) {
             return cd.getShardId();
           } else {
@@ -1158,8 +1166,8 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
     // initialize disk total / free metrics
     Path dataDirPath = Paths.get(dataDir);
     File dataDirFile = dataDirPath.toFile();
-    manager.registerGauge(registry, () -> dataDirFile.getTotalSpace(), true, "totalSpace", Category.CORE.toString(), "fs");
-    manager.registerGauge(registry, () -> dataDirFile.getUsableSpace(), true, "usableSpace", Category.CORE.toString(), "fs");
+    manager.registerGauge(this, registry, () -> dataDirFile.getTotalSpace(), true, "totalSpace", Category.CORE.toString(), "fs");
+    manager.registerGauge(this, registry, () -> dataDirFile.getUsableSpace(), true, "usableSpace", Category.CORE.toString(), "fs");
   }
 
   private void checkVersionFieldExistsInSchema(IndexSchema schema, CoreDescriptor coreDescriptor) {
@@ -2801,6 +2809,11 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
   @Override
   public Category getCategory() {
     return Category.CORE;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return coreMetricManager.getRegistry();
   }
 
   public Codec getCodec() {

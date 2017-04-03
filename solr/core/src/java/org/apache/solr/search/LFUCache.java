@@ -17,13 +17,14 @@
 package org.apache.solr.search;
 
 import java.lang.invoke.MethodHandles;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
@@ -64,6 +65,8 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
   private int showItems = 0;
   private Boolean timeDecay = true;
   private MetricsMap cacheMap;
+  private Set<String> metricNames = new HashSet<>();
+  private MetricRegistry registry;
 
   @Override
   public Object init(Map args, Object persistence, CacheRegenerator regenerator) {
@@ -231,9 +234,9 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
   }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    cacheMap = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    cacheMap = new MetricsMap((detailed, map) -> {
       if (cache != null) {
         ConcurrentLFUCache.Stats stats = cache.getStats();
         long lookups = stats.getCumulativeLookups();
@@ -284,14 +287,23 @@ public class LFUCache<K, V> implements SolrCache<K, V> {
         }
 
       }
-      return map;
-    };
-    manager.registerGauge(registry, cacheMap, true, scope, getCategory().toString());
+    });
+    manager.registerGauge(this, registryName, cacheMap, true, scope, getCategory().toString());
   }
 
   // for unit tests only
-  MetricsMap getMetrics() {
+  MetricsMap getMetricsMap() {
     return cacheMap;
+  }
+
+  @Override
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
   }
 
   @Override

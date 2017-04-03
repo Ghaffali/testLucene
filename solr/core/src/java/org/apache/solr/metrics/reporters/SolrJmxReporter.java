@@ -16,14 +16,24 @@
  */
 package org.apache.solr.metrics.reporters;
 
+import javax.management.InstanceAlreadyExistsException;
+import javax.management.InstanceNotFoundException;
+import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
+import javax.management.NotCompliantMBeanException;
+import javax.management.ObjectName;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Locale;
 
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.JmxReporter;
+import com.codahale.metrics.MetricFilter;
+import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.MetricRegistryListener;
 import org.apache.solr.core.PluginInfo;
+import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricReporter;
 import org.apache.solr.util.JmxUtil;
@@ -45,7 +55,9 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private String serviceUrl;
 
   private JmxReporter reporter;
+  private MetricRegistry registry;
   private MBeanServer mBeanServer;
+  private MetricsMapListener listener;
 
   /**
    * Creates a new instance of {@link SolrJmxReporter}.
@@ -91,13 +103,20 @@ public class SolrJmxReporter extends SolrMetricReporter {
     }
 
     JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain);
+    registry = metricManager.registry(registryName);
+    // filter out MetricsMap gauges
+    MetricFilter filter = (name, metric) -> !(metric instanceof MetricsMap);
 
-    reporter = JmxReporter.forRegistry(metricManager.registry(registryName))
+    reporter = JmxReporter.forRegistry(registry)
                           .registerWith(mBeanServer)
                           .inDomain(domain)
+                          .filter(filter)
                           .createsObjectNamesWith(jmxObjectNameFactory)
                           .build();
     reporter.start();
+    // work around for inability to register custom MBeans
+    listener = new MetricsMapListener(mBeanServer, jmxObjectNameFactory);
+    registry.addListener(listener);
 
     log.info("JMX monitoring enabled at server: " + mBeanServer);
   }
@@ -110,6 +129,9 @@ public class SolrJmxReporter extends SolrMetricReporter {
     if (reporter != null) {
       reporter.close();
       reporter = null;
+    }
+    if (listener != null && registry != null) {
+      registry.removeListener(listener);
     }
   }
 
@@ -194,4 +216,31 @@ public class SolrJmxReporter extends SolrMetricReporter {
         getClass().getName(), Integer.toHexString(hashCode()), domain, serviceUrl, agentId);
   }
 
+  private static class MetricsMapListener extends MetricRegistryListener.Base {
+    MBeanServer server;
+    JmxObjectNameFactory nameFactory;
+
+    MetricsMapListener(MBeanServer server, JmxObjectNameFactory nameFactory) {
+      this.server = server;
+      this.nameFactory = nameFactory;
+    }
+
+    @Override
+    public void onGaugeAdded(String name, Gauge<?> gauge) {
+      if (!(gauge instanceof MetricsMap)) {
+        return;
+      }
+      MetricsMap metricsMap = (MetricsMap)gauge;
+      ObjectName objectName = nameFactory.createName("gauges", nameFactory.getDomain(), name);
+      try {
+        server.registerMBean(gauge, objectName);
+      } catch (InstanceAlreadyExistsException e) {
+        log.warn("##### registration error", e);
+      } catch (MBeanRegistrationException e) {
+        log.warn("##### registration error", e);
+      } catch (NotCompliantMBeanException e) {
+        log.warn("##### registration error", e);
+      }
+    }
+  }
 }

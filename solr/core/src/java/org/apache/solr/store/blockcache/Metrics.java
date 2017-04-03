@@ -16,10 +16,11 @@
  */
 package org.apache.solr.store.blockcache;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
@@ -53,13 +54,15 @@ public class Metrics extends SolrCacheBase implements SolrInfoBean, SolrMetricPr
   public AtomicLong shardBuffercacheLost = new AtomicLong(0);
 
   private MetricsMap metricsMap;
+  private MetricRegistry registry;
+  private Set<String> metricNames = new HashSet<>();
 
   private long previous = System.nanoTime();
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    metricsMap = detailed -> {
-      Map<String,Object> map = new ConcurrentHashMap<>();
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    metricsMap = new MetricsMap((detailed, map) -> {
       long now = System.nanoTime();
       long delta = Math.max(now - previous, 1);
       double seconds = delta / 1000000000.0;
@@ -101,9 +104,8 @@ public class Metrics extends SolrCacheBase implements SolrInfoBean, SolrMetricPr
 
       previous = now;
 
-      return map;
-    };
-    manager.registerGauge(registry, metricsMap, true, getName(), getCategory().toString(), scope);
+    });
+    manager.registerGauge(this, registryName, metricsMap, true, getName(), getCategory().toString(), scope);
   }
 
   private float getPerSecond(long value, double seconds) {
@@ -120,6 +122,16 @@ public class Metrics extends SolrCacheBase implements SolrInfoBean, SolrMetricPr
   @Override
   public String getDescription() {
     return "Provides metrics for the HdfsDirectoryFactory BlockCache.";
+  }
+
+  @Override
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
   }
 
 }

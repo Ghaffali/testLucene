@@ -61,7 +61,7 @@ public class TestLFUCache extends SolrTestCaseJ4 {
       SolrIndexSearcher searcher = holder.get();
       LFUCache cacheDecayTrue = (LFUCache) searcher.getCache("lfuCacheDecayTrue");
       assertNotNull(cacheDecayTrue);
-      Map<String,Object> stats = cacheDecayTrue.getMetrics().getValue();
+      Map<String,Object> stats = cacheDecayTrue.getMetricsMap().getValue();
       assertTrue((Boolean) stats.get("timeDecay"));
       addCache(cacheDecayTrue, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
       for (int idx = 0; idx < 64; ++idx) {
@@ -72,7 +72,7 @@ public class TestLFUCache extends SolrTestCaseJ4 {
 
       LFUCache cacheDecayDefault = (LFUCache) searcher.getCache("lfuCacheDecayDefault");
       assertNotNull(cacheDecayDefault);
-      stats = cacheDecayDefault.getMetrics().getValue();
+      stats = cacheDecayDefault.getMetricsMap().getValue();
       assertTrue((Boolean) stats.get("timeDecay"));
       addCache(cacheDecayDefault, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
       assertCache(cacheDecayDefault, 1, 2, 3, 4, 5);
@@ -86,7 +86,7 @@ public class TestLFUCache extends SolrTestCaseJ4 {
 
       LFUCache cacheDecayFalse = (LFUCache) searcher.getCache("lfuCacheDecayFalse");
       assertNotNull(cacheDecayFalse);
-      stats = cacheDecayFalse.getMetrics().getValue();
+      stats = cacheDecayFalse.getMetricsMap().getValue();
       assertFalse((Boolean) stats.get("timeDecay"));
       addCache(cacheDecayFalse, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
       assertCache(cacheDecayFalse, 1, 2, 3, 4, 5);
@@ -157,7 +157,7 @@ public class TestLFUCache extends SolrTestCaseJ4 {
       assertEquals("15", lfuCache.get(15));
       assertEquals("75", lfuCache.get(75));
       assertEquals(null, lfuCache.get(110));
-      Map<String,Object> nl = lfuCache.getMetrics().getValue();
+      Map<String,Object> nl = lfuCache.getMetricsMap().getValue();
       assertEquals(3L, nl.get("lookups"));
       assertEquals(2L, nl.get("hits"));
       assertEquals(101L, nl.get("inserts"));
@@ -173,7 +173,7 @@ public class TestLFUCache extends SolrTestCaseJ4 {
       assertEquals("15", newLFUCache.get(15));
       assertEquals("75", newLFUCache.get(75));
       assertEquals(null, newLFUCache.get(50));
-      nl = newLFUCache.getMetrics().getValue();
+      nl = newLFUCache.getMetricsMap().getValue();
       assertEquals(3L, nl.get("lookups"));
       assertEquals(2L, nl.get("hits"));
       assertEquals(1L, nl.get("inserts"));

@@ -16,6 +16,7 @@
  */
 package org.apache.solr.search;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
@@ -24,10 +25,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.invoke.MethodHandles;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
@@ -59,6 +60,8 @@ public class FastLRUCache<K, V> extends SolrCacheBase implements SolrCache<K,V> 
   private long maxRamBytes;
 
   private MetricsMap cacheMap;
+  private Set<String> metricNames = new HashSet<>();
+  private MetricRegistry registry;
 
   @Override
   public Object init(Map args, Object persistence, CacheRegenerator regenerator) {
@@ -218,9 +221,14 @@ public class FastLRUCache<K, V> extends SolrCacheBase implements SolrCache<K,V> 
   }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    cacheMap = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    cacheMap = new MetricsMap((detailed, map) -> {
       if (cache != null) {
         ConcurrentLRUCache.Stats stats = cache.getStats();
         long lookups = stats.getCumulativeLookups();
@@ -268,14 +276,18 @@ public class FastLRUCache<K, V> extends SolrCacheBase implements SolrCache<K,V> 
 
         }
       }
-      return map;
-    };
-    manager.registerGauge(registry, cacheMap, true, scope, getCategory().toString());
+    });
+    manager.registerGauge(this, registryName, cacheMap, true, scope, getCategory().toString());
   }
 
   // for unit tests only
-  MetricsMap getMetrics() {
+  MetricsMap getMetricsMap() {
     return cacheMap;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
   }
 
   @Override

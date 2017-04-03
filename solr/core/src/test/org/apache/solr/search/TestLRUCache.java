@@ -113,7 +113,7 @@ public class TestLRUCache extends LuceneTestCase {
     }
     assertEquals("25", lruCache.get(25));
     assertEquals(null, lruCache.get(110));
-    Map<String,Object> nl = lruCache.getMetrics().getValue();
+    Map<String,Object> nl = lruCache.getMetricsMap().getValue();
     assertEquals(2L, nl.get("lookups"));
     assertEquals(1L, nl.get("hits"));
     assertEquals(101L, nl.get("inserts"));
@@ -155,7 +155,7 @@ public class TestLRUCache extends LuceneTestCase {
     });
     assertEquals(1, accountableLRUCache.size());
     assertEquals(baseSize + 512 * 1024 + LRUCache.LINKED_HASHTABLE_RAM_BYTES_PER_ENTRY + LRUCache.DEFAULT_RAM_BYTES_USED, accountableLRUCache.ramBytesUsed());
-    Map<String,Object> nl = accountableLRUCache.getMetrics().getValue();
+    Map<String,Object> nl = accountableLRUCache.getMetricsMap().getValue();
     assertEquals(1L, nl.get("evictions"));
     assertEquals(1L, nl.get("evictionsRamUsage"));
     accountableLRUCache.put("3", new Accountable() {
@@ -164,7 +164,7 @@ public class TestLRUCache extends LuceneTestCase {
         return 1024;
       }
     });
-    nl = accountableLRUCache.getMetrics().getValue();
+    nl = accountableLRUCache.getMetricsMap().getValue();
     assertEquals(1L, nl.get("evictions"));
     assertEquals(1L, nl.get("evictionsRamUsage"));
     assertEquals(2L, accountableLRUCache.size());

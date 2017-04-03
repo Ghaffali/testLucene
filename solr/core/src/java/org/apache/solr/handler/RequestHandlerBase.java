@@ -18,7 +18,12 @@ package org.apache.solr.handler;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
+import com.codahale.metrics.MetricRegistry;
 import com.google.common.collect.ImmutableList;
 import com.codahale.metrics.Counter;
 import com.codahale.metrics.Meter;
@@ -40,6 +45,7 @@ import org.apache.solr.util.SolrPluginUtils;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.ApiSupport;
+import org.apache.solr.util.stats.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -70,6 +76,9 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private PluginInfo pluginInfo;
+
+  private Set<String> metricNames = new HashSet<>();
+  private MetricRegistry registry;
 
   @SuppressForbidden(reason = "Need currentTimeMillis, used only for stats output")
   public RequestHandlerBase() {
@@ -135,14 +144,15 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
 
   @Override
   public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
-    numErrors = manager.meter(registryName, "errors", getCategory().toString(), scope);
-    numServerErrors = manager.meter(registryName, "serverErrors", getCategory().toString(), scope);
-    numClientErrors = manager.meter(registryName, "clientErrors", getCategory().toString(), scope);
-    numTimeouts = manager.meter(registryName, "timeouts", getCategory().toString(), scope);
-    requests = manager.counter(registryName, "requests", getCategory().toString(), scope);
-    requestTimes = manager.timer(registryName, "requestTimes", getCategory().toString(), scope);
-    totalTime = manager.counter(registryName, "totalTime", getCategory().toString(), scope);
-    manager.registerGauge(registryName, () -> handlerStart, true, "handlerStart", getCategory().toString(), scope);
+    registry = manager.registry(registryName);
+    numErrors = manager.meter(this, registryName, "errors", getCategory().toString(), scope);
+    numServerErrors = manager.meter(this, registryName, "serverErrors", getCategory().toString(), scope);
+    numClientErrors = manager.meter(this, registryName, "clientErrors", getCategory().toString(), scope);
+    numTimeouts = manager.meter(this, registryName, "timeouts", getCategory().toString(), scope);
+    requests = manager.counter(this, registryName, "requests", getCategory().toString(), scope);
+    requestTimes = manager.timer(this, registryName, "requestTimes", getCategory().toString(), scope);
+    totalTime = manager.counter(this, registryName, "totalTime", getCategory().toString(), scope);
+    manager.registerGauge(this, registryName, () -> handlerStart, true, "handlerStart", getCategory().toString(), scope);
   }
 
   public static SolrParams getSolrParamsFromNamedList(NamedList args, String key) {
@@ -227,6 +237,16 @@ public abstract class RequestHandlerBase implements SolrRequestHandler, SolrInfo
   @Override
   public Category getCategory() {
     return Category.QUERY;
+  }
+
+  @Override
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
   }
 
   @Override

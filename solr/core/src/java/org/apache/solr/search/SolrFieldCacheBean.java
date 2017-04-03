@@ -16,9 +16,10 @@
  */
 package org.apache.solr.search;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.HashSet;
+import java.util.Set;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
@@ -32,8 +33,10 @@ import org.apache.solr.uninverting.UninvertingReader;
 public class SolrFieldCacheBean implements SolrInfoBean, SolrMetricProducer {
 
   private boolean disableEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryList");
+  private boolean disableJmxEntryList = Boolean.getBoolean("disableSolrFieldCacheMBeanEntryListJmx");
 
-  private MetricsMap metricsMap;
+  private MetricRegistry registry;
+  private Set<String> metricNames = new HashSet<>();
 
   @Override
   public String getName() { return this.getClass().getName(); }
@@ -42,13 +45,21 @@ public class SolrFieldCacheBean implements SolrInfoBean, SolrMetricProducer {
     return "Provides introspection of the Solr FieldCache ";
   }
   @Override
-  public Category getCategory() { return Category.CACHE; } 
+  public Category getCategory() { return Category.CACHE; }
+  @Override
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
+  }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    metricsMap = detailed -> {
-      Map<String, Object> map = new ConcurrentHashMap<>();
-      if (detailed && !disableEntryList) {
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    MetricsMap metricsMap = new MetricsMap((detailed, map) -> {
+      if (detailed && !disableEntryList && !disableJmxEntryList) {
         UninvertingReader.FieldCacheStats fieldCacheStats = UninvertingReader.getUninvertedStats();
         String[] entries = fieldCacheStats.info;
         map.put("entries_count", entries.length);
@@ -60,8 +71,7 @@ public class SolrFieldCacheBean implements SolrInfoBean, SolrMetricProducer {
       } else {
         map.put("entries_count", UninvertingReader.getUninvertedStatsSize());
       }
-      return map;
-    };
-    manager.register(registry, metricsMap, true, "fieldCache", Category.CACHE.toString(), scope);
+    });
+    manager.register(this, registryName, metricsMap, true, "fieldCache", Category.CACHE.toString(), scope);
   }
 }

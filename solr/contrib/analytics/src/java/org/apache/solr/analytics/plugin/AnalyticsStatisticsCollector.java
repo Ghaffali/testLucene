@@ -16,6 +16,7 @@
  */
 package org.apache.solr.analytics.plugin;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -85,7 +86,9 @@ public class AnalyticsStatisticsCollector {
   }
 
   public Map<String, Object> getStatistics() {
-    Map<String, Object> map = MetricUtils.convertTimer(requestTimes, false);
+
+    Map<String, Object> map = new HashMap<>();
+    map.putAll(MetricUtils.convertTimer(requestTimes, false));
     map.put("requests", numRequests.longValue());
     map.put("analyticsRequests", numAnalyticsRequests.longValue());
     map.put("statsRequests", numStatsRequests.longValue());

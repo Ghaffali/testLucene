@@ -19,13 +19,15 @@ package org.apache.solr.search;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.LongAdder;
 
+import com.codahale.metrics.MetricRegistry;
 import org.apache.lucene.util.Accountable;
 import org.apache.lucene.util.Accountables;
 import org.apache.lucene.util.RamUsageEstimator;
@@ -85,6 +87,8 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
   private Map<K,V> map;
   private String description="LRU Cache";
   private MetricsMap cacheMap;
+  private Set<String> metricNames = new HashSet<>();
+  private MetricRegistry registry;
 
   private long maxRamBytes = Long.MAX_VALUE;
   // The synchronization used for the map will be used to update this,
@@ -322,9 +326,14 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
   }
 
   @Override
-  public void initializeMetrics(SolrMetricManager manager, String registry, String scope) {
-    cacheMap = detailed -> {
-      Map<String, Object> res = new ConcurrentHashMap<>();
+  public Set<String> getMetricNames() {
+    return metricNames;
+  }
+
+  @Override
+  public void initializeMetrics(SolrMetricManager manager, String registryName, String scope) {
+    registry = manager.registry(registryName);
+    cacheMap = new MetricsMap((detailed, res) -> {
       synchronized (map) {
         res.put("lookups", lookups);
         res.put("hits", hits);
@@ -350,15 +359,18 @@ public class LRUCache<K,V> extends SolrCacheBase implements SolrCache<K,V>, Acco
       if (maxRamBytes != Long.MAX_VALUE)  {
         res.put("cumulative_evictionsRamUsage", stats.evictionsRamUsage.longValue());
       }
-
-      return res;
-    };
-    manager.registerGauge(registry, cacheMap, true, scope, getCategory().toString());
+    });
+    manager.registerGauge(this, registryName, cacheMap, true, scope, getCategory().toString());
   }
 
   // for unit tests only
-  MetricsMap getMetrics() {
+  MetricsMap getMetricsMap() {
     return cacheMap;
+  }
+
+  @Override
+  public MetricRegistry getMetricRegistry() {
+    return registry;
   }
   
   @Override

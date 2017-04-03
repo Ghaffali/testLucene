@@ -19,6 +19,7 @@ package org.apache.solr.search;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
@@ -105,6 +106,11 @@ public abstract class QParserPlugin implements NamedListInitializedPlugin, SolrI
   @Override
   public Category getCategory() {
     return Category.QUERYPARSER;
+  }
+
+  @Override
+  public Set<String> getMetricNames() {
+    return null;
   }
 
 }

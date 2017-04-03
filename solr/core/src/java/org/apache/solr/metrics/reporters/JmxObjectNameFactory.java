@@ -51,6 +51,20 @@ public class JmxObjectNameFactory implements ObjectNameFactory {
   }
 
   /**
+   * Return current domain.
+   */
+  public String getDomain() {
+    return domain;
+  }
+
+  /**
+   * Return current reporterName.
+   */
+  public String getReporterName() {
+    return reporterName;
+  }
+
+  /**
    * Create a hierarchical name.
    *
    * @param type    metric class, eg. "counters", may be null for non-metric MBeans
