@@ -28,7 +28,6 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.search.facet.FacetModule;
 import org.apache.solr.util.plugin.NamedListInitializedPlugin;
-import org.apache.solr.util.stats.MetricUtils;
 
 /**
  * TODO!

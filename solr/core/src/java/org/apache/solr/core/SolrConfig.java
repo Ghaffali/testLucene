@@ -276,6 +276,10 @@ public class SolrConfig extends Config implements MapSerializable {
     hashSetInverseLoadFactor = 1.0f / getFloat("//HashDocSet/@loadFactor", 0.75f);
     hashDocSetMaxSize = getInt("//HashDocSet/@maxSize", 3000);
 
+    if (get("jmx", null) != null) {
+      log.warn("solrconfig.xml: <jmx> is no longer supported, use solr.xml:/metrics/reporter section instead");
+    }
+
     httpCachingConfig = new HttpCachingConfig(this);
 
     maxWarmingSearchers = getInt("query/maxWarmingSearchers", 1);
@@ -504,39 +508,6 @@ public class SolrConfig extends Config implements MapSerializable {
 
   public HttpCachingConfig getHttpCachingConfig() {
     return httpCachingConfig;
-  }
-
-  public static class JmxConfiguration implements MapSerializable {
-    public boolean enabled = false;
-    public String agentId;
-    public String serviceUrl;
-    public String rootName;
-
-    public JmxConfiguration(boolean enabled,
-                            String agentId,
-                            String serviceUrl,
-                            String rootName) {
-      this.enabled = enabled;
-      this.agentId = agentId;
-      this.serviceUrl = serviceUrl;
-      this.rootName = rootName;
-
-      if (agentId != null && serviceUrl != null) {
-        throw new SolrException
-            (SolrException.ErrorCode.SERVER_ERROR,
-                "Incorrect JMX Configuration in solrconfig.xml, " +
-                    "both agentId and serviceUrl cannot be specified at the same time");
-      }
-
-    }
-
-    @Override
-    public Map<String, Object> toMap(Map<String, Object> map) {
-      map.put("agentId", agentId);
-      map.put("serviceUrl", serviceUrl);
-      map.put("rootName", rootName);
-      return map;
-    }
   }
 
   public static class HttpCachingConfig implements MapSerializable {

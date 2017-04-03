@@ -18,9 +18,7 @@ package org.apache.solr.handler;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import com.codahale.metrics.MetricRegistry;
@@ -45,7 +43,6 @@ import org.apache.solr.util.SolrPluginUtils;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.api.ApiSupport;
-import org.apache.solr.util.stats.MetricUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

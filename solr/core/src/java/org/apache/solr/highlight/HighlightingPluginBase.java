@@ -16,9 +16,7 @@
  */
 package org.apache.solr.highlight;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import com.codahale.metrics.Counter;
@@ -28,7 +26,6 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.SolrInfoBean;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
-import org.apache.solr.util.stats.MetricUtils;
 
 /**
  * 

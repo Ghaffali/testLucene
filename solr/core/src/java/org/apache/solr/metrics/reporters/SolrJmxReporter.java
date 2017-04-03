@@ -16,11 +16,7 @@
  */
 package org.apache.solr.metrics.reporters;
 
-import javax.management.InstanceAlreadyExistsException;
-import javax.management.InstanceNotFoundException;
-import javax.management.MBeanRegistrationException;
 import javax.management.MBeanServer;
-import javax.management.NotCompliantMBeanException;
 import javax.management.ObjectName;
 
 import java.io.IOException;
@@ -106,7 +102,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
 
     JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain);
     registry = metricManager.registry(registryName);
-    // filter out MetricsMap gauges
+    // filter out MetricsMap gauges - we have a better way of handling them
     MetricFilter filter = (name, metric) -> !(metric instanceof MetricsMap);
 
     reporter = JmxReporter.forRegistry(registry)
@@ -116,7 +112,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
                           .createsObjectNamesWith(jmxObjectNameFactory)
                           .build();
     reporter.start();
-    // work around for inability to register custom MBeans
+    // workaround for inability to register custom MBeans (to be available in metrics 4.0?)
     listener = new MetricsMapListener(mBeanServer, jmxObjectNameFactory);
     registry.addListener(listener);
 
@@ -222,6 +218,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private static class MetricsMapListener extends MetricRegistryListener.Base {
     MBeanServer server;
     JmxObjectNameFactory nameFactory;
+    // keep the names so that we can unregister them on core close
     List<ObjectName> registered = new ArrayList<>();
 
     MetricsMapListener(MBeanServer server, JmxObjectNameFactory nameFactory) {
