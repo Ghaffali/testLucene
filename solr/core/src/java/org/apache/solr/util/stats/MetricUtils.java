@@ -154,6 +154,7 @@ public class MetricUtils {
    * @param mustMatchFilter a {@link MetricFilter}.
    *                        A metric <em>must</em> match this filter to be included in the output.
    * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
+   * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
    * @param compact use compact representation for counters and gauges.
    * @param metadata optional metadata. If not null and not empty then this map will be added under a
    *                 {@code _metadata_} key.
@@ -207,12 +208,30 @@ public class MetricUtils {
         });
   }
 
+  /**
+   * Convert selected metrics from a registry into a map.
+   * @param registry registry
+   * @param names metric names
+   * @return map where keys are metric names (if they were present in the registry) and values are
+   * converted metrics.
+   */
   public static Map<String, Object> convertMetrics(MetricRegistry registry, Collection<String> names) {
     final Map<String, Object> metrics = new HashMap<>();
     convertMetrics(registry, names, false, true, true, (k, v) -> metrics.put(k, v));
     return metrics;
   }
 
+  /**
+   * Convert selected metrics from a registry into a map.
+   * @param registry registry
+   * @param names metric names
+   * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
+   * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
+   * @param compact use compact representation for counters and gauges.
+   * @param consumer consumer that accepts produced {@link SolrInputDocument}-s
+   * @return map where keys are metric names (if they were present in the registry) and values are
+   * converted metrics.
+   */
   public static void convertMetrics(MetricRegistry registry, Collection<String> names,
                                     boolean skipHistograms, boolean skipAggregateValues, boolean compact,
                                     BiConsumer<String, Object> consumer) {
@@ -224,7 +243,7 @@ public class MetricUtils {
         });
   }
 
-  public static void convertMetric(String n, Metric metric, boolean skipHistograms, boolean skipAggregateValues,
+  static void convertMetric(String n, Metric metric, boolean skipHistograms, boolean skipAggregateValues,
                               boolean compact, BiConsumer<String, Object> consumer) {
     if (metric instanceof Counter) {
       Counter counter = (Counter) metric;
@@ -257,7 +276,7 @@ public class MetricUtils {
     }
   }
 
-  public static Map<String, Object> convertAggregateMetric(AggregateMetric metric, boolean skipAggregateValues) {
+  static Map<String, Object> convertAggregateMetric(AggregateMetric metric, boolean skipAggregateValues) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", metric.size());
     response.put(MAX, metric.getMax());
@@ -278,7 +297,7 @@ public class MetricUtils {
     return response;
   }
 
-  public static Map<String, Object> convertHistogram(Histogram histogram) {
+  static Map<String, Object> convertHistogram(Histogram histogram) {
     Map<String, Object> response = new LinkedHashMap<>();
     Snapshot snapshot = histogram.getSnapshot();
     response.put("count", histogram.getCount());
@@ -297,7 +316,7 @@ public class MetricUtils {
   }
 
   // some snapshots represent time in ns, other snapshots represent raw values (eg. chunk size)
-  public static void addSnapshot(Map<String, Object> response, Snapshot snapshot, boolean ms) {
+  static void addSnapshot(Map<String, Object> response, Snapshot snapshot, boolean ms) {
     response.put((ms ? MIN_MS: MIN), nsToMs(ms, snapshot.getMin()));
     response.put((ms ? MAX_MS: MAX), nsToMs(ms, snapshot.getMax()));
     response.put((ms ? MEAN_MS : MEAN), nsToMs(ms, snapshot.getMean()));
@@ -309,6 +328,12 @@ public class MetricUtils {
     response.put((ms ? P999_MS: P999), nsToMs(ms, snapshot.get999thPercentile()));
   }
 
+  /**
+   * Convert a {@link Timer} to a map.
+   * @param timer timer instance
+   * @param skipHistograms if true then discard the histogram part of the timer.
+   * @return a map containing timer properties.
+   */
   public static Map<String,Object> convertTimer(Timer timer, boolean skipHistograms) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", timer.getCount());
@@ -323,7 +348,7 @@ public class MetricUtils {
     return response;
   }
 
-  public static Map<String, Object> convertMeter(Meter meter) {
+  static Map<String, Object> convertMeter(Meter meter) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", meter.getCount());
     response.put("meanRate", meter.getMeanRate());
@@ -333,7 +358,7 @@ public class MetricUtils {
     return response;
   }
 
-  public static Object convertGauge(Gauge gauge, boolean compact) {
+  static Object convertGauge(Gauge gauge, boolean compact) {
     if (compact) {
       return gauge.getValue();
     } else {
@@ -343,7 +368,7 @@ public class MetricUtils {
     }
   }
 
-  public static Object convertCounter(Counter counter, boolean compact) {
+  static Object convertCounter(Counter counter, boolean compact) {
     if (compact) {
       return counter.getCount();
     } else {

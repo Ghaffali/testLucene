@@ -209,6 +209,14 @@ public class SolrJmxReporter extends SolrMetricReporter {
     return mBeanServer;
   }
 
+  /**
+   * For unit tests.
+   * @return true if this reporter is actively reporting metrics to JMX.
+   */
+  public boolean isActive() {
+    return reporter != null;
+  }
+
   @Override
   public String toString() {
     return String.format(Locale.ENGLISH, "[%s@%s: domain = %s, service url = %s, agent id = %s]",

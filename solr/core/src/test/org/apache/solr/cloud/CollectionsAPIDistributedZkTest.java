@@ -631,7 +631,6 @@ public class CollectionsAPIDistributedZkTest extends SolrCloudTestCase {
 
         try {
           Map<String, String> props = mbean.getKeyPropertyList();
-          MBeanAttributeInfo[] attrs = server.getMBeanInfo(mbean).getAttributes();
           String category = props.get("category");
           String name = props.get("name");
           if ((category != null && category.toString().equals(Category.CORE.toString())) &&
@@ -639,13 +638,12 @@ public class CollectionsAPIDistributedZkTest extends SolrCloudTestCase {
             String indexDir = server.getAttribute(mbean, "Value").toString();
             String key = props.get("dom2") + "." + props.get("dom3") + "." + props.get("dom4");
             if (!indexDirToShardNamesMap.containsKey(indexDir)) {
-              indexDirToShardNamesMap.put(indexDir.toString(), new HashSet<String>());
+              indexDirToShardNamesMap.put(indexDir.toString(), new HashSet<>());
             }
             indexDirToShardNamesMap.get(indexDir.toString()).add(key);
           }
         } catch (Exception e) {
-          log.info(e.toString());
-          // ignore, just continue - probably a "category" or "source" attribute
+          // ignore, just continue - probably a "Value" attribute
           // not found
         }
       }
