@@ -61,6 +61,10 @@ New Features
 * SOLR-10292: Adds CartesianProductStream which turns a single tuple with a multi-valued field into N 
   tuples, one for each value in the multi-valued field. (Dennis Gove)
 
+* SOLR-10356: Adds basic math Streaming Evaluators (Dennis Gove)
+
+* SOLR-10393: Adds UUID Streaming Evaluator (Dennis Gove)
+
 Bug Fixes
 ----------------------
 * SOLR-9262: Connection and read timeouts are being ignored by UpdateShardHandler after SOLR-4509.
@@ -104,17 +108,31 @@ Apache UIMA 2.3.1
 Apache ZooKeeper 3.4.6
 Jetty 9.3.14.v20161028
 
+Upgrade Notes
+----------------------
+
+* Solr contribs map-reduce, morphlines-core and morphlines-cell have been removed.
+
 Detailed Change List
 ----------------------
 
 New Features
 ----------------------
 
-* SOLR-9992: Add support for grouping with PointFIelds. (Cao Manh Dat) 
+* SOLR-9992: Add support for grouping with PointFIelds. (Cao Manh Dat)
 
 * SOLR-10046: Add UninvertDocValuesMergePolicyFactory class. (Keith Laban, Christine Poerschke)
 
-* SOLR-9994: Add support for CollapseQParser with PointFields. (Varun Thacker, Cao Manh Dat) 
+* SOLR-9994: Add support for CollapseQParser with PointFields. (Varun Thacker, Cao Manh Dat)
+
+* SOLR-10076: Hide keystore and truststore passwords from /admin/info/* outputs. (Mano Kovacs via Mark Miller)
+
+* SOLR-6736: Adding support for uploading zipped configsets using ConfigSets API (Varun Rajput, Ishan Chattopadhyaya,
+  Noble Paul, Anshum Gupta, Gregory Chanan)
+
+* SOLR-10349: Add totalTermFreq support to TermsComponent. (Shai Erera)
+
+* SOLR-9993: Add support for ExpandComponent with PointFields. (Cao Manh Dat)
 
 Optimizations
 ----------------------
@@ -122,6 +140,53 @@ Optimizations
 * SOLR-9184: Add a static convenience method ModifiableSolrParams#of(SolrParams) which returns the same
   instance if it already is modifiable, otherwise creates a new ModifiableSolrParams instance.
   (Jörg Rathlev via Koji)
+
+Bug Fixes
+----------------------
+* SOLR-10281: ADMIN_PATHS is duplicated in two places and inconsistent. This can cause automatic
+  retries to /admin/metrics handler by the CloudSolrClient. (shalin)
+
+* SOLR-10108: bin/solr script recursive copy broken (Erick Erickson)
+
+* SOLR-10362: "Memory Pool not found" error when reporting JVM metrics. (ab)
+
+* SOLR-10369: bin\solr.cmd delete and healthcheck now works again; fixed continuation chars ^ (Luis Goes via janhoy)
+
+* SOLR-10387: zkTransfer normalizes destination path incorrectly if source is a windows directory 
+  (gopikannan venugopalsamy, Erick Erickson)
+
+Other Changes
+----------------------
+
+* SOLR-9221: Remove Solr contribs: map-reduce, morphlines-core and morphlines-cell. (Steve Rowe)
+
+* SOLR-10249: Refactor IndexFetcher.doFetch() to return a more detailed result. (Jeff Miller via David Smiley)
+
+* SOLR-10304: Refactor Document handling out of SolrIndexSearcher into a new class "SolrDocumentFetcher".
+  Deprecated SolrPluginUtils.docListToSolrDocumentList(). (David Smiley)
+
+* SOLR-10352: bin/solr script now prints warning when available system entropy is lower than 300 (Esther Quansah via
+  Ishan Chattopadhyaya)
+  
+* SOLR-10344: Update Solr default/example and test configs to use WordDelimiterGraphFilterFactory. (Steve Rowe)
+
+* SOLR-10343: Update Solr default/example and test configs to use SynonymGraphFilterFactory. (Steve Rowe)
+
+* SOLR-10365: Handle a SolrCoreInitializationException while publishing core state during SolrCore creation
+  (Ishan Chattopadhyaya)
+
+* SOLR-10357: Enable edismax and standard query parsers to handle the option combination 
+  sow=false / autoGeneratePhraseQueries="true" by setting QueryBuilder.autoGenerateMultiTermSynonymsQuery.
+
+* SOLR-10147: Admin UI -> Cloud -> Graph: Impossible to see shard state (Amrit Sarkar, janhoy)
+
+* SOLR-10338: Configure SecureRandom non blocking for tests. (Mihaly Toth, hossman, Ishan Chattopadhyaya, via Mark Miller)
+
+* SOLR-10399: Generalize some internal facet logic to simplify points/non-points field handling (Adrien Grand, hossman)
+
+* SOLR-7383: New DataImportHandler 'atom' example, replacing broken 'rss' example (Alexandre Rafalovitch)
+
+* SOLR-9601: Redone DataImportHandler 'tika' example, removing all unused and irrelevant definitions (Alexandre Rafalovitch)
 
 ==================  6.5.0 ==================
 
@@ -221,8 +286,6 @@ New Features
   shard. (Boris Naguet, Ishan Chattopadhyaya)
 
 * SOLR-9045: Make RecoveryStrategy settings configurable. (Christine Poerschke)
-
-* SOLR-10076: Hide keystore and truststore passwords from /admin/info/* outputs. (Mano Kovacs via Mark Miller)
 
 * SOLR-10224: Add disk total and disk free metrics. (ab)
 

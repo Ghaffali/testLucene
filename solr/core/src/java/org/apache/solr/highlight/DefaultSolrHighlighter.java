@@ -751,9 +751,8 @@ public class DefaultSolrHighlighter extends SolrHighlighter implements PluginInf
       if( alternateFieldLen <= 0 ){
         altList.add(encoder.encodeText(altText));
       } else{
-        //note: seemingly redundant new String(...) releases memory to the larger text. But is copying better?
         altList.add( len + altText.length() > alternateFieldLen ?
-            encoder.encodeText(new String(altText.substring( 0, alternateFieldLen - len ))) :
+            encoder.encodeText(altText.substring(0, alternateFieldLen - len)) :
             encoder.encodeText(altText) );
         len += altText.length();
         if( len >= alternateFieldLen ) break;
@@ -768,7 +767,7 @@ public class DefaultSolrHighlighter extends SolrHighlighter implements PluginInf
   }
 
   // Wraps FVH to allow pass-by-reference. Public access to allow use in 3rd party subclasses
-  public class FvhContainer {
+  public static class FvhContainer {
     FastVectorHighlighter fvh;
     FieldQuery fieldQuery;
 
