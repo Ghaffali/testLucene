@@ -231,7 +231,16 @@ public class MetricUtils {
       consumer.accept(n, convertCounter(counter, compact));
     } else if (metric instanceof Gauge) {
       Gauge gauge = (Gauge) metric;
-      consumer.accept(n, convertGauge(gauge, compact));
+      try {
+        consumer.accept(n, convertGauge(gauge, compact));
+      } catch (InternalError ie) {
+        if (n.startsWith("memory.") && ie.getMessage().contains("Memory Pool not found")) {
+          LOG.warn("Error converting gauge '" + n + "', possible JDK bug: SOLR-10362", ie);
+          consumer.accept(n, null);
+        } else {
+          throw ie;
+        }
+      }
     } else if (metric instanceof Meter) {
       Meter meter = (Meter) metric;
       consumer.accept(n, convertMeter(meter));

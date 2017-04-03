@@ -25,6 +25,8 @@ import javax.management.ObjectName;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
 import com.codahale.metrics.Gauge;
@@ -132,6 +134,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
     }
     if (listener != null && registry != null) {
       registry.removeListener(listener);
+      listener.close();
     }
   }
 
@@ -219,6 +222,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private static class MetricsMapListener extends MetricRegistryListener.Base {
     MBeanServer server;
     JmxObjectNameFactory nameFactory;
+    List<ObjectName> registered = new ArrayList<>();
 
     MetricsMapListener(MBeanServer server, JmxObjectNameFactory nameFactory) {
       this.server = server;
@@ -234,13 +238,21 @@ public class SolrJmxReporter extends SolrMetricReporter {
       ObjectName objectName = nameFactory.createName("gauges", nameFactory.getDomain(), name);
       try {
         server.registerMBean(gauge, objectName);
-      } catch (InstanceAlreadyExistsException e) {
-        log.warn("##### registration error", e);
-      } catch (MBeanRegistrationException e) {
-        log.warn("##### registration error", e);
-      } catch (NotCompliantMBeanException e) {
-        log.warn("##### registration error", e);
+        registered.add(objectName);
+      } catch (Exception e) {
+        log.warn("bean registration error", e);
       }
+    }
+
+    public void close() {
+      for (ObjectName name : registered) {
+        try {
+          server.unregisterMBean(name);
+        } catch (Exception e) {
+          log.warn("bean unregistration error", e);
+        }
+      }
+
     }
   }
 }
