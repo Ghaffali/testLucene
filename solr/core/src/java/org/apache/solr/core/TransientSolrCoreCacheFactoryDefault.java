@@ -14,37 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.lucene.codecs.lucene50;
+package org.apache.solr.core;
 
-import org.apache.lucene.codecs.Codec;
-import org.apache.lucene.codecs.lucene60.Lucene60RWCodec;
-import org.apache.lucene.index.BaseSegmentInfoFormatTestCase;
-import org.apache.lucene.util.Version;
+public class TransientSolrCoreCacheFactoryDefault extends TransientSolrCoreCacheFactory {
 
-public class TestLucene50SegmentInfoFormat extends BaseSegmentInfoFormatTestCase {
+  TransientSolrCoreCache transientSolrCoreCache = null;
 
   @Override
-  protected Codec getCodec() {
-    return new Lucene60RWCodec();
-  }
+  public TransientSolrCoreCache getTransientSolrCoreCache() {
+    if (transientSolrCoreCache == null) {
+      transientSolrCoreCache = new TransientSolrCoreCacheDefault(getCoreContainer());
+    }
 
-  @Override
-  protected int getCreatedVersionMajor() {
-    return Version.LUCENE_6_0_0.major;
-  }
-
-  @Override
-  protected Version[] getVersions() {
-    return new Version[] { Version.LUCENE_6_0_0 };
-  }
-
-  @Override
-  protected boolean supportsIndexSort() {
-    return false;
-  }
-
-  @Override
-  protected boolean supportsMinVersion() {
-    return false;
+    return transientSolrCoreCache;
   }
 }

@@ -180,13 +180,29 @@ Other Changes
 
 * SOLR-10147: Admin UI -> Cloud -> Graph: Impossible to see shard state (Amrit Sarkar, janhoy)
 
-* SOLR-10338: Configure SecureRandom non blocking for tests. (Mihaly Toth, hossman, Ishan Chattopadhyaya, via Mark Miller)
-
 * SOLR-10399: Generalize some internal facet logic to simplify points/non-points field handling (Adrien Grand, hossman)
 
 * SOLR-7383: New DataImportHandler 'atom' example, replacing broken 'rss' example (Alexandre Rafalovitch)
 
 * SOLR-9601: Redone DataImportHandler 'tika' example, removing all unused and irrelevant definitions (Alexandre Rafalovitch)
+
+* SOLR-8906: Make transient core cache pluggable (Erick Erickson)
+
+* SOLR-9745: print errors from solr.cmd (Gopikannan Venugopalsamy via Mikhail Khludnev)
+
+* SOLR-10394: Rename getSortWithinGroup to getWithinGroupSort in search.grouping.Command class.
+  (Judith Silverman, Christine Poerschke)
+
+==================  6.5.1 ==================
+
+Bug Fixes
+----------------------
+
+* SOLR-10383: Fix debug related NullPointerException in solr/contrib/ltr OriginalScoreFeature class.
+  (Vitezslav Zak, Christine Poerschke)
+
+* SOLR-10416: The JSON output of /admin/metrics is fixed to write the container as a
+  map (SimpleOrderedMap) instead of an array (NamedList). (shalin)
 
 ==================  6.5.0 ==================
 

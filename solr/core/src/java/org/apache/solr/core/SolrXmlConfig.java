@@ -97,6 +97,7 @@ public class SolrXmlConfig {
     NodeConfig.NodeConfigBuilder configBuilder = new NodeConfig.NodeConfigBuilder(nodeName, config.getResourceLoader());
     configBuilder.setUpdateShardHandlerConfig(updateConfig);
     configBuilder.setShardHandlerFactoryConfig(getShardHandlerFactoryPluginInfo(config));
+    configBuilder.setSolrCoreCacheFactoryConfig(getTransientCoreCacheFactoryPluginInfo(config));
     configBuilder.setLogWatcherConfig(loadLogWatcherConfig(config, "solr/logging/*[@name]", "solr/logging/watcher/*[@name]"));
     configBuilder.setSolrProperties(loadProperties(config));
     if (cloudConfig != null)
@@ -477,6 +478,10 @@ public class SolrXmlConfig {
       configs.add(defaultPlugin);
     }
     return configs.toArray(new PluginInfo[configs.size()]);
+  }
+  private static PluginInfo getTransientCoreCacheFactoryPluginInfo(Config config) {
+    Node node = config.getNode("solr/transientCoreCacheFactory", false);
+    return (node == null) ? null : new PluginInfo(node, "transientCoreCacheFactory", false, true);
   }
 }
 
