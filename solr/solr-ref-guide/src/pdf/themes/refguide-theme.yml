@@ -1,24 +1,27 @@
 font:
   catalog:
-    # Noto Serif supports Latin, Latin-1 Supplement, Latin Extended-A, Greek, Cyrillic, Vietnamese & an assortment of symbols
-    Noto Serif:
-      normal: NotoSerif/notoserif-regular-subset.ttf
-      bold: NotoSerif/notoserif-bold-subset.ttf
-      italic: NotoSerif/notoserif-italic-subset.ttf
-      bold_italic: NotoSerif/notoserif-bold_italic-subset.ttf
-    # M+ 1mn supports ASCII and the circled numbers used for conums
+    # Noto Sans supports Latin, Latin-1 Supplement, Latin Extended-A, Greek, Cyrillic, Vietnamese & an assortment of symbols
+    # Noto Sans used for body text
+    Noto Sans:
+      normal: Noto_Sans/NotoSans-Regular.ttf
+      bold: Noto_Sans/NotoSans-Bold.ttf
+      italic: Noto_Sans/NotoSans-Italic.ttf
+      bold_italic: Noto_Sans/NotoSans-BoldItalic.ttf
+    # Raleway used for headings
     Raleway:
       normal: Raleway/Raleway-Medium.ttf
       bold: Raleway/Raleway-Bold.ttf
       italic: Raleway/Raleway-Medium.ttf
       bold_italic: Raleway/Raleway-Bold.ttf
-    # M+ 1p supports Latin, Latin-1 Supplement, Latin Extended, Greek, Cyrillic, Vietnamese, Japanese & an assortment of symbols
-    # It also provides arrows for ->, <-, => and <= replacements in case these glyphs are missing from font
+    # Ubuntu Mono used for monospaced text & code blocks
     Ubuntu Mono:
       normal: UbuntuMono/UbuntuMono-Regular.ttf
       bold: UbuntuMono/UbuntuMono-Bold.ttf
       italic: UbuntuMono/UbuntuMono-Italic.ttf
       bold_italic: UbuntuMono/UbuntuMono-BoldItalic.ttf
+    # M+ 1p supports Latin, Latin-1 Supplement, Latin Extended, Greek, Cyrillic, Vietnamese, Japanese & an assortment of symbols
+    # It also provides arrows for ->, <-, => and <= replacements in case these glyphs are missing from font
+    # This is a fallback font, and will only be used when it can fill in missing glyphs from other fonts
     M+ 1p Fallback:
       normal: mplus1p-regular-fallback.ttf
       bold: mplus1p-regular-fallback.ttf
@@ -26,18 +29,20 @@ font:
       bold_italic: mplus1p-regular-fallback.ttf
   fallbacks:
     - M+ 1p Fallback
+# page-level settings apply to the entire page
 page:
   background_color: '#ffffff'
   layout: portrait
   margin: [0.5in, 0.75in, 0.75in, 0.67in]
   size: LETTER
+# base-level settings are defaults for other elements
 base:
   align: left
   # color as hex string (leading # is optional)
   font_color: '#333333'
-  font_family: Noto Serif
-  font_size: 10.5
-  line_height_length: 12
+  font_family: Noto Sans
+  font_size: 10
+  line_height_length: 11
   line_height: $base_line_height_length / $base_font_size
   font_size_large: round($base_font_size * 1.25)
   font_size_small: round($base_font_size * 0.85)
@@ -51,11 +56,23 @@ horizontal_rhythm: $base_line_height_length
 vertical_spacing: $vertical_rhythm
 link:
   font_color: '#428bca'
-# literal is currently used for inline monospaced in prose and table cells
+# literal is used for inline monospaced strings in prose and in table cells
 literal:
   font_color: '#333333'
   font_family: Ubuntu Mono
   background_color: '#f5f5f5'
+# code is used for source code blocks
+code:
+  font_color: $base_font_color
+  font_family: $literal_font_family
+  font_size: ceil($base_font_size)
+  padding: $code_font_size
+  line_height: 1.25
+  background_color: '#f5f5f5'
+  border_color: '#cccccc'
+  border_radius: $base_border_radius
+  border_width: 0.75
+# headings
 heading:
   font_color: '#d9411e'
   font_family: Raleway
@@ -76,6 +93,7 @@ heading:
   margin_top: $vertical_rhythm * 0.2
   margin_bottom: $vertical_rhythm * 0.8
   padding: [0, 0, 5, 0]
+# Applies only to the title page
 title_page:
   align: right
   logo:
@@ -143,17 +161,6 @@ blockquote:
   padding: [$vertical_rhythm / 2, $horizontal_rhythm, $vertical_rhythm / -2, $horizontal_rhythm + $blockquote_border_width / 2]
   cite_font_size: $base_font_size_small
   cite_font_color: '#999999'
-# code is used for source blocks (perhaps change to source or listing?)
-code:
-  font_color: $base_font_color
-  font_family: $literal_font_family
-  font_size: ceil($base_font_size)
-  padding: $code_font_size
-  line_height: 1.25
-  background_color: '#f5f5f5'
-  border_color: '#cccccc'
-  border_radius: $base_border_radius
-  border_width: 0.75
 conum:
   font_family: M+ 1mn
   font_color: $literal_font_color
@@ -246,16 +253,12 @@ footer:
   # * {chapter-title}
   # * {section-title}
   # * {section-or-chapter-title}
+  # We have added some custom variables from the build, see _config.yml.template
   recto_content:
-    #right: '{section-or-chapter-title} | {page-number}'
-    #right: '{document-title} | {page-number}'
     right: 'Published: {build-date}'
     left: '(C) {build-year}, Apache Software Foundation'
-    #center: '{page-number}'
   verso_content:
-    #left: '{page-number} | {chapter-title}'
     left: 'Published: {build-date}'
     right: '(C) {build-year}, Apache Software Foundation'
-    #center: '{page-number}'
 colophon:
   font_size: $base_font_size_small
