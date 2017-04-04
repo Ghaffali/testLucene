@@ -22,8 +22,11 @@ import javax.management.ObjectName;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.JmxReporter;
@@ -100,7 +103,8 @@ public class SolrJmxReporter extends SolrMetricReporter {
       return;
     }
 
-    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain);
+    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain,
+        "instance", Integer.toHexString(this.hashCode()));
     registry = metricManager.registry(registryName);
     // filter out MetricsMap gauges - we have a better way of handling them
     MetricFilter filter = (name, metric) -> !(metric instanceof MetricsMap);
@@ -131,6 +135,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
     if (listener != null && registry != null) {
       registry.removeListener(listener);
       listener.close();
+      listener = null;
     }
   }
 
@@ -227,7 +232,9 @@ public class SolrJmxReporter extends SolrMetricReporter {
     MBeanServer server;
     JmxObjectNameFactory nameFactory;
     // keep the names so that we can unregister them on core close
-    List<ObjectName> registered = new ArrayList<>();
+    Set<ObjectName> registered = new HashSet<>();
+    // prevent ConcurrentModificationException when closing
+    ReentrantLock lock = new ReentrantLock();
 
     MetricsMapListener(MBeanServer server, JmxObjectNameFactory nameFactory) {
       this.server = server;
@@ -239,25 +246,41 @@ public class SolrJmxReporter extends SolrMetricReporter {
       if (!(gauge instanceof MetricsMap)) {
         return;
       }
-      MetricsMap metricsMap = (MetricsMap)gauge;
-      ObjectName objectName = nameFactory.createName("gauges", nameFactory.getDomain(), name);
+      if (!lock.tryLock()) {
+        return;
+      }
+      log.info("#### registering " + name + " in domain " + nameFactory.getDomain());
       try {
+        ObjectName objectName = nameFactory.createName("gauges", nameFactory.getDomain(), name);
+        if (server.isRegistered(objectName)) {
+          // silently unregister - may have been left over from a previous reporter
+          server.unregisterMBean(objectName);
+        }
         server.registerMBean(gauge, objectName);
         registered.add(objectName);
       } catch (Exception e) {
         log.warn("bean registration error", e);
+      } finally {
+        lock.unlock();
       }
     }
 
     public void close() {
-      for (ObjectName name : registered) {
-        try {
-          server.unregisterMBean(name);
-        } catch (Exception e) {
-          log.warn("bean unregistration error", e);
+      lock.lock();
+      try {
+        for (ObjectName name : registered) {
+          try {
+            if (server.isRegistered(name)) {
+              server.unregisterMBean(name);
+            }
+          } catch (Exception e) {
+            log.warn("bean unregistration error", e);
+          }
         }
+        registered.clear();
+      } finally {
+        lock.unlock();
       }
-
     }
   }
 }

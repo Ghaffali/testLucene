@@ -682,6 +682,8 @@ public class CoreContainer {
     ExecutorUtil.shutdownAndAwaitTermination(coreContainerWorkExecutor);
     if (metricManager != null) {
       metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoBean.Group.node));
+      metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoBean.Group.jvm));
+      metricManager.closeReporters(SolrMetricManager.getRegistryName(SolrInfoBean.Group.jetty));
     }
 
     if (isZooKeeperAware()) {

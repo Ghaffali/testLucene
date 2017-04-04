@@ -115,8 +115,11 @@ public class StatsReloadRaceTest extends SolrTestCaseJ4 {
     NamedList metrics = (NamedList)values.get("metrics");
     metrics = (NamedList)metrics.get(registry);
     String key = "SEARCHER.searcher.indexVersion";
-    assertNotNull(metrics.get(key));
-    assertTrue(metrics.get(key) instanceof Long);
+    // this is not guaranteed to exist right away after core reload - there's a
+    // small window between core load and before searcher metrics are registered
+    if (metrics.get(key) != null) {
+      assertTrue(metrics.get(key) instanceof Long);
+    }
   }
 
 }

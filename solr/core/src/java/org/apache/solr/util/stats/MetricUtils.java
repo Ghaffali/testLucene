@@ -209,7 +209,7 @@ public class MetricUtils {
   }
 
   /**
-   * Convert selected metrics from a registry into a map.
+   * Convert selected metrics from a registry into a map, with metrics in a compact format.
    * @param registry registry
    * @param names metric names
    * @return map where keys are metric names (if they were present in the registry) and values are
@@ -222,15 +222,14 @@ public class MetricUtils {
   }
 
   /**
-   * Convert selected metrics from a registry into a map.
+   * Convert selected metrics from a registry into maps (when <code>compact==false</code>) or
+   * flattened objects.
    * @param registry registry
    * @param names metric names
    * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
    * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
    * @param compact use compact representation for counters and gauges.
-   * @param consumer consumer that accepts produced {@link SolrInputDocument}-s
-   * @return map where keys are metric names (if they were present in the registry) and values are
-   * converted metrics.
+   * @param consumer consumer that accepts produced objects
    */
   public static void convertMetrics(MetricRegistry registry, Collection<String> names,
                                     boolean skipHistograms, boolean skipAggregateValues, boolean compact,

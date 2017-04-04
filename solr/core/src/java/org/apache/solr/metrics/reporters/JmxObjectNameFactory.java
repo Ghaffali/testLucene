@@ -107,6 +107,20 @@ public class JmxObjectNameFactory implements ObjectNameFactory {
     }
     sb.append("reporter=");
     sb.append(reporterName);
+    if (props != null && props.length > 0) {
+      for (int i = 0; i < props.length; i += 2) {
+        if (props[i] == null || props[i].isEmpty()) {
+          continue;
+        }
+        if (props[i + 1] == null || props[i + 1].isEmpty()) {
+          continue;
+        }
+        sb.append(',');
+        sb.append(props[i]);
+        sb.append('=');
+        sb.append(props[i + 1]);
+      }
+    }
     sb.append(',');
     if (metricInfo != null) {
       sb.append("category=");
@@ -143,20 +157,6 @@ public class JmxObjectNameFactory implements ObjectNameFactory {
       // }
       sb.append("name=");
       sb.append(path[path.length - 1]);
-    }
-    if (props != null && props.length > 0) {
-      for (int i = 0; i < props.length; i += 2) {
-        if (props[i] == null || props[i].isEmpty()) {
-          continue;
-        }
-        if (props[i + 1] == null || props[i + 1].isEmpty()) {
-          continue;
-        }
-        sb.append(',');
-        sb.append(props[i]);
-        sb.append('=');
-        sb.append(props[i + 1]);
-      }
     }
 
     ObjectName objectName;

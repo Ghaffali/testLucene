@@ -89,7 +89,8 @@ public class TestJmxIntegration extends AbstractSolrTestCase {
     // agetnId or serviceUrl is that it will use whatever the "first" MBean server
     // returned by the JVM is.
 
-    nameFactory = new JmxObjectNameFactory("default", registryName);
+    nameFactory = new JmxObjectNameFactory("default", registryName,
+        "instance", Integer.toHexString(jmx.hashCode()));
   }
 
   @AfterClass
@@ -142,17 +143,18 @@ public class TestJmxIntegration extends AbstractSolrTestCase {
       Thread.sleep(250);
     }
     if (bean==null) throw new RuntimeException("searcher was never registered");
-    // nocommit
-    ObjectName searcher = nameFactory.createName("gauge", registryName, "CORE.searcher.*");
+    ObjectName searcher = nameFactory.createName("gauge", registryName, "SEARCHER.searcher.*");
 
     log.info("Mbeans in server: " + mbeanServer.queryNames(null, null));
 
+    Set<ObjectInstance> objects = mbeanServer.queryMBeans(searcher, null);
     assertFalse("No mbean found for SolrIndexSearcher", mbeanServer.queryMBeans(searcher, null).isEmpty());
 
-    int oldNumDocs =  (Integer)mbeanServer.getAttribute(searcher, "numDocs");
+    ObjectName name = nameFactory.createName("gauge", registryName, "SEARCHER.searcher.numDocs");
+    int oldNumDocs =  (Integer)mbeanServer.getAttribute(name, "Value");
     assertU(adoc("id", "1"));
     assertU("commit", commit());
-    int numDocs = (Integer)mbeanServer.getAttribute(searcher, "numDocs");
+    int numDocs = (Integer)mbeanServer.getAttribute(name, "Value");
     assertTrue("New numDocs is same as old numDocs as reported by JMX",
         numDocs > oldNumDocs);
   }
