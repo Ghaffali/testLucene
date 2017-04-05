@@ -10,8 +10,6 @@ Unless required by applicable law or agreed to in writing, software distributed 
 
 Apache and the Apache feather logo are trademarks of The Apache Software Foundation. Apache Lucene, Apache Solr and their respective logos are trademarks of the Apache Software Foundation. Please see the http://www.apache.org/foundation/marks/[Apache Trademark Policy] for more information.
 
-Fonts used in the Apache Solr Reference Guide include https://www.theleagueofmoveabletype.com/raleway[Raleway], licensed under the http://scripts.sil.org/OFL[SIL Open Font License, 1.1].
-
 <<<
 
 include::_data/pdf-main-body.adoc[]
