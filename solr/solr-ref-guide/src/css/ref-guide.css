@@ -12,18 +12,6 @@
     src: url(../fonts/Noto_Sans/NotoSans-Bold.ttf);
 }
 
-/* Load Ubuntu Mono for monospace */
-/*@font-face {
-   font-family: 'Ubuntu Mono';
-   src: url(../fonts/UbuntuMono/UbuntuMono-Regular.ttf);
-}
-
-@font-face {
-   font-weight: bold;
-   font-family: 'Ubuntu Mono';
-   src: url(../fonts/UbuntuMono/UbuntuMono-Bold.ttf);
-} */
-
 /* Load Inconsolata for monospace */
 @font-face {
    font-family: 'Inconsolata';
@@ -79,8 +67,7 @@ script
 html
 {
     font-family: 'Noto Sans', sans-serif;
-
-        -ms-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
     -webkit-text-size-adjust: 100%;
 }
 
@@ -190,8 +177,8 @@ kbd,
 pre,
 samp
 {
-    font-size: .9em;
-    font-family: monospace;
+    font-size: 1em;
+    font-family: 'Inconsolata', monospace;
 }
 
 pre
@@ -1013,7 +1000,7 @@ p a > code:hover
 span.projectTitle
 {
     font-weight: bold;
-    font-family: 'Noto Sans';
+    font-family: 'Noto Sans', sans-serif;
 	 font-size: 14pt;
 }
 
@@ -1125,8 +1112,7 @@ body.toc2 #header > h1:nth-last-child(2)
 #toc ul
 {
     list-style-type: none;
-    font-family: 'Noto Sans',
-    sans-serif;
+    font-family: 'Noto Sans', sans-serif;
 }
 
 #toc a
@@ -1476,8 +1462,7 @@ table.tableblock #preamble > .sectionbody > .paragraph:first-of-type p
 {
     text-transform: uppercase;
     font-weight: bold;
-    font-family: 'Noto Sans',
-    sans-serif;
+    font-family: 'Noto Sans', sans-serif;
 }
 
 .admonitionblock > table td.content
@@ -1806,8 +1791,7 @@ table.pyhltable .linenodiv
     color: rgba(0,0,0,.85);
     font-weight: 300;
     font-size: 1.15rem;
-    font-family: 'Noto Sans',
-    sans;
+    font-family: 'Noto Sans', sans-serif;
 }
 
 .verseblock pre strong
@@ -2571,8 +2555,7 @@ span.icon > .fa
     font-weight: bold;
     font-style: normal;
     font-size: .75em;
-    font-family: 'Noto Sans',
-    sans-serif;
+    font-family: 'Noto Sans', sans-serif;
     line-height: 1.67em;
 }
 
