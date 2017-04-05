@@ -21,6 +21,7 @@ import java.beans.IntrospectionException;
 import java.beans.Introspector;
 import java.beans.PropertyDescriptor;
 import java.lang.invoke.MethodHandles;
+import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.PlatformManagedObject;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Collection;
@@ -133,7 +134,7 @@ public class MetricUtils {
                                       boolean skipAggregateValues, boolean compact,
                                       Map<String, Object> metadata) {
     NamedList result = new SimpleOrderedMap();
-    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, (k, v) -> {
+    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, false, (k, v) -> {
       result.add(k, v);
     });
     if (metadata != null && !metadata.isEmpty()) {
@@ -165,7 +166,7 @@ public class MetricUtils {
                                           boolean skipAggregateValues, boolean compact,
                                           Map<String, Object> metadata, Consumer<SolrInputDocument> consumer) {
     boolean addMetadata = metadata != null && !metadata.isEmpty();
-    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, (k, v) -> {
+    toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, false, (k, v) -> {
       SolrInputDocument doc = new SolrInputDocument();
       doc.setField(METRIC_NAME, k);
       toSolrInputDocument(null, doc, v);
@@ -176,6 +177,12 @@ public class MetricUtils {
     });
   }
 
+  /**
+   * Fill in a SolrInputDocument with values from a converted metric, recursively.
+   * @param prefix prefix to add to generated field names, or null if none.
+   * @param doc document to fill
+   * @param o an instance of converted metric, either a Map or a flat Object
+   */
   static void toSolrInputDocument(String prefix, SolrInputDocument doc, Object o) {
     if (!(o instanceof Map)) {
       String key = prefix != null ? prefix : VALUE;
@@ -193,9 +200,21 @@ public class MetricUtils {
     }
   }
 
+  /**
+   * Convert selected metrics to maps or to flattened objects.
+   * @param registry source of metrics
+   * @param shouldMatchFilters metrics must match any of these filters
+   * @param mustMatchFilter metrics must match this filter
+   * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
+   * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
+   * @param compact use compact representation for counters and gauges.
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
+   * @param consumer consumer that accepts produced objects
+   */
   static void toMaps(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                             MetricFilter mustMatchFilter, boolean skipHistograms, boolean skipAggregateValues,
-                            boolean compact,
+                            boolean compact, boolean simple,
                             BiConsumer<String, Object> consumer) {
     final Map<String, Metric> metrics = registry.getMetrics();
     final SortedSet<String> names = registry.getNames();
@@ -204,20 +223,20 @@ public class MetricUtils {
         .filter(s -> mustMatchFilter.matches(s, metrics.get(s)))
         .forEach(n -> {
           Metric metric = metrics.get(n);
-          convertMetric(n, metric, skipHistograms, skipAggregateValues, compact, consumer);
+          convertMetric(n, metric, skipHistograms, skipAggregateValues, compact, simple, consumer);
         });
   }
 
   /**
-   * Convert selected metrics from a registry into a map, with metrics in a compact format.
+   * Convert selected metrics from a registry into a map, with metrics in a compact AND simple format.
    * @param registry registry
    * @param names metric names
    * @return map where keys are metric names (if they were present in the registry) and values are
-   * converted metrics.
+   * converted metrics in simplified format.
    */
   public static Map<String, Object> convertMetrics(MetricRegistry registry, Collection<String> names) {
     final Map<String, Object> metrics = new HashMap<>();
-    convertMetrics(registry, names, false, true, true, (k, v) -> metrics.put(k, v));
+    convertMetrics(registry, names, false, true, true, true, (k, v) -> metrics.put(k, v));
     return metrics;
   }
 
@@ -229,28 +248,42 @@ public class MetricUtils {
    * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
    * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
    * @param compact use compact representation for counters and gauges.
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
    * @param consumer consumer that accepts produced objects
    */
   public static void convertMetrics(MetricRegistry registry, Collection<String> names,
-                                    boolean skipHistograms, boolean skipAggregateValues, boolean compact,
+                                    boolean skipHistograms, boolean skipAggregateValues,
+                                    boolean compact, boolean simple,
                                     BiConsumer<String, Object> consumer) {
     final Map<String, Metric> metrics = registry.getMetrics();
     names.stream()
         .forEach(n -> {
           Metric metric = metrics.get(n);
-          convertMetric(n, metric, skipHistograms, skipAggregateValues, compact, consumer);
+          convertMetric(n, metric, skipHistograms, skipAggregateValues, compact, simple, consumer);
         });
   }
 
+  /**
+   * Convert a single instance of metric into a map or flattened object.
+   * @param n metric name
+   * @param metric metric instance
+   * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
+   * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
+   * @param compact use compact representation for counters and gauges.
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
+   * @param consumer consumer that accepts produced objects
+   */
   static void convertMetric(String n, Metric metric, boolean skipHistograms, boolean skipAggregateValues,
-                              boolean compact, BiConsumer<String, Object> consumer) {
+                              boolean compact, boolean simple, BiConsumer<String, Object> consumer) {
     if (metric instanceof Counter) {
       Counter counter = (Counter) metric;
       consumer.accept(n, convertCounter(counter, compact));
     } else if (metric instanceof Gauge) {
       Gauge gauge = (Gauge) metric;
       try {
-        consumer.accept(n, convertGauge(gauge, compact));
+        convertGauge(n, gauge, simple, compact, consumer);
       } catch (InternalError ie) {
         if (n.startsWith("memory.") && ie.getMessage().contains("Memory Pool not found")) {
           LOG.warn("Error converting gauge '" + n + "', possible JDK bug: SOLR-10362", ie);
@@ -261,20 +294,26 @@ public class MetricUtils {
       }
     } else if (metric instanceof Meter) {
       Meter meter = (Meter) metric;
-      consumer.accept(n, convertMeter(meter));
+      convertMeter(n, meter, simple, consumer);
     } else if (metric instanceof Timer) {
       Timer timer = (Timer) metric;
-      consumer.accept(n, convertTimer(timer, skipHistograms));
+      convertTimer(n, timer, skipHistograms, simple, consumer);
     } else if (metric instanceof Histogram) {
       if (!skipHistograms) {
         Histogram histogram = (Histogram) metric;
-        consumer.accept(n, convertHistogram(histogram));
+        convertHistogram(n, histogram, simple, consumer);
       }
     } else if (metric instanceof AggregateMetric) {
       consumer.accept(n, convertAggregateMetric((AggregateMetric)metric, skipAggregateValues));
     }
   }
 
+  /**
+   * Convert an instance of {@link AggregateMetric}.
+   * @param metric an instance of {@link AggregateMetric}
+   * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
+   * @return a map containing metric properties
+   */
   static Map<String, Object> convertAggregateMetric(AggregateMetric metric, boolean skipAggregateValues) {
     Map<String, Object> response = new LinkedHashMap<>();
     response.put("count", metric.size());
@@ -296,13 +335,23 @@ public class MetricUtils {
     return response;
   }
 
-  static Map<String, Object> convertHistogram(Histogram histogram) {
-    Map<String, Object> response = new LinkedHashMap<>();
+  /**
+   * Convert an instance of {@link Histogram}. NOTE: it's assumed that histogram contains non-time
+   * based values that don't require unit conversion.
+   * @param histogram an instance of {@link Histogram}
+   */
+  static void convertHistogram(String name, Histogram histogram,
+                                              boolean simple, BiConsumer<String, Object> consumer) {
     Snapshot snapshot = histogram.getSnapshot();
-    response.put("count", histogram.getCount());
-    // non-time based values
-    addSnapshot(response, snapshot, false);
-    return response;
+    if (simple) {
+      consumer.accept(name + "." + MEAN, snapshot.getMean());
+    } else {
+      Map<String, Object> response = new LinkedHashMap<>();
+      consumer.accept(name, response);
+      response.put("count", histogram.getCount());
+      // non-time based values
+      addSnapshot(response, snapshot, false);
+    }
   }
 
   // optionally convert ns to ms
@@ -331,42 +380,75 @@ public class MetricUtils {
    * Convert a {@link Timer} to a map.
    * @param timer timer instance
    * @param skipHistograms if true then discard the histogram part of the timer.
-   * @return a map containing timer properties.
    */
-  public static Map<String,Object> convertTimer(Timer timer, boolean skipHistograms) {
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("count", timer.getCount());
-    response.put("meanRate", timer.getMeanRate());
-    response.put("1minRate", timer.getOneMinuteRate());
-    response.put("5minRate", timer.getFiveMinuteRate());
-    response.put("15minRate", timer.getFifteenMinuteRate());
-    if (!skipHistograms) {
-      // time-based values in nanoseconds
-      addSnapshot(response, timer.getSnapshot(), true);
+  public static void convertTimer(String name, Timer timer, boolean skipHistograms,
+                                                boolean simple, BiConsumer<String, Object> consumer) {
+    if (simple) {
+      consumer.accept(name + ".meanRate", timer.getMeanRate());
+    } else {
+      Map<String, Object> response = new LinkedHashMap<>();
+      consumer.accept(name, response);
+      response.put("count", timer.getCount());
+      response.put("meanRate", timer.getMeanRate());
+      response.put("1minRate", timer.getOneMinuteRate());
+      response.put("5minRate", timer.getFiveMinuteRate());
+      response.put("15minRate", timer.getFifteenMinuteRate());
+      if (!skipHistograms) {
+        // time-based values in nanoseconds
+        addSnapshot(response, timer.getSnapshot(), true);
+      }
     }
-    return response;
   }
 
-  static Map<String, Object> convertMeter(Meter meter) {
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("count", meter.getCount());
-    response.put("meanRate", meter.getMeanRate());
-    response.put("1minRate", meter.getOneMinuteRate());
-    response.put("5minRate", meter.getFiveMinuteRate());
-    response.put("15minRate", meter.getFifteenMinuteRate());
-    return response;
+  /**
+   * Convert a {@link Meter} to a map.
+   * @param meter meter instance
+   */
+  static void convertMeter(String name, Meter meter, boolean simple, BiConsumer<String, Object> consumer) {
+    if (simple) {
+      consumer.accept(name + ".count", meter.getCount());
+    } else {
+      Map<String, Object> response = new LinkedHashMap<>();
+      response.put("count", meter.getCount());
+      response.put("meanRate", meter.getMeanRate());
+      response.put("1minRate", meter.getOneMinuteRate());
+      response.put("5minRate", meter.getFiveMinuteRate());
+      response.put("15minRate", meter.getFifteenMinuteRate());
+      consumer.accept(name, response);
+    }
   }
 
-  static Object convertGauge(Gauge gauge, boolean compact) {
-    if (compact) {
-      return gauge.getValue();
+  /**
+   * Convert a {@link Gauge}.
+   * @param gauge gauge instance
+   * @param compact if true then only return {@link Gauge#getValue()}. If false
+   *                then return a map with a "value" field.
+   */
+  static void convertGauge(String name, Gauge gauge, boolean simple, boolean compact,
+                             BiConsumer<String, Object> consumer) {
+    if (compact || simple) {
+      Object o = gauge.getValue();
+      if (simple && (o instanceof Map)) {
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>)o).entrySet()) {
+          consumer.accept(name + "." + entry.getKey().toString(), entry.getValue());
+        }
+      } else {
+        consumer.accept(name, o);
+      }
     } else {
       Map<String, Object> response = new LinkedHashMap<>();
       response.put("value", gauge.getValue());
-      return response;
+      consumer.accept(name, response);
     }
   }
 
+  /**
+   * Convert a {@link Counter}
+   * @param counter counter instance
+   * @param compact if true then only return {@link Counter#getCount()}. If false
+   *                then return a map with a "count" field.
+   * @return map or object
+   */
   static Object convertCounter(Counter counter, boolean compact) {
     if (compact) {
       return counter.getCount();
@@ -427,6 +509,30 @@ public class MetricUtils {
         } catch (Exception e) {
           // didn't work, skip it...
         }
+      }
+    }
+  }
+
+  /**
+   * These are well-known implementations of {@link java.lang.management.OperatingSystemMXBean}.
+   * Some of them provide additional useful properties beyond those declared by the interface.
+   */
+  public static String[] OS_MXBEAN_CLASSES = new String[] {
+      OperatingSystemMXBean.class.getName(),
+      "com.sun.management.OperatingSystemMXBean",
+      "com.sun.management.UnixOperatingSystemMXBean",
+      "com.ibm.lang.management.OperatingSystemMXBean"
+  };
+
+  public static <T extends PlatformManagedObject> void addMXBeanMetrics(T obj, String[] interfaces,
+      String prefix, BiConsumer<String, Metric> consumer) {
+    for (String clazz : interfaces) {
+      try {
+        final Class<? extends PlatformManagedObject> intf = Class.forName(clazz)
+            .asSubclass(PlatformManagedObject.class);
+        MetricUtils.addMXBeanMetrics(obj, intf, null, consumer);
+      } catch (ClassNotFoundException e) {
+        // ignore
       }
     }
   }

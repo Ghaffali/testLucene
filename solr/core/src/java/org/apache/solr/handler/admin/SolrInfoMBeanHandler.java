@@ -145,7 +145,7 @@ public class SolrInfoMBeanHandler extends RequestHandlerBase {
     mBeanInfo.add("description", m.getDescription());
 
     if (req.getParams().getFieldBool(key, "stats", false))
-      mBeanInfo.add("stats", m.getMetrics());
+      mBeanInfo.add("stats", m.getMetricsSnapshot());
 
     catInfo.add(key, mBeanInfo);
   }

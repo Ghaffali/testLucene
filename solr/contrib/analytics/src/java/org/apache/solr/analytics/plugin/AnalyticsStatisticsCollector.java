@@ -88,7 +88,9 @@ public class AnalyticsStatisticsCollector {
   public Map<String, Object> getStatistics() {
 
     Map<String, Object> map = new HashMap<>();
-    map.putAll(MetricUtils.convertTimer(requestTimes, false));
+    MetricUtils.convertTimer("", requestTimes, false, false, (k, v) -> {
+      map.putAll((Map<String, Object>)v);
+    });
     map.put("requests", numRequests.longValue());
     map.put("analyticsRequests", numAnalyticsRequests.longValue());
     map.put("statsRequests", numStatsRequests.longValue());

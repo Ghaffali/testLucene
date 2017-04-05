@@ -32,12 +32,10 @@ import javax.management.AttributeNotFoundException;
 import javax.management.MBeanAttributeInfo;
 import javax.management.MBeanInfo;
 import javax.management.MBeanServer;
-import javax.management.MalformedObjectNameException;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 import java.lang.invoke.MethodHandles;
 import java.lang.management.ManagementFactory;
-import java.util.Hashtable;
 import java.util.Map;
 import java.util.Set;
 
@@ -89,8 +87,7 @@ public class TestJmxIntegration extends AbstractSolrTestCase {
     // agetnId or serviceUrl is that it will use whatever the "first" MBean server
     // returned by the JVM is.
 
-    nameFactory = new JmxObjectNameFactory("default", registryName,
-        "instance", Integer.toHexString(jmx.hashCode()));
+    nameFactory = new JmxObjectNameFactory("default", registryName);
   }
 
   @AfterClass
@@ -199,14 +196,5 @@ public class TestJmxIntegration extends AbstractSolrTestCase {
 
     log.info("After Reload: Size of infoRegistry: " + registrySize + " MBeans: " + newNumberOfObjects);
     assertEquals("Number of registered MBeans is not the same as info registry size", registrySize, newNumberOfObjects);
-  }
-
-  private ObjectName getObjectName(String key, SolrInfoBean infoBean)
-      throws MalformedObjectNameException {
-    Hashtable<String, String> map = new Hashtable<>();
-    map.put("type", key);
-    map.put("id", infoBean.getName());
-    String coreName = h.getCore().getName();
-    return ObjectName.getInstance(("solr" + (null != coreName ? "/" + coreName : "")), map);
   }
 }

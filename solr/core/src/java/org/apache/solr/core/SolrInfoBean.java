@@ -20,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 
 import com.codahale.metrics.MetricRegistry;
+import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.util.stats.MetricUtils;
 
 /**
@@ -50,8 +51,11 @@ public interface SolrInfoBean {
   /** Category of this component */
   Category getCategory();
 
-  /** Optionally return metrics that this component reports, or null. */
-  default Map<String, Object> getMetrics() {
+  /** Optionally return a snapshot of metrics that this component reports, or null.
+   * Default implementation requires that both {@link #getMetricNames()} and
+   * {@link #getMetricRegistry()} return non-null values.
+   */
+  default Map<String, Object> getMetricsSnapshot() {
     if (getMetricRegistry() == null || getMetricNames() == null) {
       return null;
     }
@@ -59,18 +63,29 @@ public interface SolrInfoBean {
   }
 
   /**
-   * Modifiable set of metric names that this component reports, or null if none.
+   * Modifiable set of metric names that this component reports (default is null,
+   * which means none). If not null then this set is used by {@link #registerMetricName(String)}
+   * to capture what metrics names are reported from this component.
    */
-  Set<String> getMetricNames();
+  default Set<String> getMetricNames() {
+    return null;
+  }
 
   /**
-   * An instance of {@link MetricRegistry} that this component uses for keeping metrics, or null.
+   * An instance of {@link MetricRegistry} that this component uses for metrics reporting
+   * (default is null, which means no registry).
    */
   default MetricRegistry getMetricRegistry() {
     return null;
   }
 
-  /** Register a metric name that this component reports. */
+  /** Register a metric name that this component reports. This method is called by various
+   * metric registration methods in {@link org.apache.solr.metrics.SolrMetricManager} in order
+   * to capture what metric names are reported from this component (which in turn is called
+   * from {@link org.apache.solr.metrics.SolrMetricProducer#initializeMetrics(SolrMetricManager, String, String)}).
+   * <p>Default implementation registers all metrics added by a component. Implementations may
+   * override this to avoid reporting some or all metrics returned by {@link #getMetricsSnapshot()}</p>
+   */
   default void registerMetricName(String name) {
     Set<String> names = getMetricNames();
     if (names != null) {

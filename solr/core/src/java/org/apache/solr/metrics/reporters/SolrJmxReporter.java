@@ -17,14 +17,15 @@
 package org.apache.solr.metrics.reporters;
 
 import javax.management.MBeanServer;
+import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -60,6 +61,8 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private MBeanServer mBeanServer;
   private MetricsMapListener listener;
 
+  private static Map<String,PluginInfo> reporters = new HashMap<>();
+
   /**
    * Creates a new instance of {@link SolrJmxReporter}.
    *
@@ -79,7 +82,12 @@ public class SolrJmxReporter extends SolrMetricReporter {
   @Override
   public synchronized void init(PluginInfo pluginInfo) {
     super.init(pluginInfo);
-
+    log.info("Initializing for registry " + registryName + ": " + pluginInfo);
+    String key = pluginInfo.name + "/" + registryName;
+    if (reporters.containsKey(key)) {
+      throw new RuntimeException("already reporting: " + reporters.get(key));
+    }
+    reporters.put(key, pluginInfo);
     if (serviceUrl != null && agentId != null) {
       mBeanServer = JmxUtil.findFirstMBeanServer();
       log.warn("No more than one of serviceUrl(%s) and agentId(%s) should be configured, using first MBeanServer instead of configuration.",
@@ -95,7 +103,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
       mBeanServer = JmxUtil.findMBeanServerForAgentId(agentId);
     } else {
       mBeanServer = JmxUtil.findFirstMBeanServer();
-      log.warn("No serviceUrl or agentId was configured, using first MBeanServer.", mBeanServer);
+      log.debug("No serviceUrl or agentId was configured, using first MBeanServer: " + mBeanServer);
     }
 
     if (mBeanServer == null) {
@@ -103,8 +111,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
       return;
     }
 
-    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain,
-        "instance", Integer.toHexString(this.hashCode()));
+    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain);
     registry = metricManager.registry(registryName);
     // filter out MetricsMap gauges - we have a better way of handling them
     MetricFilter filter = (name, metric) -> !(metric instanceof MetricsMap);
@@ -120,7 +127,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
     listener = new MetricsMapListener(mBeanServer, jmxObjectNameFactory);
     registry.addListener(listener);
 
-    log.info("JMX monitoring enabled at server: " + mBeanServer);
+    log.info("JMX monitoring for registry '" + registryName + "' enabled at server: " + mBeanServer);
   }
 
   /**
@@ -206,7 +213,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
   }
 
   /**
-   * Retrieves the reporter's MBeanServer.
+   * Return the reporter's MBeanServer.
    *
    * @return the reporter's MBeanServer
    */
@@ -249,15 +256,17 @@ public class SolrJmxReporter extends SolrMetricReporter {
       if (!lock.tryLock()) {
         return;
       }
-      log.info("#### registering " + name + " in domain " + nameFactory.getDomain());
       try {
         ObjectName objectName = nameFactory.createName("gauges", nameFactory.getDomain(), name);
         if (server.isRegistered(objectName)) {
           // silently unregister - may have been left over from a previous reporter
           server.unregisterMBean(objectName);
         }
-        server.registerMBean(gauge, objectName);
-        registered.add(objectName);
+        // some MBean servers re-write object name to include additional properties
+        ObjectInstance instance = server.registerMBean(gauge, objectName);
+        if (instance != null) {
+          registered.add(instance.getObjectName());
+        }
       } catch (Exception e) {
         log.warn("bean registration error", e);
       } finally {
