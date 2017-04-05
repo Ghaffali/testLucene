@@ -7,18 +7,12 @@ font:
       bold: Noto_Sans/NotoSans-Bold.ttf
       italic: Noto_Sans/NotoSans-Italic.ttf
       bold_italic: Noto_Sans/NotoSans-BoldItalic.ttf
-    # Raleway used for headings
-    Raleway:
-      normal: Raleway/Raleway-Medium.ttf
-      bold: Raleway/Raleway-Bold.ttf
-      italic: Raleway/Raleway-Medium.ttf
-      bold_italic: Raleway/Raleway-Bold.ttf
-    # Ubuntu Mono used for monospaced text & code blocks
-    Ubuntu Mono:
-      normal: UbuntuMono/UbuntuMono-Regular.ttf
-      bold: UbuntuMono/UbuntuMono-Bold.ttf
-      italic: UbuntuMono/UbuntuMono-Italic.ttf
-      bold_italic: UbuntuMono/UbuntuMono-BoldItalic.ttf
+    # Inconsolata used for monospaced text & code blocks
+    Inconsolata:
+      normal: Inconsolata/Inconsolata-Regular.ttf
+      bold: Inconsolata/Inconsolata-Bold.ttf
+      italic: Inconsolata/Inconsolata-Regular.ttf
+      bold_italic: Inconsolata/Inconsolata-Bold.ttf
     # M+ 1p supports Latin, Latin-1 Supplement, Latin Extended, Greek, Cyrillic, Vietnamese, Japanese & an assortment of symbols
     # It also provides arrows for ->, <-, => and <= replacements in case these glyphs are missing from font
     # This is a fallback font, and will only be used when it can fill in missing glyphs from other fonts
@@ -59,7 +53,7 @@ link:
 # literal is used for inline monospaced strings in prose and in table cells
 literal:
   font_color: '#333333'
-  font_family: Ubuntu Mono
+  font_family: Inconsolata
   background_color: '#f5f5f5'
 # code is used for source code blocks
 code:
@@ -75,7 +69,7 @@ code:
 # headings
 heading:
   font_color: '#d9411e'
-  font_family: Raleway
+  font_family: $base_font_family
   font_style: bold
   # h1 is used for part titles; equivalent to 22pt due to rounding
   h1_font_size: floor($base_font_size * 2.1)
@@ -162,7 +156,7 @@ blockquote:
   cite_font_size: $base_font_size_small
   cite_font_color: '#999999'
 conum:
-  font_family: M+ 1mn
+  font_family: $base_font_family
   font_color: $literal_font_color
   font_size: $base_font_size
   line_height: 4 / 3

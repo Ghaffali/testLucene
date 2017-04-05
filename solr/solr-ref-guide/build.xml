@@ -149,7 +149,7 @@
       <attribute key="icon-set" value="fa" />
       <attribute key="pdf-stylesDir" value="./pdf/themes"/>
       <attribute key="pdf-style" value="refguide"/>
-      <attribute key="pdf-fontsDir" value="./pdf/fonts"/>
+      <attribute key="pdf-fontsDir" value="./fonts"/>
       <attribute key="figure-caption!" value='' />
       <attribute key="idprefix" value='' />
       <attribute key="idseparator" value='-' />
@@ -174,9 +174,9 @@
       <arg value="${build.dir}/${pdf-filename}"/>
     </java>
   </target>
-  
 
-  
+
+
   <!-- ======= HTML Site Build =======
        Builds site with Jekyll.
        This (for now) assumes that Jekyll (http://jekyllrb.com) is installed locally. -->

@@ -1,18 +1,39 @@
-/* Import Droid Sans for monotype */
-@import 'https://fonts.googleapis.com/css?family=Droid+Sans+Mono:400';
-
-/* Load Proxima Nova */
+/* Load Noto Sans for body and header text */
 @font-face
 {
-    font-family: 'Proxima Nova';
-    src: url(../fonts/proxima/proximanova-reg-webfont.woff);
+    font-family: 'Noto Sans';
+    src: url(../fonts/Noto_Sans/NotoSans-Regular.ttf);
 }
 
 @font-face
 {
     font-weight: bold;
-    font-family: 'Proxima Nova';
-    src: url(../fonts/proxima/proximanova-bold-webfont.woff);
+    font-family: 'Noto Sans';
+    src: url(../fonts/Noto_Sans/NotoSans-Bold.ttf);
+}
+
+/* Load Ubuntu Mono for monospace */
+/*@font-face {
+   font-family: 'Ubuntu Mono';
+   src: url(../fonts/UbuntuMono/UbuntuMono-Regular.ttf);
+}
+
+@font-face {
+   font-weight: bold;
+   font-family: 'Ubuntu Mono';
+   src: url(../fonts/UbuntuMono/UbuntuMono-Bold.ttf);
+} */
+
+/* Load Inconsolata for monospace */
+@font-face {
+   font-family: 'Inconsolata';
+   src: url(../fonts/Inconsolata/Inconsolata-Regular.ttf);
+}
+
+@font-face {
+   font-weight: bold;
+   font-family: 'Inconsolata';
+   src: url(../fonts/Inconsolata/Inconsolata-Bold.ttf);
 }
 
 article,
@@ -57,7 +78,7 @@ script
 
 html
 {
-    font-family: 'Proxima Nova', sans-serif;
+    font-family: 'Noto Sans', sans-serif;
 
         -ms-text-size-adjust: 100%;
     -webkit-text-size-adjust: 100%;
@@ -106,7 +127,7 @@ a.no_icon:after
     padding-left: 0;
 }
 
-/* indent extra nav levels 
+/* indent extra nav levels
    TODO: is there any easy way to do this that just incrementally applies to anything below sb-level2?
          ...w/o assuming sb-level4 is as deep as we go?
 */
@@ -119,9 +140,9 @@ ul#mysidebar li.sb-level4 a {
 /* we can style the 'current-tree' hierarchy in the sidebar independently of the 'active' page as
    the user clicks around expanding/collapsing the nav menus w/o clicking a link to load a diff page
 
-   For now: 
+   For now:
     - the 'current' page title is always bolder if 'active' (ie: visible)
-    - if the 'current' page is not 'active'/visible, then the closest ancestor that *is* 'active'/visible 
+    - if the 'current' page is not 'active'/visible, then the closest ancestor that *is* 'active'/visible
       will be bolded -- reminding the reader what section of the doc they are currently in.
 */
 ul#mysidebar li.current-tree > a {
@@ -537,7 +558,7 @@ h6
     color: #d9411e;
     font-weight: 300;
     font-style: normal;
-    font-family: 'Proxima Nova', sans-serif;
+    font-family: 'Noto Sans', sans-serif;
 	 margin: 40px 0 0 0;
 	 padding: 0;
 	 direction: ltr;
@@ -622,7 +643,7 @@ code
 {
     color: rgba(0,0,0,.9);
     font-weight: 400;
-    font-family: 'Droid Sans Mono', 'DejaVu Sans Mono', monospace;
+    font-family: 'Inconsolata', monospace;
 }
 
 dl,
@@ -868,7 +889,7 @@ h6 strong
     word-spacing: -.15em;
     letter-spacing: 0;
     font-style: normal!important;
-    font-size: .85em;
+    font-size: 1em;
     line-height: 1.45;
 }
 
@@ -877,7 +898,7 @@ pre > code
 {
     color: rgba(0,0,0,.9);
     font-weight: 400;
-    font-family: 'Droid Sans Mono', 'DejaVu Sans Mono', monospace;
+    font-family: 'Inconsolata', monospace;
     line-height: 1.45;
 	 white-space: pre-wrap;
 }
@@ -992,7 +1013,7 @@ p a > code:hover
 span.projectTitle
 {
     font-weight: bold;
-    font-family: 'Proxima Nova';
+    font-family: 'Noto Sans';
 	 font-size: 14pt;
 }
 
@@ -1104,7 +1125,7 @@ body.toc2 #header > h1:nth-last-child(2)
 #toc ul
 {
     list-style-type: none;
-    font-family: 'Proxima Nova',
+    font-family: 'Noto Sans',
     sans-serif;
 }
 
@@ -1455,7 +1476,7 @@ table.tableblock #preamble > .sectionbody > .paragraph:first-of-type p
 {
     text-transform: uppercase;
     font-weight: bold;
-    font-family: 'Proxima Nova',
+    font-family: 'Noto Sans',
     sans-serif;
 }
 
@@ -1785,7 +1806,7 @@ table.pyhltable .linenodiv
     color: rgba(0,0,0,.85);
     font-weight: 300;
     font-size: 1.15rem;
-    font-family: 'Proxima Nova',
+    font-family: 'Noto Sans',
     sans;
 }
 
@@ -2550,7 +2571,7 @@ span.icon > .fa
     font-weight: bold;
     font-style: normal;
     font-size: .75em;
-    font-family: 'Proxima Nova',
+    font-family: 'Noto Sans',
     sans-serif;
     line-height: 1.67em;
 }
