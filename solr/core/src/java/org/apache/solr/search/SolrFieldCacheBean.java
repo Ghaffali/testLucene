@@ -17,7 +17,6 @@
 package org.apache.solr.search;
 
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 import com.codahale.metrics.MetricRegistry;
@@ -26,7 +25,6 @@ import org.apache.solr.metrics.MetricsMap;
 import org.apache.solr.metrics.SolrMetricManager;
 import org.apache.solr.metrics.SolrMetricProducer;
 import org.apache.solr.uninverting.UninvertingReader;
-import org.apache.solr.util.stats.MetricUtils;
 
 /**
  * A SolrInfoBean that provides introspection of the Solr FieldCache

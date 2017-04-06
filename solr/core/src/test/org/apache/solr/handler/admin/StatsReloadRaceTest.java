@@ -108,18 +108,28 @@ public class StatsReloadRaceTest extends SolrTestCaseJ4 {
   private void requestMetrics() throws Exception {
     SolrQueryResponse rsp = new SolrQueryResponse();
     String registry = "solr.core." + h.coreName;
-    h.getCoreContainer().getRequestHandler("/admin/metrics").handleRequest(
-        req("prefix", "SEARCHER", "registry", registry, "compact", "true"), rsp);
-
-    NamedList values = rsp.getValues();
-    NamedList metrics = (NamedList)values.get("metrics");
-    metrics = (NamedList)metrics.get(registry);
     String key = "SEARCHER.searcher.indexVersion";
-    // this is not guaranteed to exist right away after core reload - there's a
-    // small window between core load and before searcher metrics are registered
-    if (metrics.get(key) != null) {
-      assertTrue(metrics.get(key) instanceof Long);
+    boolean found = false;
+    int count = 10;
+    while (!found && count-- > 0) {
+      h.getCoreContainer().getRequestHandler("/admin/metrics").handleRequest(
+          req("prefix", "SEARCHER", "registry", registry, "compact", "true"), rsp);
+
+      NamedList values = rsp.getValues();
+      NamedList metrics = (NamedList)values.get("metrics");
+      metrics = (NamedList)metrics.get(registry);
+      // this is not guaranteed to exist right away after core reload - there's a
+      // small window between core load and before searcher metrics are registered
+      // so we may have to check a few times
+      if (metrics.get(key) != null) {
+        found = true;
+        assertTrue(metrics.get(key) instanceof Long);
+        break;
+      } else {
+        Thread.sleep(500);
+      }
     }
+    assertTrue("Key " + key + " not found in registry " + registry, found);
   }
 
 }

@@ -21,7 +21,6 @@ import java.lang.management.OperatingSystemMXBean;
 import java.util.Arrays;
 
 import com.codahale.metrics.Gauge;
-import org.apache.hadoop.metrics.MetricsUtil;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.util.stats.MetricUtils;

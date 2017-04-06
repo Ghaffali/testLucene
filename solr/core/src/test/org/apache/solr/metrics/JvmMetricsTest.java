@@ -29,18 +29,14 @@ import org.junit.Test;
  */
 public class JvmMetricsTest extends SolrJettyTestBase {
 
-  static final String[] OS_METRICS = {
+  static final String[] STRING_OS_METRICS = {
+      "arch",
+      "name",
+      "version"
+  };
+  static final String[] NUMERIC_OS_METRICS = {
       "availableProcessors",
-      "committedVirtualMemorySize",
-      "freePhysicalMemorySize",
-      "freeSwapSpaceSize",
-      "maxFileDescriptorCount",
-      "openFileDescriptorCount",
-      "processCpuLoad",
-      "processCpuTime",
-      "systemLoadAverage",
-      "totalPhysicalMemorySize",
-      "totalSwapSpaceSize"
+      "systemLoadAverage"
   };
 
   static final String[] BUFFER_METRICS = {
@@ -62,18 +58,20 @@ public class JvmMetricsTest extends SolrJettyTestBase {
     OperatingSystemMetricSet set = new OperatingSystemMetricSet();
     Map<String, Metric> metrics = set.getMetrics();
     assertTrue(metrics.size() > 0);
-    int found = 0;
-    for (String metric : OS_METRICS) {
+    for (String metric : NUMERIC_OS_METRICS) {
       Gauge<?> gauge = (Gauge<?>)metrics.get(metric);
-      if (gauge == null || gauge.getValue() == null) { // some are optional depending on OS
-        continue;
-      }
-      found++;
+      assertNotNull(metric, gauge);
       double value = ((Number)gauge.getValue()).doubleValue();
       // SystemLoadAverage on Windows may be -1.0
       assertTrue("unexpected value of " + metric + ": " + value, value >= 0 || value == -1.0);
     }
-    assertTrue("no known metrics found", found > 0);
+    for (String metric : STRING_OS_METRICS) {
+      Gauge<?> gauge = (Gauge<?>)metrics.get(metric);
+      assertNotNull(metric, gauge);
+      String value = (String)gauge.getValue();
+      assertNotNull(value);
+      assertFalse(value.isEmpty());
+    }
   }
 
   @Test

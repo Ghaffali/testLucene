@@ -22,10 +22,8 @@ import javax.management.ObjectName;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -60,8 +58,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private MetricRegistry registry;
   private MBeanServer mBeanServer;
   private MetricsMapListener listener;
-
-  private static Map<String,PluginInfo> reporters = new HashMap<>();
+  private boolean enabled = true;
 
   /**
    * Creates a new instance of {@link SolrJmxReporter}.
@@ -82,12 +79,11 @@ public class SolrJmxReporter extends SolrMetricReporter {
   @Override
   public synchronized void init(PluginInfo pluginInfo) {
     super.init(pluginInfo);
-    log.info("Initializing for registry " + registryName + ": " + pluginInfo);
-    String key = pluginInfo.name + "/" + registryName;
-    if (reporters.containsKey(key)) {
-      throw new RuntimeException("already reporting: " + reporters.get(key));
+    if (!enabled) {
+      log.info("JMX monitoring disabled for registry " + registryName);
+      return;
     }
-    reporters.put(key, pluginInfo);
+    log.info("Initializing for registry " + registryName);
     if (serviceUrl != null && agentId != null) {
       mBeanServer = JmxUtil.findFirstMBeanServer();
       log.warn("No more than one of serviceUrl(%s) and agentId(%s) should be configured, using first MBeanServer instead of configuration.",
@@ -210,6 +206,18 @@ public class SolrJmxReporter extends SolrMetricReporter {
    */
   public String getDomain() {
     return domain;
+  }
+
+  /**
+   * Enable reporting, defaults to true.
+   * @param enabled enable, defaults to true when null or not set.
+   */
+  public void setEnabled(Boolean enabled) {
+    if (enabled == null) {
+      this.enabled = true;
+    } else {
+      this.enabled = enabled;
+    }
   }
 
   /**

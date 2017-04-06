@@ -125,21 +125,15 @@ public class MetricUtils {
    *                        A metric <em>must</em> match this filter to be included in the output.
    * @param skipHistograms discard any {@link Histogram}-s and histogram parts of {@link Timer}-s.
    * @param compact use compact representation for counters and gauges.
-   * @param metadata optional metadata. If not null and not empty then this map will be added under a
-   *                 {@code _metadata_} key.
    * @return a {@link NamedList}
    */
   public static NamedList toNamedList(MetricRegistry registry, List<MetricFilter> shouldMatchFilters,
                                       MetricFilter mustMatchFilter, boolean skipHistograms,
-                                      boolean skipAggregateValues, boolean compact,
-                                      Map<String, Object> metadata) {
+                                      boolean skipAggregateValues, boolean compact) {
     NamedList result = new SimpleOrderedMap();
     toMaps(registry, shouldMatchFilters, mustMatchFilter, skipHistograms, skipAggregateValues, compact, false, (k, v) -> {
       result.add(k, v);
     });
-    if (metadata != null && !metadata.isEmpty()) {
-      result.add("_metadata_", metadata);
-    }
     return result;
   }
 
@@ -304,41 +298,53 @@ public class MetricUtils {
         convertHistogram(n, histogram, simple, consumer);
       }
     } else if (metric instanceof AggregateMetric) {
-      consumer.accept(n, convertAggregateMetric((AggregateMetric)metric, skipAggregateValues));
+      convertAggregateMetric(n, (AggregateMetric)metric, skipAggregateValues, simple, consumer);
     }
   }
 
   /**
    * Convert an instance of {@link AggregateMetric}.
+   * @param name metric name
    * @param metric an instance of {@link AggregateMetric}
    * @param skipAggregateValues discard internal values of {@link AggregateMetric}-s.
-   * @return a map containing metric properties
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
+   * @param consumer consumer that accepts produced objects
    */
-  static Map<String, Object> convertAggregateMetric(AggregateMetric metric, boolean skipAggregateValues) {
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("count", metric.size());
-    response.put(MAX, metric.getMax());
-    response.put(MIN, metric.getMin());
-    response.put(MEAN, metric.getMean());
-    response.put(STDDEV, metric.getStdDev());
-    response.put(SUM, metric.getSum());
-    if (!(metric.isEmpty() || skipAggregateValues)) {
-      Map<String, Object> values = new LinkedHashMap<>();
-      response.put(VALUES, values);
-      metric.getValues().forEach((k, v) -> {
-        Map<String, Object> map = new LinkedHashMap<>();
-        map.put("value", v.value);
-        map.put("updateCount", v.updateCount.get());
-        values.put(k, map);
-      });
+  static void convertAggregateMetric(String name, AggregateMetric metric,
+      boolean skipAggregateValues, boolean simple, BiConsumer<String, Object> consumer) {
+    if (simple) {
+      consumer.accept(name + "." + MEAN, metric.getMean());
+    } else {
+      Map<String, Object> response = new LinkedHashMap<>();
+      response.put("count", metric.size());
+      response.put(MAX, metric.getMax());
+      response.put(MIN, metric.getMin());
+      response.put(MEAN, metric.getMean());
+      response.put(STDDEV, metric.getStdDev());
+      response.put(SUM, metric.getSum());
+      if (!(metric.isEmpty() || skipAggregateValues)) {
+        Map<String, Object> values = new LinkedHashMap<>();
+        response.put(VALUES, values);
+        metric.getValues().forEach((k, v) -> {
+          Map<String, Object> map = new LinkedHashMap<>();
+          map.put("value", v.value);
+          map.put("updateCount", v.updateCount.get());
+          values.put(k, map);
+        });
+      }
+      consumer.accept(name, response);
     }
-    return response;
   }
 
   /**
    * Convert an instance of {@link Histogram}. NOTE: it's assumed that histogram contains non-time
    * based values that don't require unit conversion.
+   * @param name metric name
    * @param histogram an instance of {@link Histogram}
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
+   * @param consumer consumer that accepts produced objects
    */
   static void convertHistogram(String name, Histogram histogram,
                                               boolean simple, BiConsumer<String, Object> consumer) {
@@ -378,8 +384,12 @@ public class MetricUtils {
 
   /**
    * Convert a {@link Timer} to a map.
+   * @param name metric name
    * @param timer timer instance
    * @param skipHistograms if true then discard the histogram part of the timer.
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
+   * @param consumer consumer that accepts produced objects
    */
   public static void convertTimer(String name, Timer timer, boolean skipHistograms,
                                                 boolean simple, BiConsumer<String, Object> consumer) {
@@ -402,7 +412,11 @@ public class MetricUtils {
 
   /**
    * Convert a {@link Meter} to a map.
+   * @param name metric name
    * @param meter meter instance
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
+   * @param consumer consumer that accepts produced objects
    */
   static void convertMeter(String name, Meter meter, boolean simple, BiConsumer<String, Object> consumer) {
     if (simple) {
@@ -420,9 +434,13 @@ public class MetricUtils {
 
   /**
    * Convert a {@link Gauge}.
+   * @param name metric name
    * @param gauge gauge instance
+   * @param simple use simplified representation for complex metrics - instead of a (name, map)
+   *             only the selected (name "." key, value) pairs will be produced.
    * @param compact if true then only return {@link Gauge#getValue()}. If false
    *                then return a map with a "value" field.
+   * @param consumer consumer that accepts produced objects
    */
   static void convertGauge(String name, Gauge gauge, boolean simple, boolean compact,
                              BiConsumer<String, Object> consumer) {
@@ -463,7 +481,7 @@ public class MetricUtils {
    * Returns an instrumented wrapper over the given executor service.
    */
   public static ExecutorService instrumentedExecutorService(ExecutorService delegate, SolrInfoBean info, MetricRegistry metricRegistry, String scope)  {
-    if (info != null) {
+    if (info != null && info.getMetricNames() != null) {
       info.getMetricNames().add(MetricRegistry.name(scope, "submitted"));
       info.getMetricNames().add(MetricRegistry.name(scope, "running"));
       info.getMetricNames().add(MetricRegistry.name(scope, "completed"));
@@ -476,6 +494,7 @@ public class MetricUtils {
    * Creates a set of metrics (gauges) that correspond to available bean properties for the provided MXBean.
    * @param obj an instance of MXBean
    * @param intf MXBean interface, one of {@link PlatformManagedObject}-s
+   * @param consumer consumer for created names and metrics
    * @param <T> formal type
    */
   public static <T extends PlatformManagedObject> void addMXBeanMetrics(T obj, Class<? extends T> intf,
@@ -524,6 +543,15 @@ public class MetricUtils {
       "com.ibm.lang.management.OperatingSystemMXBean"
   };
 
+  /**
+   * Creates a set of metrics (gauges) that correspond to available bean properties for the provided MXBean.
+   * @param obj an instance of MXBean
+   * @param interfaces interfaces that it may implement. Each interface will be tried in turn, and only
+   *                   if it exists and if it contains unique properties then they will be added as metrics.
+   * @param prefix optional prefix for metric names
+   * @param consumer consumer for created names and metrics
+   * @param <T> formal type
+   */
   public static <T extends PlatformManagedObject> void addMXBeanMetrics(T obj, String[] interfaces,
       String prefix, BiConsumer<String, Metric> consumer) {
     for (String clazz : interfaces) {
