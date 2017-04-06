@@ -448,8 +448,7 @@ public class CloudSolrClientTest extends SolrCloudTestCase {
       return null;
     }
     if (scope != null) { // admin handler uses a meter instead of counter here
-      map = (Map<String,Object>)map.get(name);
-      return (Long)map.get("count");
+      return (Long)map.get(name + ".count");
     } else {
       return (Long) map.get(name);
     }

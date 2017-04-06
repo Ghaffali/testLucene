@@ -53,6 +53,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private String domain;
   private String agentId;
   private String serviceUrl;
+  private String rootName;
 
   private JmxReporter reporter;
   private MetricRegistry registry;
@@ -83,7 +84,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
       log.info("JMX monitoring disabled for registry " + registryName);
       return;
     }
-    log.info("Initializing for registry " + registryName);
+    log.debug("Initializing for registry " + registryName);
     if (serviceUrl != null && agentId != null) {
       mBeanServer = JmxUtil.findFirstMBeanServer();
       log.warn("No more than one of serviceUrl(%s) and agentId(%s) should be configured, using first MBeanServer instead of configuration.",
@@ -107,14 +108,18 @@ public class SolrJmxReporter extends SolrMetricReporter {
       return;
     }
 
-    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, domain);
+    String fullDomain = domain;
+    if (rootName != null && !rootName.isEmpty()) {
+      fullDomain = rootName + "." + domain;
+    }
+    JmxObjectNameFactory jmxObjectNameFactory = new JmxObjectNameFactory(pluginInfo.name, fullDomain);
     registry = metricManager.registry(registryName);
     // filter out MetricsMap gauges - we have a better way of handling them
     MetricFilter filter = (name, metric) -> !(metric instanceof MetricsMap);
 
     reporter = JmxReporter.forRegistry(registry)
                           .registerWith(mBeanServer)
-                          .inDomain(domain)
+                          .inDomain(fullDomain)
                           .filter(filter)
                           .createsObjectNamesWith(jmxObjectNameFactory)
                           .build();
@@ -123,7 +128,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
     listener = new MetricsMapListener(mBeanServer, jmxObjectNameFactory);
     registry.addListener(listener);
 
-    log.info("JMX monitoring for registry '" + registryName + "' enabled at server: " + mBeanServer);
+    log.info("JMX monitoring for '" + fullDomain + "' (registry '" + registryName + "') enabled at server: " + mBeanServer);
   }
 
   /**
@@ -153,9 +158,19 @@ public class SolrJmxReporter extends SolrMetricReporter {
     // Nothing to validate
   }
 
+
+  /**
+   * Set root name of the JMX hierarchy for this reporter. Default (null or empty) is none, ie.
+   * the hierarchy will start from the domain name.
+   * @param rootName root name of the JMX name hierarchy, or null or empty for default.
+   */
+  public void setRootName(String rootName) {
+    this.rootName = rootName;
+  }
+
   /**
    * Sets the domain with which MBeans are published. If none is set,
-   * the domain defaults to the name of the core.
+   * the domain defaults to the name of the registry.
    *
    * @param domain the domain
    */
@@ -239,8 +254,8 @@ public class SolrJmxReporter extends SolrMetricReporter {
 
   @Override
   public String toString() {
-    return String.format(Locale.ENGLISH, "[%s@%s: domain = %s, service url = %s, agent id = %s]",
-        getClass().getName(), Integer.toHexString(hashCode()), domain, serviceUrl, agentId);
+    return String.format(Locale.ENGLISH, "[%s@%s: rootName = %, domain = %s, service url = %s, agent id = %s]",
+        getClass().getName(), Integer.toHexString(hashCode()), rootName, domain, serviceUrl, agentId);
   }
 
   private static class MetricsMapListener extends MetricRegistryListener.Base {
@@ -266,10 +281,6 @@ public class SolrJmxReporter extends SolrMetricReporter {
       }
       try {
         ObjectName objectName = nameFactory.createName("gauges", nameFactory.getDomain(), name);
-        if (server.isRegistered(objectName)) {
-          // silently unregister - may have been left over from a previous reporter
-          server.unregisterMBean(objectName);
-        }
         // some MBean servers re-write object name to include additional properties
         ObjectInstance instance = server.registerMBean(gauge, objectName);
         if (instance != null) {
