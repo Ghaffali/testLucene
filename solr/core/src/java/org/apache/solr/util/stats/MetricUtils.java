@@ -353,10 +353,10 @@ public class MetricUtils {
       consumer.accept(name + "." + MEAN, snapshot.getMean());
     } else {
       Map<String, Object> response = new LinkedHashMap<>();
-      consumer.accept(name, response);
       response.put("count", histogram.getCount());
       // non-time based values
       addSnapshot(response, snapshot, false);
+      consumer.accept(name, response);
     }
   }
 
@@ -397,7 +397,6 @@ public class MetricUtils {
       consumer.accept(name + ".meanRate", timer.getMeanRate());
     } else {
       Map<String, Object> response = new LinkedHashMap<>();
-      consumer.accept(name, response);
       response.put("count", timer.getCount());
       response.put("meanRate", timer.getMeanRate());
       response.put("1minRate", timer.getOneMinuteRate());
@@ -407,6 +406,7 @@ public class MetricUtils {
         // time-based values in nanoseconds
         addSnapshot(response, timer.getSnapshot(), true);
       }
+      consumer.accept(name, response);
     }
   }
 
