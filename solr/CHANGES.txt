@@ -93,6 +93,9 @@ Optimizations
 Other Changes
 * SOLR-10236: Removed FieldType.getNumericType(). Use getNumberType() instead. (Tomás Fernández Löbbe)
 
+* SOLR-10347: Removed index level boost support from "documents" section of the admin UI (Amrit Sarkar via
+  Tomás Fernández Löbbe)
+
 ----------------------
 
 ==================  6.6.0 ==================
@@ -133,6 +136,8 @@ New Features
 * SOLR-10349: Add totalTermFreq support to TermsComponent. (Shai Erera)
 
 * SOLR-9993: Add support for ExpandComponent with PointFields. (Cao Manh Dat)
+
+* SOLR-10239: MOVEREPLICA API (Cao Manh Dat, Noble Paul, shalin)
 
 Optimizations
 ----------------------
@@ -203,6 +208,19 @@ Bug Fixes
 
 * SOLR-10416: The JSON output of /admin/metrics is fixed to write the container as a
   map (SimpleOrderedMap) instead of an array (NamedList). (shalin)
+
+* SOLR-10277: On 'downnode', lots of wasteful mutations are done to ZK.
+  (Joshua Humphries, Scott Blum, Varun Thacker, shalin)
+
+* SOLR-10421: Fix params persistence for solr/contrib/ltr (MinMax|Standard)Normalizer classes.
+  (Jianxiong Dong, Christine Poerschke)
+
+* SOLR-10404: The fetch() streaming expression wouldn't work if a value included query syntax chars (like :+-).
+  Fixed, and enhanced the generated query to not pollute the queryCache. (David Smiley)
+  
+* SOLR-10423: Disable graph query production via schema configuration <fieldtype ... enableGraphQueries="false">.
+  This fixes broken queries for ShingleFilter-containing query-time analyzers when request param sow=false.
+  (Steve Rowe)
 
 ==================  6.5.0 ==================
 
