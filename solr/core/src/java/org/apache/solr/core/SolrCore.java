@@ -914,7 +914,7 @@ public final class SolrCore implements SolrInfoBean, SolrMetricProducer, Closeab
     SolrFieldCacheBean solrFieldCacheBean = new SolrFieldCacheBean();
     // this is registered at the CONTAINER level because it's not core-specific - for now we
     // also register it here for back-compat
-    solrFieldCacheBean.initializeMetrics(metricManager, coreMetricManager.getRegistryName(), getCategory().toString());
+    solrFieldCacheBean.initializeMetrics(metricManager, coreMetricManager.getRegistryName(), "core");
     infoRegistry.put("fieldCache", solrFieldCacheBean);
 
 

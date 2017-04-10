@@ -277,6 +277,36 @@ public class SolrMetricManager {
     }
   }
 
+  public static class AndFilter implements MetricFilter {
+    List<MetricFilter> filters = new ArrayList<>();
+
+    public AndFilter(Collection<MetricFilter> filters) {
+      if (filters != null) {
+        this.filters.addAll(filters);
+      }
+    }
+
+    public AndFilter(MetricFilter... filters) {
+      if (filters != null) {
+        for (MetricFilter filter : filters) {
+          if (filter != null) {
+            this.filters.add(filter);
+          }
+        }
+      }
+    }
+
+    @Override
+    public boolean matches(String s, Metric metric) {
+      for (MetricFilter filter : filters) {
+        if (!filter.matches(s, metric)) {
+          return false;
+        }
+      }
+      return true;
+    }
+  }
+
   /**
    * Return a set of existing registry names.
    */

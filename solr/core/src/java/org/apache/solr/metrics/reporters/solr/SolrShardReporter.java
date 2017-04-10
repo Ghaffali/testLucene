@@ -98,7 +98,13 @@ public class SolrShardReporter extends SolrMetricReporter {
     if (filterConfig == null || filterConfig.isEmpty()) {
       return;
     }
-    filters = filterConfig;
+    filters.addAll(filterConfig);
+  }
+
+  public void setFilter(String filter) {
+    if (filter != null && !filter.isEmpty()) {
+      this.filters.add(filter);
+    }
   }
 
   // for unit tests
@@ -128,13 +134,17 @@ public class SolrShardReporter extends SolrMetricReporter {
     if (reporter != null) {
       reporter.close();
     }
+    if (!enabled) {
+      log.info("Reporter disabled for registry " + registryName);
+      return;
+    }
     if (core.getCoreDescriptor().getCloudDescriptor() == null) {
       // not a cloud core
       log.warn("Not initializing shard reporter for non-cloud core " + core.getName());
       return;
     }
     if (period < 1) { // don't start it
-      log.warn("Not starting shard reporter ");
+      log.warn("period=" + period + ", not starting shard reporter ");
       return;
     }
     // our id is coreNodeName

@@ -471,10 +471,10 @@ public class SolrXmlConfig {
     MBeanServer mBeanServer = JmxUtil.findFirstMBeanServer();
     if (mBeanServer != null && !hasJmxReporter) {
       log.info("MBean server found: " + mBeanServer + ", but no JMX reporters were configured - adding default JMX reporter.");
-      Map<String,String> attributes = new HashMap<>();
+      Map<String,Object> attributes = new HashMap<>();
       attributes.put("name", "default");
       attributes.put("class", SolrJmxReporter.class.getName());
-      PluginInfo defaultPlugin = new PluginInfo("reporter", attributes, null, null);
+      PluginInfo defaultPlugin = new PluginInfo("reporter", attributes);
       configs.add(defaultPlugin);
     }
     return configs.toArray(new PluginInfo[configs.size()]);

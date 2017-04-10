@@ -144,6 +144,9 @@ public class SolrCoreMetricManager implements Closeable {
   @Override
   public void close() throws IOException {
     metricManager.closeReporters(getRegistryName(), tag);
+    if (getLeaderRegistryName() != null) {
+      metricManager.closeReporters(getLeaderRegistryName(), tag);
+    }
   }
 
   public SolrCore getCore() {

@@ -21,6 +21,8 @@ import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
 import java.lang.management.ManagementFactory;
+import java.rmi.registry.LocateRegistry;
+import java.rmi.registry.Registry;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Random;
@@ -41,11 +43,15 @@ import org.apache.solr.metrics.SolrMetricTestUtils;
 import org.apache.solr.schema.FieldType;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 public class SolrJmxReporterTest extends SolrTestCaseJ4 {
 
   private static final int MAX_ITERATIONS = 20;
+
+  private static Registry jmxRegistry;
+  private static int jmxPort;
 
   private String domain;
 
@@ -54,15 +60,24 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
   private SolrJmxReporter reporter;
   private MBeanServer mBeanServer;
   private String reporterName;
+  private String rootName;
+
+  @BeforeClass
+  public static void init() throws Exception {
+    jmxPort = getNextAvailablePort();
+    assertFalse(jmxPort == -1);
+    jmxRegistry = LocateRegistry.createRegistry(jmxPort);
+  }
 
   @Before
   public void beforeTest() throws Exception {
     // make sure we're running an MBeanServer
-    ManagementFactory.getPlatformMBeanServer();
+    //ManagementFactory.getPlatformMBeanServer();
     initCore("solrconfig-basic.xml", "schema.xml");
 
     final SolrCore core = h.getCore();
     domain = core.getName();
+    rootName = TestUtil.randomSimpleString(random(), 1, 10);
 
     coreMetricManager = core.getCoreMetricManager();
     metricManager = core.getCoreDescriptor().getCoreContainer().getMetricManager();
@@ -80,6 +95,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     reporter = (SolrJmxReporter) reporters.get(taggedName);
     mBeanServer = reporter.getMBeanServer();
     assertNotNull("MBean server not found.", mBeanServer);
+    System.err.println("jmxPort=" + jmxPort);
+//    Thread.sleep(1000000000);
   }
 
   private PluginInfo createReporterPluginInfo() {
@@ -90,6 +107,8 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     Map<String, Object> attrs = new HashMap<>();
     attrs.put(FieldType.CLASS_NAME, className);
     attrs.put(CoreAdminParams.NAME, reporterName);
+    attrs.put("rootName", rootName);
+    attrs.put("serviceUrl", "service:jmx:rmi:///jndi/rmi://localhost:" + jmxPort + "/solrjmx");
 
     boolean shouldOverrideDomain = random.nextBoolean();
     if (shouldOverrideDomain) {
@@ -129,7 +148,7 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
       Set<ObjectInstance> objects = mBeanServer.queryMBeans(null, null);
       assertEquals(registered.size(), objects.stream().
           filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&
-                      reporterName.equals(o.getObjectName().getKeyProperty("reporter"))).count());
+                      rootName.equals(o.getObjectName().getDomain())).count());
     }
   }
 
@@ -145,7 +164,7 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     Set<ObjectInstance> objects = mBeanServer.queryMBeans(null, null);
     assertEquals(metrics.size(), objects.stream().
         filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&
-            reporterName.equals(o.getObjectName().getKeyProperty("reporter"))).count());
+        o.getObjectName().getDomain().equals(rootName)).count());
 
     h.getCoreContainer().reload(h.getCore().getName());
     PluginInfo pluginInfo = createReporterPluginInfo();
@@ -156,7 +175,7 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
     objects = mBeanServer.queryMBeans(null, null);
     assertEquals(metrics.size(), objects.stream().
         filter(o -> scope.equals(o.getObjectName().getKeyProperty("scope")) &&
-            pluginInfo.name.equals(o.getObjectName().getKeyProperty("reporter"))).count());
+            rootName.equals(o.getObjectName().getDomain())).count());
   }
 
 }

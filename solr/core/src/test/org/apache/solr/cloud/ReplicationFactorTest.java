@@ -71,14 +71,6 @@ public class ReplicationFactorTest extends AbstractFullDistribZkTestBase {
     return createProxiedJetty(solrHome, dataDir, shardList, solrConfigOverride, schemaOverride);
   }
   
-  protected int getNextAvailablePort() throws Exception {    
-    int port = -1;
-    try (ServerSocket s = new ServerSocket(0)) {
-      port = s.getLocalPort();
-    }
-    return port;
-  }
-
   @Test
   public void test() throws Exception {
     log.info("replication factor test running");

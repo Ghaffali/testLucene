@@ -159,6 +159,16 @@ public class SolrClusterReporter extends SolrMetricReporter {
     });
   }
 
+  public void setReport(Map map) {
+    if (map == null || map.isEmpty()) {
+      return;
+    }
+    SolrReporter.Report r = SolrReporter.Report.fromMap(map);
+    if (r != null) {
+      reports.add(r);
+    }
+  }
+
   // for unit tests
   int getPeriod() {
     return period;
@@ -188,6 +198,10 @@ public class SolrClusterReporter extends SolrMetricReporter {
   public void setCoreContainer(CoreContainer cc) {
     if (reporter != null) {
       reporter.close();;
+    }
+    if (!enabled) {
+      log.info("Reporter disabled for registry " + registryName);
+      return;
     }
     // start reporter only in cloud mode
     if (!cc.isZooKeeperAware()) {

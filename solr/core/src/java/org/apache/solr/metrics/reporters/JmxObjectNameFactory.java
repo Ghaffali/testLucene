@@ -105,9 +105,11 @@ public class JmxObjectNameFactory implements ObjectNameFactory {
       sb.append(currentDomain);
       sb.append(':');
     }
-    sb.append("reporter=");
-    sb.append(reporterName);
+//    sb.append("reporter=");
+//    sb.append(reporterName);
+//    sb.append(',');
     if (props != null && props.length > 0) {
+      boolean added = false;
       for (int i = 0; i < props.length; i += 2) {
         if (props[i] == null || props[i].isEmpty()) {
           continue;
@@ -119,9 +121,12 @@ public class JmxObjectNameFactory implements ObjectNameFactory {
         sb.append(props[i]);
         sb.append('=');
         sb.append(props[i + 1]);
+        added = true;
+      }
+      if (added) {
+        sb.append(',');
       }
     }
-    sb.append(',');
     if (metricInfo != null) {
       sb.append("category=");
       sb.append(metricInfo.category.toString());
