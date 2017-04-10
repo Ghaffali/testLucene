@@ -45,7 +45,6 @@ public class SolrGraphiteReporter extends SolrMetricReporter {
   private String instancePrefix = null;
   private List<String> filters = new ArrayList<>();
   private GraphiteReporter reporter = null;
-  private boolean enabled = true;
 
   private static final MetricServiceRegistry<GraphiteSender> serviceRegistry = new MetricServiceRegistry<>();
 

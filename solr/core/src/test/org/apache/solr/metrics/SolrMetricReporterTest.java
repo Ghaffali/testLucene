@@ -42,7 +42,7 @@ public class SolrMetricReporterTest extends LuceneTestCase {
     Map<String, Object> attrs = new HashMap<>();
     attrs.put(FieldType.CLASS_NAME, MockMetricReporter.class.getName());
     attrs.put(CoreAdminParams.NAME, TestUtil.randomUnicodeString(random));
-    attrs.put("enabled", String.valueOf(random.nextBoolean()));
+    attrs.put("enabled", random.nextBoolean());
 
     boolean shouldDefineConfigurable = random.nextBoolean();
     String configurable = TestUtil.randomUnicodeString(random);

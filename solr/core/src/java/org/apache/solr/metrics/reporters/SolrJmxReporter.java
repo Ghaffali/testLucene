@@ -64,7 +64,6 @@ public class SolrJmxReporter extends SolrMetricReporter {
   private MetricRegistry registry;
   private MBeanServer mBeanServer;
   private MetricsMapListener listener;
-  private boolean enabled = true;
 
   /**
    * Creates a new instance of {@link SolrJmxReporter}.

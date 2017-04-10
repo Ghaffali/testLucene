@@ -180,9 +180,6 @@ public class SolrClusterReporter extends SolrMetricReporter {
 
   @Override
   protected void validate() throws IllegalStateException {
-    if (period < 1) {
-      log.info("Turning off node reporter, period=" + period);
-    }
     if (reports.isEmpty()) { // set defaults
       reports = DEFAULT_REPORTS;
     }
@@ -209,6 +206,7 @@ public class SolrClusterReporter extends SolrMetricReporter {
       return;
     }
     if (period < 1) { // don't start it
+      log.info("Turning off node reporter, period=" + period);
       return;
     }
     HttpClient httpClient = cc.getUpdateShardHandler().getHttpClient();

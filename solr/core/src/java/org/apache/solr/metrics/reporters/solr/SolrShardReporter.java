@@ -114,9 +114,6 @@ public class SolrShardReporter extends SolrMetricReporter {
 
   @Override
   protected void validate() throws IllegalStateException {
-    if (period < 1) {
-      log.info("Turning off shard reporter, period=" + period);
-    }
     if (filters.isEmpty()) {
       filters = DEFAULT_FILTERS;
     }
