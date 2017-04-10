@@ -160,6 +160,17 @@ Bug Fixes
 * SOLR-10387: zkTransfer normalizes destination path incorrectly if source is a windows directory 
   (gopikannan venugopalsamy, Erick Erickson)
 
+* SOLR-10323: fix to SpellingQueryConverter to properly strip out colons in field-specific queries.
+  (Amrit Sarkar via James Dyer)
+
+* SOLR-10264: Fixes multi-term synonym parsing in ManagedSynonymFilterFactory.
+  (Jörg Rathlev, Steve Rowe, Christine Poerschke)
+  
+* SOLR-8807: fix Spellcheck "collateMaxCollectDocs" parameter to work with queries that have the 
+  CollpasingQParserPlugin applied.  (James Dyer)
+
+* SOLR-10474: TestPointFields.testPointFieldReturn() depends on order of unsorted hits. (Steve Rowe)
+
 Other Changes
 ----------------------
 
@@ -198,6 +209,11 @@ Other Changes
 * SOLR-10394: Rename getSortWithinGroup to getWithinGroupSort in search.grouping.Command class.
   (Judith Silverman, Christine Poerschke)
 
+* SOLR-10440: LBHttpSolrClient.doRequest is now always wrapped in a Mapped Diagnostic Context (MDC).
+  (Christine Poerschke)
+
+* SOLR-10429: UpdateRequest#getRoutes()should copy the response parser (noble)
+
 ==================  6.5.1 ==================
 
 Bug Fixes
@@ -221,6 +237,12 @@ Bug Fixes
 * SOLR-10423: Disable graph query production via schema configuration <fieldtype ... enableGraphQueries="false">.
   This fixes broken queries for ShingleFilter-containing query-time analyzers when request param sow=false.
   (Steve Rowe)
+
+* SOLR-10425: Fix indexed="false" on numeric PointFields (Tomás Fernández Löbbe, hossman)
+
+* SOLR-10341: SQL AVG function mis-interprets field type. (Joel Bernstein)
+
+* SOLR-10444: SQL interface does not use client cache. (Joel Bernstein)
 
 ==================  6.5.0 ==================
 
