@@ -105,9 +105,6 @@ public class JmxObjectNameFactory implements ObjectNameFactory {
       sb.append(currentDomain);
       sb.append(':');
     }
-//    sb.append("reporter=");
-//    sb.append(reporterName);
-//    sb.append(',');
     if (props != null && props.length > 0) {
       boolean added = false;
       for (int i = 0; i < props.length; i += 2) {

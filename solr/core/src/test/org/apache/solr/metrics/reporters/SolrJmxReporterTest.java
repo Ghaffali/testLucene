@@ -20,7 +20,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
-import java.lang.management.ManagementFactory;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.HashMap;
@@ -50,7 +49,6 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
 
   private static final int MAX_ITERATIONS = 20;
 
-  private static Registry jmxRegistry;
   private static int jmxPort;
 
   private String domain;
@@ -66,7 +64,7 @@ public class SolrJmxReporterTest extends SolrTestCaseJ4 {
   public static void init() throws Exception {
     jmxPort = getNextAvailablePort();
     assertFalse(jmxPort == -1);
-    jmxRegistry = LocateRegistry.createRegistry(jmxPort);
+    LocateRegistry.createRegistry(jmxPort);
   }
 
   @Before

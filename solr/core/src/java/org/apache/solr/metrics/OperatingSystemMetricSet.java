@@ -18,8 +18,6 @@ package org.apache.solr.metrics;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
-import java.lang.management.PlatformManagedObject;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -38,29 +36,11 @@ public class OperatingSystemMetricSet implements MetricSet {
   public Map<String, Metric> getMetrics() {
     final Map<String, Metric> metrics = new HashMap<>();
     OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
-    MetricUtils.addMXBeanMetrics(os, OperatingSystemMXBean.class, null, (k, v) -> {
-      metrics.put(k, v);
-    });
-    // There are some additional implementation-specific properties we want to add
-    // (not available on all JVMs):
-    for (String clazz : Arrays.asList(
-        "com.sun.management.OperatingSystemMXBean",
-        "com.sun.management.UnixOperatingSystemMXBean",
-        "com.ibm.lang.management.OperatingSystemMXBean"
-        )) {
-      try {
-        final Class<? extends PlatformManagedObject> intf = Class.forName(clazz)
-            .asSubclass(PlatformManagedObject.class);
-        MetricUtils.addMXBeanMetrics(os, intf, null, (k, v) -> {
-          // skip already existing properties
-          if (!metrics.containsKey(k)) {
-            metrics.put(k, v);
-          }
-        });
-      } catch (ClassNotFoundException e) {
-        // ignore
+    MetricUtils.addMXBeanMetrics(os, MetricUtils.OS_MXBEAN_CLASSES, null, (k, v) -> {
+      if (!metrics.containsKey(k)) {
+        metrics.put(k, v);
       }
-    }
+    });
     return metrics;
   }
 }

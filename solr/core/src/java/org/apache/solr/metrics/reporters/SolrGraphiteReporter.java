@@ -46,7 +46,7 @@ public class SolrGraphiteReporter extends SolrMetricReporter {
   private List<String> filters = new ArrayList<>();
   private GraphiteReporter reporter = null;
 
-  private static final MetricServiceRegistry<GraphiteSender> serviceRegistry = new MetricServiceRegistry<>();
+  private static final ReporterClientCache<GraphiteSender> serviceRegistry = new ReporterClientCache<>();
 
   /**
    * Create a Graphite reporter for metrics managed in a named registry.
@@ -118,17 +118,13 @@ public class SolrGraphiteReporter extends SolrMetricReporter {
     }
     GraphiteSender graphite;
     String id = host + ":" + port + ":" + pickled;
-    synchronized (serviceRegistry) {
-      graphite = serviceRegistry.get(id);
-      if (graphite == null) {
-        if (pickled) {
-          graphite = new PickledGraphite(host, port);
-        } else {
-          graphite = new Graphite(host, port);
-        }
-        serviceRegistry.register(id, graphite);
+    graphite = serviceRegistry.getOrCreate(id, () -> {
+      if (pickled) {
+        return new PickledGraphite(host, port);
+      } else {
+        return new Graphite(host, port);
       }
-    }
+    });
     if (instancePrefix == null) {
       instancePrefix = registryName;
     } else {

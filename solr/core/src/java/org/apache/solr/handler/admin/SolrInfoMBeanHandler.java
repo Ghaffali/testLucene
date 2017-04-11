@@ -231,6 +231,9 @@ public class SolrInfoMBeanHandler extends RequestHandlerBase {
   }
   
   public Object diffObject(Object ref, Object now) {
+    if (now instanceof Map) {
+      now = new NamedList((Map)now);
+    }
     if(ref instanceof NamedList) {
       return diffNamedList((NamedList)ref, (NamedList)now);
     }

@@ -21,7 +21,6 @@ import javax.management.MBeanServer;
 import javax.management.ObjectInstance;
 import javax.management.ObjectName;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -52,7 +51,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private static final MetricServiceRegistry<MBeanServer> serviceRegistry = new MetricServiceRegistry<>();
+  private static final ReporterClientCache<MBeanServer> serviceRegistry = new ReporterClientCache<>();
 
   private String domain;
   private String agentId;
@@ -95,20 +94,7 @@ public class SolrJmxReporter extends SolrMetricReporter {
           serviceUrl, agentId, mBeanServer);
     } else if (serviceUrl != null) {
       // reuse existing services
-      synchronized (serviceRegistry) {
-        mBeanServer = serviceRegistry.get(serviceUrl);
-        if (mBeanServer == null) {
-          try {
-            mBeanServer = JmxUtil.findMBeanServerForServiceUrl(serviceUrl);
-            if (mBeanServer != null) {
-              serviceRegistry.register(serviceUrl, mBeanServer);
-            }
-          } catch (IOException e) {
-            log.warn("findMBeanServerForServiceUrl({}) exception: {}", serviceUrl, e);
-            mBeanServer = null;
-          }
-        }
-      }
+      mBeanServer = serviceRegistry.getOrCreate(serviceUrl, () -> JmxUtil.findMBeanServerForServiceUrl(serviceUrl));
     } else if (agentId != null) {
       mBeanServer = JmxUtil.findMBeanServerForAgentId(agentId);
     } else {

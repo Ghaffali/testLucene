@@ -45,7 +45,7 @@ public class SolrGangliaReporter extends SolrMetricReporter {
   private boolean testing;
   private GangliaReporter reporter;
 
-  private static final MetricServiceRegistry<GMetric> serviceRegistry = new MetricServiceRegistry<>();
+  private static final ReporterClientCache<GMetric> serviceRegistry = new ReporterClientCache<>();
 
   // for unit tests
   GMetric ganglia = null;
@@ -132,19 +132,12 @@ public class SolrGangliaReporter extends SolrMetricReporter {
   //this is a separate method for unit tests
   void start() {
     if (!testing) {
-      synchronized (serviceRegistry) {
-        String id = host + ":" + port + ":" + multicast;
-        ganglia = serviceRegistry.get(id);
-        if (ganglia == null) {
-          try {
-            ganglia = new GMetric(host, port,
-                multicast ? GMetric.UDPAddressingMode.MULTICAST : GMetric.UDPAddressingMode.UNICAST,
-                1);
-            serviceRegistry.register(id, ganglia);
-          } catch (IOException ioe) {
-            throw new IllegalStateException("Exception connecting to Ganglia", ioe);
-          }
-        }
+      String id = host + ":" + port + ":" + multicast;
+      ganglia = serviceRegistry.getOrCreate(id, () -> new GMetric(host, port,
+          multicast ? GMetric.UDPAddressingMode.MULTICAST : GMetric.UDPAddressingMode.UNICAST,
+          1));
+      if (ganglia == null) {
+        return;
       }
     }
     if (instancePrefix == null) {
