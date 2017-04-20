@@ -175,6 +175,8 @@ New Features
   Example: json.facet={x:"stddev(field1)", y:"variance(field2)"}
   (Rustam Hashimov, yonik)
 
+* SOLR-10505: Add multi-field support to TermsComponent when requesting terms' statistics. (Shai Erera)
+
 Optimizations
 ----------------------
 
@@ -212,6 +214,11 @@ Bug Fixes
 
 * SOLR-10047: Mismatched Docvalues segments cause exception in Sorting/Faceting. Solr now uninverts per segment
   to avoid such exceptions. (Keith Laban via shalin)
+  
+* SOLR-10472: Fixed uninversion (aka: FieldCache) bugs with the numeric PointField classes, and CurrencyField (hossman)
+
+* SOLR-5127: Multiple highlight fields and wildcards are now supported e.g. hl.fl=title,text_*
+  (Sven-S. Porst, Daniel Debray, Simon Endele, Christine Poerschke)
 
 Other Changes
 ----------------------
@@ -260,6 +267,8 @@ Other Changes
 
 * SOLR-10151: Use monotonically incrementing counter for doc ids in TestRecovery. (Peter Szantai-Kis, Mano Kovacs via Mark Miller)
 
+* SOLR-10514: Upgrade Metrics library to 3.2.2. (ab)
+
 ==================  6.5.1 ==================
 
 Bug Fixes
@@ -291,6 +300,11 @@ Bug Fixes
 * SOLR-10444: SQL interface does not use client cache. (Joel Bernstein)
 
 * SOLR-10420: Solr 6.x leaking one SolrZkClient instance per second (Scott Blum, Cao Manh Dat, Markus Jelsma, Steve Rowe)
+
+* SOLR-10439: The new 'large' attribute had been forgotten in /schema/fields?showDefaults=true
+
+* SOLR-10527: edismax with sow=false fails to create dismax-per-term queries when any field is boosted.
+  (Steve Rowe)
 
 ==================  6.5.0 ==================
 
