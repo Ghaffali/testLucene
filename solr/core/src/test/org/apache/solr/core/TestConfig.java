@@ -151,8 +151,6 @@ public class TestConfig extends SolrTestCaseJ4 {
     ++numDefaultsTested; assertEquals("default useCompoundFile", false, sic.getUseCompoundFile());
 
     ++numDefaultsTested; assertEquals("default maxBufferedDocs", -1, sic.maxBufferedDocs);
-    ++numDefaultsTested; assertEquals("default maxMergeDocs", -1, sic.maxMergeDocs);
-    ++numDefaultsTested; assertEquals("default mergeFactor", -1, sic.mergeFactor);
 
     ++numDefaultsTested; assertEquals("default ramBufferSizeMB", 100.0D, sic.ramBufferSizeMB, 0.0D);
     ++numDefaultsTested; assertEquals("default writeLockTimeout", -1, sic.writeLockTimeout);
@@ -162,10 +160,7 @@ public class TestConfig extends SolrTestCaseJ4 {
 
     ++numDefaultsTested; assertNotNull("default metrics", sic.metricsInfo);
 
-    // mergePolicyInfo and mergePolicyFactoryInfo are mutually exclusive
-    // so ++ count them only once for both instead of individually
     ++numDefaultsTested; ++numNullDefaults;
-    assertNull("default mergePolicyInfo", sic.mergePolicyInfo);
     assertNull("default mergePolicyFactoryInfo", sic.mergePolicyFactoryInfo);
 
     ++numDefaultsTested; ++numNullDefaults; assertNull("default mergeSchedulerInfo", sic.mergeSchedulerInfo);
