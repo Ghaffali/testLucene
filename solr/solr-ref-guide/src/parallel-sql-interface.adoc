@@ -3,12 +3,12 @@
 :page-permalink: parallel-sql-interface.html
 :page-children: solr-jdbc-dbvisualizer, solr-jdbc-squirrel-sql, solr-jdbc-apache-zeppelin, solr-jdbc-python-jython, solr-jdbc-r
 
-Solr's Parallel SQL Interface brings the power of SQL to SolrCloud. The SQL interface seamlessly combines SQL with Solr's full-text search capabilities. Two implementations for aggregations allow using either MapReduce-like shuffling or the JSON Facet API, depending on performance needs. These features allow Solr's SQL interface to be used for a wide variety of use cases.
+Solr's Parallel SQL Interface brings the power of SQL to SolrCloud. The SQL interface seamlessly combines SQL with Solr's full-text search capabilities. Both MapReduce style and JSON Facet API aggregations are supported, which means the SQL interface can be used to support both *high query volume* and *high cardinality* use cases.
 
 [[ParallelSQLInterface-SQLArchitecture]]
 == SQL Architecture
 
-The SQL interface allows sending a SQL query to Solr and getting documents streamed back in response. Under the covers, Solr's SQL interface is powered by the https://prestodb.io/[Presto Project's] https://github.com/prestodb/presto/tree/master/presto-parser[SQL Parser], which translates SQL queries on the fly to <<streaming-expressions.adoc#streaming-expressions,Streaming Expressions>>.
+The SQL interface allows sending a SQL query to Solr and getting documents streamed back in response. Under the covers, Solr's SQL interface uses the Apache Calcite SQL engine to translate SQL queries to physical query plans implemented as <<streaming-expressions.adoc#streaming-expressions,Streaming Expressions>>.
 
 [[ParallelSQLInterface-SolrCollectionsandDBTables]]
 === Solr Collections and DB Tables
@@ -35,8 +35,8 @@ More information about how to structure SQL queries for Solr is included in the 
 
 The SQL feature of Solr can work with aggregations (grouping of results) in two ways:
 
+* `facet`: This is the *default* aggregation mode, which uses the JSON Facet API or StatsComponent for aggregations. In this scenario the aggregations logic is pushed down into the search engine and only the aggregates are sent across the network. This is Solr's normal mode of operation. This is fast when the cardinality of GROUP BY fields is low to moderate. But it breaks down when you have high cardinality fields in the GROUP BY field.
 * `map_reduce`: This implementation shuffles tuples to worker nodes and performs the aggregation on the worker nodes. It involves sorting and partitioning the entire result set and sending it to worker nodes. In this approach the tuples arrive at the worker nodes sorted by the GROUP BY fields. The worker nodes can then rollup the aggregates one group at a time. This allows for unlimited cardinality aggregation, but you pay the price of sending the entire result set across the network to worker nodes.
-* `facet`: This uses the JSON Facet API or StatsComponent for aggregations. In this scenario the aggregations logic is pushed down into the search engine and only the aggregates are sent across the network. This is Solr's normal mode of operation. This is fast when the cardinality of GROUP BY fields is low to moderate. But it breaks down when you have high cardinality fields in the GROUP BY field.
 
 These modes are defined with the `aggregationMode` property when sending the request to Solr.
 
@@ -61,7 +61,7 @@ By default, the `/sql` request handler is configured as an implicit handler, mea
 [IMPORTANT]
 ====
 
-As described below in the section <<ParallelSQLInterface-BestPractices,Best Practices>>, you may want to set up a separate collection for parallelized SQL queries. If you have high cardinality fields and a large amount of data, please be sure to review that section and
+As described below in the section <<ParallelSQLInterface-BestPractices,Best Practices>>, you may want to set up a separate collection for parallelized SQL queries. If you have high cardinality fields and a large amount of data, please be sure to review that section and consider using a separate collection.
 
 ====
 
@@ -70,7 +70,7 @@ As described below in the section <<ParallelSQLInterface-BestPractices,Best Prac
 [[ParallelSQLInterface-_streamand_exportRequestHandlers]]
 === /stream and /export Request Handlers
 
-The Streaming API is an extensible parallel computing framework for SolrCloud. <<streaming-expressions.adoc#streaming-expressions,Streaming Expressions>> provide a query language and a serialization format for the Streaming API. The Streaming API provides support for fast MapReduce allowing it to perform parallel relational algebra on extremely large data sets. Under the covers the SQL interface parses SQL queries using the Presto SQL Parser. It then translates the queries to the parallel query plan. The parallel query plan is expressed using the Streaming API and Streaming Expressions.
+The Streaming API is an extensible parallel computing framework for SolrCloud. <<streaming-expressions.adoc#streaming-expressions,Streaming Expressions>> provide a query language and a serialization format for the Streaming API. The Streaming API provides support for fast MapReduce allowing it to perform parallel relational algebra on extremely large data sets. Under the covers the SQL interface parses SQL queries using the Apache Calcite SQL Parser. It then translates the queries to the parallel query plan. The parallel query plan is expressed using the Streaming API and Streaming Expressions.
 
 Like the `/sql` request handler, the `/stream` and `/export` request handlers are configured as implicit handlers, and no further configuration is required.
 
@@ -80,7 +80,7 @@ Like the `/sql` request handler, the `/stream` and `/export` request handlers ar
 In some cases, fields used in SQL queries must be configured as DocValue fields. If queries are unlimited, all fields must be DocValue fields. If queries are limited (with the `limit` clause) then fields do not have to be have DocValues enabled.
 
 [[ParallelSQLInterface-SendingQueries]]
-== Sending Queries
+=== Sending Queries
 
 The SQL Interface provides a basic JDBC driver and an HTTP interface to perform queries.
 
@@ -156,6 +156,16 @@ Solr supports a broad range of SQL syntax.
 The SQL parser being used by Solr to translate the SQL statements is case insensitive. However, for ease of reading, all examples on this page use capitalized keywords.
 
 ====
+
+[[ParallelSQLInterface-EscapingReservedWords]]
+=== Escaping Reserved Words
+
+The SQL parser will return an error if a reserved word is used in the SQL query. Reserved words can be escaped and included in the query using the back tick. For example:
+
+[source,java]
+----
+select `from` from emails
+----
 
 [[ParallelSQLInterface-SELECTStatements]]
 === SELECT Statements
@@ -308,7 +318,7 @@ Because these functions never require data to be shuffled, the aggregations are 
 
 [source,java]
 ----
-SELECT count(fieldA) as count, sum(fieldB) as sum FROM tableA WHERE fieldC = 'Hello'
+SELECT count(*) as count, sum(fieldB) as sum FROM tableA WHERE fieldC = 'Hello'
 ----
 
 [[ParallelSQLInterface-GROUPBYAggregations]]
@@ -344,10 +354,7 @@ The Column Identifiers can contain both fields in the Solr index and aggregate f
 
 The non-function fields in the field list determine the fields to calculate the aggregations over.
 
-Column aliases are supported for both fields and functions and can be referenced in the GROUP BY, HAVING and ORDER BY clauses.
-
-[[ParallelSQLInterface-GROUPBYClause]]
-==== *GROUP BY Clause*
+*GROUP BY Clause*
 
 The `GROUP BY` clause can contain up to 4 fields in the Solr index. These fields should correspond with the non-function fields in the field list.
 

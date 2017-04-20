@@ -2,9 +2,9 @@
 :page-shortname: kerberos-authentication-plugin
 :page-permalink: kerberos-authentication-plugin.html
 
-If you are using Kerberos to secure your network environment, the Kerberos authentication plugin can be used to secure a Solr cluster. This allows Solr to use a Kerberos service principal and keytab file to authenticate with ZooKeeper and between nodes of the Solr cluster. Users of the Admin UI and alll clients (such as <<using-solrj.adoc#using-solrj,SolrJ>>) would also need to have a valid ticket before being able to use the UI or send requests to Solr.
+If you are using Kerberos to secure your network environment, the Kerberos authentication plugin can be used to secure a Solr cluster. This allows Solr to use a Kerberos service principal and keytab file to authenticate with ZooKeeper and between nodes of the Solr cluster (if applicable). Users of the Admin UI and all clients (such as <<using-solrj.adoc#using-solrj,SolrJ>>) would also need to have a valid ticket before being able to use the UI or send requests to Solr.
 
-Support for the Kerberos authentication plugin is only available in SolrCloud mode.
+Support for the Kerberos authentication plugin is available in SolrCloud mode or standalone mode.
 
 [TIP]
 ====
@@ -21,11 +21,7 @@ When setting up Solr to use Kerberos, configurations are put in place for Solr t
 [[KerberosAuthenticationPlugin-security.json]]
 === security.json
 
-The Solr authentication model uses a file called `/security.json` which is stored in ZooKeeper. A description of this file and how it is created and maintained is covered in the section <<authentication-and-authorization-plugins.adoc#authentication-and-authorization-plugins,Authentication and Authorization Plugins>>, and can only be used when Solr is running in SolrCloud mode. If this file is created after an initial startup of Solr, a restart of the system on each node is required.
-
-Alternatively, the authentication plugin implementation can be specified during node startup using the system parameter: `-DauthenticationPlugin=org.apache.solr.security.KerberosPlugin`. This parameter can be used with either SolrCloud mode or standalone mode. However, if you are using Solr in standalone mode, this system parameter is the only way to enable Kerberos.
-
-If you are using SolrCloud mode, the approach to use `security.json` is the best practice.
+The Solr authentication model uses a file called `security.json`. A description of this file and how it is created and maintained is covered in the section <<authentication-and-authorization-plugins.adoc#authentication-and-authorization-plugins,Authentication and Authorization Plugins>>. If this file is created after an initial startup of Solr, a restart of each node of the system is required.
 
 [[KerberosAuthenticationPlugin-ServicePrincipalsandKeytabFiles]]
 === Service Principals and Keytab Files
@@ -47,7 +43,7 @@ Since a Solr cluster requires internode communication, each node must also be ab
 [[KerberosAuthenticationPlugin-KerberizedZooKeeper]]
 === Kerberized ZooKeeper
 
-When setting up a kerberized Solr cluster, it is recommended to enable Kerberos security for Zookeeper as well. In such a setup, the client principal used to authenticate requests with Zookeeper can be shared for internode communication as well. This has the benefit of not needing to renew the ticket granting tickets (TGTs) separately, since the Zookeeper client used by Solr takes care of this. To achieve this, a single JAAS configuration (with the app name as Client) can be used for the Kerberos plugin as well as for the Zookeeper client. See the configuration section below for an example of starting Zookeeper in Kerberos mode.
+When setting up a kerberized SolrCloud cluster, it is recommended to enable Kerberos security for Zookeeper as well. In such a setup, the client principal used to authenticate requests with Zookeeper can be shared for internode communication as well. This has the benefit of not needing to renew the ticket granting tickets (TGTs) separately, since the Zookeeper client used by Solr takes care of this. To achieve this, a single JAAS configuration (with the app name as Client) can be used for the Kerberos plugin as well as for the Zookeeper client. See the configuration section below for an example of starting Zookeeper in Kerberos mode.
 
 [[KerberosAuthenticationPlugin-BrowserConfiguration]]
 === Browser Configuration
@@ -81,7 +77,7 @@ We'll walk through each of these steps below.
 [IMPORTANT]
 ====
 
-To use host names instead of IP addresses, use the SOLR_HOST config in http://solr.in[`bin/solr.in.sh`] or pass a `-Dhost=<hostname>` during Solr startup. This guide uses IP addresses . If you specify a hostname replace all the IP addresses in the guide with the solr hostname
+To use host names instead of IP addresses, use the `SOLR_HOST` configuration in `bin/solr.in.sh` or pass a `-Dhost=<hostname>` system parameter during Solr startup. This guide uses IP addresses. If you specify a hostname, replace all the IP addresses in the guide with the Solr hostname as appropriate.
 
 ====
 
@@ -142,7 +138,7 @@ Server {
   doNotPrompt=true
   useTicketCache=false
   debug=true
-  principal=”zookeeper/host1”;
+  principal="zookeeper/host1@EXAMPLE.COM";
 };
 ----
 
@@ -161,17 +157,19 @@ Once all of the pieces are in place, start ZooKeeper with the following paramete
 bin/zkServer.sh start -Djava.security.auth.login.config=/etc/zookeeper/conf/jaas-client.conf
 ----
 
-// OLD_CONFLUENCE_ID: KerberosAuthenticationPlugin-Create/security.json
+[[KerberosAuthenticationPlugin-Createsecurity.json]]
+=== Create security.json
 
-[[KerberosAuthenticationPlugin-Create_security.json]]
-=== Create /security.json
+Create the `security.json` file.
 
-Set up Solr to use the Kerberos plugin by uploading the `security.json` as follows:
+In SolrCloud mode, you can set up Solr to use the Kerberos plugin by uploading the `security.json` to ZooKeeper while you create it, as follows:
 
 [source,bash]
 ----
 > server/scripts/cloud-scripts/zkcli.sh -zkhost localhost:2181 -cmd put /security.json '{"authentication":{"class": "org.apache.solr.security.KerberosPlugin"}}'
 ----
+
+If you are using Solr in standalone mode, you need to create the `security.json` file and put it in your `$SOLR_HOME` directory.
 
 More details on how to use a `/security.json` file in Solr are available in the section <<authentication-and-authorization-plugins.adoc#authentication-and-authorization-plugins,Authentication and Authorization Plugins>>.
 
@@ -236,7 +234,7 @@ Here is an example that could be added to `bin/solr.in.sh`. Make sure to change 
 
 [source,bash]
 ----
-SOLR_AUTHENTICATION_CLIENT_CONFIGURER=org.apache.solr.client.solrj.impl.Krb5HttpClientConfigurer
+SOLR_AUTH_TYPE="kerberos"
 SOLR_AUTHENTICATION_OPTS="-Djava.security.auth.login.config=/home/foo/jaas-client.conf -Dsolr.kerberos.cookie.domain=192.168.0.107 -Dsolr.kerberos.cookie.portaware=true -Dsolr.kerberos.principal=HTTP/192.168.0.107@EXAMPLE.COM -Dsolr.kerberos.keytab=/keytabs/107.keytab"
 ----
 
@@ -281,7 +279,7 @@ To enable delegation tokens, several parameters must be defined. These parameter
 [[KerberosAuthenticationPlugin-StartSolr]]
 === Start Solr
 
-Once the configuration is complete, you can start Solr with the `bin/solr` script, as in the example below. This example assumes you modified `bin/solr.in.sh` or `bin/solr.in.cmd`, with the proper values, but if you did not, you would pas the system parameters along with the start command. Note you also need to customize the `-z` property as appropriate for the location of your ZooKeeper nodes.
+Once the configuration is complete, you can start Solr with the `bin/solr` script, as in the example below, which is for users in SolrCloud mode only. This example assumes you modified `bin/solr.in.sh` or `bin/solr.in.cmd`, with the proper values, but if you did not, you would pass the system parameters along with the start command. Note you also need to customize the `-z` property as appropriate for the location of your ZooKeeper nodes.
 
 [source,bash]
 ----

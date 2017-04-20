@@ -9,7 +9,9 @@ Highlighting in Solr allows fragments of documents that match the user's query t
 
 You only need to set the `hl` and often `hl.fl` parameters to get results. The following table documents these and some other supported parameters. Note that many highlighting parameters support per-field overrides, such as: `f.__title_txt__.hl.snippets`
 
-[cols=",,",options="header",]
+// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+
+[width="100%",cols="34%,33%,33%",options="header",]
 |===
 |Parameter |Default |Description
 |hl |false |Use this parameter to enable or disable highlighting.
@@ -17,7 +19,11 @@ You only need to set the `hl` and often `hl.fl` parameters to get results. The f
 |hl.fl |_(df=)_ |Specifies a list of fields to highlight. Accepts a comma- or space-delimited list of fields for which Solr should generate highlighted snippets. A wildcard of '`*`' (asterisk) can be used to match field globs, such as 'text_*' or even '*' to highlight on all fields where highlighting is possible. When using '*', consider adding `hl.requireFieldMatch=true`
 |hl.q |_(q=)_ |A query to use for highlighting. This parameter allows you to highlight different terms than those being used to retrieve documents.
 |hl.qparser |_(defType=)_ |The query parser to use for the `hl.q` query.
-|hl.requireFieldMatch |false |By default, **false**, all query terms will be highlighted for each field to be highlighted (`hl.fl`) no matter what fields the parsed query refer to. If set to **true**, only query terms aligning with the field being highlighted will in turn be highlighted.
+|hl.requireFieldMatch |false a|
+By default, **false**, all query terms will be highlighted for each field to be highlighted (`hl.fl`) no matter what fields the parsed query refer to. If set to **true**, only query terms aligning with the field being highlighted will in turn be highlighted.
+
+note: if the query references fields different from the field being highlighted and they have different text analysis, the query may not highlight query terms it should have and vice versa. The analysis used is that of the field being highlighted (`hl.fl`), not the query fields.
+
 |hl.usePhraseHighlighter |true |If set to **true**, Solr will highlight phrase queries (and other advanced position-sensitive queries) accurately – as phrases. If **false**, the parts of the phrase will be highlighted everywhere instead of only when it forms the given phrase.
 |hl.highlightMultiTerm |true |If set to **true**, Solr will highlight wildcard queries (and other `MultiTermQuery` subclasses). If **false**, they won't be highlighted at all.
 |hl.snippets |1 |Specifies maximum number of highlighted snippets to generate per field. It is possible for any number of snippets from zero to this value to be generated.
@@ -117,7 +123,8 @@ The Unified Highlighter supports these following additional parameters to the on
 |hl.bs.language |_(blank)_ |Specifies the breakiterator language for dividing the document into passages.
 |hl.bs.country |_(blank)_ |Specifies the breakiterator country for dividing the document into passages.
 |hl.bs.variant |_(blank)_ |Specifies the breakiterator variant for dividing the document into passages.
-|hl.bs.type |SENTENCE |Specifies the breakiterator type for dividing the document into passages. Can be **SENTENCE**, **WORD**, **CHARACTER**, **LINE**, or **WHOLE**.
+|hl.bs.type |SENTENCE |Specifies the breakiterator type for dividing the document into passages. Can be **SEPARATOR**, **SENTENCE**, **WORD**, **CHARACTER**, **LINE**, or **WHOLE**. SEPARATOR is special value that splits text on a user-provided character in `hl.bs.separator`.
+|hl.bs.separator |_(blank)_ |Indicates which character to break the text on. Requires `hl.bs.type=SEPARATOR`. This is useful when the text has already been manipulated in advance to have a special delineation character at desired highlight passage boundaries. This character will still appear in the text as the last character of a passage.
 |===
 
 [[Highlighting-ThePostingsHighlighter]]

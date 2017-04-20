@@ -4,7 +4,7 @@
 
 The Extended DisMax (eDisMax) query parser is an improved version of the <<the-dismax-query-parser.adoc#the-dismax-query-parser,DisMax query parser>>. In addition to supporting all the DisMax query parser parameters, Extended Dismax:
 
-* supports the full Lucene query parser syntax.
+* supports the <<the-standard-query-parser.adoc#the-standard-query-parser,full Lucene query parser syntax>>.
 * supports queries such as AND, OR, NOT, -, and +.
 * treats "and" and "or" as "AND" and "OR" in Lucene syntax mode.respects the 'magic field' names `_val_` and `_query_`. These are not a real fields in the Schema, but if used it helps do special things (like a function query in the case of `_val_` or a nested query in the case of `_query_`). If `_val_` is used in a term or phrase query, the value is parsed as a function.
 * includes improved smart partial escaping in the case of syntax errors; fielded queries, +/-, and phrase queries are still supported in this mode.
@@ -19,8 +19,13 @@ The Extended DisMax (eDisMax) query parser is an improved version of the <<the-d
 
 In addition to all the <<the-dismax-query-parser.adoc#TheDisMaxQueryParser-DisMaxParameters,DisMax parameters>>, Extended DisMax includes these query parameters:
 
+[[TheExtendedDisMaxQueryParser-ThesowParameter]]
+=== The `sow` Parameter
+
+Split on whitespace: if set to `false`, whitespace-separated term sequences will be provided to text analysis in one shot, enabling proper function of analysis filters that operate over term sequences, e.g. multi-word synonyms and shingles. Defaults to `true`: text analysis is invoked separately for each individual whitespace-separated term.
+
 [[TheExtendedDisMaxQueryParser-Themm.autoRelaxParameter]]
-=== The mm.autoRelax Parameter
+=== The `mm.autoRelax` Parameter
 
 If true, the number of clauses required (<<the-dismax-query-parser.adoc#TheDisMaxQueryParser-Themm_MinimumShouldMatch_Parameter,minimum should match>>) will automatically be relaxed if a clause is removed (by e.g. stopwords filter) from some but not all <<the-dismax-query-parser.adoc#TheDisMaxQueryParser-Theqf_QueryFields_Parameter,`qf`>> fields. Use this parameter as a workaround if you experience that queries return zero hits due to uneven stopword removal between the `qf` fields.
 

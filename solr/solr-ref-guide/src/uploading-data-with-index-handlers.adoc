@@ -47,26 +47,24 @@ For example:
     <field name="numpages">128</field>
     <field name="desc"></field>
     <field name="price">12.40</field>
-    <field name="title" boost="2.0">Summer of the all-rounder: Test and championship cricket in England 1982</field>
+    <field name="title">Summer of the all-rounder: Test and championship cricket in England 1982</field>
     <field name="isbn">0002166313</field>
     <field name="yearpub">1982</field>
     <field name="publisher">Collins</field>
   </doc>
-  <doc boost="2.5">
+  <doc>
   ...
   </doc>
 </add>
 ----
 
-Each element has certain optional attributes which may be specified.
+The add command supports some optional attributes which may be specified.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",cols="50%,50%",options="header",]
 |===
-|Command |Optional Parameter |Parameter Description
-|<add> |commitWithin=__number__ |Add the document within the specified number of milliseconds
-|<add> |overwrite=__boolean__ |Default is true. Indicates if the unique key constraints should be checked to overwrite previous versions of the same document (see below)
-|<doc> |boost=__float__ |Default is 1.0. Sets a boost value for the document.To learn more about boosting, see <<searching.adoc#searching,Searching>>.
-|<field> |boost=__float__ |Default is 1.0. Sets a boost value for the field.
+|Optional Parameter |Parameter Description
+|commitWithin=__number__ |Add the document within the specified number of milliseconds
+|overwrite=__boolean__ |Default is true. Indicates if the unique key constraints should be checked to overwrite previous versions of the same document (see below)
 |===
 
 If the document schema defines a unique key, then by default an `/update` operation to add a document will overwrite (ie: replace) any document in the index with the same unique key. If no unique key has been defined, indexing performance is somewhat faster, as no check has to be made for an existing documents to replace.
@@ -311,17 +309,13 @@ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_
   "add": {
     "doc": {
       "id": "DOC1",
-      "my_boosted_field": {        /* use a map with boost/value for a boosted field */
-        "boost": 2.3,
-        "value": "test"
-      },
+      "my_field": 2.3,
       "my_multivalued_field": [ "aaa", "bbb" ]   /* Can use an array for a multi-valued field */
     }
   },
   "add": {
     "commitWithin": 5000,          /* commit this document within 5 seconds */
     "overwrite": false,            /* don't check for existing documents with the same uniqueKey */
-    "boost": 3.45,                 /* a document boost */
     "doc": {
       "f1": "v1",                  /* Can use repeated keys for a multi-valued field */
       "f1": "v2"
@@ -411,7 +405,7 @@ A sample CSV file is provided at `example/exampledocs/books.csv` that you can us
 
 [source,bash]
 ----
-curl 'http://localhost:8983/solr/techproducts/update?commit=true' --data-binary @example/exampledocs/books.csv -H 'Content-type:application/csv'
+curl 'http://localhost:8983/solr/my_collection/update?commit=true' --data-binary @example/exampledocs/books.csv -H 'Content-type:application/csv'
 ----
 
 [[UploadingDatawithIndexHandlers-CSVUpdateParameters]]
@@ -459,7 +453,7 @@ This file could then be imported into Solr by setting the `separator` to tab (%0
 
 [source,bash]
 ----
-curl 'http://localhost:8983/solr/update/csv?commit=true&separator=%09&escape=%5c' --data-binary @/tmp/result.txt
+curl 'http://localhost:8983/solr/my_collection/update/csv?commit=true&separator=%09&escape=%5c' --data-binary @/tmp/result.txt
 ----
 
 [[UploadingDatawithIndexHandlers-CSVUpdateConveniencePaths]]
@@ -557,5 +551,3 @@ One limitation of indexing nested documents is that the whole block of parent-ch
 ====
 
 <<main,Back to Top>>
-
-Save

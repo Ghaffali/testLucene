@@ -182,7 +182,7 @@ Lastly, you can delete a mapping by sending a DELETE request to the managed endp
 [[ManagedResources-ApplyingChanges]]
 == Applying Changes
 
-Changes made to managed resources via this REST API are not applied to the active Solr components until the Solr collection (or Solr core in single server mode) is reloaded. For example:, after adding or deleting a stop word, you must reload the core/collection before changes become active.
+Changes made to managed resources via this REST API are not applied to the active Solr components until the Solr collection (or Solr core in single server mode) is reloaded. For example:, after adding or deleting a stop word, you must reload the core/collection before changes become active; related APIs: <<coreadmin-api.adoc#coreadmin-api,CoreAdmin API>> and <<collections-api.adoc#collections-api,Collections API>>.
 
 This approach is required when running in distributed mode so that we are assured changes are applied to all cores in a collection at the same time so that behavior is consistent and predictable. It goes without saying that you don’t want one of your replicas working with a different set of stop words or synonyms than the others.
 

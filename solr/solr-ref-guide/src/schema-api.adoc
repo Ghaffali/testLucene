@@ -2,7 +2,23 @@
 :page-shortname: schema-api
 :page-permalink: schema-api.html
 
-The Schema API provides read and write access to the Solr schema for each collection (or core, when using standalone Solr). Read access to all schema elements is supported. Fields, dynamic fields, field types and copyField rules may be added, removed or replaced. Future Solr releases will extend write access to allow more schema elements to be modified.
+The Schema API utilizes the ManagedIndexSchemaFactory class, which is the default schema factory in modern Solr versions. See the section <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>> for more information about choosing a schema factory for your index.
+
+This API provides read and write access to the Solr schema for each collection (or core, when using standalone Solr). Read access to all schema elements is supported. Fields, dynamic fields, field types and copyField rules may be added, removed or replaced. Future Solr releases will extend write access to allow more schema elements to be modified.
+
+.Why is hand editing of the managed schema discouraged?
+[IMPORTANT]
+====
+
+The file named "managed-schema" in the example configurations may include a note that recommends never hand-editing the file. Before the Schema API existed, such edits were the only way to make changes to the schema, and users may have a strong desire to continue making changes this way.
+
+The reason that this is discouraged is because hand-edits of the schema may be lost if the Schema API described here is later used to make a change, unless the core or collection is reloaded or Solr is restarted before using the Schema API. If care is taken to always reload or restart after a manual edit, then there is no problem at all with doing those edits.
+
+====
+
+The API allows two output modes for all calls: JSON or XML. When requesting the complete schema, there is another output mode which is XML modeled after the managed-schema file itself, which is in XML format.
+
+When modifying the schema with the API, a core reload will automatically occur in order for the changes to be available immediately for documents indexed thereafter. Previously indexed documents will *not* be automatically updated - they *must* be re-indexed if existing index data uses schema elements that you changed.
 
 .Re-index after schema modifications!
 [IMPORTANT]
@@ -10,17 +26,11 @@ The Schema API provides read and write access to the Solr schema for each collec
 
 If you modify your schema, you will likely need to re-index all documents. If you do not, you may lose access to documents, or not be able to interpret them properly, e.g. after replacing a field type.
 
-Modifying your schema will never modify any documents that are already indexed. Again, you must re-index documents in order to apply schema changes to them.
+Modifying your schema will never modify any documents that are already indexed. You must re-index documents in order to apply schema changes to them. Queries and updates made after the change may encounter errors that were not present before the change. Completely deleting the index and rebuilding it is usually the only option to fix such errors.
 
 ====
 
-To enable schema modification with this API, the schema will need to be managed and mutable. See the section <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>> for more information.
-
-The API allows two output modes for all calls: JSON or XML. When requesting the complete schema, there is another output mode which is XML modeled after the schema.xml file itself.
-
-When modifying the schema with the API, a core reload will automatically occur in order for the changes to be available immediately for documents indexed thereafter. Previously indexed documents will *not* be automatically handled - they *must* be re-indexed if they used schema elements that you changed.
-
-The base address for the API is `http://<host>:<port>/solr/<collection_name>`. If for example you run Solr's "```cloud```" example (via the `bin/solr` command shown below), which creates a "```gettingstarted```" collection, then the base URL (as in all the sample URLs in this section) would be: `http://localhost:8983/solr/gettingstarted` .
+The base address for the API is `http://<host>:<port>/solr/<collection_name>`. If for example you run Solr's "```cloud```" example (via the `bin/solr` command shown below), which creates a "```gettingstarted```" collection, then the base URL for that collection (as in all the sample URLs in this section) would be: `http://localhost:8983/solr/gettingstarted` .
 
 [source,bash]
 ----

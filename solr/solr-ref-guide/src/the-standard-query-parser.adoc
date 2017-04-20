@@ -17,6 +17,7 @@ In addition to the <<common-query-parameters.adoc#common-query-parameters,Common
 |q |Defines a query using standard query syntax. This parameter is mandatory.
 |q.op |Specifies the default operator for query expressions, overriding the default operator specified in the Schema. Possible values are "AND" or "OR".
 |df |Specifies a default field, overriding the definition of a default field in the Schema.
+|sow |Split on whitespace: if set to `false`, whitespace-separated term sequences will be provided to text analysis in one shot, enabling proper function of analysis filters that operate over term sequences, e.g. multi-word synonyms and shingles. Defaults to `true`: text analysis is invoked separately for each individual whitespace-separated term.
 |===
 
 Default parameter values are specified in `solrconfig.xml`, or overridden by query-time values in the request.
@@ -41,7 +42,6 @@ Results:
 
 [source,xml]
 ----
-<?xml version="1.0" encoding="UTF-8"?>
 <response>
 <responseHeader><status>0</status><QTime>1</QTime></responseHeader>
 <result numFound="1" start="0">
@@ -72,7 +72,6 @@ Results:
 
 [source,xml]
 ----
-<?xml version="1.0" encoding="UTF-8"?>
 <response>
 <responseHeader><status>0</status><QTime>2</QTime></responseHeader>
 <result numFound="1" start="0">
@@ -384,7 +383,7 @@ This can even be used to cache individual clauses of complex filter queries. In 
 ** `q=features:songs & fq=+filter(inStock:true) +filter(price:[* TO 100])`
 ** `q=manu:Apple & fq=-filter(inStock:true) -filter(price:[* TO 100])`
 * Range queries ("[a TO z]"), prefix queries ("a*"), and wildcard queries ("a*b") are constant-scoring (all matching documents get an equal score). The scoring factors TF, IDF, index boost, and "coord" are not used. There is no limitation on the number of terms that match (as there was in past versions of Lucene).
-* Constant score queries are created with <query_clause>^=<score>, which sets the entire clause to the specified score for any documents matching that clause:
+* Constant score queries are created with `<query_clause>^=<score>`, which sets the entire clause to the specified score for any documents matching that clause:
 ** `q=(description:blue color:blue)^=1.0 title:blue^=5.0`
 
 [[TheStandardQueryParser-SpecifyingDatesandTimes]]

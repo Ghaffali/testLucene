@@ -9,29 +9,43 @@ Solr supports location data for use in spatial/geospatial searches. Using spatia
 * Sort or boost scoring by distance between points, or relative area between rectangles
 * Generate a 2D grid of facet count numbers for heatmap generation or point-plotting.
 
-There are three main field types available for spatial search:
+There are four main field types available for spatial search:
 
-* `LatLonType` and its non-geodetic twin `PointType`
+* `LatLonPointSpatialField`
+* `LatLonType` (now deprecated) and its non-geodetic twin PointType
 * `SpatialRecursivePrefixTreeFieldType` (RPT for short), including `RptWithGeometrySpatialField`, a derivative
 * `BBoxField`
 
-RPT offers more features than LatLonType and fast filter performance, although LatLonType is more appropriate when efficient distance sorting/boosting is desired. They can both be used simultaneously for what each does best – LatLonType for sorting/boosting, RPT for filtering. If you need to index shapes other than points (e.g. a circle or polygon) then use RPT.
+LatLonPointSpatialField is the ideal field type for the most common use-cases for lat-lon point data. It replaces LatLonType which still exists for backwards compatibility. RPT offers some more features for more advanced/custom use cases / options like polygons and heatmaps.
+
+RptWithGeometrySpatialField is for indexing and searching non-point data though it can do points too. It can't do sorting/boosting.
 
 BBoxField is for indexing bounding boxes, querying by a box, specifying a search predicate (Intersects,Within,Contains,Disjoint,Equals), and a relevancy sort/boost like overlapRatio or simply the area.
 
-Some details that are not in this guide can be found at http://wiki.apache.org/solr/SpatialSearch.
+Some esoteric details that are not in this guide can be found at http://wiki.apache.org/solr/SpatialSearch.
 
-[[SpatialSearch-IndexingandConfiguration]]
-== Indexing and Configuration
+[[SpatialSearch-LatLonPointSpatialField]]
+== LatLonPointSpatialField
 
-For indexing geodetic points (latitude and longitude), supply the pair of numbers as a string with a comma separating them in latitude then longitude order. For non-geodetic points, the order is x,y for PointType, and for RPT you must use a space instead of a comma, or use WKT or GeoJSON.
+Here's how LatLonPointSpatialField should usually be configured in the schema:
 
-See the section <<SpatialSearch-RPT,RPT>> below for RPT configuration specifics.
+`<fieldType name="location" class="solr.LatLonPointSpatialField" docValues="true"/>`
 
-[[SpatialSearch-SpatialFilters]]
-== Spatial Filters
+LLPSF supports toggling `indexed`, `stored`, `docValues`, and `multiValued`. LLPSF internally uses a 2-dimensional Lucene "Points" (BDK tree) index when "indexed" is enabled (the default). When "docValues" is enabled, a latitude and longitudes pair are bit-interleaved into 64 bits and put into Lucene DocValues. The accuracy of the docValues data is about a centimeter.
 
-There are 2 types of Spatial filters, which both support the following parameters:
+[[SpatialSearch-IndexingPoints]]
+== Indexing Points
+
+For indexing geodetic points (latitude and longitude), supply it in "lat,lon" order (comma separated).
+
+For indexing non-geodetic points, it depends. Use "x y" (a space) if RPT. For PointType however, use "x,y" (a comma).
+
+If you'd rather use a standard industry format, Solr supports WKT and GeoJSON. However it's much bulkier than the raw coordinates for such simple data. (Not supported by the deprecated LatLonType or PointType)
+
+[[SpatialSearch-SearchingwithQueryParsers]]
+== Searching with Query Parsers
+
+There are two spatial Solr "query parsers" for geospatial search: `geofilt` and `bbox`. They take the following parameters:
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
@@ -42,7 +56,7 @@ There are 2 types of Spatial filters, which both support the following parameter
 |pt |the center point using the format "lat,lon" if latitude & longitude. Otherwise, "x,y" for PointType or "x y" for RPT field types.
 |sfield |a spatial indexed field
 |score a|
-(Advanced option; RPT and BBoxField field types only) If the query is used in a scoring context (e.g. as the main query in `q`), this _<<local-parameters-in-queries.adoc#local-parameters-in-queries,local parameter>>_ determines what scores will be produced. Valid values are:
+(Advanced option; not supported by LatLonType (deprecated) or PointType) If the query is used in a scoring context (e.g. as the main query in `q`), this _<<local-parameters-in-queries.adoc#local-parameters-in-queries,local parameter>>_ determines what scores will be produced. Valid values are:
 
 * `none` - A fixed score of 1.0. (the default)
 * `kilometers` - distance in kilometers between the field value and the specified center point
@@ -54,17 +68,17 @@ There are 2 types of Spatial filters, which both support the following parameter
 [WARNING]
 ====
 
-Don't use this for indexed non-point shapes (e.g. polygons). The results will be erroneous. And with RPT, it's only recommended for multi-valued point data, as the implementation doesn't scale very well and for single-valued fields, you should instead use a separate LatLonType field purely for distance sorting.
+Don't use this for indexed non-point shapes (e.g. polygons). The results will be erroneous. And with RPT, it's only recommended for multi-valued point data, as the implementation doesn't scale very well and for single-valued fields, you should instead use a separate non-RPT field purely for distance sorting.
 
 ====
 
-When used with `BBoxField`,additional options are supported:
+When used with `BBoxField`, additional options are supported:
 
 * `overlapRatio` - The relative overlap between the indexed shape & query shape.
 * `area` - haversine based area of the overlapping shapes expressed in terms of the `distanceUnits` configured for this field
 * `area2D` - cartesian coordinates based area of the overlapping shapes expressed in terms of the `distanceUnits` configured for this field
 
-|filter |(Advanced option; RPT and BBoxField field types only) If you only want the query to score (with the above `score` local parameter), not filter, then set this local parameter to false.
+|filter |(Advanced option; not supported by LatLonType (deprecated) or PointType). If you only want the query to score (with the above `score` local parameter), not filter, then set this local parameter to false.
 |===
 
 [[SpatialSearch-geofilt]]
@@ -93,16 +107,18 @@ When a bounding box includes a pole, the bounding box ends up being a "bounding 
 [[SpatialSearch-Filteringbyanarbitraryrectangle]]
 === Filtering by an arbitrary rectangle
 
-Sometimes the spatial search requirement calls for finding everything in a rectangular area, such as the area covered by a map the user is looking at. For this case, geofilt and bbox won't cut it. This is somewhat of a trick, but you can use Solr's range query syntax for this by supplying the lower-left corner as the start of the range and the upper-right corner as the end of the range. Here's an example: `&q=*:*&fq=store:[45,-94 TO 46,-93]`. LatLonType does *not* support rectangles that cross the dateline, but RPT does. If you are using RPT with non-geospatial coordinates (`geo="false"`) then you must quote the points due to the space, e.g. `"x y"`.
+Sometimes the spatial search requirement calls for finding everything in a rectangular area, such as the area covered by a map the user is looking at. For this case, geofilt and bbox won't cut it. This is somewhat of a trick, but you can use Solr's range query syntax for this by supplying the lower-left corner as the start of the range and the upper-right corner as the end of the range. Here's an example: `&q=*:*&fq=store:[45,-94 TO 46,-93]`. LatLonType (deprecated) does *not* support rectangles that cross the dateline. For RPT and BBoxField, if you are non-geospatial coordinates (`geo="false"`) then you must quote the points due to the space, e.g. `"x y"`.
 
-// OLD_CONFLUENCE_ID: SpatialSearch-Optimization:SolrPostFiltering
+// OLD_CONFLUENCE_ID: SpatialSearch-Optimizing:CacheorNot
 
-[[SpatialSearch-Optimization_SolrPostFiltering]]
-=== Optimization: Solr Post Filtering
+[[SpatialSearch-Optimizing_CacheorNot]]
+=== Optimizing: Cache or Not
 
-Most likely, the fastest spatial filters will be to simply use the RPT field type. However, sometimes it may be faster to use LatLonType with _Solr post filtering_ in circumstances when both the spatial query isn't worth caching and there aren't many matching documents that match the non-spatial filters (e.g. keyword queries and other filters). To use _Solr post filtering_ with LatLonType, use the `bbox` or `geofilt` query parsers in a filter query but specify `cache=false` and `cost=100` (or greater) as local parameters. Here's a short example:
+It's most common to put a spatial query into an "fq" parameter – a filter query. By default, Solr will cache the query in the filter cache. If you know the filter query (be it spatial or not) is fairly unique and not likely to get a cache hit then specify `cache="false"` as a local-param as seen in the following example. The only spatial types which stand to benefit from this technique are LatLonPointSpatialField and LatLonType (deprecated). Enable docValues on the field (if it isn't already). LatLonType (deprecated) additionally requires a `cost="100"` (or more) local-param.
 
-`&q=...mykeywords...&fq=...someotherfilters...&fq={!geofilt cache=false cost=100}&sfield=store&pt=45.15,-93.85&d=5`
+`&q=...mykeywords...&fq=...someotherfilters...&fq={!geofilt cache=false}&sfield=store&pt=45.15,-93.85&d=5`
+
+LLPSF does not support Solr's "PostFilter".
 
 // OLD_CONFLUENCE_ID: SpatialSearch-DistanceSortingorBoosting(FunctionQueries)
 
@@ -151,17 +167,19 @@ Using the <<the-dismax-query-parser.adoc#the-dismax-query-parser,DisMax>> or <<t
 [[SpatialSearch-RPT]]
 == RPT
 
-RPT refers to either `SpatialRecursivePrefixTreeFieldType` (aka simply RPT) and an extended version: `RptWithGeometrySpatialField` (aka RPT with Geometry). RPT offers several functional improvements over LatLonType:
+RPT refers to either `SpatialRecursivePrefixTreeFieldType` (aka simply RPT) and an extended version: `RptWithGeometrySpatialField` (aka RPT with Geometry). RPT offers several functional improvements over LatLonPointSpatialField:
 
+* Non-geodetic – geo=false general x & y (__not__ latitude and longitude)
 * Query by polygons and other complex shapes, in addition to circles & rectangles
-* Multi-valued indexed fields
-* Ability to index non-point shapes (e.g. polygons) as well as points
-* Rectangles with user-specified corners that can cross the dateline
-* Multi-value distance sort and score boosting _(warning: non-optimized)_
-* Well-Known-Text (WKT) shape syntax (required for specifying polygons & other complex shapes), and GeoJSON too. In addition to indexing and searching, this works with the `wt=geojson` (GeoJSON Solr response-writer) and `[geo f=myfield]` (geo Solr document-transformer).
-* Heatmap grid faceting capability
+* Ability to index non-point shapes (e.g. polygons) as well as points – see RptWithGeometrySpatialField
+* Heatmap grid faceting
 
-RPT incorporates the basic features of LatLonType and PointType, such as lat-lon bounding boxes and circles, in addition to supporting geofilt, bbox, geodist, and a range-queries. RPT with Geometry is defined further below.
+RPT _shares_ various features in common with LatLonPointSpatialField. Some are listed here:
+
+* Latitude/Longitude indexed point data; possibly multi-valued
+* Fast filtering with geofilt, bbox filters, and range query syntax (dateline crossing is supported)
+* Sort/boost via geodist
+* Well-Known-Text (WKT) shape syntax (required for specifying polygons & other complex shapes), and GeoJSON too. In addition to indexing and searching, this works with the `wt=geojson` (GeoJSON Solr response-writer) and `[geo f=myfield]` (geo Solr document-transformer).
 
 [[SpatialSearch-Schemaconfiguration]]
 === Schema configuration
@@ -198,7 +216,7 @@ This is used to specify the units for distance measurements used throughout the 
 [[SpatialSearch-JTSandPolygons]]
 === JTS and Polygons
 
-As indicated above, `spatialContextFactory` must be set to `JTS` for polygon support, including multi-polygon. All other shapes, including even line-strings, are supported without JTS. JTS stands for http://sourceforge.net/projects/jts-topo-suite/[JTS Topology Suite], which does not come with Solr due to its LGPL license. You must download it (a JAR file) and put that in a special location internal to Solr: `SOLR_INSTALL/server/solr-webapp/webapp/WEB-INF/lib/`. You can readily download it here: https://repo1.maven.org/maven2/com/vividsolutions/jts-core/ It will not work if placed in other more typical Solr lib directories, unfortunately. When activated, there are additional configuration attributes available; see https://locationtech.github.io/spatial4j/apidocs/org/locationtech/spatial4j/context/jts/JtsSpatialContextFactory.html[org.locationtech.spatial4j.context.jts.JtsSpatialContextFactory] for the Javadocs, and remember to look at the superclass's options in https://locationtech.github.io/spatial4j/apidocs/org/locationtech/spatial4j/context/SpatialContextFactory.html[SpatialContextFactory] as well. One option in particular you should most likely enable is `autoIndex` (i.e. use JTS's PreparedGeometry) as it's been shown to be a major performance boost for non-trivial polygons.
+As indicated above, `spatialContextFactory` must be set to `JTS` for polygon support, including multi-polygon. All other shapes, including even line-strings, are supported without JTS. JTS stands for http://sourceforge.net/projects/jts-topo-suite/[JTS Topology Suite], which does not come with Solr due to its LGPL license. You must download it (a JAR file) and put that in a special location internal to Solr: `SOLR_INSTALL/server/solr-webapp/webapp/WEB-INF/lib/`. You can readily download it here: https://repo1.maven.org/maven2/com/vividsolutions/jts-core/. It will not work if placed in other more typical Solr lib directories, unfortunately. When activated, there are additional configuration attributes available; see https://locationtech.github.io/spatial4j/apidocs/org/locationtech/spatial4j/context/jts/JtsSpatialContextFactory.html[org.locationtech.spatial4j.context.jts.JtsSpatialContextFactory] for the Javadocs, and remember to look at the superclass's options in as well. One option in particular you should most likely enable is `autoIndex` (i.e., use JTS's PreparedGeometry) as it's been shown to be a major performance boost for non-trivial polygons.
 
 [source,xml]
 ----

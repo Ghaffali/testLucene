@@ -6,12 +6,12 @@ Solr allows configuring roles to control user access to the system. This is acco
 
 The roles can be used with any of the authentication plugins or with a custom authentication plugin if you have created one. You will only need to ensure that you configure the role-to-user mappings with the proper user IDs that your authentication system provides.
 
-Once defined through the API, roles are stored in `security.json` in ZooKeeper. This means this feature is available **when using Solr in SolrCloud mode only**.
+Once defined through the API, roles are stored in `security.json`.
 
 [[Rule-BasedAuthorizationPlugin-EnabletheAuthorizationPlugin]]
 == Enable the Authorization Plugin
 
-The plugin must be enabled in `security.json`. This file and how to upload it to ZooKeeper is described in detail in the section <<authentication-and-authorization-plugins.adoc#AuthenticationandAuthorizationPlugins-EnabledPluginswithsecurity.json,Enable Plugins with security.json>>.
+The plugin must be enabled in `security.json`. This file and where to put it in your system is described in detail in the section <<authentication-and-authorization-plugins.adoc#AuthenticationandAuthorizationPlugins-EnabledPluginswithsecurity.json,Enable Plugins with security.json>>.
 
 This file has two parts, the `authentication` part and the `authorization` part. The `authentication` part stores information about the class being used for authentication.
 
@@ -89,8 +89,8 @@ The pre-defined permissions are:
 ** OVERSEERSTATUS
 ** CLUSTERSTATUS
 ** REQUESTSTATUS
-* **update**: this permission is allowed to perform any update action on any collection. This includes sending documents for indexing (using an <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-UpdateRequestHandlers,update request handler>>).
-* **read**: this permission is allowed to perform any read action on any collection. This includes querying using search handlers (using <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-SearchHandlers,request handlers>>) such as `/select`, `/get`, `/browse`, `/tvrh`, `/terms`, `/clustering`, `/elevate`, `/export`, `/spell`, `/clustering`, and `/sql`.
+* **update**: this permission is allowed to perform any update action on any collection. This includes sending documents for indexing (using an <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-UpdateRequestHandlers,update request handler>>). This applies to all collections by default (`collection:"*"`).
+* **read**: this permission is allowed to perform any read action on any collection. This includes querying using search handlers (using <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-SearchHandlers,request handlers>>) such as `/select`, `/get`, `/browse`, `/tvrh`, `/terms`, `/clustering`, `/elevate`, `/export`, `/spell`, `/clustering`, and `/sql`. This applies to all collections by default ( `collection:"*"` ).
 * **all**: Any requests coming to Solr.
 
 [[Rule-BasedAuthorizationPlugin-AuthorizationAPI]]
@@ -123,7 +123,7 @@ Several properties can be used to define your custom permission.
 |collection a|
 The collection or collections the permission will apply to.
 
-When the path that will be allowed is collection-specific, such as when setting permissions to allow useof the Schema API, omitting the collection property will allow the defined path and/or method for all collections. However, when the path is one that is non-collection-specific, such as the Collections API, the collection value must be `null`.
+When the path that will be allowed is collection-specific, such as when setting permissions to allow useof the Schema API, omitting the collection property will allow the defined path and/or method for all collections. However, when the path is one that is non-collection-specific, such as the Collections API, the collection value must be `null`. The default value is * (all collections).
 
 |path |A request handler name, such as `/update` or `/select`. A wild card is supported, to allow for all paths as appropriate (such as, `/update/*`).
 |method |HTTP methods that are allowed for this permission. You could allow only GET requests, or have a role that allows PUT and POST requests. The method values that are allowed for this property are GET, POST, PUT,DELETEand HEAD.
@@ -154,7 +154,7 @@ If the commands LIST and CLUSTERSTATUS are case insensitive, the above example s
 |role |The name of the role(s) to give this permission. This name will be used to map user IDs to the role to grant these permissions. The value can be wildcard such as (`*`), which means that any user is OK, but no user is NOT OK.
 |===
 
-The following would create a new permission named "collection-mgr" that is allowed to create and list collections. The permission will be placed before the "read" permission. Note also that we have defined "collection as `null`, this is because requests to the Collections API are never collection-specific.
+The following creates a new permission named "collection-mgr" that is allowed to create and list collections. The permission will be placed before the "read" permission. Note also that we have defined "collection as `null`, this is because requests to the Collections API are never collection-specific.
 
 [source,bash]
 ----
@@ -167,12 +167,22 @@ curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{
 }' http://localhost:8983/solr/admin/authorization 
 ----
 
-[[Rule-BasedAuthorizationPlugin-updateordeletepermissions]]
-==== update or delete permissions
+Apply an update permission on all collections to a role called '`dev`' and read permissions to a role called '`guest`':
 
-Permissions can be accessed using their index in the list. Use the GET /security/authorization to see the existing permissions and their indices.
+[source,bash]
+----
+curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{ 
+  "set-permission": {"name": "update, "role":"dev"},
+  "set-permission": {"name": "read, "role":"guest"},
+}' http://localhost:8983/solr/admin/authorization 
+----
 
-the following example updates the `'role'` attribute of permission at index `'3'`
+[[Rule-BasedAuthorizationPlugin-UpdateorDeletePermissions]]
+=== Update or Delete Permissions
+
+Permissions can be accessed using their index in the list. Use the `/admin/authorization` API to see the existing permissions and their indices.
+
+The following example updates the '`role`' attribute of permission at index '`3`':
 
 [source,bash]
 ----
@@ -182,7 +192,7 @@ curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{
 }' http://localhost:8983/solr/admin/authorization 
 ----
 
-the following example deletes permission at index `'3'`
+The following example deletes permission at index '`3`':
 
 [source,bash]
 ----

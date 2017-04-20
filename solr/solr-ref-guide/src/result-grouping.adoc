@@ -8,7 +8,7 @@ Result Grouping groups documents with a common field value into groups and retur
 [NOTE]
 ====
 
-Solr's <<collapse-and-expand-results.adoc#collapse-and-expand-results,Collapse and Expand>> feature is newer and mostly overlaps with Result Grouping. There are features unique to both, and they have different performance characteristics. Prefer C&E to Result Grouping.
+Solr's <<collapse-and-expand-results.adoc#collapse-and-expand-results,Collapse and Expand>> feature is newer and mostly overlaps with Result Grouping. There are features unique to both, and they have different performance characteristics. That said, in most cases Collapse and Expand is preferable to Result Grouping.
 
 ====
 

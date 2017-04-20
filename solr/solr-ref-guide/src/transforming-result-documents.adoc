@@ -263,8 +263,8 @@ If subquery is declared as `fl=*,foo:[subquery]`, subquery parameters are prefix
 
 `q=*:*&fl=*,**foo**:[subquery]&**foo.**q=to be continued&**foo.**rows=10&**foo.**sort=id desc`
 
-[[TransformingResultDocuments-Documentfieldasaninputforsubqueryparams]]
-==== Document field as an input for subquery params
+[[TransformingResultDocuments-DocumentFieldasanInputforSubqueryParameters]]
+==== Document Field as an Input for Subquery Parameters
 
 It's necessary to pass some document field values as a parameter for subquery. It's supported via implicit *`row.__fieldname__`* parameter, and can be (but might not only) referred via Local Parameters syntax: `q=namne:john&fl=name,id,depts:[subquery]&depts.q={!terms f=id **v=$row.dept_id**}&depts.rows=10`
 
@@ -272,7 +272,7 @@ Here departmens are retrieved per every employee in search result. We can say th
 
 Note, when document field has multiple values they are concatenated with comma by default, it can be changed by local parameter `foo:[subquery separator=' ']` , this mimics *`{!terms}`* to work smoothly with it.
 
-To log substituted subquery request parameters add the corresponding parameter names in `depts.logParamsList=q,fl,rows,**row.dept_id**`
+To log substituted subquery request parameters, add the corresponding parameter names, as in `depts.logParamsList=q,fl,rows,**row.dept_id**`
 
 [[TransformingResultDocuments-CoresandCollectionsinSolrCloud]]
 ==== Cores and Collections in SolrCloud

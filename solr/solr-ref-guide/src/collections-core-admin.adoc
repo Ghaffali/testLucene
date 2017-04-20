@@ -19,3 +19,10 @@ The buttons at the top of the screen let you make various collection level chang
 
 image::images/collections-core-admin/collection-admin.png[image,width=653,height=250]
 
+
+Replicas can be deleted by clicking the red "X" next to the replica name.
+
+If the shard is inactive, for example after a <<collections-api.adoc#CollectionsAPI-splitshard,SPLITSHARD action>>, an option to delete the shard will appear as a red "X" next to the shard name.
+
+image::images/collections-core-admin/DeleteShard.png[image,width=486,height=250]
+

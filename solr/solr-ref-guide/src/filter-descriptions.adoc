@@ -56,14 +56,17 @@ This filter converts alphabetic, numeric, and symbolic Unicode characters which 
 
 *Factory class:* `solr.ASCIIFoldingFilterFactory`
 
-*Arguments:* None
+*Arguments:*
+
+`preserveOriginal`: (boolean, default false) If true, the original token is preserved: "thé" -> "the", "thé"
 
 *Example:*
 
 [source,xml]
 ----
 <analyzer>
-  <filter class="solr.ASCIIFoldingFilterFactory"/>
+  <tokenizer class="solr.WhitespaceTokenizer"/>
+  <filter class="solr.ASCIIFoldingFilterFactory" preserveOriginal="false" />
 </analyzer>
 ----
 
@@ -323,7 +326,7 @@ This filter stems plural English words to their singular form.
 [source,xml]
 ----
 <analyzer type="index">
-  <tokenizer class="solr.StandardTokenizerFactory "/>
+  <tokenizer class="solr.StandardTokenizerFactory"/>
   <filter class="solr.EnglishMinimalStemFilterFactory"/>
 </analyzer>
 ----
@@ -333,6 +336,31 @@ This filter stems plural English words to their singular form.
 *Tokenizer to Filter:* "dogs", "cats"
 
 *Out:* "dog", "cat"
+
+[[FilterDescriptions-EnglishPossessiveFilter]]
+== English Possessive Filter
+
+This filter removes singular possessives (trailing **'s**) from words. Note that plural possessives, e.g. the *s'* in "divers' snorkels", are not removed by this filter.
+
+*Factory class:* `solr.EnglishPossessiveFilterFactory`
+
+*Arguments:* None
+
+*Example:*
+
+[source,xml]
+----
+<analyzer>
+  <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+  <filter class="solr.EnglishPossessiveFilterFactory"/>
+</analyzer>
+----
+
+*In:* "Man's dog bites dogs' man"
+
+*Tokenizer to Filter:* "Man's", "dog", "bites", "dogs'", "man"
+
+*Out:* "Man", "dog", "bites", "dogs'", "man"
 
 [[FilterDescriptions-FingerprintFilter]]
 == Fingerprint Filter
@@ -362,6 +390,17 @@ This filter outputs a single token which is a concatenation of the sorted and de
 *Tokenizer to Filter:* "the", "quick", "brown", "fox", "jumped", "over", "the", "lazy", "dog"
 
 *Out:* "brown_dog_fox_jumped_lazy_over_quick_the"
+
+[[FilterDescriptions-FlattenGraphFilter]]
+== Flatten Graph Filter
+
+This filter must be included on index-time analyzer specifications that include at least one graph-aware filter, including Synonym Graph Filter and Word Delimiter Graph Filter.
+
+*Factory class:* `solr.FlattenGraphFilterFactory`
+
+*Arguments:* None
+
+See the examples on Synonym Graph Filter and Word Delimiter Graph Filter.
 
 [[FilterDescriptions-HunspellStemFilter]]
 == Hunspell Stem Filter
@@ -636,6 +675,102 @@ This filter passes tokens whose length falls within the min/max limit specified.
 
 *Out:* "turn", "right"
 
+[[FilterDescriptions-LimitTokenCountFilter]]
+== Limit Token Count Filter
+
+This filter limits the number of accepted tokens, typically useful for index analysis.
+
+By default, this filter ignores any tokens in the wrapped `TokenStream` once the limit has been reached, which can result in `reset()` being called prior to `incrementToken()` returning `false`. For most `TokenStream` implementations this should be acceptable, and faster then consuming the full stream. If you are wrapping a `TokenStream` which requires that the full stream of tokens be exhausted in order to function properly, use the `consumeAllTokens="true"` option.
+
+*Factory class:* `solr.LimitTokenCountFilterFactory`
+
+*Arguments:*
+
+`maxTokenCount`: (integer, required) Maximum token count. After this limit has been reached, tokens are discarded.
+
+`consumeAllTokens`: (boolean, defaults to false) Whether to consume (and discard) previous token filters' tokens after the maximum token count has been reached. See description above.
+
+*Example:*
+
+[source,xml]
+----
+<analyzer type="index">
+  <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+  <filter class="solr.LimitTokenCountFilterFactory" maxTokenCount="10"
+          consumeAllTokens="false" />
+</analyzer>
+----
+
+*In:* "1 2 3 4 5 6 7 8 9 10 11 12"
+
+*Tokenizer to Filter:* "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"
+
+*Out:* "1", "2", "3", "4", "5", "6", "7", "8", "9", "10"
+
+[[FilterDescriptions-LimitTokenOffsetFilter]]
+== Limit Token Offset Filter
+
+This filter limits tokens to those before a configured maximum start character offset. This can be useful to limit highlighting, for example.
+
+By default, this filter ignores any tokens in the wrapped `TokenStream` once the limit has been reached, which can result in `reset()` being called prior to `incrementToken()` returning `false`. For most `TokenStream` implementations this should be acceptable, and faster then consuming the full stream. If you are wrapping a `TokenStream` which requires that the full stream of tokens be exhausted in order to function properly, use the `consumeAllTokens="true"` option.
+
+*Factory class:* `solr.LimitTokenOffsetFilterFactory`
+
+*Arguments:*
+
+`maxStartOffset`: (integer, required) Maximum token start character offset. After this limit has been reached, tokens are discarded.
+
+`consumeAllTokens`: (boolean, defaults to false) Whether to consume (and discard) previous token filters' tokens after the maximum start offset has been reached. See description above.
+
+*Example:*
+
+[source,xml]
+----
+<analyzer>
+  <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+  <filter class="solr.LimitTokenOffsetFilterFactory" maxStartOffset="10"
+          consumeAllTokens="false" />
+</analyzer>
+----
+
+*In:* "0 2 4 6 8 A C E"
+
+*Tokenizer to Filter:* "0", "2", "4", "6", "8", "A", "C", "E"
+
+*Out:* "0", "2", "4", "6", "8", "A"
+
+[[FilterDescriptions-LimitTokenPositionFilter]]
+== Limit Token Position Filter
+
+This filter limits tokens to those before a configured maximum token position.
+
+By default, this filter ignores any tokens in the wrapped `TokenStream` once the limit has been reached, which can result in `reset()` being called prior to `incrementToken()` returning `false`. For most `TokenStream` implementations this should be acceptable, and faster then consuming the full stream. If you are wrapping a `TokenStream` which requires that the full stream of tokens be exhausted in order to function properly, use the `consumeAllTokens="true"` option.
+
+*Factory class:* `solr.LimitTokenPositionFilterFactory`
+
+*Arguments:*
+
+`maxTokenPosition`: (integer, required) Maximum token position. After this limit has been reached, tokens are discarded.
+
+`consumeAllTokens`: (boolean, defaults to false) Whether to consume (and discard) previous token filters' tokens after the maximum start offset has been reached. See description above.
+
+*Example:*
+
+[source,xml]
+----
+<analyzer>
+  <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+  <filter class="solr.LimitTokenPositionFilterFactory" maxTokenPosition="3"
+          consumeAllTokens="false" />
+</analyzer>
+----
+
+*In:* "1 2 3 4 5"
+
+*Tokenizer to Filter:* "1", "2", "3", "4", "5"
+
+*Out:* "1", "2", "3"
+
 [[FilterDescriptions-LowerCaseFilter]]
 == Lower Case Filter
 
@@ -754,7 +889,7 @@ A range of 1 to 4.
 
 *Tokenizer to Filter:* "four", "score"
 
-*Out:* "f", "fo", "fou", "four", "s", "sc", "sco", "scor"
+*Out:* "f", "fo", "fou", "four", "o", "ou", "our", "u", "ur", "r", "s", "sc", "sco", "scor", "c", "co", "cor", "core", "o", "or", "ore", "r", "re", "e"
 
 *Example:*
 
@@ -971,7 +1106,7 @@ This filter applies the Porter Stemming Algorithm for English. The results are s
 [[FilterDescriptions-RemoveDuplicatesTokenFilter]]
 == Remove Duplicates Token Filter
 
-The filter removes duplicate tokens in the stream. Tokens are considered to be duplicates if they have the same text and position values.
+The filter removes duplicate tokens in the stream. Tokens are considered to be duplicates ONLY if they have the same text and position values. Because positions must be the same, this filter might not do what a user expects it to do based on its name. It is a very specialized filter that is only useful in very specific circumstances. A more accurate filter name would be extremely long and confusing, so the shorter "remove duplicates" name has been used, even though it is potentially misleading.
 
 *Factory class:* `solr.RemoveDuplicatesTokenFilterFactory`
 
@@ -979,7 +1114,9 @@ The filter removes duplicate tokens in the stream. Tokens are considered to be d
 
 *Example:*
 
-One example of where `RemoveDuplicatesTokenFilterFactory` is in situations where a synonym file is being used in conjuntion with a stemmer causes some synonyms to be reduced to the same stem. Consider the following entry from a `synonyms.txt` file:
+One example of where `RemoveDuplicatesTokenFilterFactory` is useful in situations where a synonym file is being used in conjuntion with a stemmer. In these situations, both the stemmer and the synonym filter can cause completely identical terms with the same positions to end up in the stream, increasing index size with no benefit.
+
+Consider the following entry from a `synonyms.txt` file:
 
 [source,text]
 ----
@@ -990,9 +1127,9 @@ When used in the following configuration:
 
 [source,xml]
 ----
-<analyzer>
+<analyzer type="query">
   <tokenizer class="solr.StandardTokenizerFactory"/>
-  <filter class="solr.SynonymFilterFactory" synonyms="synonyms.txt"/>
+  <filter class="solr.SynonymGraphFilterFactory" synonyms="synonyms.txt"/>
   <filter class="solr.EnglishMinimalStemFilterFactory"/>
   <filter class="solr.RemoveDuplicatesTokenFilterFactory"/>
 </analyzer>
@@ -1053,15 +1190,15 @@ This filter constructs shingles, which are token n-grams, from the token stream.
 
 *Arguments:*
 
-`minShingleSize`: (integer, default 2) The minimum number of tokens per shingle.
+`minShingleSize`: (integer, must be >= 2, default 2) The minimum number of tokens per shingle.
 
-`maxShingleSize`: (integer, must be >= 2, default 2) The maximum number of tokens per shingle.
+`maxShingleSize`: (integer, must be >= `minShingleSize`, default 2) The maximum number of tokens per shingle.
 
-`outputUnigrams`: (true/false) If true (the default), then each individual token is also included at its original position.
+`outputUnigrams`: (boolean, default true) If true, then each individual token is also included at its original position.
 
-`outputUnigramsIfNoShingles`: (true/false) If false (the default), then individual tokens will be output if no shingles are possible.
+`outputUnigramsIfNoShingles`: (boolean, default false) If true, then individual tokens will be output if no shingles are possible.
 
-`tokenSeparator`: (string, default is " ") The default string to use when joining adjacent tokens to form a shingle.
+`tokenSeparator`: (string, default is " ") The string to use when joining adjacent tokens to form a shingle.
 
 *Example:*
 
@@ -1278,7 +1415,26 @@ Like <<FilterDescriptions-StopFilter,Stop Filter>>, this filter discards, or _st
 
 This filter does synonym mapping. Each token is looked up in the list of synonyms and if a match is found, then the synonym is emitted in place of the token. The position value of the new tokens are set such they all occur at the same position as the original token.
 
+.Synonym Filter has been deprecated
+[WARNING]
+====
+
+Synonym Filter has been deprecated in favor of Synonym Graph Filter, which is required for multi-term synonym support.
+
+====
+
 *Factory class:* `solr.SynonymFilterFactory`
+
+For arguments and examples, see the Synonym Graph Filter below.
+
+[[FilterDescriptions-SynonymGraphFilter]]
+== Synonym Graph Filter
+
+This filter maps single- or multi-token synonyms, producing a fully correct graph output. This filter is a replacement for the Synonym Filter, which produces incorrect graphs for multi-token synonyms.
+
+If you use this filter during indexing, you must follow it with a Flatten Graph Filter to squash tokens on top of one another like the Synonym Filter, because the indexer can't directly consume a graph. To get fully correct positional queries when your synonym replacements are multiple tokens, you should instead apply synonyms using this filter at query time.
+
+*Factory class:* `solr.SynonymGraphFilterFactory`
 
 *Arguments:*
 
@@ -1312,9 +1468,14 @@ small => tiny,teeny,weeny
 
 [source,xml]
 ----
-<analyzer>
+<analyzer type="index">
   <tokenizer class="solr.StandardTokenizerFactory"/>
-  <filter class="solr.SynonymFilterFactory" synonyms="mysynonyms.txt"/>
+  <filter class="solr.SynonymGraphFilterFactory" synonyms="mysynonyms.txt"/>
+  <filter class="solr.FlattenGraphFilterFactory"/> <!-- required on index analyzers after graph filters -->
+</analyzer>
+<analyzer type="query">
+  <tokenizer class="solr.StandardTokenizerFactory"/>
+  <filter class="solr.SynonymGraphFilterFactory" synonyms="mysynonyms.txt"/>
 </analyzer>
 ----
 
@@ -1325,14 +1486,6 @@ small => tiny,teeny,weeny
 *Out:* "the"(1), "tiny"(2), "teeny"(2), "weeny"(2), "couch"(3), "sofa"(3), "divan"(3)
 
 *Example:*
-
-[source,xml]
-----
-<analyzer>
-  <tokenizer class="solr.StandardTokenizerFactory "/>
-  <filter class="solr.SynonymFilterFactory" synonyms="mysynonyms.txt"/>
-</analyzer>
-----
 
 *In:* "teh ginormous, humungous sofa"
 
@@ -1446,7 +1599,30 @@ This filter blacklists or whitelists a specified list of token types, assuming t
 [[FilterDescriptions-WordDelimiterFilter]]
 == Word Delimiter Filter
 
-This filter splits tokens at word delimiters. The rules for determining delimiters are determined as follows:
+This filter splits tokens at word delimiters.
+
+.Word Delimiter Filter has been deprecated
+[WARNING]
+====
+
+Word Delimiter Filter has been deprecated in favor of Word Delimiter Graph Filter, which is required to produce a correct token graph so that e.g. phrase queries can work correctly.
+
+====
+
+*Factory class:* `solr.WordDelimiterFilterFactory`
+
+For a full description, including arguments and examples, see the Word Delimiter Graph Filter below.
+
+[[FilterDescriptions-WordDelimiterGraphFilter]]
+== Word Delimiter Graph Filter
+
+This filter splits tokens at word delimiters.
+
+If you use this filter during indexing, you must follow it with a Flatten Graph Filter to squash tokens on top of one another like the Word Delimiter Filter, because the indexer can't directly consume a graph. To get fully correct positional queries when tokens are split, you should instead use this filter at query time.
+
+Note: although this filter produces correct token graphs, it cannot consume an input token graph correctly.
+
+The rules for determining delimiters are determined as follows:
 
 * A change in case within a word: "CamelCase" *->* "Camel", "Case". This can be disabled by setting `splitOnCaseChange="0"`.
 
@@ -1458,7 +1634,7 @@ This filter splits tokens at word delimiters. The rules for determining delimite
 
 * Any leading or trailing delimiters are discarded: "--hot-spot--" *->* "hot", "spot"
 
-*Factory class:* `solr.WordDelimiterFilterFactory`
+*Factory class:* `solr.WordDelimiterGraphFilterFactory`
 
 *Arguments:*
 
@@ -1482,15 +1658,34 @@ This filter splits tokens at word delimiters. The rules for determining delimite
 
 `stemEnglishPossessive`: (integer, default 1) If 1, strips the possessive "'s" from each subword.
 
+`types`: (optional) The pathname of a file that contains *character => type* mappings, which enable customization of this filter's splitting behavior. Recognized character types: `LOWER`, `UPPER`, `ALPHA`, `DIGIT`, `ALPHANUM`, and `SUBWORD_DELIM`. The default for any character without a customized mapping is computed from Unicode character properties. Blank lines and comment lines starting with '#' are ignored. An example file:
+
+[source,text]
+----
+# Don't split numbers at '$', '.' or ','
+$ => DIGIT
+. => DIGIT
+\u002C => DIGIT
+
+# Don't split on ZWJ: http://en.wikipedia.org/wiki/Zero-width_joiner
+\u200D => ALPHANUM
+----
+
 *Example:*
 
 Default behavior. The whitespace tokenizer is used here to preserve non-alphanumeric characters.
 
 [source,xml]
 ----
-<analyzer>
+<analyzer type="index">
   <tokenizer class="solr.WhitespaceTokenizerFactory"/>
-  <filter class="solr.WordDelimiterFilterFactory"/>
+  <filter class="solr.WordDelimiterGraphFilterFactory"/>
+  <filter class="solr.FlattenGraphFilterFactory"/> <!-- required on index analyzers after graph filters -->
+</analyzer>
+
+<analyzer type="query">
+  <tokenizer class="solr.WhitespaceTokenizerFactory"/>
+  <filter class="solr.WordDelimiterGraphFilterFactory"/>
 </analyzer>
 ----
 
@@ -1506,9 +1701,9 @@ Do not split on case changes, and do not generate number parts. Note that by not
 
 [source,xml]
 ----
-<analyzer>
+<analyzer type="query">
   <tokenizer class="solr.WhitespaceTokenizerFactory"/>
-  <filter class="solr.WordDelimiterFilterFactory" generateNumberParts="0" splitOnCaseChange="0"/>
+  <filter class="solr.WordDelimiterGraphFilterFactory" generateNumberParts="0" splitOnCaseChange="0"/>
 </analyzer>
 ----
 
@@ -1524,9 +1719,9 @@ Concatenate word parts and number parts, but not word and number parts that occu
 
 [source,xml]
 ----
-<analyzer>
+<analyzer type="query">
   <tokenizer class="solr.WhitespaceTokenizerFactory"/>
-  <filter class="solr.WordDelimiterFilterFactory" catenateWords="1" catenateNumbers="1"/>
+  <filter class="solr.WordDelimiterGraphFilterFactory" catenateWords="1" catenateNumbers="1"/>
 </analyzer>
 ----
 
@@ -1542,9 +1737,9 @@ Concatenate all. Word and/or number parts are joined together.
 
 [source,xml]
 ----
-<analyzer>
+<analyzer type="query">
   <tokenizer class="solr.WhitespaceTokenizerFactory"/>
-  <filter class="solr.WordDelimiterFilterFactory" catenateAll="1"/>
+  <filter class="solr.WordDelimiterGraphFilterFactory" catenateAll="1"/>
 </analyzer>
 ----
 
@@ -1560,9 +1755,9 @@ Using a protected words list that contains "AstroBlaster" and "XL-5000" (among o
 
 [source,xml]
 ----
-<analyzer>
+<analyzer type="query">
   <tokenizer class="solr.WhitespaceTokenizerFactory"/>
-  <filter class="solr.WordDelimiterFilterFactory" protected="protwords.txt"/>
+  <filter class="solr.WordDelimiterGraphFilterFactory" protected="protwords.txt"/>
 </analyzer>
 ----
 

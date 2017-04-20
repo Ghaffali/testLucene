@@ -263,7 +263,29 @@ This data source accepts these optional attributes.
 [[UploadingStructuredDataStoreDatawiththeDataImportHandler-JdbcDataSource]]
 === JdbcDataSource
 
-This is the default datasource. It's used with the <<UploadingStructuredDataStoreDatawiththeDataImportHandler-TheSQLEntityProcessor,SqlEntityProcessor>>. See the example in the <<UploadingStructuredDataStoreDatawiththeDataImportHandler-FieldReaderDataSource,FieldReaderDataSource>> section for details on configuration. `JdbcDatasource` supports at least the following attributes: `driver, url, user, password, encryptKeyFile`. All of them substitute properties via $\{placeholders}.
+This is the default datasource. It's used with the <<UploadingStructuredDataStoreDatawiththeDataImportHandler-TheSQLEntityProcessor,SqlEntityProcessor>>. See the example in the <<UploadingStructuredDataStoreDatawiththeDataImportHandler-FieldReaderDataSource,FieldReaderDataSource>> section for details on configuration. `JdbcDatasource` supports at least the following attributes: .
+
+// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+
+[width="100%",cols="50%,50%",options="header",]
+|===
+|Attributes |Description
+|driver, url, user, password, encryptKeyFile |Usual jdbc connection properties
+a|
+....
+batchSize
+....
+
+ a|
+Passed to Statement#setFetchSize, default value 500.
+
+For MySQL driver, which doesn't honor fetchSize and pulls whole resultSet, which often lead to OutOfMemoryError.
+
+In this case, set batchSize=-1 that pass setFetchSize(Integer.MIN_VALUE), and switch result set to pull row by row
+
+|===
+
+All of them substitute properties via $\{placeholders}.
 
 [[UploadingStructuredDataStoreDatawiththeDataImportHandler-URLDataSource]]
 === URLDataSource
@@ -877,7 +899,6 @@ You can pass special commands to the DIH by adding any of the variables listed b
 |Variable |Description
 |$skipDoc |Skip the current document; that is, do not add it to Solr. The value can be the string `true|false`.
 |$skipRow |Skip the current row. The document will be added with rows from other entities. The value can be the string `true|false`
-|$docBoost |Boost the current document. The boost value can be a number or the `toString` conversion of a number.
 |$deleteDocById |Delete a document from Solr with this ID. The value has to be the `uniqueKey` value of the document.
 |$deleteDocByQuery |Delete documents from Solr using this query. The value must be a Solr Query.
 |===

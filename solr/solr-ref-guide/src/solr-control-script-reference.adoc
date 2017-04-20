@@ -449,7 +449,7 @@ An example of this command with these parameters is:
 [WARNING]
 ====
 
-This command does **not** automatically make changes effective! It simply uploads the configuration sets to ZooKeeper. You can use the Collection API's <<collections-api.adoc#CollectionsAPI-reload,RELOAD command>> to reload any collections that uses this configuration set.
+This command does *not* automatically make changes effective! It simply uploads the configuration sets to ZooKeeper. You can use the Collection API's <<collections-api.adoc#CollectionsAPI-reload,RELOAD command>> to reload any collections that uses this configuration set.
 
 ====
 

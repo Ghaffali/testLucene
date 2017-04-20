@@ -389,6 +389,54 @@ Extract part numbers which are preceded by "SKU", "Part" or "Part Number", case 
 
 *Out:* "1234", "5678", "126-987"
 
+[[Tokenizers-SimplifiedRegularExpressionPatternTokenizer]]
+== Simplified Regular Expression Pattern Tokenizer
+
+This tokenizer is similar to the `PatternTokenizerFactory` described above, but uses Lucene {lucene-javadocs}/core/org/apache/lucene/util/automaton/RegExp.html[`RegExp`] pattern matching to construct distinct tokens for the input stream. The syntax is more limited than `PatternTokenizerFactory`, but the tokenization is quite a bit faster.
+
+*Factory class:* `solr.SimplePatternTokenizerFactory`
+
+*Arguments:*
+
+`pattern`: (Required) The regular expression, as defined by in the {lucene-javadocs}/core/org/apache/lucene/util/automaton/RegExp.html[`RegExp`] javadocs, identifying the characters to include in tokens. The matching is greedy such that the longest token matching at a given point is created. Empty tokens are never created.
+
+`maxDeterminizedStates`: (Optional, default 10000) the limit on total state count for the determined automaton computed from the regexp.
+
+*Example:*
+
+To match tokens delimited by simple whitespace characters:
+
+[source,xml]
+----
+<analyzer>
+  <tokenizer class="solr.SimplePatternTokenizerFactory" pattern="[^ \t\r\n]+"/>
+</analyzer>
+----
+
+[[Tokenizers-SimplifiedRegularExpressionPatternSplittingTokenizer]]
+== Simplified Regular Expression Pattern Splitting Tokenizer
+
+This tokenizer is similar to the `SimplePatternTokenizerFactory` described above, but uses Lucene {lucene-javadocs}/core/org/apache/lucene/util/automaton/RegExp.html[`RegExp`] pattern matching to identify sequences of characters that should be used to split tokens. The syntax is more limited than `PatternTokenizerFactory`, but the tokenization is quite a bit faster.
+
+*Factory class:* `solr.SimplePatternSplitTokenizerFactory`
+
+*Arguments:*
+
+`pattern`: (Required) The regular expression, as defined by in the {lucene-javadocs}/core/org/apache/lucene/util/automaton/RegExp.html[`RegExp`] javadocs, identifying the characters that should split tokens. The matching is greedy such that the longest token separator matching at a given point is matched. Empty tokens are never created.
+
+`maxDeterminizedStates`: (Optional, default 10000) the limit on total state count for the determined automaton computed from the regexp.
+
+*Example:*
+
+To match tokens delimited by simple whitespace characters:
+
+[source,xml]
+----
+<analyzer>
+  <tokenizer class="solr.SimplePatternSplitTokenizerFactory" pattern="[ \t\r\n]+"/>
+</analyzer>
+----
+
 [[Tokenizers-UAX29URLEmailTokenizer]]
 == UAX29 URL Email Tokenizer
 

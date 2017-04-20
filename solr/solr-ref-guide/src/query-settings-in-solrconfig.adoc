@@ -32,6 +32,8 @@ The Statistics page in the Solr Admin UI will display information about the perf
 
 Each cache has settings to define its initial size (`initialSize`), maximum size (`size`) and number of items to use for during warming (`autowarmCount`). The LRU and FastLRU cache implementations can take a percentage instead of an absolute value for `autowarmCount`.
 
+FastLRUCache and LFUCache support `showItems` attribute. This is the number of cache items to display in the stats page for the cache. It is for debugging.
+
 Details of each cache are described below.
 
 [[QuerySettingsinSolrConfig-filterCache]]

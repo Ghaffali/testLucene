@@ -50,7 +50,6 @@ These are the major groups of metrics that are collected:
 
 * all common RequestHandler-s report: request timers / counters, timeouts, errors.
 * <<MetricsReporting-IndexMergeMetrics,index-level events>>: meters for minor / major merges, number of merged docs, number of deleted docs, gauges for currently running merges and their size.
-* <<MetricsReporting-DirectoryI_OMetrics,directory-level IO>>: total read / write meters, histograms for read / write operations and their size, optionally split per index file (e.g., field data, term dictionary, docValues, etc)
 * shard replication and transaction log replay on replicas (TBD, SOLR-9856)
 * TBD: caches, update handler details, and other relevant SolrInfoMBean-s
 
@@ -251,27 +250,6 @@ If the boolean flag `mergeDetails` is true then the following additional metrics
 * `INDEX.merge.major.docs` - meter for the number of documents merged in major merge operations
 * `INDEX.merge.major.deletedDocs` - meter for the number of deleted documents expunged in major merge operations
 
-// OLD_CONFLUENCE_ID: MetricsReporting-DirectoryI/OMetrics
-
-[[MetricsReporting-DirectoryI_OMetrics]]
-=== Directory I/O Metrics
-
-Index storage (represented in Lucene/Solr by `Directory` abstraction) is monitored for I/O throughput, which is optionally tracked per index file (see the previous section, `directoryDetails` argument). As with the index-level metrics, these metrics are also registered in per-core registries.
-
-The following metrics are collected:
-
-* `DIRECTORY.total.reads` - meter for total read bytes from the directory.
-* `DIRECTORY.total.writes` - meter for total written bytes to the directory.
-
-If `directoryDetails` is set to true the following additional metrics are collected (note: this can potentially produce a lot of metrics so it should not be used in production):
-
-* `DIRECTORY.total.readSizes` - histogram of read operation sizes (in byte units)
-* `DIRECTORY.total.writeSizes` - histogram of write operation sizes (in byte units)
-* `DIRECTORY.<file type>.reads` - meter for read bytes per "file type". File type is either `segments` for `segments_N` and `pending_segments_N`, or a file extension (e.g., `fdt`, `doc`, `tim`, etc). The number and type of these files vary depending on the type of Lucene codec used.
-* `DIRECTORY.<file type>.writes` - meter for written bytes per "file type".
-* `DIRECTORY.<file type>.readSizes` - histogram of write operation sizes per "file type" (in byte units).
-* `DIRECTORY.<file type>.writeSizes` - histogram of write operation sizes per "file type" (in byte units).
-
 [[MetricsReporting-MetricsAPI]]
 == Metrics API
 
@@ -292,31 +270,6 @@ Request only "counter" type metrics in the "core" group, returned in JSON:
 
 `http://localhost:8983/solr/admin/metrics?wt=json&type=counter&group=core`
 
-Request only "core" group metrics that start with "DIRECTORY", returned in JSON:
+Request only "core" group metrics that start with "INDEX", returned in JSON:
 
-`http://localhost:8983/solr/admin/metrics?wt=json&prefix=DIRECTORY&group=core`
-
-Sample output from the above request:
-
-[source,java]
-----
-{
-    "responseHeader": {
-        "status": 0,
-        "QTime": 0
-    },
-    "metrics": ["solr.core.test", 
-        ["DIRECTORY.total.reads", 
-            ["count", 142, 
-             "meanRate", 0.23106951540768358, 
-             "1minRate", 0.0011862666311920798, 
-             "5minRate", 3.7799942123292443, 
-             "15minRate", 14.500264968437852],
-        "DIRECTORY.total.writes", 
-            ["count", 71, 
-             "meanRate", 0.11553475490916319, 
-             "1minRate", 5.931333155960399E-4, 
-             "5minRate", 1.8899971061646221, 
-             "15minRate", 7.250132484218926]]]
-}
-----
+`http://localhost:8983/solr/admin/metrics?wt=json&prefix=INDEX&group=core`

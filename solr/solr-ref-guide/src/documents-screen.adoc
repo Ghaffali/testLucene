@@ -22,7 +22,7 @@ Then choose the Document Type to define the type of document to load. The remain
 
 When using the JSON document type, the functionality is similar to using a requestHandler on the command line. Instead of putting the documents in a curl command, they can instead be input into the Document entry box. The document structure should still be in proper JSON format.
 
-Then you can choose when documents should be added to the index (Commit Within), whether existing documents should be overwritten with incoming documents with the same id (if this is not **true**, then the incoming documents will be dropped), and, finally, if a document boost should be applied.
+Then you can choose when documents should be added to the index (Commit Within), & whether existing documents should be overwritten with incoming documents with the same id (if this is not **true**, then the incoming documents will be dropped).
 
 This option will only add or overwrite documents to the index; for other update tasks, see the <<DocumentsScreen-SolrCommand,Solr Command>> option.
 

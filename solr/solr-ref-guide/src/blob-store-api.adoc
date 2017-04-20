@@ -8,16 +8,16 @@ When using the blob store, note that the API does not delete or overwrite a prev
 
 *The blob store is only available when running in SolrCloud mode.* Solr in standalone mode does not support use of a blob store.
 
-The blob store API is implemented as a requestHandler. A special collection named ".system" must be created as the collection that contains the blob store index.
+The blob store API is implemented as a requestHandler. A special collection named ".system" is used to store the blobs. This collection can be created in advance, but if it does not exist it will be created automatically.
 
-[[BlobStoreAPI-Createa.systemCollection]]
-=== Create a .system Collection
+[[BlobStoreAPI-Aboutthe.systemCollection]]
+=== About the .system Collection
 
-Before using the blob store, a special collection must be created and it must be named `.system`.
+Before uploading blobs to the blob store, a special collection must be created and it must be named `.system`. Solr will automatically create this collection if it does not already exist, but you can also create it manually if you choose.
 
 The BlobHandler is automatically registered in the .system collection. The `solrconfig.xml`, Schema, and other configuration files for the collection are automatically provided by the system and don't need to be defined specifically.
 
-If you do not use the `-shards` or `-replicationFactor` options, then defaults of 1 shard and 1 replica will be used.
+If you do not use the `-shards` or `-replicationFactor` options, then defaults of numShards=1 and replicationFactor=3 (or maximum nodes in the cluster) will be used.
 
 You can create the `.system` collection with the <<collections-api.adoc#collections-api,Collections API>>, as in this example:
 
@@ -26,8 +26,12 @@ You can create the `.system` collection with the <<collections-api.adoc#collecti
 curl "http://localhost:8983/solr/admin/collections?action=CREATE&name=.system&replicationFactor=2"
 ----
 
-image::images/icons/emoticons/warning.png[(warning)]
- Note that the `bin/solr` script cannot be used to create the `.system ` collection at this time. Also, please ensure that there is at least one collection created before creating the `.system` collection.
+[IMPORTANT]
+====
+
+The `bin/solr` script cannot be used to create the `.system ` collection at this time.
+
+====
 
 [[BlobStoreAPI-UploadFilestoBlobStore]]
 === Upload Files to Blob Store

@@ -663,7 +663,7 @@ This parser takes the following parameters:
 |q.operators a|
 Comma-separated list of names of parsing operators to enable. By default, all operations are enabled, and this parameter can be used to effectively disable specific operators as needed, by excluding them from the list. Passing an empty string with this parameter disables all operators.
 
-[cols=",,,",options="header",]
+[width="100%",cols="25%,25%,25%,25%",options="header",]
 |===
 |Name |Operator |Description |Example query
 |`AND` |`+` |Specifies AND |`token1+token2`
@@ -674,7 +674,17 @@ Comma-separated list of names of parsing operators to enable. By default, all op
 |`PRECEDENCE` |`( )` |Specifies precedence; tokens inside the parenthesis will be analyzed first. Otherwise, normal order is left to right. |`token1 + (token2 | token3)`
 |`ESCAPE` |`\` |Put it in front of operators to match them literally |`C\+\+`
 |`WHITESPACE` |space or` [\r\t\n]` |Delimits tokens on whitespace. If not enabled, whitespace splitting will not be performed prior to analysis – usually most desirable. Not splitting whitespace is a unique feature of this parser that enables multi-word synonyms to work. However, it probably actually won't unless synonyms are configured to normalize instead of expand to all that match a given synonym. Such a configuration requires normalizing synonyms at both index time and query time. Solr's analysis screen can help here. |`term1 term2`
-|`FUZZY` |`~N` |At the end of terms, specifies a fuzzy query |`term~1`
+|`FUZZY` a|
+`~`
+
+`~N`
+
+ a|
+At the end of terms, specifies a fuzzy query.
+
+"N" is optional and may be either "1" or "2" (the default)
+
+ |`term~1`
 |`NEAR` |`~N` |At the end of phrases, specifies a NEAR query |`"term1 term2"~5`
 |===
 
@@ -847,7 +857,7 @@ The XmlQParser implementation uses the {solr-javadocs}/solr-core/org/apache/solr
 [[OtherParsers-CustomizingXMLQueryParser]]
 === Customizing XML Query Parser
 
-You can configure your own custom query builders for additional XML elements. The custom builders need to extend the {solr-javadocs}/solr-core/org/apache/solr/search/SolrQueryBuilder.html[SolrQueryBuilder] class. Example solrconfig.xml snippet:
+You can configure your own custom query builders for additional XML elements. The custom builders need to extend the {solr-javadocs}/solr-core/org/apache/solr/search/SolrQueryBuilder.html[SolrQueryBuilder] or the {solr-javadocs}/solr-core/org/apache/solr/search/SolrSpanQueryBuilder.html[SolrSpanQueryBuilder] class. Example solrconfig.xml snippet:
 
 [source,xml]
 ----

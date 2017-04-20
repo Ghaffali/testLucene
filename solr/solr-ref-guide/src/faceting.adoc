@@ -57,8 +57,9 @@ The table below summarizes Solr's field value faceting parameters.
 |<<Faceting-Thefacet.mincountParameter,facet.mincount>> |Specifies the minimum counts required for a facet field to be included in the response.
 |<<Faceting-Thefacet.missingParameter,facet.missing>> |Controls whether Solr should compute a count of all matching results which have no value for the field, in addition to the term-based constraints of a facet field.
 |<<Faceting-Thefacet.methodParameter,facet.method>> |Selects the algorithm or method Solr should use when faceting a field.
-|<<Faceting-Thefacet.existsParameter,facet.exists>> |Caps facet counts by one. Available only for facet.method=enum as performance optimization.
-|<<Faceting-Thefacet.enum.cache.minDfParameter,facet.enum.cache.minDF>> |(Advanced) Specifies the minimum document frequency (the number of documents matching a term) for which the `filterCache` should be used when determining the constraint count for that term.
+|<<Faceting-Thefacet.existsParameter,facet.exists>> |Caps facet counts by one. Available only for `facet.method=enum` as performance optimization.
+|<<Faceting-Thefacet.excludeTermsParameter,facet.excludeTerms>> |Removes specific terms from facet counts. This allows you to exclude certain terms from faceting, while maintaining the terms in the index for general queries.
+|<<Faceting-Thefacet.enum.cache.minDfParameter,facet.enum.cache.minDf>> |(Advanced) Specifies the minimum document frequency (the number of documents matching a term) for which the `filterCache` should be used when determining the constraint count for that term.
 |<<Faceting-Over-RequestParameters,facet.overrequest.count>> |(Advanced) A number of documents, beyond the effective `facet.limit` to request from each shard in a distributed search
 |<<Faceting-Over-RequestParameters,facet.overrequest.ratio>> |(Advanced) A multiplier of the effective `facet.limit` to request from each shard in a distributed search
 |<<Faceting-Thefacet.threadsParameter,facet.threads>> |(Advanced) Controls parallel execution of field faceting
@@ -177,14 +178,19 @@ A value greater than zero decreases the filterCache's memory usage, but increase
 
 The default value is 0, causing the filterCache to be used for all terms in the field.
 
-This parameter can be specified on a per-field basis with the syntax of `f.<fieldname>.facet.enum.cache.minDF`.
+This parameter can be specified on a per-field basis with the syntax of `f.<fieldname>.facet.enum.cache.minDf`.
 
 [[Faceting-Thefacet.existsParameter]]
-=== The `facet.exists `Parameter
+=== The `facet.exists` Parameter
 
 To cap facet counts by 1 specify facet.exists=true. It can be used with facet.method=enum or when it's omitted. It can be used only on non-trie fields i.e. strings. It may speed up facet counting on large indices and/or high-cardinality facet values..
 
-This parameter can be specified on a per-field basis with the syntax of `f.<fieldname>.facet.exists` or via local parameter` facet.field={!facet.method=enum facet.exists=true}size`
+This parameter can be specified on a per-field basis with the syntax of `f.<fieldname>.facet.exists` or via local parameter` facet.field={!facet.method=enum facet.exists=true}size`.
+
+[[Faceting-Thefacet.excludeTermsParameter]]
+=== The `facet.excludeTerms` Parameter
+
+If you want to remove terms from facet counts but keep them in the index, the `facet.excludeTerms` parameter allows you to do that.
 
 [[Faceting-Over-RequestParameters]]
 === Over-Request Parameters
@@ -714,7 +720,7 @@ The parameter setting above causes the field facet results for the "doctype" fie
 [[Faceting-Limitingfacetwithcertainterms]]
 === Limiting facet with certain terms
 
-To limit field facet with certain terms specify them comma separated with `terms` local parameter. Commas and quotes in terms can be escaped with backslash \,. In this case facet is calculated on a way similar to `facet.method=enum` , but ignores `facet.enum.cache.minDf`. For example:
+To limit field facet with certain terms specify them comma separated with `terms` local parameter. Commas and quotes in terms can be escaped with backslash, as in `\,`. In this case facet is calculated on a way similar to `facet.method=enum` , but ignores `facet.enum.cache.minDf`. For example:
 
 `  facet.field={!terms='alfa,betta,with\,with\',with space'}symbol  `
 

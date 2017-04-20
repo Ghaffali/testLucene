@@ -30,12 +30,12 @@ Both Update Request Handler and Search Request Handler along with handlers like 
 |Attribute |Description
 |15minRateReqsPerSecond |Requests per second received over the past 15 minutes.
 |5minRateReqsPerSecond |Requests per second received over the past 5 minutes.
-|75thPcRequestTime |Request processing time for the request which belongs to the 75th Percentile. E.g. if 100 requests are received, then the 75th fastest request time will be reported by this statistic.
-|95thPcRequestTime |Request processing time in milliseconds for the request which belongs to the 95th Percentile. E.g. if 80 requests are received, then the 76th fastest request time will be reported in this statistic.
+|75thPcRequestTime |Request processing time for the request which belongs to the 75th Percentile. E.g., if 100 requests are received, then the 75th fastest request time will be reported by this statistic.
+|95thPcRequestTime |Request processing time in milliseconds for the request which belongs to the 95th Percentile. E.g., if 80 requests are received, then the 76th fastest request time will be reported in this statistic.
 |999thPcRequestTime |Request processing time in milliseconds for the request which belongs to the 99.9th Percentile. E.g., if 1000 requests are received, then the 999th fastest request time will be reported in this statistic.
-|99thPcRequestTime |Request processing time in milliseconds for the request which belongs to the 99th Percentile. E.g. if 200 requests are received, then the 198th fastest request time will be reported in this statistic.
+|99thPcRequestTime |Request processing time in milliseconds for the request which belongs to the 99th Percentile. E.g., if 200 requests are received, then the 198th fastest request time will be reported in this statistic.
 |avgRequestsPerSecond |Average number of requests received per second.
-|avgTimePerRequest |Average time taken for processing the requests.
+|avgTimePerRequest |Average time taken for processing the requests. This parameter will decay over time, with a bias toward activity in the last 5 minutes.
 |errors |Number of error encountered by handler.
 |clientErrors |Number of syntax errors/parse errors made by client while making requests.
 |handlerStart |Epoch time when the handler was registered.

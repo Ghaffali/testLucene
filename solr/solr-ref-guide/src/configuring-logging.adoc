@@ -58,8 +58,8 @@ There is also a way of sending REST commands to the logging endpoint to do the s
 curl -s http://localhost:8983/solr/admin/info/logging --data-binary "set=root:WARN&wt=json"
 ----
 
-[[ConfiguringLogging-Choosingloglevelatstartup]]
-== Choosing log level at startup
+[[ConfiguringLogging-ChoosingLogLevelatStartup]]
+== Choosing Log Level at Startup
 
 You can temporarily choose a different logging level as you start Solr. There are two ways:
 
@@ -94,6 +94,8 @@ log4j.appender.file.MaxFileSize=100MB
 Java Garabage Collection logs are rotated by the JVM when size hits 20M, for a max of 9 generations. Old GC logs are moved to `SOLR_LOGS_DIR/archived`. These settings can only be changed by editing the start scripts.
 
 On every startup of Solr, the start script will clean up old logs and rotate the main `solr.log` file. If you changed the `log4j.appender.file.MaxBackupIndex` setting in `log4j.properties`, you also need to change the corresponding setting `-rotate_solr_logs 9` in the start script.
+
+You can disable the automatic log rotation at startup by changing the setting `SOLR_LOG_PRESTART_ROTATION` found in `bin/solr.in.sh` or `bin/solr.in.cmd` to false.
 
 [[ConfiguringLogging-LoggingSlowQueries]]
 == Logging Slow Queries

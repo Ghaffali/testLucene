@@ -2,7 +2,7 @@
 :page-shortname: command-line-utilities
 :page-permalink: command-line-utilities.html
 
-Solr's Administration page (found by default at `http://hostname:8983/solr/`), provides a section with menu items for monitoring indexing and performance statistics, information about index distribution and replication, and information on all threads running in the JVM at the time. There is also a section where you can run queries, and an assistance area.
+Solr's Administration page (found by default at `http://hostname:8983/solr/` ), provides a section with menu items for monitoring indexing and performance statistics, information about index distribution and replication, and information on all threads running in the JVM at the time. There is also a section where you can run queries, and an assistance area.
 
 In addition, SolrCloud provides its own administration page (found at http://localhost:8983/solr/#/~cloud), as well as a few tools available via a ZooKeeper Command Line Utility (CLI). The CLI scripts found in `server/scripts/cloud-scripts` let you upload configuration information to ZooKeeper, in the same two ways that were shown in the examples in <<parameter-reference.adoc#parameter-reference,Parameter Reference>>. It also provides a few other commands that let you link collection sets to collections, make ZooKeeper paths or clear them, and download configurations from ZooKeeper to the local filesystem.
 
@@ -14,7 +14,7 @@ The `zkcli.sh` provided by Solr is not the same as the https://zookeeper.apache.
 
 ZooKeeper's `zkCli.sh` provides a completely general, application-agnostic shell for manipulating data in ZooKeeper. Solr's `zkcli.sh` – discussed in this section – is specific to Solr, and has command line arguments specific to dealing with Solr data in ZooKeeper.
 
-Many of the functions provided by the zkCli.sh script are also provided by the <<solr-control-script-reference.adoc#solr-control-script-reference,Solr Control Script Reference>>, which may be more familiar as the start script Zookeeper maintenance commands are very similar to Unix commands.
+Many of the functions provided by the zkCli.sh script are also provided by the <<solr-control-script-reference.adoc#solr-control-script-reference,Solr Control Script Reference>>, which may be more familiar as the start script ZooKeeper maintenance commands are very similar to Unix commands.
 
 ====
 
@@ -28,19 +28,21 @@ Both `zkcli.sh` (for Unix environments) and `zkcli.bat` (for Windows environment
 [width="100%",cols="34%,33%,33%",options="header",]
 |===
 |Short |Parameter Usage |Meaning
-| |`-cmd <arg>` |CLI Command to be executed: `bootstrap`, `upconfig`, `downconfig`, `linkconfig`, `makepath`, `get`, `getfile`, `put`, `putfile`, `list, ``clear `or` clusterprop`. This parameter is *mandatory*
+| |`-cmd <arg>` |CLI Command to be executed: `bootstrap`, `upconfig`, `downconfig`, `linkconfig`, `makepath`, `get`, `getfile`, `put`, `putfile`, `list`, `clear` or `clusterprop`. This parameter is **mandatory**.
 |`-z` |`-zkhost <locations>` |ZooKeeper host address. This parameter is *mandatory* for all CLI commands.
 |`-c` |`-collection <name>` |For `linkconfig`: name of the collection.
-|`-d` |`-confdir <path>` |For `upconfig`: a directory of configuration files. For downconfig: the destination of files pulled from Zookeeper
+|`-d` |`-confdir <path>` |For `upconfig`: a directory of configuration files. For downconfig: the destination of files pulled from ZooKeeper
 |`-h` |`-help` |Display help text.
-|`-n` |`-confname <arg>` |For `upconfig`, `linkconfig, downconfig`: name of the configuration set.
+|`-n` |`-confname <arg>` |For `upconfig`, `linkconfig`, `downconfig`: name of the configuration set.
 |`-r` |`-runzk <port>` |Run ZooKeeper internally by passing the Solr run port; only for clusters on one machine.
 |`-s` |`-solrhome <path>` |For `bootstrap` or when using `-runzk`: the *mandatory* solrhome location.
-| |`-name <name>` |For `clusterprop`: the **mandatory** cluster property name.
+| |`-name <name>` |For `clusterprop`: the *mandatory* cluster property name.
 | |`-val <value>` |For `clusterprop`: the cluster property value. If not specified, *null* will be used as value.
 |===
 
-The short form parameter options may be specified with a single dash (eg: `-c mycollection`). The long form parameter options may be specified using either a single dash (eg: `-collection mycollection`) or a double dash (eg: `--collection mycollection`)
+The short form parameter options may be specified with a single dash (eg: `-c mycollection`).
+
+The long form parameter options may be specified using either a single dash (eg: `-collection mycollection`) or a double dash (eg: `--collection mycollection`)
 
 [[CommandLineUtilities-ZooKeeperCLIExamples]]
 == ZooKeeper CLI Examples

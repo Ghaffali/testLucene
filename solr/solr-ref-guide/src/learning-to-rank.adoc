@@ -266,6 +266,12 @@ To view the features you just uploaded please open the following URL in a browse
 [
   {
     "store" : "myEfiFeatureStore",
+    "name" : "isPreferredManufacturer",
+    "class" : "org.apache.solr.ltr.feature.SolrFeature",
+    "params" : { "fq" : [ "{!field f=manu}${preferredManufacturer}" ] }
+  },
+  {
+    "store" : "myEfiFeatureStore",
     "name" : "userAnswerValue",
     "class" : "org.apache.solr.ltr.feature.ValueFeature",
     "params" : { "value" : "${answer:42}" }
@@ -292,8 +298,8 @@ As an aside, you may have noticed that the `myEfiFeatures.json` example uses `"s
 
 To extract `myEfiFeatureStore` features as part of a query, add `efi.*` parameters to the `[features]` part of the `fl` parameter, for example:
 
-* link:[] http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,score,%5Bfeatures%20store=myEfiFeatureStore%20efi.text=test%20efi.fromMobile=1%5D[http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,score,[features store=myEfiFeatureStore efi.text=test efi.fromMobile=1]]
-* link:[] http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,score,%5Bfeatures%20store=myEfiFeatureStore%20efi.text=test%20efi.fromMobile=0%20efi.answer=13%5D[http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,score,[features store=myEfiFeatureStore efi.text=test efi.fromMobile=0 efi.answer=13]]
+* link:[] http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,manu,score,%5Bfeatures%20store=myEfiFeatureStore%20efi.text=test%20efi.preferredManufacturer=Apache%20efi.fromMobile=1%5D[http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,manu,score,[features store=myEfiFeatureStore efi.text=test efi.preferredManufacturer=Apache efi.fromMobile=1]]
+* link:[] http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,manu,score,%5Bfeatures%20store=myEfiFeatureStore%20efi.text=test%20efi.preferredManufacturer=Apache%20efi.fromMobile=0%20efi.answer=13%5D[http://localhost:8983/solr/techproducts/query?q=test&fl=id,cat,manu,score,[features store=myEfiFeatureStore efi.text=test efi.preferredManufacturer=Apache efi.fromMobile=0 efi.answer=13]]
 
 [[LearningToRank-Uploadingamodel.1]]
 ==== Uploading a model
@@ -318,12 +324,14 @@ To view the model you just uploaded please open the following URL in a browser:
   "name" : "myEfiModel",
   "class" : "org.apache.solr.ltr.model.LinearModel",
   "features" : [
+    { "name" : "isPreferredManufacturer" },
     { "name" : "userAnswerValue" },
     { "name" : "userFromMobileValue" },
     { "name" : "userTextCat" }
   ],
   "params" : {
     "weights" : {
+      "isPreferredManufacturer" : 0.2,
       "userAnswerValue" : 1.0,
       "userFromMobileValue" : 1.0,
       "userTextCat" : 0.1
@@ -337,8 +345,8 @@ To view the model you just uploaded please open the following URL in a browser:
 
 To obtain the feature values computed during reranking, add `[features]` to the `fl` parameter and `efi.*` parameters to the `rq` parameter, for example:
 
-* http://localhost:8983/solr/techproducts/query?q=test&rq=%7B!ltr%20model=myEfiModel%20efi.text=test%20efi.fromMobile=1%7D&fl=id,cat,score,%5Bfeatures%5D[http://localhost:8983/solr/techproducts/query?q=test&rq=\{!ltr model=myEfiModel efi.text=test efi.fromMobile=1}&fl=id,cat,score,[features]] link:[]
-* link:[]http://localhost:8983/solr/techproducts/query?q=test&rq=%7B!ltr%20model=myEfiModel%20efi.text=test%20efi.fromMobile=0%20efi.answer=13%7D&fl=id,cat,score,%5Bfeatures%5D[http://localhost:8983/solr/techproducts/query?q=test&rq=\{!ltr model=myEfiModel efi.text=test efi.fromMobile=0 efi.answer=13}&fl=id,cat,score,[features]]
+* http://localhost:8983/solr/techproducts/query?q=test&rq=%7B!ltr%20model=myEfiModel%20efi.text=test%20efi.preferredManufacturer=Apache%20efi.fromMobile=1%7D&fl=id,cat,manu,score,%5Bfeatures%5D[http://localhost:8983/solr/techproducts/query?q=test&rq=\{!ltr model=myEfiModel efi.text=test efi.preferredManufacturer=Apache efi.fromMobile=1}&fl=id,cat,manu,score,[features]] link:[]
+* link:[]http://localhost:8983/solr/techproducts/query?q=test&rq=%7B!ltr%20model=myEfiModel%20efi.text=test%20efi.preferredManufacturer=Apache%20efi.fromMobile=0%20efi.answer=13%7D&fl=id,cat,manu,score,%5Bfeatures%5D[http://localhost:8983/solr/techproducts/query?q=test&rq=\{!ltr model=myEfiModel efi.text=test efi.preferredManufacturer=Apache efi.fromMobile=0 efi.answer=13}&fl=id,cat,manu,score,[features]]
 
 Notice the absence of `efi.*` parameters in the `[features]` part of the `fl` parameter.
 
@@ -347,7 +355,7 @@ Notice the absence of `efi.*` parameters in the `[features]` part of the `fl` pa
 
 To extract features for `myEfiFeatureStore`'s features whilst still reranking with `myModel`:
 
-* http://localhost:8983/solr/techproducts/query?q=test&rq=%7B!ltr%20model=myModel%7D&fl=id,score,%5Bfeatures%20store=myEfiFeatureStore%20efi.text=test%20efi.fromMobile=1%5D[http://localhost:8983/solr/techproducts/query?q=test&rq=\{!ltr model=myModel}&fl=id,score,[features store=myEfiFeatureStore efi.text=test efi.fromMobile=1]] link:[]
+* http://localhost:8983/solr/techproducts/query?q=test&rq=%7B!ltr%20model=myModel%7D&fl=id,cat,manu,score,%5Bfeatures%20store=myEfiFeatureStore%20efi.text=test%20efi.preferredManufacturer=Apache%20efi.fromMobile=1%5D[http://localhost:8983/solr/techproducts/query?q=test&rq=\{!ltr model=myModel}&fl=id,cat,manu,score,[features store=myEfiFeatureStore efi.text=test efi.preferredManufacturer=Apache efi.fromMobile=1]] link:[]
 
 Notice the absence of `efi.*` parameters in the `rq` parameter (because `myModel` does not use `efi` feature) and the presence of `efi.*` parameters in the `[features]` part of the `fl` parameter (because `myEfiFeatureStore` contains `efi` features).
 
@@ -356,12 +364,12 @@ Read more about model evolution in the <<LearningToRank-Lifecycle,Lifecycle>> se
 [[LearningToRank-Trainingexample]]
 === Training example
 
-Example training data and a demo 'train and upload model' script can be found in the `solr/contrib/ltr/example` folder in the https://git-wip-us.apache.org/repos/asf?p=lucene-solr.git[Apache lucene-solr git repository] which is mirrored on https://github.com/apache/lucene-solr/tree/releases/lucene-solr/6.4.0/solr/contrib/ltr/example[github.com].
+Example training data and a demo 'train and upload model' script can be found in the `solr/contrib/ltr/example` folder in the https://git-wip-us.apache.org/repos/asf?p=lucene-solr.git[Apache lucene-solr git repository] which is mirrored on https://github.com/apache/lucene-solr/tree/releases/lucene-solr/6.4.0/solr/contrib/ltr/example[github.com] (the `solr/contrib/ltr/example` folder is not shipped in the solr binary release).
 
 [[LearningToRank-Installation]]
 == Installation
 
-The ltr contrib module requires `dist/solr-ltr-*.jar` and all JARs under `contrib/ltr/lib`.
+The ltr contrib module requires the `dist/solr-ltr-*.jar` JARs.
 
 [[LearningToRank-Configuration]]
 == Configuration
@@ -375,7 +383,6 @@ Learning-To-Rank is a contrib module and therefore its plugins must be configure
 
 [source,xml]
 ----
-<lib dir="${solr.install.dir:../../../..}/contrib/ltr/lib/" regex=".*\.jar" />
 <lib dir="${solr.install.dir:../../../..}/dist/" regex="solr-ltr-\d.*\.jar" />
 ----
 
@@ -517,6 +524,11 @@ To delete the `currentFeatureStore` feature store:
 ----
 curl -XDELETE 'http://localhost:8983/solr/techproducts/schema/feature-store/currentFeatureStore'
 ----
+
+[[LearningToRank-Applyingchanges]]
+=== Applying changes
+
+The feature store and the model store are both <<managed-resources.adoc#managed-resources,Managed Resources>>. Changes made to managed resources are not applied to the active Solr components until the Solr collection (or Solr core in single server mode) is reloaded.
 
 [[LearningToRank-Examples]]
 === Examples

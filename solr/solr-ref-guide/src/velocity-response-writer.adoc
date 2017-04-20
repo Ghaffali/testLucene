@@ -87,14 +87,14 @@ Output will be in this format (with v.json=wrf):
 |Context reference |Description
 |request |http://lucene.apache.org/solr/api/org/apache/solr/request/SolrQueryRequest.html[SolrQueryRequest] javadocs
 |response |http://lucene.apache.org/solr/api/org/apache/solr/client/solrj/response/QueryResponse.html[QueryResponse] most of the time, but in some cases where https://wiki.apache.org/solr/QueryResponse[QueryResponse] doesn't like the request handlers output (https://wiki.apache.org/solr/AnalysisRequestHandler[AnalysisRequestHandler], for example, causes a ClassCastException parsing "response"), the response will be a https://wiki.apache.org/solr/SolrResponseBase[SolrResponseBase] object.
-|esc |A Velocity http://velocity.apache.org/tools/releases/1.4/generic/EscapeTool.html[EscapeTool] instance
-|date |A Velocity http://velocity.apache.org/tools/releases/1.4/javadoc/org/apache/velocity/tools/generic/ComparisonDateTool.html[ComparisonDateTool] instance
-|list |A Velocity http://velocity.apache.org/tools/releases/1.4/javadoc/org/apache/velocity/tools/generic/ListTool.html[ListTool] instance
-|math |A Velocity http://velocity.apache.org/tools/releases/1.4/generic/MathTool.html[MathTool] instance
-|number |A Velocity http://velocity.apache.org/tools/releases/1.4/javadoc/org/apache/velocity/tools/generic/NumberTool.html[NumberTool] instance
-|sort |A Velocity http://velocity.apache.org/tools/releases/1.4/javadoc/org/apache/velocity/tools/generic/SortTool.html[SortTool] instance
-|display |A Velocity https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/DisplayTool.html[DisplayTool] instance
-|resource |A Velocity https://velocity.apache.org/tools/releases/2.0/javadoc/org/apache/velocity/tools/generic/ResourceTool.html[ResourceTool] instance
+|esc |A Velocity http://velocity.apache.org/tools/2.0/tools-summary.html#EscapeTool[EscapeTool] instance
+|date |A Velocity http://velocity.apache.org/tools/2.0/tools-summary.html#ComparisonDateTool[ComparisonDateTool] instance
+|list |A Velocity http://velocity.apache.org/tools/2.0/apidocs/org/apache/velocity/tools/generic/ListTool.html[ListTool] instance
+|math |A Velocity http://velocity.apache.org/tools/2.0/tools-summary.html#MathTool[MathTool] instance
+|number |A Velocity http://velocity.apache.org/tools/2.0/tools-summary.html#NumberTool[NumberTool] instance
+|sort |A Velocity http://velocity.apache.org/tools/2.0/tools-summary.html#SortTool[SortTool] instance
+|display |A Velocity http://velocity.apache.org/tools/2.0/tools-summary.html#DisplayTool[DisplayTool] instance
+|resource |A Velocity http://velocity.apache.org/tools/2.0/tools-summary.html#ResourceTool[ResourceTool] instance
 |engine |The current VelocityEngine instance
 |page |An instance of Solr's PageTool (only included if the response is a QueryResponse where paging makes sense)
 |debug |A shortcut to the debug part of the response, or null if debug is not on. This is handy for having debug-only sections in a template using `#if($debug)...#end`
