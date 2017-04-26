@@ -1,0 +1,34 @@
+= Publishing Process
+
+// A lot of this was copied from https://wiki.apache.org/lucene-java/ReleaseTodo#Website_.2B-.3D_javadocs. See that section for explanations for why some steps are required.
+
+== Publishing HTML Version
+
+=== Update extpaths.txt
+
+. Checkout CMS trunk: `svn co --depth=immediates https://svn.apache.org/repos/asf/lucene/cms/trunk/content website-source` ('content' is a very generic name. So, we check it out to a self-explanatory name such as 'website-source')
+. `cd website-source`
+. Add Guide branch dir: `echo solr/guide/X_Y_Z >> extpaths.txt`
+. Commit changes `svn commit -m "Update CMS production sync exceptions for X_Y_Z Guide" extpaths.txt`
+// Do we need to do this? copied from ReleaseTodo
+. Optionally, you can then delete the CMS checkout:
+[source]
+cd ..
+rm -rf website-source
+
+
+=== Push Guide to CMS Production
+
+Go to the checkout directory where you have built the Guide and push the documentation via subversion import. Example:
+`svn -m "Add Ref Guide for Solr 6.5" import <checkoutroot>/solr/build/solr-ref-guide/html-site https://svn.apache.org/repos/infra/websites/production/lucene/content/solr/guide/6_5`
+
+Confirm you can browse to these URLs manually, and especially that solr javadocs link back to lucene's correctly. Example:
+https://lucene.apache.org/solr/guide/6_5
+
+=== Update Ref Guide Landing Page
+
+Update the landing page at https://lucene.apache.org/solr/guide to link to the newest version.
+
+// TODO:
+// - figure out process for updating guide
+// - decide if an automatic redirect is required
