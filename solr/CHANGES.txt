@@ -64,6 +64,11 @@ Upgrading from Solr 6.x
   registries as hierarchical MBeans. This behavior can be also disabled by specifying a SolrJmxReporter
   configuration with a boolean init arg "enabled" set to "false". For a more fine-grained control users
   should explicitly specify at least one SolrJmxReporter configuration.
+  
+* The sow (split-on-whitespace) request param now defaults to false (true in previous versions).
+  This affects the edismax and standard/"lucene" query parsers: if the sow param is not specified,
+  query text will not be split on whitespace before analysis. See
+  https://lucidworks.com/2017/04/18/multi-word-synonyms-solr-adds-query-time-support/ .
 
 New Features
 ----------------------
@@ -77,6 +82,8 @@ New Features
 * SOLR-10356: Adds basic math Streaming Evaluators (Dennis Gove)
 
 * SOLR-10393: Adds UUID Streaming Evaluator (Dennis Gove)
+
+* SOLR-10046: Add UninvertDocValuesMergePolicyFactory class. (Keith Laban, Christine Poerschke)
 
 Bug Fixes
 ----------------------
@@ -119,7 +126,8 @@ Other Changes
 
 * SOLR-10557: Make "compact" format default for /admin/metrics. (ab)
 
-----------------------
+* SOLR-10310: By default, stop splitting on whitespace prior to analysis
+  in edismax and standard/"lucene" query parsers. (Steve Rowe)
 
 ==================  6.6.0 ==================
 
@@ -151,8 +159,6 @@ New Features
 
 * SOLR-9992: Add support for grouping with PointFIelds. (Cao Manh Dat)
 
-* SOLR-10046: Add UninvertDocValuesMergePolicyFactory class. (Keith Laban, Christine Poerschke)
-
 * SOLR-9994: Add support for CollapseQParser with PointFields. (Varun Thacker, Cao Manh Dat)
 
 * SOLR-10076: Hide keystore and truststore passwords from /admin/info/* outputs. (Mano Kovacs via Mark Miller)
@@ -182,6 +188,8 @@ New Features
   (Rustam Hashimov, yonik)
 
 * SOLR-10505: Add multi-field support to TermsComponent when requesting terms' statistics. (Shai Erera)
+
+* SOLR-10537: SolrJ: Added SolrParams.toLocalParamsString() and ClientUtils.encodeLocalParamVal. (David Smiley)
 
 Optimizations
 ----------------------
@@ -242,6 +250,8 @@ Bug Fixes
   ignore mincount > 1 for non-distributed requests. (yonik)
 
 * SOLR-10520: child.facet.field doubled counts at least when rows>0. (Dr. Oleg Savrasov via Mikhail Khludnev) 
+
+* SOLR-10480: Full pagination in JSON Facet API using offset does not work. (yonik)
 
 Other Changes
 ----------------------
