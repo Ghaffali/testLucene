@@ -186,7 +186,7 @@ public class SolrDispatchFilter extends BaseSolrFilter {
 
   private void setupJvmMetrics()  {
     SolrMetricManager metricManager = cores.getMetricManager();
-    final Set<String> hiddenSysProps = cores.getConfig().getHiddenSysProps();
+    final Set<String> hiddenSysProps = cores.getConfig().getMetricsConfig().getHiddenSysProps();
     try {
       String registry = SolrMetricManager.getRegistryName(SolrInfoBean.Group.jvm);
       metricManager.registerAll(registry, new AltBufferPoolMetricSet(), true, "buffers");
