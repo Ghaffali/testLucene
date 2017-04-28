@@ -4,7 +4,7 @@
 
 == Publishing HTML Version
 
-=== Update extpaths.txt
+=== Step 1: Update extpaths.txt
 
 . Checkout CMS trunk: `svn co --depth=immediates https://svn.apache.org/repos/asf/lucene/cms/trunk/content website-source` ('content' is a very generic name. So, we check it out to a self-explanatory name such as 'website-source')
 .. If you already have this checked out, you can simply do `svn up` to update to the latest revision.
@@ -18,7 +18,7 @@ cd ..
 rm -rf website-source
 
 
-=== Push Guide to CMS Production
+=== Step 2: Push Guide to CMS Production
 
 Go to the checkout directory where you have built the Guide and push the documentation via subversion import. You must push it to the path you just added to `extpaths.txt`, so if the path you added was `solr/guide/6.5`, you'll use the path as shown in the below example:
 
@@ -27,9 +27,17 @@ Go to the checkout directory where you have built the Guide and push the documen
 Confirm you can browse to these URLs manually, and especially that solr javadocs link back to lucene's correctly. Example:
 https://lucene.apache.org/solr/guide/6_5
 
+=== Step 3: Push Staging extpaths.txt to Production
+
+The `extpaths.txt` works by listing paths that should be ignored when the CMS syncs the staging and production repositories. Publishing staging to production will only succeed if the paths listed in `extpaths.txt` exist in production. At the same time, if a path exists in production but not in staging it will be deleted unless it is defined in `extpaths.txt`. After pushing the content to production, check that the `extpaths.txt` in production includes the proper path to ensure that the Guide is not deleted incorrectly. If it does not exist in production, try to publish the site again to make sure it is updated.
+
+Production URL: https://lucene.apache.org/extpaths.txt
+
 === Update Ref Guide Landing Page
 
 Update the landing page at https://lucene.apache.org/solr/guide to link to the newest version.
+
+You can use the CMS system for this since it is a small change, or you can edit the file locally and commit it to the staging repo.
 
 // TODO:
 // - figure out process for updating landing page
