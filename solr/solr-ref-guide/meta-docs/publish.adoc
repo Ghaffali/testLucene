@@ -48,4 +48,4 @@ If you need to re-publish an existing online copy of the Guide, you will need to
 . Commit the changes: `svn commit -m "Update production 6.5 Ref Guide"`
 
 // TODO:
-// - decide if an automatic redirect is required
+// - figure out if redirects in .htaccess require any work here (probably)
