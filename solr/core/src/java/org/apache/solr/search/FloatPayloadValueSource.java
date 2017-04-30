@@ -20,7 +20,6 @@ package org.apache.solr.search;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.lucene.analysis.payloads.PayloadHelper;
 import org.apache.lucene.index.Fields;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PostingsEnum;
@@ -29,7 +28,6 @@ import org.apache.lucene.index.TermsEnum;
 import org.apache.lucene.queries.function.FunctionValues;
 import org.apache.lucene.queries.function.ValueSource;
 import org.apache.lucene.queries.function.docvalues.FloatDocValues;
-import org.apache.lucene.queries.payloads.MaxPayloadFunction;
 import org.apache.lucene.queries.payloads.PayloadFunction;
 import org.apache.lucene.search.DocIdSetIterator;
 import org.apache.lucene.util.BytesRef;
@@ -195,27 +193,29 @@ public class FloatPayloadValueSource extends ValueSource {
     return name() + '(' + field + ',' + val + ',' + defaultValueSource.toString() + ')';
   }
 
-
-  // TODO: fix up equals and hashCode
-
-
   @Override
-  public boolean equals(Object o) { // nocommit: needs update?
+  public boolean equals(Object o) {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
     FloatPayloadValueSource that = (FloatPayloadValueSource) o;
 
-    if (indexedField != null ? !indexedField.equals(that.indexedField) : that.indexedField != null) return false;
-    return indexedBytes != null ? indexedBytes.equals(that.indexedBytes) : that.indexedBytes == null;
+    if (!indexedField.equals(that.indexedField)) return false;
+    if (indexedBytes != null ? !indexedBytes.equals(that.indexedBytes) : that.indexedBytes != null) return false;
+    if (!decoder.equals(that.decoder)) return false;
+    if (payloadFunction != null ? !payloadFunction.equals(that.payloadFunction) : that.payloadFunction != null)
+      return false;
+    return defaultValueSource.equals(that.defaultValueSource);
 
   }
 
   @Override
-  public int hashCode() {   // nocommit: needs update?
-    int result = indexedField != null ? indexedField.hashCode() : 0;
+  public int hashCode() {
+    int result = indexedField.hashCode();
     result = 31 * result + (indexedBytes != null ? indexedBytes.hashCode() : 0);
+    result = 31 * result + decoder.hashCode();
+    result = 31 * result + (payloadFunction != null ? payloadFunction.hashCode() : 0);
+    result = 31 * result + defaultValueSource.hashCode();
     return result;
   }
-
 }
