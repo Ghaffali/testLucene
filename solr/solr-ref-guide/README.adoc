@@ -7,12 +7,12 @@ Raw content is stored in Asciidoc (`.adoc`) formated files in the `src/` directo
 These files are processed with AsciiDoctor in 2 different ways:
 
 * Via 'Jekyll' to build an HTML browsable version of the Ref Guide
-** Prerequisites: `ruby` and the following gems must be installed:
+** Prerequisites: `Ruby` and the following gems must be installed:
 *** `jekyll`
 *** `jekyll-asciidoc`
 *** `pygments.rb`
 * Via `asciidoctor-ant` to build the officially released PDF version of the Ref Guide
-** Prerequisites: None (except for those required to use the Lucene/Solr build: Java, Ant) 
+** Prerequisites: None (except for those required to use the Lucene/Solr build: Java, Ant)
 
 For details on building the ref guide, see `ant -p`.
 
