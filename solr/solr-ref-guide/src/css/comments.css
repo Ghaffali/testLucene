@@ -156,3 +156,9 @@
 .apaste_honeypot {
 	display: none;
 }
+
+//* Remove external link icons when they appear in comments *//
+a[href^="http://"]:after,
+a[href^="https://"]:after {
+   content: none !important;
+}
