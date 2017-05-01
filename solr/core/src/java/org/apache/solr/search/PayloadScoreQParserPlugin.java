@@ -70,8 +70,7 @@ public class PayloadScoreQParserPlugin extends QParserPlugin {
 
         FieldType ft = req.getCore().getLatestSchema().getFieldType(field);
         Analyzer analyzer = ft.getQueryAnalyzer();
-        SpanQuery query = null;
-        query = createSpanQuery(field, value, analyzer);
+        SpanQuery query = PayloadUtils.createSpanQuery(field, value, analyzer);
 
         if (query == null) {
           throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "SpanQuery is null");
@@ -84,34 +83,5 @@ public class PayloadScoreQParserPlugin extends QParserPlugin {
         return new PayloadScoreQuery(query, payloadFunction, includeSpanScore);
       }
     };
-  }
-
-  private SpanQuery createSpanQuery(String field, String value, Analyzer analyzer) {
-    SpanQuery query;
-    try {
-      // adapted this from QueryBuilder.createSpanQuery (which isn't currently public) and added reset(), end(), and close() calls
-      TokenStream in = analyzer.tokenStream(field, value);
-      in.reset();
-
-      TermToBytesRefAttribute termAtt = in.getAttribute(TermToBytesRefAttribute.class);
-
-      List<SpanTermQuery> terms = new ArrayList<>();
-      while (in.incrementToken()) {
-        terms.add(new SpanTermQuery(new Term(field, termAtt.getBytesRef())));
-      }
-      in.end();
-      in.close();
-
-      if (terms.isEmpty()) {
-        query = null;
-      } else if (terms.size() == 1) {
-        query = terms.get(0);
-      } else {
-        query = new SpanNearQuery(terms.toArray(new SpanTermQuery[terms.size()]), 0, true);
-      }
-    } catch (IOException e) {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
-    }
-    return query;
   }
 }

@@ -17,22 +17,33 @@
 
 package org.apache.solr.util;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.TokenStream;
 import org.apache.lucene.analysis.payloads.DelimitedPayloadTokenFilterFactory;
 import org.apache.lucene.analysis.payloads.NumericPayloadTokenFilterFactory;
 import org.apache.lucene.analysis.payloads.PayloadHelper;
+import org.apache.lucene.analysis.tokenattributes.TermToBytesRefAttribute;
 import org.apache.lucene.analysis.util.TokenFilterFactory;
+import org.apache.lucene.index.Term;
 import org.apache.lucene.queries.payloads.AveragePayloadFunction;
 import org.apache.lucene.queries.payloads.MaxPayloadFunction;
 import org.apache.lucene.queries.payloads.MinPayloadFunction;
 import org.apache.lucene.queries.payloads.PayloadFunction;
 import org.apache.lucene.search.similarities.Similarity;
+import org.apache.lucene.search.spans.SpanNearQuery;
+import org.apache.lucene.search.spans.SpanQuery;
+import org.apache.lucene.search.spans.SpanTermQuery;
 import org.apache.lucene.util.BytesRef;
 import org.apache.solr.analysis.TokenizerChain;
+import org.apache.solr.common.SolrException;
 import org.apache.solr.schema.FieldType;
 
 public class PayloadUtils {
-  private static String getPayloadEncoder(FieldType fieldType) {
+  public static String getPayloadEncoder(FieldType fieldType) {
     // TODO: support custom payload encoding fields too somehow - maybe someone has a custom component that encodes payloads as floats
     String encoder = null;
     Analyzer a = fieldType.getIndexAnalyzer();
@@ -89,5 +100,35 @@ public class PayloadUtils {
 
     return payloadFunction;
   }
+
+  public static SpanQuery createSpanQuery(String field, String value, Analyzer analyzer) {
+    SpanQuery query;
+    try {
+      // adapted this from QueryBuilder.createSpanQuery (which isn't currently public) and added reset(), end(), and close() calls
+      TokenStream in = analyzer.tokenStream(field, value);
+      in.reset();
+
+      TermToBytesRefAttribute termAtt = in.getAttribute(TermToBytesRefAttribute.class);
+
+      List<SpanTermQuery> terms = new ArrayList<>();
+      while (in.incrementToken()) {
+        terms.add(new SpanTermQuery(new Term(field, termAtt.getBytesRef())));
+      }
+      in.end();
+      in.close();
+
+      if (terms.isEmpty()) {
+        query = null;
+      } else if (terms.size() == 1) {
+        query = terms.get(0);
+      } else {
+        query = new SpanNearQuery(terms.toArray(new SpanTermQuery[terms.size()]), 0, true);
+      }
+    } catch (IOException e) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
+    }
+    return query;
+  }
+
 
 }
