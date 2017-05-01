@@ -451,12 +451,9 @@ valued. -->
   <!-- For testing payload function -->
   <dynamicField name="*_dp" type="delimited_payloads" indexed="true" stored="true" multiValued="false"/>
   <fieldType name="delimited_payloads" class="solr.TextField" positionIncrementGap="100">
-    <analyzer type="index">
+    <analyzer>
       <tokenizer class="solr.MockTokenizerFactory"/>
       <filter class="solr.DelimitedPayloadTokenFilterFactory" encoder="float"/>
-    </analyzer>
-    <analyzer type="query">
-      <tokenizer class="solr.MockTokenizerFactory" pattern="keyword"/>
     </analyzer>
   </fieldType>
 
