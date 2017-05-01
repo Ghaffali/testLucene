@@ -13,7 +13,7 @@ More info: http://asciidoctor.org/docs/user-manual/#bold-and-italic
 
 === Italics
 
-Use underlines to put text into _italics_.
+Use underlines on either side of a string to put text into _italics_.
 
 More info: http://asciidoctor.org/docs/user-manual/#bold-and-italic
 
