@@ -184,7 +184,7 @@ You can use the CMS system for this since it is a small change, or you can edit 
 If you need to re-publish an existing online copy of the Guide, you will need to checkout the production website repository and use `svn add` and `svn commit` to overwrite the existing files:
 
 . Chekcout the production repo: `svn co https://svn.apache.org/repos/infra/websites/production/lucene/content`
-. Copy the files from the build location to the correct sub-directory under `solr/guide`. For example, if we needed to replace the current Guide for Solr 6.5, we'd do `cp -r <checkoutroot>solr/build/html-site solr/guide/6_5`
+. Copy the files from the build location to the correct sub-directory under `solr/guide`. For example, if we needed to replace the current Guide for Solr 6.5, we'd do `cp -r <checkoutroot>/solr/build/html-site solr/guide/6_5`
 . Add the files: `svn add`
 . Commit the changes: `svn commit -m "Update production 6.5 Ref Guide"`
 
