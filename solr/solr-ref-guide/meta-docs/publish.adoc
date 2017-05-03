@@ -139,8 +139,8 @@ If you have the required dependencies on your local machine, you can build the H
 //TODO update Jenkins link
 If you do not have the required dependencies, and don't choose to install them, you can download the files from the Jenkins (https://builds.apache.org/job/Solr-reference-guide-jira-SOLR-10290/lastSuccessfulBuild/artifact/solr/build/solr-ref-guide/html-site/[Solr Reference Guide job]).
 
-// A lot of this was copied from https://wiki.apache.org/lucene-java/ReleaseTodo#Website_.2B-.3D_javadocs. See that section for explanations for why some steps are required.
 === Publish a New Guide
+// A lot of this was copied from https://wiki.apache.org/lucene-java/ReleaseTodo#Website_.2B-.3D_javadocs. See that section for explanations for why some steps are required.
 
 ==== Step 1: Update extpaths.txt in CMS Staging
 
@@ -181,11 +181,15 @@ You can use the CMS system for this since it is a small change, or you can edit 
 
 === Update a Published Guide
 
-If you need to re-publish an existing online copy of the Guide, you will need to checkout the production website repository and use `svn add` and `svn commit` to overwrite the existing files:
+If you need to re-publish an existing online copy of the Guide, you will need to checkout the directory in production website repository and overwrite the existing files:
 
-. Chekcout the production repo: `svn co https://svn.apache.org/repos/infra/websites/production/lucene/content`
-. Copy the files from the build location to the correct sub-directory under `solr/guide`. For example, if we needed to replace the current Guide for Solr 6.5, we'd do `cp -r <checkoutroot>/solr/build/html-site solr/guide/6_5`
-. Add the files: `svn add`
+. Build the new HTML files locally (`ant clean build-site`), or download them from Jenkins.
+. Checkout the directory you need to update from the production repo: `svn co https://svn.apache.org/repos/infra/websites/production/lucene/content/solr/guide/<dir>`.
+* This command checks out the Guide version directory into a local subdirectory with the same name as the version (such as "6_5"). You can provide a better name locally if you prefer by adding it to the end of the command shown above.
+* Don't shortcut this and download the whole production website. It will take an incredibly long time and that will feel like _forever_.
+. Copy the files from the build location to the checked out Guide directory. For example, if we needed to replace the current Guide for Solr 6.5, we'd do `cp -r <checkoutroot>/solr/build/html-site 6_5/.`
+. Use `svn status` to see the files modified.
+. If there are any pages added or deleted, use `svn add <file>` or `svn rm <file>` as needed.
 . Commit the changes: `svn commit -m "Update production 6.5 Ref Guide"`
 
 // TODO:

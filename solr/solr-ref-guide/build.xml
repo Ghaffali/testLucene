@@ -44,7 +44,7 @@
   <property name="lucene-javadocs" value="https://lucene.apache.org/core/${solr-docs-version-path}/" />
 
   <property name="build.content.dir" location="${build.dir}/content" />
-  <property name="main-page" value="apache-solr-reference-guide" />
+  <property name="main-page" value="index" />
   <property name="pdf-filename" value="apache-solr-ref-guide-${solr-docs-version}.pdf" />
 
   <!-- ====== TOOLS FOR GENERATING/VALIDATING BITS OF THE SITE / PDF ======= -->
