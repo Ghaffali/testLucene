@@ -2,7 +2,9 @@
 :page-shortname: config-api
 :page-permalink: config-api.html
 
-The Config API enables manipulating various aspects of your `solrconfig.xml` using REST-like API calls. This feature is enabled by default and works similarly in both SolrCloud and standalone mode. Many commonly edited properties (such as cache sizes and commit settings) and request handler definitions can be changed with this API.
+The Config API enables manipulating various aspects of your `solrconfig.xml` using REST-like API calls.
+
+This feature is enabled by default and works similarly in both SolrCloud and standalone mode. Many commonly edited properties (such as cache sizes and commit settings) and request handler definitions can be changed with this API.
 
 When using this API, `solrconfig.xml` is not changed. Instead, all edited configuration is stored in a file called `configoverlay.json`. The values in `configoverlay.json` override the values in `solrconfig.xml`.
 
@@ -34,7 +36,7 @@ To further restrict returned results to a single component within a top level se
 
 [source,bash]
 ----
-curl http://localhost:8983/solr/techproducts/config/requestHandler?componentName=/select 
+curl http://localhost:8983/solr/techproducts/config/requestHandler?componentName=/select
 ----
 
 [[ConfigAPI-Commandstomodifytheconfig]]
@@ -106,7 +108,11 @@ The properties that are configured with these commands are predefined and listed
 
 Custom request handlers, search components, and other types of localized Solr components (such as custom query parsers, update processors, etc.) can be added, updated and deleted with specific commands for the component being modified.
 
-The syntax is similar in each case: `add-<component-name>`, `update-<component-name>`, and `delete-<component-name>`. Please note that the command name is not case sensitive, so `Add-RequestHandler`, `ADD-REQUESTHANDLER` and `add-requesthandler` are all equivalent. In each case, `add-`commands add the new configuration to `configoverlay.json`, which will override any other settings for the component in `solrconfig.xml`; `update-` commands overwrite an existing setting in `configoverlay.json`; and `delete-` commands remove the setting from `configoverlay.json`. Settings removed from `configoverlay.json` are not removed from `solrconfig.xml`.
+The syntax is similar in each case: `add-<component-name>`, `update-<component-name>`, and `delete-<component-name>`. The command name is not case sensitive, so `Add-RequestHandler`, `ADD-REQUESTHANDLER` and `add-requesthandler` are all equivalent.
+
+In each case, `add-` commands add the new configuration to `configoverlay.json`, which will override any other settings for the component in `solrconfig.xml`; `update-` commands overwrite an existing setting in `configoverlay.json`; and `delete-` commands remove the setting from `configoverlay.json`.
+
+Settings removed from `configoverlay.json` are not removed from `solrconfig.xml`.
 
 The full list of available commands follows below:
 
@@ -158,24 +164,22 @@ These commands allow registering more advanced customizations to Solr:
 
 See the section <<ConfigAPI-CreatingandUpdatingRequestHandlers,Creating and Updating Request Handlers>> below for examples of using these commands.
 
-// OLD_CONFLUENCE_ID: ConfigAPI-Whatabout<updateRequestProcessorChain>?
-
 [[ConfigAPI-Whatabout_updateRequestProcessorChain_]]
-==== What about <`updateRequestProcessorChain>`?
+==== What about updateRequestProcessorChain?
 
-The Config API does not let you create or edit `<updateRequestProcessorChain>` elements. However, it is possible to create `<updateProcessor>` entries and can use them by name to create a chain.
+The Config API does not let you create or edit `updateRequestProcessorChain` elements. However, it is possible to create `updateProcessor` entries and can use them by name to create a chain.
 
 example:
 
 [source,bash]
 ----
 curl http://localhost:8983/solr/techproducts/config -H 'Content-type:application/json' -d '{
-"add-updateprocessor" : { "name" : "firstFld", 
-                          "class": "solr.FirstFieldValueUpdateProcessorFactory", 
+"add-updateprocessor" : { "name" : "firstFld",
+                          "class": "solr.FirstFieldValueUpdateProcessorFactory",
                           "fieldName":"test_s"}}'
 ----
 
-You can use this directly in your request by adding a parameter in the `<updateRequestProcessorChain>` for the specific update processor called `processor=firstFld`.
+You can use this directly in your request by adding a parameter in the `updateRequestProcessorChain` for the specific update processor called `processor=firstFld`.
 
 [[ConfigAPI-CommandsforUser-DefinedProperties]]
 === Commands for User-Defined Properties
@@ -187,7 +191,9 @@ Solr lets users templatize the `solrconfig.xml` using the place holder format `$
 
 The structure of the request is similar to the structure of requests using other commands, in the format of `"command":{"variable_name":"property_value"}`. You can add more than one variable at a time if necessary.
 
-For more information about user-defined properties, see the section <<configuring-solrconfig-xml.adoc#Configuringsolrconfig.xml-Userdefinedpropertiesfromcore.properties,User defined properties from core.properties>>. See also the section <<ConfigAPI-CreatingandUpdatingUser-DefinedProperties,Creating and Updating User-Defined Properties>> below for examples of how to use this type of command.
+For more information about user-defined properties, see the section <<configuring-solrconfig-xml.adoc#Configuringsolrconfig.xml-Userdefinedpropertiesfromcore.properties,User defined properties from core.properties>>.
+
+See also the section <<ConfigAPI-CreatingandUpdatingUser-DefinedProperties,Creating and Updating User-Defined Properties>> below for examples of how to use this type of command.
 
 [[ConfigAPI-HowtoMapsolrconfig.xmlPropertiestoJSON]]
 == How to Map `solrconfig.xml` Properties to JSON
@@ -204,7 +210,7 @@ Here is what a request handler looks like in `solrconfig.xml`:
     <str name="wt">json</str>
     <str name="indent">true</str>
   </lst>
-</requestHandler> 
+</requestHandler>
 ----
 
 The same request handler defined with the Config API would look like this:
@@ -224,7 +230,7 @@ The same request handler defined with the Config API would look like this:
 }
 ----
 
-The QueryElevationComponent searchComponent in `solrconfig.xml `looks like this:
+The QueryElevationComponent searchComponent in `solrconfig.xml` looks like this:
 
 [source,xml]
 ----
@@ -352,7 +358,7 @@ The Config API always allows changing the configuration of any component by name
 [[ConfigAPI-CreatingandUpdatingCommonProperties]]
 === Creating and Updating Common Properties
 
-This change sets the `query.filterCache.autowarmCount`to 1000 items and unsets the `query.filterCache.size`.
+This change sets the `query.filterCache.autowarmCount` to 1000 items and unsets the `query.filterCache.size`.
 
 [source,bash]
 ----
@@ -383,7 +389,7 @@ And you should get a response like this:
 [[ConfigAPI-CreatingandUpdatingRequestHandlers]]
 === Creating and Updating Request Handlers
 
-To create a request handler, we can use the `add-requesthandler `command:
+To create a request handler, we can use the `add-requesthandler` command:
 
 [source,bash]
 ----
@@ -406,7 +412,7 @@ curl http://localhost:8983/solr/techproducts/mypath?omitHeader=true
 
 And you should see the following as output:
 
-[source,javascript]
+[source,json]
 ----
 {
   "params":{
@@ -417,18 +423,18 @@ And you should see the following as output:
   "context":{
     "webapp":"/solr",
     "path":"/mypath",
-    "httpMethod":"GET"}} 
+    "httpMethod":"GET"}}
 ----
 
-To update a request handler, you should use the `update-requesthandler `command :
+To update a request handler, you should use the `update-requesthandler` command :
 
 [source,bash]
 ----
 curl http://localhost:8983/solr/techproducts/config -H 'Content-type:application/json'  -d '{
   "update-requesthandler": {
     "name": "/mypath",
-    "class":"solr.DumpRequestHandler", 
-    "defaults": { "x":"new value for X", "wt":"json", "indent":true },
+    "class":"solr.DumpRequestHandler",
+    "defaults": {"x":"new value for X", "wt":"json", "indent":true},
     "useParams":"x"
   }
 }'
@@ -442,7 +448,7 @@ curl http://localhost:8983/solr/techproducts/config -H 'Content-type:application
   "add-requesthandler": {
     "name": "/myterms",
     "class":"solr.SearchHandler",
-    "defaults": { "terms":true, "distrib":false },
+    "defaults": {"terms":true, "distrib":false},
     "components": [ "terms" ]
   }
 }'
@@ -468,7 +474,7 @@ curl http://localhost:8983/solr/techproducts/config/overlay?omitHeader=true
 
 And we would expect to see output like this:
 
-[source,javascript]
+[source,json]
 ----
 {"overlay":{
    "znodeVersion":5,

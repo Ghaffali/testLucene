@@ -6,7 +6,7 @@ On a multicore Solr instance, you may find that you want to share configuration 
 
 To create a configset, simply add a new directory under the configset base directory. The configset will be identified by the name of this directory. Then into this copy the config directory you want to share. The structure should look something like this:
 
-[source,text]
+[source,bash]
 ----
 /<configSetBaseDir>
     /configset1
@@ -23,4 +23,4 @@ The default base directory is `$SOLR_HOME/configsets`, and it can be configured 
 
 To create a new core using a configset, pass `configSet` as one of the core properties. For example, if you do this via the core admin API:
 
-`http://<solr>/admin/cores?action=CREATE&name=mycore&instanceDir=path/to/instance&configSet=configset2`
+`\http://localhost:8983/admin/cores?action=CREATE&name=mycore&instanceDir=path/to/instance&configSet=configset2`

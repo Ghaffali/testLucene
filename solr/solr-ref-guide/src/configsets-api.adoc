@@ -2,23 +2,27 @@
 :page-shortname: configsets-api
 :page-permalink: configsets-api.html
 
-The ConfigSets API enables you to create, delete, and otherwise manage ConfigSets. To use a ConfigSet created with this API as the configuration for a collection, use the <<collections-api.adoc#collections-api,Collections API>>.
+The ConfigSets API enables you to create, delete, and otherwise manage ConfigSets.
+
+To use a ConfigSet created with this API as the configuration for a collection, use the <<collections-api.adoc#collections-api,Collections API>>.
 
 This API can only be used with Solr running in SolrCloud mode. If you are not running Solr in SolrCloud mode but would still like to use shared configurations, please see the section <<config-sets.adoc#config-sets,Config Sets>>.
 
 [[ConfigSetsAPI-APIEntryPoints]]
 == API Entry Points
 
-The base URL for all API calls is `http://<hostname>:<port>/solr`.
+The base URL for all API calls is `\http://<hostname>:<port>/solr`.
 
-`/admin/configs?action=CREATE`: <<ConfigSetsAPI-create,create>> a ConfigSet, based on an existing ConfigSet `/admin/configs?action=DELETE`: <<ConfigSetsAPI-delete,delete>>a ConfigSet `/admin/configs?action=LIST`: <<ConfigSetsAPI-list,list>>all ConfigSets
+* `/admin/configs?action=CREATE`: <<ConfigSetsAPI-create,create>> a ConfigSet, based on an existing ConfigSet
+* `/admin/configs?action=DELETE`: <<ConfigSetsAPI-delete,delete>> a ConfigSet
+* `/admin/configs?action=LIST`: <<ConfigSetsAPI-list,list>> all ConfigSets
 
 [[ConfigSetsAPI-createCreateaConfigSet]]
 
 [[ConfigSetsAPI-create]]
 == Create a ConfigSet
 
-`/admin/configs?action=CREATE&name=__name__&baseConfigSet=__baseConfigSet__`
+`/admin/configs?action=CREATE&name=_name_&baseConfigSet=_baseConfigSet_`
 
 Create a ConfigSet, based on an existing ConfigSet.
 
@@ -30,7 +34,7 @@ Create a ConfigSet, based on an existing ConfigSet.
 |Key |Type |Required |Default |Description
 |name |String |Yes | |ConfigSet to be created
 |baseConfigSet |String |Yes | |ConfigSet to copy as a base
-|configSetProp.__name=value__ |String |No | |ConfigSet property from base to override
+|configSetProp._name=value_ |String |No | |ConfigSet property from base to override
 |===
 
 [[ConfigSetsAPI-Output]]
@@ -47,7 +51,7 @@ The output will include the status of the request. If the status is anything oth
 
 Create a ConfigSet named 'myConfigSet' based on a 'predefinedTemplate' ConfigSet, overriding the immutable property to false.
 
-[source,java]
+[source]
 ----
 http://localhost:8983/solr/admin/configs?action=CREATE&name=myConfigSet&baseConfigSet=predefinedTemplate&configSetProp.immutable=false
 ----
@@ -69,7 +73,7 @@ http://localhost:8983/solr/admin/configs?action=CREATE&name=myConfigSet&baseConf
 [[ConfigSetsAPI-delete]]
 == Delete a ConfigSet
 
-`/admin/configs?action=DELETE&name=__name__`
+`/admin/configs?action=DELETE&name=_name_`
 
 Delete a ConfigSet
 
@@ -98,7 +102,7 @@ The output will include the status of the request. If the status is anything oth
 
 Delete ConfigSet 'myConfigSet'
 
-[source,java]
+[source]
 ----
 http://localhost:8983/solr/admin/configs?action=DELETE&name=myConfigSet
 ----
@@ -129,14 +133,14 @@ Fetch the names of the ConfigSets in the cluster.
 
 *Input*
 
-[source,java]
+[source]
 ----
 http://localhost:8983/solr/admin/configs?action=LIST&wt=json
 ----
 
 *Output*
 
-[source,java]
+[source,json]
 ----
 {
   "responseHeader":{
