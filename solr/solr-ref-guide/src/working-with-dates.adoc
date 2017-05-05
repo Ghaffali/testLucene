@@ -53,7 +53,7 @@ Solr's `DateRangeField` supports the same point in time date syntax described ab
 * `[2014 TO 2014-12-01]` – From the start of 2014 till the end of the first day of December.
 * `[* TO 2014-12-01]` – From the earliest representable time thru till the end of the day on 2014-12-01.
 
-Limitations: The range syntax doesn't support embedded date math. If you specify a date instance supported by TrieDateField with date math truncating it, like `NOW/DAY`, you still get the first millisecond of that day, not the entire day's range. Exclusive ranges (using `{` & }) work in _queries_ but not for _indexing_ ranges.
+Limitations: The range syntax doesn't support embedded date math. If you specify a date instance supported by TrieDateField with date math truncating it, like `NOW/DAY`, you still get the first millisecond of that day, not the entire day's range. Exclusive ranges (using `{` & `}`) work in _queries_ but not for _indexing_ ranges.
 
 [[WorkingwithDates-DateMath]]
 == Date Math
@@ -106,12 +106,12 @@ By default, all date math expressions are evaluated relative to the UTC TimeZone
 
 For example, the following request will use range faceting to facet over the current month, "per day" relative UTC:
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/solr/my_collection/select?q=*:*&facet.range=my_date_field&facet=true&facet.range.start=NOW/MONTH&facet.range.end=NOW/MONTH%2B1MONTH&facet.range.gap=%2B1DAY
 ----
 
-[source,java]
+[source,xml]
 ----
 <int name="2013-11-01T00:00:00Z">0</int>
 <int name="2013-11-02T00:00:00Z">0</int>
@@ -125,12 +125,12 @@ http://localhost:8983/solr/my_collection/select?q=*:*&facet.range=my_date_field&
 
 While in this example, the "days" will be computed relative to the specified time zone - including any applicable Daylight Savings Time adjustments:
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/solr/my_collection/select?q=*:*&facet.range=my_date_field&facet=true&facet.range.start=NOW/MONTH&facet.range.end=NOW/MONTH%2B1MONTH&facet.range.gap=%2B1DAY&TZ=America/Los_Angeles
 ----
 
-[source,java]
+[source,xml]
 ----
 <int name="2013-11-01T07:00:00Z">0</int>
 <int name="2013-11-02T07:00:00Z">0</int>
