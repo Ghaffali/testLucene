@@ -80,8 +80,8 @@ The `set-user` command allows you to add users and change their passwords. For e
 
 [source,bash]
 ----
-curl --user solr:SolrRocks http://localhost:8983/solr/admin/authentication -H 'Content-type:application/json' -d '{ 
-  "set-user": {"tom" : "TomIsCool" , 
+curl --user solr:SolrRocks http://localhost:8983/solr/admin/authentication -H 'Content-type:application/json' -d '{
+  "set-user": {"tom" : "TomIsCool" ,
                "harry":"HarrysSecret"}}'
 ----
 
@@ -114,8 +114,8 @@ In SolrJ, the basic authentication credentials need to be set for each request a
 
 [source,java]
 ----
-SolrRequest req ;//create a new request object 
-req.setBasicAuthCredentials(userName, password); 
+SolrRequest req ;//create a new request object
+req.setBasicAuthCredentials(userName, password);
 solrClient.request(req);
 ----
 
@@ -124,14 +124,14 @@ Query example:
 [source,java]
 ----
 QueryRequest req = new QueryRequest(new SolrQuery("*:*"));
-req.setBasicAuthCredentials(userName, password); 
+req.setBasicAuthCredentials(userName, password);
 QueryResponse rsp = req.process(solrClient);
 ----
 
 [[BasicAuthenticationPlugin-UsingCommandLinescriptswithBasicAuth]]
 === Using Command Line scripts with BasicAuth
 
-Add the following line to the `solr.in.sh/solr.in.cmd` file. This example tells the `bin/solr` command line to to use "basic" as the type of authentication, and to pass credentials with the user-name "solr" and password "SolrRocks":
+Add the following line to the `solr.in.sh` or `solr.in.cmd` file. This example tells the `bin/solr` command line to to use "basic" as the type of authentication, and to pass credentials with the user-name "solr" and password "SolrRocks":
 
 [source,bash]
 ----

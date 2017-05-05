@@ -2,7 +2,9 @@
 :page-shortname: blob-store-api
 :page-permalink: blob-store-api.html
 
-The Blob Store REST API provides REST methods to store, retrieve or list files in a Lucene index. This can be used to upload a jar file which contains standard solr components such as RequestHandlers, SearchComponents, or other custom code you have written for Solr. Schema components _do not_ yet support the Blob Store.
+The Blob Store REST API provides REST methods to store, retrieve or list files in a Lucene index.
+
+It can be used to upload a jar file which contains standard solr components such as RequestHandlers, SearchComponents, or other custom code you have written for Solr. Schema components _do not_ yet support the Blob Store.
 
 When using the blob store, note that the API does not delete or overwrite a previous object if a new one is uploaded with the same name. It always adds a new version of the blob to the index. Deletes can be performed with standard REST delete commands.
 
@@ -23,15 +25,10 @@ You can create the `.system` collection with the <<collections-api.adoc#collecti
 
 [source,bash]
 ----
-curl "http://localhost:8983/solr/admin/collections?action=CREATE&name=.system&replicationFactor=2"
+curl http://localhost:8983/solr/admin/collections?action=CREATE&name=.system&replicationFactor=2
 ----
 
-[IMPORTANT]
-====
-
-The `bin/solr` script cannot be used to create the `.system ` collection at this time.
-
-====
+IMPORTANT: The `bin/solr` script cannot be used to create the `.system` collection.
 
 [[BlobStoreAPI-UploadFilestoBlobStore]]
 === Upload Files to Blob Store
@@ -124,8 +121,8 @@ curl http://localhost:8983/solr/.system/blob/{blobname}?wt=filestream > {outputf
 
 To use the blob as the class for a request handler or search component, you create a request handler in `solrconfig.xml` as usual. You will need to define the following parameters:
 
-* `class`: the fully qualified class name. For example, if you created a new request handler class called CRUDHandler, you would enter `org.apache.solr.core.CRUDHandler`.
-* `runtimeLib`: Set to true to require that this component should be loaded from the classloader that loads the runtime jars.
+`class`:: the fully qualified class name. For example, if you created a new request handler class called CRUDHandler, you would enter `org.apache.solr.core.CRUDHandler`.
+`runtimeLib`:: Set to true to require that this component should be loaded from the classloader that loads the runtime jars.
 
 For example, to use a blob named test, you would configure `solrconfig.xml` like this:
 

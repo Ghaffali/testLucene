@@ -43,9 +43,7 @@ DocValues are only available for specific field types. The types chosen determin
 ** If the field is single-valued (i.e., multi-valued is false), Lucene will use the NUMERIC type.
 ** If the field is multi-valued, Lucene will use the SORTED_SET type.
 * Boolean fields
-* ....
-[Int/Long/Float/Double/Date]PointField
-....
+* Int|Long|Float|Double|Date PointField
 ** If the field is single-valued (i.e., multi-valued is false), Lucene will use the NUMERIC type.
 ** If the field is multi-valued, Lucene will use the SORTED_NUMERIC type.
 
@@ -62,9 +60,7 @@ Please note that the `docValuesFormat` option may change in future releases.
 
 [NOTE]
 ====
-
 Lucene index back-compatibility is only supported for the default codec. If you choose to customize the `docValuesFormat` in your schema.xml, upgrading to a future version of Solr may require you to either switch back to the default codec and optimize your index to rewrite it into the default codec before upgrading, or re-build your entire index from scratch after upgrading.
-
 ====
 
 [[DocValues-UsingDocValues]]

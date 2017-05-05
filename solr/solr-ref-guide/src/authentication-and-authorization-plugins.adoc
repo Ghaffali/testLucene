@@ -45,7 +45,7 @@ Here is a more detailed `security.json` example. In this, the Basic authenticati
 "authorization":{
    "class":"solr.RuleBasedAuthorizationPlugin",
    "permissions":[{"name":"security-edit",
-      "role":"admin"}]
+      "role":"admin"}],
    "user-role":{"solr":"admin"}
 }}
 ----
