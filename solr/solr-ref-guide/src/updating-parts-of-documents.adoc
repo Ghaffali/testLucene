@@ -65,7 +65,7 @@ There are other kinds of derived fields that must also be set so they aren't sto
 
 If the following document exists in our collection:
 
-[source,plain]
+[source,json]
 ----
 {"id":"mydoc", 
  "price":10, 
@@ -78,7 +78,7 @@ If the following document exists in our collection:
 
 And we apply the following update command:
 
-[source,plain]
+[source,json]
 ----
 {"id":"mydoc", 
  "price":{"set":99}, 
@@ -91,7 +91,7 @@ And we apply the following update command:
 
 The resulting document in our collection will be:
 
-[source,plain]
+[source,json]
 ----
 {"id":"mydoc", 
  "price":99, 
@@ -109,7 +109,7 @@ In-place updates are very similar to atomic updates; in some sense, this is a su
 An atomic update operation is performed using this approach only when the fields to be updated meet these three conditions:
 
 * are non-indexed (`indexed="false"`), non-stored (`stored="false"`), single valued (`multiValued="false"`) numeric docValues (`docValues="true"`) fields;
-* the ___version___ field is also a non-indexed, non-stored single valued docValues field; and,
+* the `\_version_` field is also a non-indexed, non-stored single valued docValues field; and,
 * copy targets of updated fields, if any, are also non-indexed, non-stored single valued numeric docValues fields.
 
 To use in-place updates, add a modifier to the field that needs to be updated. The content can be updated or incrementally increased.
@@ -142,7 +142,7 @@ If the price and popularity fields are defined in the schema as:
 
 If the following document exists in our collection:
 
-[source,plain]
+[source,json]
 ----
 {
  "id":"mydoc", 
@@ -156,7 +156,7 @@ If the following document exists in our collection:
 
 And we apply the following update command:
 
-[source,plain]
+[source,json]
 ----
 {
  "id":"mydoc", 
@@ -167,7 +167,7 @@ And we apply the following update command:
 
 The resulting document in our collection will be:
 
-[source,plain]
+[source,json]
 ----
 {
  "id":"mydoc", 
@@ -182,7 +182,7 @@ The resulting document in our collection will be:
 [[UpdatingPartsofDocuments-OptimisticConcurrency]]
 == Optimistic Concurrency
 
-Optimistic Concurrency is a feature of Solr that can be used by client applications which update/replace documents to ensure that the document they are replacing/updating has not been concurrently modified by another client application. This feature works by requiring a `_version_` field on all documents in the index, and comparing that to a `_version_` specified as part of the update command. By default, Solr's Schema includes a `_version_` field, and this field is automatically added to each new document.
+Optimistic Concurrency is a feature of Solr that can be used by client applications which update/replace documents to ensure that the document they are replacing/updating has not been concurrently modified by another client application. This feature works by requiring a `\_version_` field on all documents in the index, and comparing that to a `\_version_` specified as part of the update command. By default, Solr's Schema includes a `\_version_` field, and this field is automatically added to each new document.
 
 In general, using optimistic concurrency involves the following work flow:
 
@@ -191,16 +191,16 @@ In general, using optimistic concurrency involves the following work flow:
 3.  The client resubmits the changed document to Solr, for example, perhaps with the `/update` handler.
 4.  If there is a version conflict (HTTP error code 409), the client starts the process over.
 
-When the client resubmits a changed document to Solr, the `_version_` can be included with the update to invoke optimistic concurrency control. Specific semantics are used to define when the document should be updated or when to report a conflict.
+When the client resubmits a changed document to Solr, the `\_version_` can be included with the update to invoke optimistic concurrency control. Specific semantics are used to define when the document should be updated or when to report a conflict.
 
-* If the content in the `_version_` field is greater than '1' (i.e., '12345'), then the `_version_` in the document must match the `_version_` in the index.
-* If the content in the `_version_` field is equal to '1', then the document must simply exist. In this case, no version matching occurs, but if the document does not exist, the updates will be rejected.
-* If the content in the `_version_` field is less than '0' (i.e., '-1'), then the document must *not* exist. In this case, no version matching occurs, but if the document exists, the updates will be rejected.
-* If the content in the `_version_` field is equal to '0', then it doesn't matter if the versions match or if the document exists or not. If it exists, it will be overwritten; if it does not exist, it will be added.
+* If the content in the `\_version_` field is greater than '1' (i.e., '12345'), then the `\_version_` in the document must match the `\_version_` in the index.
+* If the content in the `\_version_` field is equal to '1', then the document must simply exist. In this case, no version matching occurs, but if the document does not exist, the updates will be rejected.
+* If the content in the `\_version_` field is less than '0' (i.e., '-1'), then the document must *not* exist. In this case, no version matching occurs, but if the document exists, the updates will be rejected.
+* If the content in the `\_version_` field is equal to '0', then it doesn't matter if the versions match or if the document exists or not. If it exists, it will be overwritten; if it does not exist, it will be added.
 
-If the document being updated does not include the `_version_` field, and atomic updates are not being used, the document will be treated by normal Solr rules, which is usually to discard the previous version.
+If the document being updated does not include the `\_version_` field, and atomic updates are not being used, the document will be treated by normal Solr rules, which is usually to discard the previous version.
 
-When using Optimistic Concurrency, clients can include an optional `versions=true` request parameter to indicate that the _new_ versions of the documents being added should be included in the response. This allows clients to immediately know what the `_version_` is of every documented added with out needing to make a redundant <<realtime-get.adoc#realtime-get,`/get` request>>.
+When using Optimistic Concurrency, clients can include an optional `versions=true` request parameter to indicate that the _new_ versions of the documents being added should be included in the response. This allows clients to immediately know what the `\_version_` is of every documented added with out needing to make a redundant <<realtime-get.adoc#realtime-get,`/get` request>>.
 
 For example...
 
@@ -246,7 +246,7 @@ For more information, please also see https://www.youtube.com/watch?v=WYVM6Wz-XT
 [[UpdatingPartsofDocuments-DocumentCentricVersioningConstraints]]
 == Document Centric Versioning Constraints
 
-Optimistic Concurrency is extremely powerful, and works very efficiently because it uses an internally assigned, globally unique values for the `_version_` field. However, In some situations users may want to configure their own document specific version field, where the version values are assigned on a per-document basis by an external system, and have Solr reject updates that attempt to replace a document with an "older" version. In situations like this the {solr-javadocs}/solr-core/org/apache/solr/update/processor/DocBasedVersionConstraintsProcessorFactory.html[`DocBasedVersionConstraintsProcessorFactory`] can be useful.
+Optimistic Concurrency is extremely powerful, and works very efficiently because it uses an internally assigned, globally unique values for the `\_version_` field. However, In some situations users may want to configure their own document specific version field, where the version values are assigned on a per-document basis by an external system, and have Solr reject updates that attempt to replace a document with an "older" version. In situations like this the {solr-javadocs}/solr-core/org/apache/solr/update/processor/DocBasedVersionConstraintsProcessorFactory.html[`DocBasedVersionConstraintsProcessorFactory`] can be useful.
 
 The basic usage of `DocBasedVersionConstraintsProcessorFactory` is to configure it in `solrconfig.xml` as part of the http://wiki.apache.org/solr/UpdateRequestProcessor[UpdateRequestProcessorChain] and specify the name of your custom `versionField` in your schema that should be checked when validating updates:
 
@@ -259,11 +259,11 @@ The basic usage of `DocBasedVersionConstraintsProcessorFactory` is to configure 
 
 Once configured, this update processor will reject (HTTP error code 409) any attempt to update an existing document where the value of the `my_version_l` field in the "new" document is not greater then the value of that field in the existing document.
 
-.versionField vs _version_
+.versionField vs `\_version_`
 [IMPORTANT]
 ====
 
-The `_version_` field used by Solr for its normal optimistic concurrency also has important semantics in how updates are distributed to replicas in SolrCloud, and *MUST* be assigned internally by Solr. Users can not re-purpose that field and specify it as the `versionField` for use in the `DocBasedVersionConstraintsProcessorFactory` configuration.
+The `\_version_` field used by Solr for its normal optimistic concurrency also has important semantics in how updates are distributed to replicas in SolrCloud, and *MUST* be assigned internally by Solr. Users can not re-purpose that field and specify it as the `versionField` for use in the `DocBasedVersionConstraintsProcessorFactory` configuration.
 
 ====
 

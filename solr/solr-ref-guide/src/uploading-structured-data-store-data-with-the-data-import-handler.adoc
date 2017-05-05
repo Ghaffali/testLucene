@@ -1,6 +1,7 @@
 = Uploading Structured Data Store Data with the Data Import Handler
 :page-shortname: uploading-structured-data-store-data-with-the-data-import-handler
 :page-permalink: uploading-structured-data-store-data-with-the-data-import-handler.html
+:toclevels: 1
 
 Many search applications store the content to be indexed in a structured data store, such as a relational database. The Data Import Handler (DIH) provides a mechanism for importing content from a data store and indexing it. In addition to relational databases, DIH can index content from HTTP based data sources such as RSS and ATOM feeds, e-mail repositories, and structured XML where an XPath processor is used to generate fields.
 
@@ -133,7 +134,10 @@ Request parameters can be substituted in configuration with placeholder `${datai
 
 [source,xml]
 ----
-<dataSource driver="org.hsqldb.jdbcDriver" url="${dataimporter.request.jdbcurl}" user="${dataimporter.request.jdbcuser}" password=${dataimporter.request.jdbcpassword} />
+<dataSource driver="org.hsqldb.jdbcDriver"
+            url="${dataimporter.request.jdbcurl}"
+	    user="${dataimporter.request.jdbcuser}"
+	    password=${dataimporter.request.jdbcpassword} />
 ----
 
 Then, these parameters can be passed to the full-import command or defined in the `<defaults>` section in `solrconfig.xml`. This example shows the parameters with the full-import command:
@@ -150,15 +154,15 @@ DIH commands are sent to Solr via an HTTP request. The following operations are 
 [width="100%",cols="50%,50%",options="header",]
 |===
 |Command |Description
-|`abort` |Aborts an ongoing operation. The URL is `http://<host>:<port>/` `solr/` `<collection_name>/` `dataimport?` `command=abort`.
-|`delta-import` |For incremental imports and change detection. The command is of the form `http://<host>:<port>/` `solr/` `<collection_name>/` `dataimport?` `command=delta-import`. It supports the same clean, commit, optimize and debug parameters as full-import command. Only the SqlEntityProcessor supports delta imports.
-|`full-import` |A Full Import operation can be started with a URL of the form `http://<host>:<port>/` `solr/` `<collection_name>/` `dataimport?` `command=full-import`. The command returns immediately. The operation will be started in a new thread and the _status_ attribute in the response should be shown as __busy__. The operation may take some time depending on the size of dataset. Queries to Solr are not blocked during full-imports. When a full-import command is executed, it stores the start time of the operation in a file located at `conf/dataimport.properties`. This stored timestamp is used when a delta-import operation is executed. For a list of parameters that can be passed to this command, see below.
+|`abort` |Aborts an ongoing operation. The URL is `\http://<host>:<port>/solr/<collection_name>/dataimport?command=abort`.
+|`delta-import` |For incremental imports and change detection. The command is of the form `\http://<host>:<port>/solr/<collection_name>/dataimport?command=delta-import`.  It supports the same clean, commit, optimize and debug parameters as full-import command. Only the SqlEntityProcessor supports delta imports.
+|`full-import` |A Full Import operation can be started with a URL of the form `\http://<host>:<port>/solr/<collection_name>/dataimport?command=full-import`. The command returns immediately. The operation will be started in a new thread and the _status_ attribute in the response should be shown as __busy__. The operation may take some time depending on the size of dataset. Queries to Solr are not blocked during full-imports. When a full-import command is executed, it stores the start time of the operation in a file located at `conf/dataimport.properties`. This stored timestamp is used when a delta-import operation is executed. For a list of parameters that can be passed to this command, see below.
 |`reload-config` a|
 If the configuration file has been changed and you wish to reload it without restarting Solr, run the command
 
-`http://<host>:<port>/solr/<collection_name>/command=reload-config`
+`\http://<host>:<port>/solr/<collection_name>/command=reload-config`
 
-|`status` |The URL is `http://<host>:<port>/` `solr/` `<collection_name>/` `dataimport?` `command=status`. It returns statistics on the number of documents created, deleted, queries run, rows fetched, status, and so on.
+|`status` |The URL is `\http://<host>:<port>/solr/<collection_name>/dataimport?command=status`. It returns statistics on the number of documents created, deleted, queries run, rows fetched, status, and so on.
 |`show-config` |responds with configuration
 |===
 
@@ -185,7 +189,8 @@ The `propertyWriter` element defines the date format and locale for use with del
 
 [source,xml]
 ----
-<propertyWriter dateFormat="yyyy-MM-dd HH:mm:ss" type="SimplePropertiesWriter" directory="data" filename="my_dih.properties" locale="en-US" />
+<propertyWriter dateFormat="yyyy-MM-dd HH:mm:ss" type="SimplePropertiesWriter"
+                directory="data" filename="my_dih.properties" locale="en-US" />
 ----
 
 The parameters available are:
@@ -347,7 +352,8 @@ In the example below, each `manufacturer` entity is cached using the '`id`' prop
 [source,xml]
 ----
 <entity name="product" query="select description,sku, manu from product" >
-  <entity name="manufacturer" query="select id, name from manufacturer" cacheKey="id" cacheLookup="product.manu" cacheImpl="SortedMapBackedCache"/>     
+  <entity name="manufacturer" query="select id, name from manufacturer" 
+          cacheKey="id" cacheLookup="product.manu" cacheImpl="SortedMapBackedCache"/>     
 </entity>
 ----
 
@@ -415,10 +421,9 @@ Here is an example from the "```rss```" collection in the `dih` example (`exampl
               pk="link"
               url="http://rss.slashdot.org/Slashdot/slashdot"
               processor="XPathEntityProcessor"
-              
-              <!-- forEach sets up a processing loop ; here there are two expressions-->
-              forEach="/RDF/channel | /RDF/item"
-              transformer="DateFormatTransformer">
+              transformer="DateFormatTransformer"
+              forEach="/RDF/channel | /RDF/item" >
+          <!-- NOTE: forEach sets up a processing loop ; here there are two expressions -->
       <field column="source" xpath="/RDF/channel/title" commonField="true" />
       <field column="source-link" xpath="/RDF/channel/link" commonField="true"/>
       <field column="subject" xpath="/RDF/channel/subject" commonField="true" />
@@ -493,7 +498,7 @@ processAttachments
 [[UploadingStructuredDataStoreDatawiththeDataImportHandler-ImportingNewEmailsOnly]]
 ==== Importing New Emails Only
 
-After running a full import, the MailEntityProcessor keeps track of the timestamp of the previous import so that subsequent imports can use the fetchMailsSince filter to only pull new messages from the mail server. This occurs automatically using the Data Import Handler dataimport.properties file (stored in conf). For instance, if you set fetchMailsSince=2014-08-22 00:00:00 in your mail-data-config.xml, then all mail messages that occur after this date will be imported on the first run of the importer. Subsequent imports will use the date of the previous import as the fetchMailsSince filter, so that only new emails since the last import are indexed each time.
+After running a full import, the MailEntityProcessor keeps track of the timestamp of the previous import so that subsequent imports can use the fetchMailsSince filter to only pull new messages from the mail server. This occurs automatically using the Data Import Handler dataimport.properties file (stored in conf). For instance, if you set `fetchMailsSince="2014-08-22 00:00:00"` in your `mail-data-config.xml`, then all mail messages that occur after this date will be imported on the first run of the importer. Subsequent imports will use the date of the previous import as the fetchMailsSince filter, so that only new emails since the last import are indexed each time.
 
 [[UploadingStructuredDataStoreDatawiththeDataImportHandler-GMailExtensions]]
 ==== GMail Extensions
@@ -897,8 +902,8 @@ You can pass special commands to the DIH by adding any of the variables listed b
 [width="100%",cols="50%,50%",options="header",]
 |===
 |Variable |Description
-|$skipDoc |Skip the current document; that is, do not add it to Solr. The value can be the string `true|false`.
-|$skipRow |Skip the current row. The document will be added with rows from other entities. The value can be the string `true|false`
+|$skipDoc |Skip the current document; that is, do not add it to Solr. The value can be the string `true\|false`.
+|$skipRow |Skip the current row. The document will be added with rows from other entities. The value can be the string `true\|false`
 |$deleteDocById |Delete a document from Solr with this ID. The value has to be the `uniqueKey` value of the document.
 |$deleteDocByQuery |Delete documents from Solr using this query. The value must be a Solr Query.
 |===

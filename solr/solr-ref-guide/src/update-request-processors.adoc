@@ -48,8 +48,7 @@ Each of these perform an essential function and as such any custom chain usually
 
 The following example demonstrates how a custom chain can be configured inside `solrconfig.xml`.
 
-*updateRequestProcessorChain*
-
+.updateRequestProcessorChain
 [source,xml]
 ----
 <updateRequestProcessorChain name="dedupe">
@@ -80,8 +79,7 @@ Do not forget to add `RunUpdateProcessorFactory` at the end of any chains you de
 
 Update request processors can also be configured independent of a chain in `solrconfig.xml`.
 
-*updateProcessor*
-
+.updateProcessor
 [source,xml]
 ----
 <updateProcessor class="solr.processor.SignatureUpdateProcessorFactory" name="signature">
@@ -96,8 +94,7 @@ Update request processors can also be configured independent of a chain in `solr
 
 In this case, an instance of `SignatureUpdateProcessorFactory` is configured with the name "signature" and a `RemoveBlankFieldUpdateProcessorFactory` is defined with the name "remove_blanks". Once the above has been specified in `solrconfig.xml`, we can be refer to them in update request processor chains in `solrconfig.xml` as follows:
 
-*updateRequestProcessorChains and updateProcessors*
-
+.updateRequestProcessorChains and updateProcessors
 [source,xml]
 ----
 <updateProcessorChain name="custom" processor="remove_blanks,signature">
@@ -127,8 +124,7 @@ In summary:
 
 In the previous section, we saw that the `updateRequestProcessorChain` was configured with `processor="remove_blanks, signature"`. This means that such processors are of the #1 kind and are run only on the forwarding nodes. Similarly, we can configure them as the #2 kind by specifying with the attribute "post-processor" as follows:
 
-*post-processors*
-
+.post-processors
 [source,xml]
 ----
 <updateProcessorChain name="custom" processor="signature" post-processor="remove_blanks">
@@ -162,8 +158,7 @@ While a replica is in <<read-and-write-side-fault-tolerance.adoc#ReadandWriteSid
 
 The `update.chain` parameter can be used in any update request to choose a custom chain which has been configured in `solrconfig.xml`. For example, in order to choose the "dedupe" chain described in a previous section, one can issue the following request:
 
-*update.chain*
-
+.update.chain
 [source,bash]
 ----
 curl "http://localhost:8983/solr/gettingstarted/update/json?update.chain=dedupe&commit=true" -H 'Content-type: application/json' -d '
@@ -190,8 +185,7 @@ The above should dedupe the two identical documents and index only one of them.
 
 We can dynamically construct a custom update request processor chain using the "processor" and "post-processor" request parameters. Multiple processors can be specified as a comma-separated value for these two parameters. For example:
 
-*Constructing a chain at request time*
-
+.Constructing a chain at request time
 [source,bash]
 ----
 # Executing processors configured in solrconfig.xml as (pre)-processors
@@ -237,8 +231,7 @@ This can be done by adding either "update.chain" or "processor" and "post-proces
 
 The following is an `initParam` defined in the <<schemaless-mode.adoc#schemaless-mode,schemaless configuration>> which applies a custom update chain to all request handlers starting with "/update/".
 
-*InitParams*
-
+.InitParams
 [source,xml]
 ----
 <initParams path="/update/**">
@@ -250,8 +243,7 @@ The following is an `initParam` defined in the <<schemaless-mode.adoc#schemaless
 
 Alternately, one can achieve a similar effect using the "defaults" as shown in the example below:
 
-*defaults*
-
+.defaults
 [source,xml]
 ----
 <requestHandler name="/update/extract"
@@ -347,7 +339,7 @@ This can be used directly in a request without any configuration. To enable this
 
 For example:
 
-[source,bash]
+[source,plain]
 ----
 processor=Template&Template.field=fullName:Mr. ${firstName} ${lastName}
 ----

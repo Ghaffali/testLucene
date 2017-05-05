@@ -19,8 +19,6 @@ The default configuration file has the update request handler configured by defa
 <requestHandler name="/update" class="solr.UpdateRequestHandler" />
 ----
 
-<<main,Back to Top>>
-
 [[UploadingDatawithIndexHandlers-XMLFormattedIndexUpdates]]
 == XML Formatted Index Updates
 
@@ -238,8 +236,6 @@ You can also use the stylesheet in `XsltUpdateRequestHandler` to transform an in
 curl "http://localhost:8983/solr/my_collection/update?commit=true&tr=updateXml.xsl" -H "Content-Type: text/xml" --data-binary @myexporteddata.xml
 ----
 
-<<main,Back to Top>>
-
 [[UploadingDatawithIndexHandlers-JSONFormattedIndexUpdates]]
 == JSON Formatted Index Updates
 
@@ -315,7 +311,7 @@ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_
   },
   "add": {
     "commitWithin": 5000,          /* commit this document within 5 seconds */
-    "overwrite": false,            /* don't check for existing documents with the same uniqueKey */
+    "overwrite": false,            /* don\'t check for existing documents with the same uniqueKey */
     "doc": {
       "f1": "v1",                  /* Can use repeated keys for a multi-valued field */
       "f1": "v2"
@@ -343,23 +339,23 @@ As with other update handlers, parameters such as `commit`, `commitWithin`, `opt
 
 The JSON update format allows for a simple delete-by-id. The value of a `delete` can be an array which contains a list of zero or more specific document id's (not a range) to be deleted. For example, a single document:
 
-[source,plain]
+[source,json]
 ----
 { "delete":"myid" }
 ----
 
 Or a list of document IDs:
 
-[source,java]
+[source,json]
 ----
 { "delete":["id1","id2"] }
 ----
 
 The value of a "delete" can be an array which contains a list of zero or more id's to be deleted. It is not a range (start and end).
 
-You can also specify `_version_` with each "delete":
+You can also specify `\_version_` with each "delete":
 
-[source,plain]
+[source,json]
 ----
 {
   "delete":"id":50, 
@@ -387,14 +383,11 @@ In addition to the `/update` handler, there are a few additional JSON specific r
 
 The `/update/json` path may be useful for clients sending in JSON formatted update commands from applications where setting the Content-Type proves difficult, while the `/update/json/docs` path can be particularly convenient for clients that always want to send in documents – either individually or as a list – without needing to worry about the full JSON command syntax.
 
-<<main,Back to Top>>
-
 [[UploadingDatawithIndexHandlers-CustomJSONDocuments]]
 === Custom JSON Documents
 
 Solr can support custom JSON. This is covered in the section <<transforming-and-indexing-custom-json.adoc#transforming-and-indexing-custom-json,Transforming and Indexing Custom JSON>>.
 
-<<main,Back to Top>>
 
 [[UploadingDatawithIndexHandlers-CSVFormattedIndexUpdates]]
 == CSV Formatted Index Updates
@@ -444,7 +437,7 @@ The same feature used to index CSV documents can also be easily used to index ta
 
 For example, one can dump a MySQL table to a tab delimited file with:
 
-[source,bash]
+[source,sql]
 ----
 SELECT * INTO OUTFILE '/tmp/result.txt' FROM mytable;
 ----
@@ -479,7 +472,7 @@ Nested documents may be indexed via either the XML or JSON data syntax (or using
 To support nested documents, the schema must include an indexed/non-stored field ___root__ _ . The value of that field is populated automatically and is the same for all documents in the block, regardless of the inheritance depth.
 
 [[UploadingDatawithIndexHandlers-XMLExamples]]
-==== XML Examples
+=== XML Examples
 
 For example, here are two documents and their child documents:
 
@@ -510,9 +503,9 @@ For example, here are two documents and their child documents:
 In this example, we have indexed the parent documents with the field `content_type`, which has the value "parentDocument". We could have also used a boolean field, such as `isParent`, with a value of "true", or any other similar approach.
 
 [[UploadingDatawithIndexHandlers-JSONExamples]]
-==== JSON Examples
+=== JSON Examples
 
-This example is equivalent to the XML example above, note the special `_childDocuments_` key need to indicate the nested documents in JSON.
+This example is equivalent to the XML example above, note the special `\_childDocuments_` key need to indicate the nested documents in JSON.
 
 [source,json]
 ----
@@ -550,4 +543,3 @@ One limitation of indexing nested documents is that the whole block of parent-ch
 
 ====
 
-<<main,Back to Top>>
