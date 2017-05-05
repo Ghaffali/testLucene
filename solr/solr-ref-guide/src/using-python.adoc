@@ -9,23 +9,22 @@ Solr includes an output format specifically for <<response-writers.adoc#Response
 
 Making a query is a simple matter. First, tell Python you will need to make HTTP connections.
 
-[source,java]
+[source,python]
 ----
 from urllib2 import *
 ----
 
 Now open a connection to the server and get a response. The `wt` query parameter tells Solr to return results in a format that Python can understand.
 
-[source,java]
+[source,python]
 ----
-connection = urlopen(
-                'http://localhost:8983/solr/collection_name/select?q=cheese&wt=python')
+connection = urlopen('http://localhost:8983/solr/collection_name/select?q=cheese&wt=python')
 response = eval(connection.read())
 ----
 
 Now interpreting the response is just a matter of pulling out the information that you need.
 
-[source,java]
+[source,python]
 ----
 print response['response']['numFound'], "documents found."
 
@@ -40,14 +39,14 @@ for document in response['response']['docs']:
 
 JSON is a more robust response format, but you will need to add a Python package in order to use it. At a command line, install the simplejson package like this:
 
-[source,java]
+[source,bash]
 ----
 $ sudo easy_install simplejson
 ----
 
 Once that is done, making a query is nearly the same as before. However, notice that the wt query parameter is now json, and the response is now digested by `simplejson.load()`.
 
-[source,java]
+[source,python]
 ----
 from urllib2 import *
 import simplejson

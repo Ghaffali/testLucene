@@ -8,16 +8,15 @@ The center of SolrJ is the `org.apache.solr.client.solrj` package, which contain
 
 `SolrClient` is abstract, so to connect to a remote Solr instance, you'll actually create an instance of either {solr-javadocs}/solr-solrj/org/apache/solr/client/solrj/impl/HttpSolrClient.html[`HttpSolrClient`], or {solr-javadocs}/solr-solrj/org/apache/solr/client/solrj/impl/CloudSolrClient.html[`CloudSolrClient`]. Both communicate with Solr via HTTP, the difference is that `HttpSolrClient` is configured using an explicit Solr URL, while `CloudSolrClient` is configured using the zkHost String for a <<solrcloud.adoc#solrcloud,SolrCloud>> cluster.
 
-*Single node Solr client*
 
+.Single node Solr client
 [source,java]
 ----
 String urlString = "http://localhost:8983/solr/techproducts";
 SolrClient solr = new HttpSolrClient.Builder(urlString).build();
 ----
 
-*SolrCloud client*
-
+.SolrCloud client
 [source,java]
 ----
 String zkHostString = "zkServerA:2181,zkServerB:2181,zkServerC:2181/solr";
