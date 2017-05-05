@@ -4,9 +4,9 @@
 
 The VelocityResponseWriter is an optional plugin available in the `contrib/velocity` directory. It powers the /browse user interfaces when using configurations such as "basic_configs", "techproducts", and "example/files".
 
-Its JAR and dependencies must be added (via <lib> or solr/home lib inclusion), and must be registered in `solrconfig.xml` like this:
+Its JAR and dependencies must be added (via `<lib>` or solr/home lib inclusion), and must be registered in `solrconfig.xml` like this:
 
-[source,java]
+[source,xml]
 ----
 <queryResponseWriter name="velocity" class="solr.VelocityResponseWriter">
   <str name="template.base.dir">${velocity.template.base.dir:}</str>
@@ -24,6 +24,8 @@ Its JAR and dependencies must be added (via <lib> or solr/home lib inclusion), a
 
 The above example shows the optional initialization and custom tool parameters used by VelocityResponseWriter; these are detailed in the following table. These initialization parameters are only specified in the writer registration in solrconfig.xml, not as request-time parameters. See further below for request-time parameters.
 
+== Configuration & Usage
+
 [[VelocityResponseWriter-VelocityResponseWriterinitializationparameters]]
 === VelocityResponseWriter initialization parameters
 
@@ -37,7 +39,7 @@ The above example shows the optional initialization and custom tool parameters u
 |params.resource.loader.enabled a|
 The "params" resource loader allows templates to be specified in Solr request parameters. For example:
 
-`http://localhost:8983``/solr``/gettingstarted``/select``?q=*:*``&wt=velocity``&v.template=custom``&v.template.custom=CUSTOM%3A%20%23core_name`
+`http://localhost:8983/solr/gettingstarted/select?q=\*:*&wt=velocity&v.template=custom&v.template.custom=CUSTOM%3A%20%23core_name`
 
 where `v.template=custom` says to render a template called "custom" and `v.template.custom`'s value is the actual custom template. This is disabled by default; it'd be a niche, unusual, use case to need this enabled.
 
