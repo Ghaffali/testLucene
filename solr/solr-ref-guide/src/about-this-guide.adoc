@@ -11,55 +11,45 @@ The material as presented assumes that you are familiar with some basic search c
 [[AboutThisGuide-SpecialInlineNotes]]
 === Special Inline Notes
 
-Special notes are included throughout these pages.
+Special notes are included throughout these pages. There are several types of notes:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+Information blocks::
++
+NOTE: These provide additional information that's useful for you to know.
 
-[width="100%",cols="50%,50%",options="header",]
-|===
-|Note Type |Look & Description
-|*Information* a|
-[NOTE]
-====
+Important::
++
+IMPORTANT: These provide information that is critical for you to know.
 
-Notes with a blue background are used for information that is important for you to know.
+Tip::
++
+TIP: These provide helpful tips.
 
-====
+Caution::
++
+CAUTION: These provide details on scenarios or configurations you should be careful with.
 
-|*Notes* a|
-[IMPORTANT]
-====
+Warning::
++
+WARNING: These are meant to warn you from a possibly dangerous change or action.
 
-Yellow notes are further clarifications of important points to keep in mind while using Solr.
-
-====
-
-|*Tip* a|
-[TIP]
-====
-
-Notes with a green background are Helpful Tips.
-
-====
-
-|*Warning* a|
-[WARNING]
-====
-
-Notes with a red background are warning messages.
-
-====
-
-|===
 
 [[AboutThisGuide-HostsandPortExamples]]
 === Hosts and Port Examples
 
-The default port when running Solr is 8983. The samples, URLs and screenshots in this guide may show different ports, because the port number that Solr uses is configurable. If you have not customized your installation of Solr, please make sure that you use port 8983 when following the examples, or configure your own installation to use the port numbers shown in the examples. For information about configuring port numbers, see <<managing-solr.adoc#managing-solr,Managing Solr>>.
+The default port when running Solr is 8983. The samples, URLs and screenshots in this guide may show different ports, because the port number that Solr uses is configurable. If you have not customized your installation of Solr, please make sure that you use port 8983 when following the examples, or configure your own installation to use the port numbers shown in the examples. For information about configuring port numbers, see the section <<managing-solr.adoc#managing-solr,Managing Solr>>.
 
 Similarly, URL examples use 'localhost' throughout; if you are accessing Solr from a location remote to the server hosting Solr, replace 'localhost' with the proper domain or IP where Solr is running.
+
+For example, we might provide a sample query like:
+
+`\http://localhost:8983/solr/gettingstarted/select?q=brown+cow`
+
+There are several items in this URL you might need to change locally. First, if your server is running at "www.example.com", you'll replace "localhost" with the proper domain. If you aren't using port 8983, you'll replace that also. Finally, you'll want to replace "gettingstarted" (the collection or core name) with the proper one in use in your implementation. The URL would then become:
+
+`\http://www.example.com/solr/mycollection/select?q=brown+cow`
 
 [[AboutThisGuide-Paths]]
 === Paths
 
-Path information is given relative to `solr.home`, which is the location under the main Solr installation where Solr's collections and their `conf` and `data` directories are stored. When running the various examples mentioned through out this tutorial (i.e., `bin/solr -e techproducts`) the `solr.home` will be a sub directory of `example/` created for you automatically.
+Path information is given relative to `solr.home`, which is the location under the main Solr installation where Solr's collections and their `conf` and `data` directories are stored. When running the various examples mentioned through out this tutorial (i.e., `bin/solr -e techproducts`) the `solr.home` will be a sub-directory of `example/` created for you automatically.

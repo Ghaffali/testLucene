@@ -6,17 +6,17 @@ Having had some fun with Solr, you will now learn about all the cool things it c
 
 Here is a example of how Solr might be integrated into an application:
 
+.Solr integration with applications
 image::images/a-quick-overview/sample-client-app-arch.png[image,width=500,height=379]
 
-
-_In the scenario above, Solr runs along side other server applications. For example, an online store application would provide a user interface, a shopping cart, and a way to make purchases for end users; while an inventory management application would allow store employees to edit product information. The product metadata would be kept in some kind of database, as well as in Solr._
+In the scenario above, Solr runs along side other server applications. For example, an online store application would provide a user interface, a shopping cart, and a way to make purchases for end users; while an inventory management application would allow store employees to edit product information. The product metadata would be kept in some kind of database, as well as in Solr.
 
 Solr makes it easy to add the capability to search through the online store through the following steps:
 
-1.  Define a __schema__. The schema tells Solr about the contents of documents it will be indexing. In the online store example, the schema would define fields for the product name, description, price, manufacturer, and so on. Solr's schema is powerful and flexible and allows you to tailor Solr's behavior to your application. See <<documents-fields-and-schema-design.adoc#documents-fields-and-schema-design,Documents, Fields, and Schema Design>> for all the details.
-2.  Deploy Solr.
-3.  Feed Solr documents for which your users will search.
-4.  Expose search functionality in your application.
+. Define a _schema_. The schema tells Solr about the contents of documents it will be indexing. In the online store example, the schema would define fields for the product name, description, price, manufacturer, and so on. Solr's schema is powerful and flexible and allows you to tailor Solr's behavior to your application. See <<documents-fields-and-schema-design.adoc#documents-fields-and-schema-design,Documents, Fields, and Schema Design>> for all the details.
+. Deploy Solr.
+. Feed Solr documents for which your users will search.
+. Expose search functionality in your application.
 
 Because Solr is based on open standards, it is highly extensible. Solr queries are RESTful, which means, in essence, that a query is a simple HTTP request URL and the response is a structured document: mainly XML, but it could also be JSON, CSV, or some other format. This means that a wide variety of clients will be able to use Solr, from other web applications to browser clients, rich client applications, and mobile devices. Any platform capable of HTTP can talk to Solr. See <<client-apis.adoc#client-apis,Client APIs>> for details on client APIs.
 
