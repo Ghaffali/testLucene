@@ -30,7 +30,7 @@ This example `security.json` shows how the <<basic-authentication-plugin.adoc#ba
 "authorization":{
    "class":"solr.RuleBasedAuthorizationPlugin",
    "permissions":[{"name":"security-edit",
-      "role":"admin"}]
+      "role":"admin"}],
    "user-role":{"solr":"admin"}
 }}
 ----

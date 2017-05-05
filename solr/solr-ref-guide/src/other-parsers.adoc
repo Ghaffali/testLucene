@@ -26,8 +26,9 @@ Query parsers discussed in this section:
 * <<OtherParsers-OldLuceneQueryParser,Old Lucene Query Parser>>
 * <<OtherParsers-PrefixQueryParser,Prefix Query Parser>>
 * <<OtherParsers-RawQueryParser,Raw Query Parser>>
-* <<OtherParsers-Re-RankingQueryParser,Re-Ranking Query Parser>>
+* <<OtherParsers-PayloadQueryParsers,Payload Query Parsers>>
 
+* <<OtherParsers-Re-RankingQueryParser,Re-Ranking Query Parser>>
 * <<OtherParsers-SimpleQueryParser,Simple Query Parser>>
 * <<OtherParsers-SpatialQueryParsers,Spatial Query Parsers>>
 * <<OtherParsers-SurroundQueryParser,Surround Query Parser>>
@@ -609,6 +610,63 @@ Example:
 [source,java]
 ----
 {!lucenePlusSort} myfield:foo +bar -baz;price asc
+----
+
+[[OtherParsers-PayloadQueryParsers]]
+== Payload Query Parsers
+
+These query parsers utilize payloads encoded on terms during indexing. The main query, for both of these parsers, is parsed straightforwardly from the field type's query analysis into a `SpanQuery`. The generated `SpanQuery` will be either a `SpanTermQuery` or an ordered, zero slop `SpanNearQuery`, depending on how many tokens are emitted. Payloads can be encoded on terms using either the `DelimitedPayloadTokenFilter` or the `NumericPayloadTokenFilter`. The payload using parsers are:
+
+* `PayloadScoreQParser`
+* `PayloadCheckQParser`
+
+[[OtherParsers-PayloadScoreParser]]
+=== Payload Score Parser
+
+`PayloadScoreQParser` incorporates each matching term's numeric (integer or float) payloads into the scores.
+
+This parser accepts the following parameters:
+
+[width="100%",cols="50%,50%",options="header",]
+|===
+|Parameter |Description
+|`f` |Field to use (required)
+|`func` |Payload function: min, max, average (required)
+|`includeSpanScore` |If true, multiples computed payload factor by the score of the original query. If false, the computed payload factor is the score. (default: false)
+|===
+
+Example:
+
+[source,java]
+----
+{!payload_score f=my_field_dpf v=some_term func=max}
+----
+
+[[OtherParsers-PayloadCheckParser]]
+=== Payload Check Parser
+
+`PayloadCheckQParser` only matches when the matching terms also have the specified payloads.
+
+This parser accepts the following parameters:
+
+// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+
+[width="100%",cols="50%,50%",options="header",]
+|===
+|Parameter |Description
+|`f` |Field to use (required)
+|payloads a|
+space-separated list of payloads that must match the query terms (required)
+
+Each specified payload will be encoded using the encoder determined from the field type and encoded accordingly for matching.
+
+`DelimitedPayloadTokenFilter` 'identity' encoded payloads also work here, as well as float and integer encoded ones.
+
+|===
+
+[source,java]
+----
+{!payload_check f=words_dps payloads="VERB NOUN"}searching stuff
 ----
 
 [[OtherParsers-PrefixQueryParser]]

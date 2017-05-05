@@ -256,6 +256,19 @@ Here is how it looks like in various formats:
  SolrDocumentList subResults = (SolrDocumentList)doc.getFieldValue("children");
 ----
 
+[[TransformingResultDocuments-Subqueryresultfields]]
+==== Subquery result fields
+
+To appear in subquery document list, a field should be specified both fl parameters, in main one fl (despite the main result documents have no this field) and in subquery's one eg `foo.fl`. Of course, you can use wildcard in any or both of these parameters. For example, if field title should appear in categories subquery, it can be done via one of these ways.
+
+[source,java]
+----
+fl=...title,categories:[subquery]&categories.fl=title&categories.q=...
+fl=...title,categories:[subquery]&categories.fl=*&categories.q=...
+fl=...*,categories:[subquery]&categories.fl=*&categories.q=...
+fl=...*,categories:[subquery]&categories.fl=*&categories.q=...
+----
+
 [[TransformingResultDocuments-SubqueryParametersShift]]
 ==== Subquery Parameters Shift
 

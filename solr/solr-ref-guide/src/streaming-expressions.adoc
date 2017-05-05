@@ -475,6 +475,9 @@ stats(collection1,
       count(*))
 ----
 
+[[StreamingExpressions-timeseries]]
+=== timeseries
+
 [[StreamingExpressions-train]]
 === train
 
@@ -552,6 +555,9 @@ Stream decorators wrap other stream functions or perform operations on the strea
 
 [[StreamingExpressions-cartesianProduct_6.6_]]
 === cartesianProduct (6.6)
+
+[[StreamingExpressions-cell]]
+=== cell
 
 [[StreamingExpressions-classify]]
 === classify
@@ -1079,6 +1085,9 @@ merge(
              sort="fieldA asc"),
       on="fieldA asc") 
 ----
+
+[[StreamingExpressions-list]]
+=== list
 
 [[StreamingExpressions-null]]
 === null

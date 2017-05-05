@@ -1438,7 +1438,7 @@ If you use this filter during indexing, you must follow it with a Flatten Graph 
 
 *Arguments:*
 
-`synonyms`: (required) The path of a file that contains a list of synonyms, one per line. In the (default) `solr` format - see the `format` argument below for alternatives - blank lines and lines that begin with "`#`" are ignored. This may be an absolute path, or path relative to the Solr config directory. There are two ways to specify synonym mappings:
+`synonyms`: (required) The path of a file that contains a list of synonyms, one per line. In the (default) `solr` format - see the `format` argument below for alternatives - blank lines and lines that begin with "`#`" are ignored. This may be a comma-separated list of absolute paths, or paths relative to the Solr config directory. There are two ways to specify synonym mappings:
 
 * A comma-separated list of words. If the token matches any of the words, then all the words in the list are substituted, which will include the original token.
 

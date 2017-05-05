@@ -25,7 +25,7 @@ q={!func}div(popularity,price)&fq={!frange l=1000}customer_ratings
 ----
 sort=div(popularity,price) desc, score desc
 ----
-* Add the results of functions as psuedo-fields to documents in query results. For instance, for:
+* Add the results of functions as pseudo-fields to documents in query results. For instance, for:
 +
 [source,java]
 ----
@@ -159,7 +159,24 @@ Returns the ordinal of the indexed field value within the indexed list of terms 
 See also `rord` below.
 
  |`ord(myIndexedField)` Example: If there were only three values ("apple","banana","pear") for a particular field X, then: `ord(X) `would be 1 for documents containing "apple", 2 for documnts containing "banana", etc...
-|pow |Raises the specified base to the specified power. `pow(x,y)` raises x to the power of y. |`pow(x,y)` `pow(x,log(y))` `pow(x,0.5):` the same as `sqrt`
+|payload a|
+Returns the float value computed from the decoded payloads of the term specified. The return value is computed using the `min`, `max`, or `average` of the decoded payloads. A special `first` function can be used instead of the others, to short-circuit term enumeration and return only the decoded payload of the first term. The field specified must have float or integer payload encoding capability (via `DelimitedPayloadTokenFilter` or `NumericPayloadTokenFilter`). If no payload is found for the term, the default value is returned.
+
+* `payload(field_name,term)`: default value is 0.0, `average` function is used.
+* `payload(field_name,term,default_value)`: default value can be a constant, field name, or another float returning function. `average` function used.
+* `payload(field_name,term,default_value,function)`: function values can be `min`, `max`, `average`, or `first`.
+
+ a|
+....
+payload(payloaded_field_dpf,term,0.0,first)
+....
+
+a|
+....
+pow
+....
+
+ |Raises the specified base to the specified power. `pow(x,y)` raises x to the power of y. |`pow(x,y)` `pow(x,log(y))` `pow(x,0.5):` the same as `sqrt`
 |product |Returns the product of multiple values or functions, which are specified in a comma-separated list. `mul(...)` may also be used as an alias for this function. |`product(x,y,...)` `product(x,2)` `product(x,y)mul(x,y)`
 |query |Returns the score for the given subquery, or the default value for documents not matching the query. Any type of subquery is supported through either parameter de-referencing `$otherparam` or direct specification of the query string in the <<local-parameters-in-queries.adoc#local-parameters-in-queries,Local Parameters>> through the `v` key. |`query(subquery, default)` `q=product` `(popularity,` ` query({!dismax v='solr rocks'})`: returns the product of the popularity and the score of the DisMax query. `q=product` `(popularity,` ` query($qq))&qq={!dismax}solr rocks`: equivalent to the previous query, using parameter de-referencing. `q=product` `(popularity,` ` query($qq,0.1))` `&qq={!dismax}` `solr rocks`: specifies a default score of 0.1 for documents that don't match the DisMax query.
 |recip a|

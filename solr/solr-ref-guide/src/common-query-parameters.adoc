@@ -118,7 +118,7 @@ fq=+popularity:[10 TO *] +section:0
 
 The `fl` parameter limits the information included in a query response to a specified list of fields. The fields need to either be `stored="true"` or `docValues="true"``.`
 
-The field list can be specified as a space-separated or comma-separated list of field names. The string "score" can be used to indicate that the score of each document for the particular query should be returned as a field. The wildcard character "`*`" selects all the fields in the document which are either `stored="true"` or `docValues="true"` and` useDocValuesAsStored="true"` (which is the default when docValues are enabled). You can also add psuedo-fields, functions and transformers to the field list request.
+The field list can be specified as a space-separated or comma-separated list of field names. The string "score" can be used to indicate that the score of each document for the particular query should be returned as a field. The wildcard character "`*`" selects all the fields in the document which are either `stored="true"` or `docValues="true"` and` useDocValuesAsStored="true"` (which is the default when docValues are enabled). You can also add pseudo-fields, functions and transformers to the field list request.
 
 This table shows some basic examples of how to use `fl`:
 
@@ -137,7 +137,7 @@ This table shows some basic examples of how to use `fl`:
 [[CommonQueryParameters-FunctionValues]]
 === Function Values
 
-<<function-queries.adoc#function-queries,Functions>> can be computed for each document in the result and returned as a psuedo-field:
+<<function-queries.adoc#function-queries,Functions>> can be computed for each document in the result and returned as a pseudo-field:
 
 [source,java]
 ----

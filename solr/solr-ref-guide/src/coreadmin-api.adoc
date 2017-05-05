@@ -52,6 +52,14 @@ When you are not running SolrCloud, if you have <<config-sets.adoc#config-sets,C
 
 ====
 
+.CREATE and the core.properties file
+[WARNING]
+====
+
+The core.properties file is built as part of the CREATE command. If you create a core.properties file yourself in a core directory and then try to use CREATE to add that core to Solr, you will get an error telling you that another core is already defined there. The core.properties file must NOT exist before calling the CoreAdmin API with the CREATE command.
+
+====
+
 [[CoreAdminAPI-Input.1]]
 === *Input*
 
