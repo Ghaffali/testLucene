@@ -5,15 +5,9 @@
 
 The following sections cover provide general information about how various SolrCloud features work. To understand these features, it's important to first understand a few key concepts that relate to SolrCloud.
 
-* [[sc32604299]]
-+
-<</confluence/display/solr/Shards+and+Indexing+Data+in+SolrCloud,Shards and Indexing Data in SolrCloud>>
-* [[sc32604297]]
-+
-<</confluence/display/solr/Distributed+Requests,Distributed Requests>>
-* [[sc32604296]]
-+
-<</confluence/display/solr/Read+and+Write+Side+Fault+Tolerance,Read and Write Side Fault Tolerance>>
+* <<shards-and-indexing-data-in-solrcloud.adoc#shards-and-indexing-data-in-solrcloud,Shards and Indexing Data in SolrCloud>>
+* <<distributed-requests.adoc#distributed-requests,Distributed Requests>>
+* <<read-and-write-side-fault-tolerance.adoc#read-and-write-side-fault-tolerance,Read and Write Side Fault Tolerance>>
 
 If you are already familiar with SolrCloud concepts and basic functionality, you can skip to the section covering <<solrcloud-configuration-and-parameters.adoc#solrcloud-configuration-and-parameters,SolrCloud Configuration and Parameters>>.
 
