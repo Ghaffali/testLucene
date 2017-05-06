@@ -2,6 +2,8 @@
 :page-shortname: distributed-search-with-index-sharding
 :page-permalink: distributed-search-with-index-sharding.html
 
+When using traditional index sharding, you will need to consider how to query your documents.
+
 It is highly recommended that you use <<solrcloud.adoc#solrcloud,SolrCloud>> when needing to scale up or scale out. The setup described below is legacy and was used prior to the existence of SolrCloud. SolrCloud provides for a truly distributed set of features with support for things like automatic routing, leader election, optimistic concurrency and other sanity checks that are expected out of a distributed system.
 
 Everything on this page is specific to legacy setup of distributed search. Users trying out SolrCloud should not follow any of the steps or information below.
@@ -20,19 +22,17 @@ In the legacy distributed mode, Solr does not calculate universal term/doc frequ
 
 If a query request includes the `shards` parameter, the Solr server distributes the request across all the shards listed as arguments to the parameter. The `shards` parameter uses this syntax:
 
-`__host__` `:` `__port__` `/` `__base_url__` `[,` `__host__` `:` `__port__` `/` `__base_url__` `]*`
+`host:port/base_url,host:port/base_url*`
 
 For example, the `shards` parameter below causes the search to be distributed across two Solr servers: *solr1* and **solr2**, both of which are running on port 8983:
 
-` http://localhost:8983/solr/core1/select?shards=solr1:8983/solr/core1,solr2:8983/solr/core1&indent=true&q=ipod+solr `
+`\http://localhost:8983/solr/core1/select?shards=solr1:8983/solr/core1,solr2:8983/solr/core1&indent=true&q=ipod+solr`
 
 Rather than require users to include the shards parameter explicitly, it is usually preferred to configure this parameter as a default in the RequestHandler section of `solrconfig.xml`.
 
 [IMPORTANT]
 ====
-
-Do not add the `shards` parameter to the standard requestHandler; otherwise, search queries may enter an infinite loop. Instead, define a new requestHandler that uses the `shards` parameter, and pass distributed search requests to that handler.
-
+Do not add the `shards` parameter to the standard request handler; doing so may cause search queries may enter an infinite loop. Instead, define a new request handler that uses the `shards` parameter, and pass distributed search requests to that handler.
 ====
 
 With Legacy mode, only query requests are distributed. This includes requests to the SearchHandler (or any handler extending from `org.apache.solr.handler.component.SearchHandler`) using standard components that support distributed search.
@@ -65,16 +65,16 @@ Formerly a limitation was that TF/IDF relevancy computations only used shard-loc
 [[DistributedSearchwithIndexSharding-AvoidingDistributedDeadlock]]
 == Avoiding Distributed Deadlock
 
-Like in SolrCloud mode, inter-shard requests could lead to a distributed deadlock. It can be avoided by following the instructions <<distributed-requests.adoc#distributed-requests,here>>.
+Like in SolrCloud mode, inter-shard requests could lead to a distributed deadlock. It can be avoided by following the instructions in the section  <<distributed-requests.adoc#distributed-requests,Distributed Requests>>.
 
 [[DistributedSearchwithIndexSharding-TestingIndexShardingonTwoLocalServers]]
 == Testing Index Sharding on Two Local Servers
 
-For simple functionality testing, it's easiest to just set up two local Solr servers on different ports. (In a production environment, of course, these servers would be deployed on separate machines.)
+For simple functional testing, it's easiest to just set up two local Solr servers on different ports. (In a production environment, of course, these servers would be deployed on separate machines.)
 
-1.  Make two Solr home directories:
+.  Make two Solr home directories and copy `solr.xml` into the new directories:
 +
-[source,java]
+[source,bash]
 ----
 mkdir example/nodes
 mkdir example/nodes/node1
@@ -84,9 +84,9 @@ cp server/solr/solr.xml example/nodes/node1/.
 mkdir example/nodes/node2
 cp server/solr/solr.xml example/nodes/node2/.
 ----
-2.  Start the two Solr instances
+.  Start the two Solr instances
 +
-[source,java]
+[source,bash]
 ----
 # Start first node on port 8983
 bin/solr start -s example/nodes/node1 -p 8983
@@ -94,25 +94,25 @@ bin/solr start -s example/nodes/node1 -p 8983
 # Start second node on port 8984
 bin/solr start -s example/nodes/node2 -p 8984
 ----
-3.  Create a core on both the nodes with the sample_techproducts_configs.
+.  Create a core on both the nodes with the sample_techproducts_configs.
 +
-[source,java]
+[source,bash]
 ----
 bin/solr create_core -c core1 -p 8983 -d sample_techproducts_configs
 # Create a core on the Solr node running on port 8984
 bin/solr create_core -c core1 -p 8984 -d sample_techproducts_configs
 ----
-4.  In the third window, index an example document to each of the server:
+.  In a third window, index an example document to each of the server:
 +
-[source,java]
+[source,bash]
 ----
 bin/post -c core1 example/exampledocs/monitor.xml -port 8983
 
 bin/post -c core1 example/exampledocs/monitor2.xml -port 8984
 ----
-5.  Search on the node on port 8983:
+.  Search on the node on port 8983:
 +
-[source,bash]
+[source]
 ----
 curl http://localhost:8983/solr/core1/select?q=*:*&wt=xml&indent=true
 ----
@@ -121,7 +121,7 @@ This should bring back one document.
 +
 Search on the node on port 8984:
 +
-[source,bash]
+[source]
 ----
 curl http://localhost:8984/solr/core1/select?q=*:*&wt=xml&indent=true
 ----
@@ -130,14 +130,14 @@ This should also bring back a single document.
 +
 Now do a distributed search across both servers with your browser or `curl.` In the example below, an extra parameter 'fl' is passed to restrict the returned fields to id and name.
 +
-[source,bash]
+[source]
 ----
 curl http://localhost:8983/solr/core1/select?q=*:*&indent=true&shards=localhost:8983/solr/core1,localhost:8984/solr/core1&fl=id,name
 ----
 +
 This should contain both the documents as shown below:
 +
-[source,java]
+[source,xml]
 ----
 <response>
   <lst name="responseHeader">

@@ -2,14 +2,18 @@
 :page-shortname: detecting-languages-during-indexing
 :page-permalink: detecting-languages-during-indexing.html
 
-Solr can identify languages and map text to language-specific fields during indexing using the `langid` UpdateRequestProcessor. Solr supports two implementations of this feature:
+Solr can identify languages and map text to language-specific fields during indexing using the `langid` UpdateRequestProcessor.
+
+Solr supports two implementations of this feature:
 
 * Tika's language detection feature: http://tika.apache.org/0.10/detection.html
 * LangDetect language detection: https://github.com/shuyo/language-detection
 
 You can see a comparison between the two implementations here: http://blog.mikemccandless.com/2011/10/accuracy-and-performance-of-googles.html. In general, the LangDetect implementation supports more languages with higher performance.
 
-For specific information on each of these language identification implementations, including a list of supported languages for each, see the relevant project websites. For more information about the `langid` UpdateRequestProcessor, see the Solr wiki: http://wiki.apache.org/solr/LanguageDetection. For more information about language analysis in Solr, see <<language-analysis.adoc#language-analysis,Language Analysis>>.
+For specific information on each of these language identification implementations, including a list of supported languages for each, see the relevant project websites.
+
+For more information about language analysis in Solr, see <<language-analysis.adoc#language-analysis,Language Analysis>>.
 
 [[DetectingLanguagesDuringIndexing-ConfiguringLanguageDetection]]
 == Configuring Language Detection
@@ -21,7 +25,7 @@ You can configure the `langid` UpdateRequestProcessor in `solrconfig.xml`. Both 
 
 Here is an example of a minimal Tika `langid` configuration in `solrconfig.xml`:
 
-[source,java]
+[source,xml]
 ----
 <processor class="org.apache.solr.update.processor.TikaLanguageIdentifierUpdateProcessorFactory">
   <lst name="defaults">
@@ -36,7 +40,7 @@ Here is an example of a minimal Tika `langid` configuration in `solrconfig.xml`:
 
 Here is an example of a minimal LangDetect `langid` configuration in `solrconfig.xml`:
 
-[source,java]
+[source,xml]
 ----
 <processor class="org.apache.solr.update.processor.LangDetectLanguageIdentifierUpdateProcessorFactory">
   <lst name="defaults">
@@ -51,7 +55,7 @@ Here is an example of a minimal LangDetect `langid` configuration in `solrconfig
 
 As previously mentioned, both implementations of the `langid` UpdateRequestProcessor take the same parameters.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Type |Default |Required |Description
 |langid |Boolean |true |no |Enables and disables language detection.

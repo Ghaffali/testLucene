@@ -2,23 +2,25 @@
 :page-shortname: de-duplication
 :page-permalink: de-duplication.html
 
-Preventing duplicate or near duplicate documents from entering an index or tagging documents with a signature/fingerprint for duplicate field collapsing can be efficiently achieved with a low collision or fuzzy hash algorithm. Solr natively supports de-duplication techniques of this type via the `<Signature>` class and allows for the easy addition of new hash/signature implementations. A Signature can be implemented several ways:
+If duplicate, or near-duplicate documents are a concern in your index, de-duplication may be worth implementing.
 
-[width="100%",cols="50%,50%",options="header",]
+Preventing duplicate or near duplicate documents from entering an index or tagging documents with a signature/fingerprint for duplicate field collapsing can be efficiently achieved with a low collision or fuzzy hash algorithm. Solr natively supports de-duplication techniques of this type via the `Signature` class and allows for the easy addition of new hash/signature implementations. A Signature can be implemented several ways:
+
+[width="100%",options="header",]
 |===
 |Method |Description
-|MD5Signature |128 bit hash used for exact duplicate detection.
-|Lookup3Signature |64 bit hash used for exact duplicate detection, much faster than MD5 and smaller to index
-|http://wiki.apache.org/solr/TextProfileSignature[TextProfileSignature] |Fuzzy hashing implementation from nutch for near duplicate detection. It's tunable but works best on longer text.
+|MD5Signature |128-bit hash used for exact duplicate detection.
+|Lookup3Signature |64-bit hash used for exact duplicate detection. This is much faster than MD5 and smaller to index.
+|http://wiki.apache.org/solr/TextProfileSignature[TextProfileSignature] |Fuzzy hashing implementation from Apache Nutch for near duplicate detection. It's tunable but works best on longer text.
 |===
 
 Other, more sophisticated algorithms for fuzzy/near hashing can be added later.
 
 [IMPORTANT]
 ====
+Adding in the de-duplication process will change the `allowDups` setting so that it applies to an update term (with `signatureField` in this case) rather than the unique field Term.
 
-Adding in the de-duplication process will change the `allowDups` setting so that it applies to an update Term (with `signatureField` in this case) rather than the unique field Term. Of course the `signatureField` could be the unique field, but generally you want the unique field to be unique. When a document is added, a signature will automatically be generated and attached to the document in the specified `signatureField`.
-
+Of course the `signatureField` could be the unique field, but generally you want the unique field to be unique. When a document is added, a signature will automatically be generated and attached to the document in the specified `signatureField`.
 ====
 
 [[De-Duplication-ConfigurationOptions]]
@@ -50,7 +52,7 @@ The `SignatureUpdateProcessorFactory` takes several properties:
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default |Description
 |signatureClass |`org.apache.solr.update.processor.Lookup3Signature` a|
@@ -69,7 +71,7 @@ A Signature implementation for generating a signature hash. The full classpath o
 [[De-Duplication-Inschema.xml]]
 === In `schema.xml`
 
-If you are using a separate field for storing the signature you must have it indexed:
+If you are using a separate field for storing the signature, you must have it indexed:
 
 [source,xml]
 ----
@@ -88,11 +90,9 @@ Be sure to change your update handlers to use the defined chain, as below:
 </requestHandler>
 ----
 
-(This example assumes you have other sections of your request handler defined.)
+This example assumes you have other sections of your request handler defined.
 
 [TIP]
 ====
-
 The update processor can also be specified per request with a parameter of `update.chain=dedupe`.
-
 ====

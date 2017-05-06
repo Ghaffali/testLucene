@@ -4,12 +4,9 @@
 
 DocValues are a way of recording field values internally that is more efficient for some purposes, such as sorting and faceting, than traditional indexing.
 
-// OLD_CONFLUENCE_ID: DocValues-WhyDocValues?
-
-[[DocValues-WhyDocValues_]]
 == Why DocValues?
 
-The standard way that Solr builds the index is with an __inverted index__. This style builds a list of terms found in all the documents in the index and next to each term is a list of documents that the term appears in (as well as how many times the term appears in that document). This makes search very fast - since users search by terms, having a ready list of term-to-document values makes the query process faster.
+The standard way that Solr builds the index is with an _inverted index_. This style builds a list of terms found in all the documents in the index and next to each term is a list of documents that the term appears in (as well as how many times the term appears in that document). This makes search very fast - since users search by terms, having a ready list of term-to-document values makes the query process faster.
 
 For other features that we now commonly associate with search, such as sorting, faceting, and highlighting, this approach is not very efficient. The faceting engine, for example, must look up each term that appears in each document that will make up the result set and pull the document IDs in order to build the facet list. In Solr, this is maintained in memory, and can be slow to load (depending on the number of documents, terms, etc.).
 
@@ -28,11 +25,7 @@ Enabling a field for docValues only requires adding `docValues="true"` to the fi
 ----
 
 [IMPORTANT]
-====
-
 If you have already indexed data into your Solr index, you will need to completely re-index your content after changing your field definitions in `schema.xml` in order to successfully use docValues.
-
-====
 
 DocValues are only available for specific field types. The types chosen determine the underlying Lucene docValue type that will be used. The available Solr field types are:
 
@@ -59,19 +52,13 @@ There is an additional configuration option available, which is to modify the `d
 Please note that the `docValuesFormat` option may change in future releases.
 
 [NOTE]
-====
 Lucene index back-compatibility is only supported for the default codec. If you choose to customize the `docValuesFormat` in your schema.xml, upgrading to a future version of Solr may require you to either switch back to the default codec and optimize your index to rewrite it into the default codec before upgrading, or re-build your entire index from scratch after upgrading.
-====
 
-[[DocValues-UsingDocValues]]
 == Using DocValues
 
-// OLD_CONFLUENCE_ID: DocValues-Sorting,Faceting&Functions
-
-[[DocValues-Sorting_Faceting_Functions]]
 === Sorting, Faceting & Functions
 
-If `docValues="true"` for a field, then DocValues will automatically be used any time the field is used for <<common-query-parameters.adoc#CommonQueryParameters-ThesortParameter,sorting>>, <<faceting.adoc#faceting,faceting>> or <<function-queries.adoc#function-queries,Function Queries>>.
+If `docValues="true"` for a field, then DocValues will automatically be used any time the field is used for <<common-query-parameters.adoc#CommonQueryParameters-ThesortParameter,sorting>>, <<faceting.adoc#faceting,faceting>> or <<function-queries.adoc#function-queries,function queries>>.
 
 [[DocValues-RetrievingDocValuesDuringSearch]]
 === Retrieving DocValues During Search
@@ -82,7 +69,7 @@ When `useDocValuesAsStored="false"`, non-stored DocValues fields can still be ex
 
 In cases where the query is returning _only_ docValues fields performance may improve since returning stored fields requires disk reads and decompression whereas returning docValues fields in the fl list only requires memory access.
 
-When retrieving fields from their docValues form (using https://cwiki.apache.org/confluence/display/solr/Exporting+Result+Sets[/export handler], https://cwiki.apache.org/confluence/display/solr/Streaming+Expressions[streaming expressions] or if the field is requested in the `fl` parameter), two important differences between regular stored fields and docValues fields must be understood:
+When retrieving fields from their docValues form (using the <<exporting-result-sets.adoc#exporting-result-sets,/export handler>>, <<streaming-expressions.adoc#streaming-expressions,streaming expressions>> or if the field is requested in the `fl` parameter), two important differences between regular stored fields and docValues fields must be understood:
 
 1.  Order is _not_ preserved. For simply retrieving stored fields, the insertion order is the return order. For docValues, it is the _sorted_ order.
 2.  Multiple identical entries are collapsed into a single value. Thus if I insert values 4, 5, 2, 4, 1, my return will be 1, 2, 4, 5.

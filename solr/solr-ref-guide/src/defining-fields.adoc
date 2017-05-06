@@ -20,15 +20,15 @@ The following example defines a field named `price` with a type named `float` an
 [cols=",",options="header",]
 |===
 |Property |Description
-|name |The name of the field. Field names should consist of alphanumeric or underscore characters only and not start with a digit. This is not currently strictly enforced, but other field names will not have first class support from all components and back compatibility is not guaranteed. Names with both leading and trailing underscores (e.g. `_version_`) are reserved. Every field must have a `name`.
-|type |The name of the `fieldType` for this field. This will be found in the "```name```" attribute on the `fieldType` definition. Every field must have a `type`.
+|name |The name of the field. Field names should consist of alphanumeric or underscore characters only and not start with a digit. This is not currently strictly enforced, but other field names will not have first class support from all components and back compatibility is not guaranteed. Names with both leading and trailing underscores (e.g., `_version_`) are reserved. Every field must have a `name`.
+|type |The name of the `fieldType` for this field. This will be found in the `name` attribute on the `fieldType` definition. Every field must have a `type`.
 |default |A default value that will be added automatically to any document that does not have a value in this field when it is indexed. If this property is not specified, there is no default.
 |===
 
 [[DefiningFields-OptionalFieldTypeOverrideProperties]]
 === Optional Field Type Override Properties
 
-Fields can have many of the same properties as field types. Properties from the table below which are specified on an individual field will override any explicit value for that property specified on the the `<fieldType/>` of the field, or any implicit default property value provided by the underlying `FieldType` implementation. The table below is reproduced from <<field-type-definitions-and-properties.adoc#field-type-definitions-and-properties,Field Type Definitions and Properties>>, which has more details:
+Fields can have many of the same properties as field types. Properties from the table below which are specified on an individual field will override any explicit value for that property specified on the the `fieldType` of the field, or any implicit default property value provided by the underlying `fieldType` implementation. The table below is reproduced from <<field-type-definitions-and-properties.adoc#field-type-definitions-and-properties,Field Type Definitions and Properties>>, which has more details:
 
 [width="100%",options="header",]
 |===
