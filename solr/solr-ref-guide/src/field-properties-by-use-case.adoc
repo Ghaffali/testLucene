@@ -4,22 +4,16 @@
 
 Here is a summary of common use cases, and the attributes the fields or field types should have to support the case. An entry of true or false in the table indicates that the option must be set to the given value for the use case to function correctly. If no entry is provided, the setting of that attribute has no impact on the case.
 
-[width="100%",cols="16%,12%,12%,12%,12%,12%,12%,12%",options="header",]
+[width="100%",options="header",]
 |===
 |Use Case |indexed |stored |multiValued |omitNorms |termVectors |termPositions |docValues
 |search within field |true | | | | | |
-|retrieve contents | |true^8^ | | | | |true^8^
+|retrieve contents | |truefootnoteref:[8,Stored content will be used by default, but docValues can alternatively be used. See <<docvalues.adoc#docvalues,DocValues>>] | | | | |truefootnoteref:[8]
 |use as unique key |true | |false | | | |
-|sort on field |true^7^ | |false |true ^1^ | | |true^7^
-|highlighting |true ^4^ |true | | |true^2^ |true ^3^ |
-|faceting ^5^ |true^7^ | | | | | |true^7^
+|sort on field |truefootnoteref:[7,For most field types, either `indexed` or `docValues` must be true, but both are not required. <<docvalues.adoc#docvalues,DocValues>> can be more efficient in many cases. For `Int/Long/Float/Double/DatePointFields`, `docValues=true` is required.] | |false |truefootnoteref:[1,Recommended but not necessary.] | | |truefootnoteref:[7]
+|highlighting |truefootnoteref:[4,A tokenizer must be defined for the field, but it doesn't need to be indexed.] |true | | |truefootnoteref:[2,Will be used if present, but not necessary.] |truefootnoteref:[3,(if termVectors=true)] |
+|facetingfootnoteref:[5,Described in <<understanding-analyzers-tokenizers-and-filters.adoc#understanding-analyzers-tokenizers-and-filters,Understanding Analyzers, Tokenizers, and Filters>>.] |truefootnoteref:[7] | | | | | |truefootnoteref:[7]
 |add multiple values, maintaining order | | |true | | | |
 |field length affects doc score | | | |false | | |
-|MoreLikeThis ^5^ | | | | |true ^6^ | |
+|MoreLikeThisfootnoteref:[5] | | | | |truefootnoteref:[6,Term vectors are not mandatory here. If not true, then a stored field is analyzed. So term vectors are recommended, but only required if `stored=false`.] | |
 |===
-
-Notes:
-
-^1^ Recommended but not necessary. ^2^ Will be used if present, but not necessary. ^3^ (if termVectors=true) ^4^ A tokenizer must be defined for the field, but it doesn't need to be indexed. ^5^ Described in <<understanding-analyzers-tokenizers-and-filters.adoc#understanding-analyzers-tokenizers-and-filters,Understanding Analyzers, Tokenizers, and Filters>>. ^6^ Term vectors are not mandatory here. If not true, then a stored field is analyzed. So term vectors are recommended, but only required if `stored=false`.^7^ For most field types, either `indexed` or `docValues` must be true, but both are not required. <<docvalues.adoc#docvalues,DocValues>> can be more efficient in many cases. For `[Int/Long/Float/Double/Date]PointFields`, `docValues=true` is required.
-
-^8^ Stored content will be used by default, but docValues can alternatively be used. See <<docvalues.adoc#docvalues,DocValues>>.

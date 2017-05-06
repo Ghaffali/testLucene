@@ -4,7 +4,7 @@
 
 The following table lists the field types that are available in Solr. The `org.apache.solr.schema` package includes all the classes listed in this table.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Class |Description
 |BinaryField |Binary data.
@@ -34,5 +34,5 @@ The following table lists the field types that are available in Solr. The `org.a
 |FloatPointField |Floating point field (32-bit IEEE floating point). This class functions similarly to TrieFloatField, but using a "Dimensional Points" based data structure instead of indexed terms, and doesn't require configuration of a precision step. For single valued fields, `docValues="true"` must be used to enable sorting.
 |IntPointField |Integer field (32-bit signed integer). This class functions similarly to TrieIntField, but using a "Dimensional Points" based data structure instead of indexed terms, and doesn't require configuration of a precision step. For single valued fields, `docValues="true"` must be used to enable sorting.
 |LongPointField |Long field (64-bit signed integer). This class functions similarly to TrieLongField, but using a "Dimensional Points" based data structure instead of indexed terms, and doesn't require configuration of a precision step. For single valued fields, `docValues="true"` must be used to enable sorting.
-|UUIDField |Universally Unique Identifier (UUID). Pass in a value of "NEW" and Solr will create a new UUID. **Note**: configuring a UUIDField instance with a default value of "NEW" is not advisable for most users when using SolrCloud (and not possible if the UUID value is configured as the unique key field) since the result will be that each replica of each document will get a unique UUID value. Using UUIDUpdateProcessorFactory to generate UUID values when documents are added is recommended instead.
+|UUIDField |Universally Unique Identifier (UUID). Pass in a value of "NEW" and Solr will create a new UUID. *Note*: configuring a UUIDField instance with a default value of "NEW" is not advisable for most users when using SolrCloud (and not possible if the UUID value is configured as the unique key field) since the result will be that each replica of each document will get a unique UUID value. Using UUIDUpdateProcessorFactory to generate UUID values when documents are added is recommended instead.
 |===
