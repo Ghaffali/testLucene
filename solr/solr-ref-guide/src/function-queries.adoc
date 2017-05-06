@@ -2,9 +2,11 @@
 :page-shortname: function-queries
 :page-permalink: function-queries.html
 
-Function queries enable you to generate a relevancy score using the actual value of one or more numeric fields. Function queries are supported by the <<the-dismax-query-parser.adoc#the-dismax-query-parser,DisMax>>, <<the-extended-dismax-query-parser.adoc#the-extended-dismax-query-parser,Extended DisMax>>, and <<the-standard-query-parser.adoc#the-standard-query-parser,standard>> query parsers.
+Function queries enable you to generate a relevancy score using the actual value of one or more numeric fields.
 
-Function queries use __functions__. The functions can be a constant (numeric or string literal), a field, another function or a parameter substitution argument. You can use these functions to modify the ranking of results for users. These could be used to change the ranking of results based on a user's location, or some other calculation.
+Function queries are supported by the <<the-dismax-query-parser.adoc#the-dismax-query-parser,DisMax>>, <<the-extended-dismax-query-parser.adoc#the-extended-dismax-query-parser,Extended DisMax>>, and <<the-standard-query-parser.adoc#the-standard-query-parser,standard>> query parsers.
+
+Function queries use _functions_. The functions can be a constant (numeric or string literal), a field, another function or a parameter substitution argument. You can use these functions to modify the ranking of results for users. These could be used to change the ranking of results based on a user's location, or some other calculation.
 
 [[FunctionQueries-UsingFunctionQuery]]
 == Using Function Query
@@ -15,26 +17,26 @@ There are several ways of using function queries in a Solr query:
 
 * Via an explicit QParser that expects function arguments, such <<other-parsers.adoc#OtherParsers-FunctionQueryParser,`func`>> or <<other-parsers.adoc#OtherParsers-FunctionRangeQueryParser,`frange`>> . For example:
 +
-[source,java]
+[source]
 ----
 q={!func}div(popularity,price)&fq={!frange l=1000}customer_ratings
 ----
 * In a Sort expression. For example:
 +
-[source,java]
+[source]
 ----
 sort=div(popularity,price) desc, score desc
 ----
 * Add the results of functions as pseudo-fields to documents in query results. For instance, for:
 +
-[source,java]
+[source]
 ----
 &fl=sum(x, y),id,a,b,c,score
 ----
 +
 the output would be:
 +
-[source,java]
+[source,xml]
 ----
 ...
 <str name="id">foo</str>
@@ -44,7 +46,7 @@ the output would be:
 ----
 * Use in a parameter that is explicitly for specifying functions, such as the EDisMax query parser's <<the-extended-dismax-query-parser.adoc#the-extended-dismax-query-parser,`boost`>> param, or DisMax query parser's <<the-dismax-query-parser.adoc#TheDisMaxQueryParser-Thebf_BoostFunctions_Parameter,`bf` (boost function) parameter>>. (Note that the `bf` parameter actually takes a list of function queries separated by white space and each with an optional boost. Make sure you eliminate any internal white space in single function queries when using `bf`). For example:
 +
-[source,java]
+[source]
 ----
 q=dismax&bf="ord(popularity)^0.5 recip(rord(price),1,1000,1000)^0.3"
 ----
@@ -57,8 +59,6 @@ q=_val_:mynumericfield _val_:"recip(rord(myfield),1,2,3)"
 
 Only functions with fast random access are recommended.
 
-<<main,Back to Top>>
-
 [[FunctionQueries-AvailableFunctions]]
 == Available Functions
 
@@ -66,7 +66,7 @@ The table below summarizes the functions available for function queries.
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Function |Description |Syntax Examples
 |abs |Returns the absolute value of the specified value or function. |`abs(x)` `abs(-5)`
@@ -144,16 +144,14 @@ Returns milliseconds of difference between its arguments. Dates are relative to 
 * `ms(a,b)` : Returns the number of milliseconds that b occurs before a (that is, a - b)
 
  |`ms(NOW/DAY)` `ms(2000-01-01T00:00:00Z)` `ms(mydatefield)` `ms(NOW,mydatefield)` `ms(mydatefield,` `2000-01-01T00:00:00Z)` `ms(datefield1,` `datefield2)`
-|norm(__field__) |Returns the "norm" stored in the index for the specified field. This is the product of the index time boost and the length normalization factor, according to the {lucene-javadocs}/core/org/apache/lucene/search/similarities/Similarity.html[Similarity] for the field. |`norm(fieldName)`
+|norm(_field_) |Returns the "norm" stored in the index for the specified field. This is the product of the index time boost and the length normalization factor, according to the {lucene-javadocs}/core/org/apache/lucene/search/similarities/Similarity.html[Similarity] for the field. |`norm(fieldName)`
 |numdocs |Returns the number of documents in the index, not including those that are marked as deleted but have not yet been purged. This is a constant (the same value for all documents in the index). |`numdocs()`
 |ord a|
 Returns the ordinal of the indexed field value within the indexed list of terms for that field in Lucene index order (lexicographically ordered by unicode value), starting at 1. In other words, for a given field, all values are ordered lexicographically; this function then returns the offset of a particular value in that ordering. The field must have a maximum of one value per document (not multi-valued). 0 is returned for documents without a value in the field.
 
 [IMPORTANT]
 ====
-
 `ord()` depends on the position in an index and can change when other documents are inserted or deleted.
-
 ====
 
 See also `rord` below.
@@ -164,19 +162,9 @@ Returns the float value computed from the decoded payloads of the term specified
 
 * `payload(field_name,term)`: default value is 0.0, `average` function is used.
 * `payload(field_name,term,default_value)`: default value can be a constant, field name, or another float returning function. `average` function used.
-* `payload(field_name,term,default_value,function)`: function values can be `min`, `max`, `average`, or `first`.
+* `payload(field_name,term,default_value,function)`: function values can be `min`, `max`, `average`, or `first`. |`payload(payloaded_field_dpf,term,0.0,first)`
 
- a|
-....
-payload(payloaded_field_dpf,term,0.0,first)
-....
-
-a|
-....
-pow
-....
-
- |Raises the specified base to the specified power. `pow(x,y)` raises x to the power of y. |`pow(x,y)` `pow(x,log(y))` `pow(x,0.5):` the same as `sqrt`
+|pow |Raises the specified base to the specified power. `pow(x,y)` raises x to the power of y. |`pow(x,y)` `pow(x,log(y))` `pow(x,0.5):` the same as `sqrt`
 |product |Returns the product of multiple values or functions, which are specified in a comma-separated list. `mul(...)` may also be used as an alias for this function. |`product(x,y,...)` `product(x,2)` `product(x,y)mul(x,y)`
 |query |Returns the score for the given subquery, or the default value for documents not matching the query. Any type of subquery is supported through either parameter de-referencing `$otherparam` or direct specification of the query string in the <<local-parameters-in-queries.adoc#local-parameters-in-queries,Local Parameters>> through the `v` key. |`query(subquery, default)` `q=product` `(popularity,` ` query({!dismax v='solr rocks'})`: returns the product of the popularity and the score of the DisMax query. `q=product` `(popularity,` ` query($qq))&qq={!dismax}solr rocks`: equivalent to the previous query, using parameter de-referencing. `q=product` `(popularity,` ` query($qq,0.1))` `&qq={!dismax}` `solr rocks`: specifies a default score of 0.1 for documents that don't match the DisMax query.
 |recip a|
@@ -211,7 +199,7 @@ The `ord()` and `rord()` functions implicitly use `top()`, and hence `ord(foo)` 
 
 The following functions are boolean – they return true or false. They are mostly useful as the first argument of the `if` function, and some of these can be combined. If used somewhere else, it will yield a '1' or '0'.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Function |Description |Syntax Examples
 |and |Returns a value of true if and only if all of its operands evaluate to true. |`and(not` `(exists` `(popularity)),` `exists` `(price)):` returns `true` for any document which has a value in the `price` field, but does not have a value in the `popularity` field
@@ -221,8 +209,6 @@ The following functions are boolean – they return true or false. They are most
 |exists |Returns TRUE if any member of the field exists. |`exists(author)` returns TRUE for any document has a value in the "author" field. `exists(query(price:5.00))` returns TRUE if "price" matches "5.00".
 |gt, gte, lt, lte, eq |5 comparison functions: Greater Than, Greater Than or Equal, Less Than, Less Than or Equal, Equal |`if(lt(ms(mydatefield),315569259747),0.8,1)` translates to this pseudocode: `if mydatefield < 315569259747 then 0.8 else 1`
 |===
-
-<<main,Back to Top>>
 
 [[FunctionQueries-ExampleFunctionQueries]]
 == Example Function Queries
@@ -237,19 +223,17 @@ This query will rank the results based on volumes. In order to get the computed 
 
 Suppose that you also have a field storing the weight of the box as `weight`. To sort by the density of the box and return the value of the density in score, you would submit the following query:
 
-[source,java]
+[source]
 ----
 http://localhost:8983/solr/collection_name/select?q=boxname:findbox _val_:"div(weight,product(x,y,z))"&fl=boxname x y z weight score
 ----
-
-<<main,Back to Top>>
 
 [[FunctionQueries-SortByFunction]]
 == Sort By Function
 
 You can sort your query results by the output of a function. For example, to sort results by distance, you could enter:
 
-[source,java]
+[source]
 ----
 http://localhost:8983/solr/collection_name/select?q=*:*&sort=dist(2, point1, point2) desc
 ----
@@ -260,16 +244,9 @@ Sort by function also supports pseudo-fields: fields can be generated dynamicall
 
 would return:
 
-[source,java]
+[source,xml]
 ----
 <str name="id">foo</str>
 <float name="sum(x,y)">40</float>
 <float name="score">0.343</float>
 ----
-
-<<main,Back to Top>>
-
-[[FunctionQueries-RelatedTopics]]
-== Related Topics
-
-* https://wiki.apache.org/solr/FunctionQuery[FunctionQuery]
