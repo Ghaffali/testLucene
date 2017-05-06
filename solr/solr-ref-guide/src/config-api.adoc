@@ -348,7 +348,7 @@ Define the same properties with the Config API:
 ----
 
 [[ConfigAPI-NameComponentsfortheConfigAPI]]
-==== Name Components for the Config API
+=== Name Components for the Config API
 
 The Config API always allows changing the configuration of any component by name. However, some configurations such as `listener` or `initParams` do not require a name in `solrconfig.xml`. In order to be able to `update` and `delete` of the same item in `configoverlay.json`, the name attribute becomes mandatory.
 
