@@ -2,8 +2,11 @@
 :page-shortname: thread-dump
 :page-permalink: thread-dump.html
 
-The Thread Dump screen lets you inspect the currently active threads on your server. Each thread is listed and access to the stacktraces is available where applicable. Icons to the left indicate the state of the thread: for example, threads with a green check-mark in a green circle are in a "RUNNABLE" state. On the right of the thread name, a down-arrow means you can expand to see the stacktrace for that thread.
+The Thread Dump screen lets you inspect the currently active threads on your server.
 
+Each thread is listed and access to the stacktraces is available where applicable. Icons to the left indicate the state of the thread: for example, threads with a green check-mark in a green circle are in a "RUNNABLE" state. On the right of the thread name, a down-arrow means you can expand to see the stacktrace for that thread.
+
+.List of Threads
 image::images/thread-dump/thread_dump_1.png[image,width=484,height=250]
 
 
@@ -22,9 +25,9 @@ When you move your cursor over a thread name, a box floats over the name with th
 
 When you click on one of the threads that can be expanded, you'll see the stacktrace, as in the example below:
 
+.Inspecting a Thread
 image::images/thread-dump/thread_dump_2.png[image,width=453,height=250]
 
 
-_Inspecting a thread_
 
 You can also check the *Show all Stacktraces* button to automatically enable expansion for all threads.

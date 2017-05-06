@@ -2,11 +2,13 @@
 :page-shortname: the-extended-dismax-query-parser
 :page-permalink: the-extended-dismax-query-parser.html
 
-The Extended DisMax (eDisMax) query parser is an improved version of the <<the-dismax-query-parser.adoc#the-dismax-query-parser,DisMax query parser>>. In addition to supporting all the DisMax query parser parameters, Extended Dismax:
+The Extended DisMax (eDisMax) query parser is an improved version of the <<the-dismax-query-parser.adoc#the-dismax-query-parser,DisMax query parser>>.
+
+In addition to supporting all the DisMax query parser parameters, Extended Dismax:
 
 * supports the <<the-standard-query-parser.adoc#the-standard-query-parser,full Lucene query parser syntax>>.
 * supports queries such as AND, OR, NOT, -, and +.
-* treats "and" and "or" as "AND" and "OR" in Lucene syntax mode.respects the 'magic field' names `_val_` and `_query_`. These are not a real fields in the Schema, but if used it helps do special things (like a function query in the case of `_val_` or a nested query in the case of `_query_`). If `_val_` is used in a term or phrase query, the value is parsed as a function.
+* treats "and" and "or" as "AND" and "OR" in Lucene syntax mode.respects the 'magic field' names `\_val_` and `\_query_`. These are not a real fields in the Schema, but if used it helps do special things (like a function query in the case of `\_val_` or a nested query in the case of `\_query_`). If `\_val_` is used in a term or phrase query, the value is parsed as a function.
 * includes improved smart partial escaping in the case of syntax errors; fielded queries, +/-, and phrase queries are still supported in this mode.
 * improves proximity boosting by using word shingles; you do not need the query to match all words in the document before proximity boosting is applied.
 * includes advanced stopword handling: stopwords are not required in the mandatory part of the query but are still used in the proximity boosting part. If a query consists of all stopwords, such as "to be or not to be", then all words are required.
@@ -74,7 +76,7 @@ A Boolean parameter indicating if the `StopFilterFactory` configured in the quer
 [[TheExtendedDisMaxQueryParser-TheufParameter]]
 === The `uf` Parameter
 
-Specifies which schema fields the end user is allowed to explicitly query. This parameter supports wildcards. The default is to allow all fields, equivalent to `uf=*`. To allow only title field, use `uf=title`. To allow title and all fields ending with _s, use `uf=title,*_s`. To allow all fields except title, use `uf=*-title`. To disallow all fielded searches, use `uf=-*`.
+Specifies which schema fields the end user is allowed to explicitly query. This parameter supports wildcards. The default is to allow all fields, equivalent to `uf=\*`. To allow only title field, use `uf=title`. To allow title and all fields ending with '_s', use `uf=title,*_s`. To allow all fields except title, use `uf=*,-title`. To disallow all fielded searches, use `uf=-*`.
 
 [[TheExtendedDisMaxQueryParser-Fieldaliasingusingper-fieldqfoverrides]]
 === Field aliasing using per-field `qf` overrides
@@ -167,7 +169,7 @@ With these parameters, the Dismax Query Parser generates a query that looks some
 
 But it also generates another query that will only be used for boosting results:
 
-[source,java]
+[source,plain]
 ----
 field1:"foo bar"^50 OR field2:"foo bar"^20
 ----
@@ -206,11 +208,11 @@ Finally, in addition to the phrase fields (`pf`) parameter, `edismax` also suppo
 // OLD_CONFLUENCE_ID: TheExtendedDisMaxQueryParser-Usingthe'magicfields'_val_and_query_
 
 [[TheExtendedDisMaxQueryParser-Usingthe_magicfields__val_and_query_]]
-== Using the 'magic fields' _val_ and _query_
+== Using the 'magic fields' `\_val_` and `\_query_`
 
-The Solr Query Parser's use of `_val_` and `_query_` differs from the Lucene Query Parser in the following ways:
+The Solr Query Parser's use of `\_val_` and `\_query_` differs from the Lucene Query Parser in the following ways:
 
-* If the magic field name `_val_` is used in a term or phrase query, the value is parsed as a function.
+* If the magic field name `\_val_` is used in a term or phrase query, the value is parsed as a function.
 
 * It provides a hook into http://wiki.apache.org/solr/FunctionQuery[`FunctionQuery`] syntax. Quotes are necessary to encapsulate the function when it includes parentheses. For example:
 +
@@ -242,6 +244,6 @@ createdate:[1976-03-06T23:59:59.999Z/YEAR TO 1976-03-06T23:59:59.999Z]
 [IMPORTANT]
 ====
 
-TO must be uppercase, or Solr will report a 'Range Group' error.
+`TO` must be uppercase, or Solr will report a 'Range Group' error.
 
 ====

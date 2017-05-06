@@ -63,10 +63,7 @@ Results:
 
 Here's an example of a query with a limited field list.
 
-[source,html]
-----
-http://localhost:8983/solr/techproducts/select?q=id:SP2514N&fl=id+name
-----
+`http://localhost:8983/solr/techproducts/select?q=id:SP2514N&fl=id+name`
 
 Results:
 
@@ -153,20 +150,20 @@ The distance referred to here is the number of term movements needed to match th
 [[TheStandardQueryParser-RangeSearches]]
 === Range Searches
 
-A range search specifies a range of values for a field (a range with an upper bound and a lower bound). The query matches documents whose values for the specified field or fields fall within the range. Range queries can be inclusive or exclusive of the upper and lower bounds. Sorting is done lexicographically, except on numeric fields. For example, the range query below matches all documents whose `mod_date` field has a value between 20020101 and 20030101, inclusive.
+A range search specifies a range of values for a field (a range with an upper bound and a lower bound). The query matches documents whose values for the specified field or fields fall within the range. Range queries can be inclusive or exclusive of the upper and lower bounds. Sorting is done lexicographically, except on numeric fields. For example, the range query below matches all documents whose `popularity` field has a value between 52 and 10,000, inclusive.
 
-`mod_date:[20020101 TO 20030101]`
+`popularity:[52 TO 10000]`
 
 Range queries are not limited to date fields or even numerical fields. You could also use range queries with non-date fields:
 
-`title:{Aida TO Carmen`}
+`title:{Aida TO Carmen}`
 
 This will find all documents whose titles are between Aida and Carmen, but not including Aida and Carmen.
 
 The brackets around a query determine its inclusiveness.
 
-* Square brackets [ ] denote an inclusive range query that matches values including the upper and lower bound.
-* Curly brackets \{ } denote an exclusive range query that matches values between the upper and lower bounds, but excluding the upper and lower bounds themselves.
+* Square brackets `[` & `]` denote an inclusive range query that matches values including the upper and lower bound.
+* Curly brackets `{` & `}` denote an exclusive range query that matches values between the upper and lower bounds, but excluding the upper and lower bounds themselves.
 * You can mix these types so one end of the range is inclusive and the other is exclusive. Here's an example: `count:{1 TO 10]`
 
 // OLD_CONFLUENCE_ID: TheStandardQueryParser-BoostingaTermwith^
@@ -319,11 +316,11 @@ For example, to search for documents that contain "jakarta apache" but not "Apac
 
 Solr gives the following characters special meaning when they appear in a query:
 
-+ - && || ! ( ) \{ } [ ] ^ " ~ * ? : /
+`+` `-` `&&` `||` `!` `(` `)` `{` `}` `[` `]` `^` `"` `~` `*` `?` `:` `/`
 
-To make Solr interpret any of these characters literally, rather as a special character, precede the character with a backslash character \. For example, to search for (1+1):2 without having Solr interpret the plus sign and parentheses as special characters for formulating a sub-query with two terms, escape the characters by preceding each one with a backslash:
+To make Solr interpret any of these characters literally, rather as a special character, precede the character with a backslash character `\`. For example, to search for (1+1):2 without having Solr interpret the plus sign and parentheses as special characters for formulating a sub-query with two terms, escape the characters by preceding each one with a backslash:
 
-[source,html]
+[source,plain]
 ----
 \(1\+1\)\:2
 ----

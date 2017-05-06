@@ -17,12 +17,12 @@ We recommend separating your live Solr files, such as logs and index files, from
 [[TakingSolrtoProduction-SolrInstallationDirectory]]
 ==== Solr Installation Directory
 
-By default, the service installation script will extract the distribution archive into `/opt`. You can change this location using the `-i` option when running the installation script. The script will also create a symbolic link to the versioned directory of Solr. For instance, if you run the installation script for Solr X.0.0, then the following directory structure will be used:
+By default, the service installation script will extract the distribution archive into `/opt`. You can change this location using the `-i` option when running the installation script. The script will also create a symbolic link to the versioned directory of Solr. For instance, if you run the installation script for Solr {solr-docs-version}.0, then the following directory structure will be used:
 
-[source,plain]
+[source,plain,subs="attributes"]
 ----
-/opt/solr-X.0.0
-/opt/solr -> /opt/solr-X.0.0
+/opt/solr-{solr-docs-version}.0
+/opt/solr -> /opt/solr-{solr-docs-version}.0
 ----
 
 Using a symbolic link insulates any scripts from being dependent on the specific Solr version. If, down the road, you need to upgrade to a later version of Solr, you can just update the symbolic link to point to the upgraded version of Solr. We’ll use `/opt/solr` to refer to the Solr installation directory in the remaining sections of this page.
@@ -42,37 +42,37 @@ You are now ready to run the installation script.
 [[TakingSolrtoProduction-RuntheSolrInstallationScript]]
 === Run the Solr Installation Script
 
-To run the script, you'll need to download the latest Solr distribution archive and then do the following (NOTE: replace `solr-X.Y.Z` with the actual version number):
+To run the script, you'll need to download the latest Solr distribution archive and then do the following:
 
-[source,plain]
+[source,bash,subs="attributes"]
 ----
-$ tar xzf solr-X.Y.Z.tgz solr-X.Y.Z/bin/install_solr_service.sh --strip-components=2
+$ tar xzf solr-{solr-docs-version}.0.tgz solr-{solr-docs-version}.0/bin/install_solr_service.sh --strip-components=2
 ----
 
 The previous command extracts the `install_solr_service.sh` script from the archive into the current directory. If installing on Red Hat, please make sure *lsof* is installed before running the Solr installation script (`sudo yum install lsof`). The installation script must be run as root:
 
-[source,plain]
+[source,bash,subs="attributes"]
 ----
-$ sudo bash ./install_solr_service.sh solr-X.Y.Z.tgz
+$ sudo bash ./install_solr_service.sh solr-{solr-docs-version}.0.tgz
 ----
 
 By default, the script extracts the distribution archive into `/opt`, configures Solr to write files into `/var/solr`, and runs Solr as the `solr` user. Consequently, the following command produces the same result as the previous command:
 
-[source,plain]
+[source,bash,subs="attributes"]
 ----
-$ sudo bash ./install_solr_service.sh solr-X.Y.Z.tgz -i /opt -d /var/solr -u solr -s solr -p 8983
+$ sudo bash ./install_solr_service.sh solr-{solr-docs-version}.0.tgz -i /opt -d /var/solr -u solr -s solr -p 8983
 ----
 
 You can customize the service name, installation directories, port, and owner using options passed to the installation script. To see available options, simply do:
 
-[source,plain]
+[source,bash]
 ----
 $ sudo bash ./install_solr_service.sh -help
 ----
 
 Once the script completes, Solr will be installed as a service and running in the background on your server (on port 8983). To verify, you can do:
 
-[source,plain]
+[source,bash]
 ----
 $ sudo service solr status
 ----
@@ -84,7 +84,7 @@ We'll cover some additional configuration settings you can make to fine-tune you
 [[TakingSolrtoProduction-SolrHomeDirectory]]
 ==== Solr Home Directory
 
-The Solr home directory (not to be confused with the Solr installation directory) is where Solr manages core directories with index files. By default, the installation script uses `/var/solr/data`. If the `-d` option is used on the install script, then this will change to the `data` subdirectory in the location given to the -d option. Take a moment to inspect the contents of the Solr home directory on your system. If you do not<<using-zookeeper-to-manage-configuration-files.adoc#using-zookeeper-to-manage-configuration-files,store `solr.xml` in ZooKeeper>>, the home directory must contain a `solr.xml` file. When Solr starts up, the Solr Control Script passes the location of the home directory using the `-Dsolr.solr.home `system property.
+The Solr home directory (not to be confused with the Solr installation directory) is where Solr manages core directories with index files. By default, the installation script uses `/var/solr/data`. If the `-d` option is used on the install script, then this will change to the `data` subdirectory in the location given to the -d option. Take a moment to inspect the contents of the Solr home directory on your system. If you do not <<using-zookeeper-to-manage-configuration-files.adoc#using-zookeeper-to-manage-configuration-files,store `solr.xml` in ZooKeeper>>, the home directory must contain a `solr.xml` file. When Solr starts up, the Solr Control Script passes the location of the home directory using the `-Dsolr.solr.home=...` system property.
 
 [[TakingSolrtoProduction-Environmentoverridesincludefile]]
 ==== Environment overrides include file
@@ -126,9 +126,9 @@ RUNAS=solr
 
 The `SOLR_INSTALL_DIR` and `SOLR_ENV` variables should be self-explanatory. The `RUNAS` variable sets the owner of the Solr process, such as `solr`; if you don’t set this value, the script will run Solr as **root**, which is not recommended for production. You can use the `/etc/init.d/solr` script to start Solr by doing the following as root:
 
-[source,plain]
+[source,bash]
 ----
-# service solr start
+$ service solr start
 ----
 
 The `/etc/init.d/solr` script also supports the **stop**, **restart**, and *status* commands. Please keep in mind that the init script that ships with Solr is very basic and is intended to show you how to setup Solr as a service. However, it’s also common to use more advanced tools like *supervisord* or *upstart* to control Solr as a service on Linux. While showing how to integrate Solr with tools like supervisord is beyond the scope of this guide, the `init.d/solr` script should provide enough guidance to help you get started. Also, the installation script sets the Solr service to start automatically when the host machine initializes.
@@ -138,7 +138,7 @@ The `/etc/init.d/solr` script also supports the **stop**, **restart**, and *stat
 
 In the next section, we cover some additional environment settings to help you fine-tune your production setup. However, before we move on, let's review what we've achieved thus far. Specifically, you should be able to control Solr using `/etc/init.d/solr`. Please verify the following commands work with your setup:
 
-[source,plain]
+[source,bash]
 ----
 $ sudo service solr restart
 $ sudo service solr status
@@ -146,7 +146,7 @@ $ sudo service solr status
 
 The status command should give some basic information about the running Solr node that looks similar to:
 
-[source,plain]
+[source,bash]
 ----
 Solr process PID running on port 8983
 {
@@ -202,7 +202,7 @@ ZK_HOST=zk1,zk2,zk3/solr
 
 Before using a chroot for the first time, you need to create the root path (znode) in ZooKeeper by using the <<solr-control-script-reference.adoc#solr-control-script-reference,Solr Control Script>>. We can use the mkroot command for that:
 
-[source,plain]
+[source,bash]
 ----
 $ bin/solr zk mkroot /solr -z <ZK_node>:<ZK_PORT>
 ----
@@ -231,7 +231,7 @@ Setting the hostname of the Solr server is recommended, especially when running 
 
 Solr allows configuration properties to be overridden using Java system properties passed at startup using the `-Dproperty=value` syntax. For instance, in `solrconfig.xml`, the default auto soft commit settings are set to:
 
-[source,plain]
+[source,xml]
 ----
 <autoSoftCommit>
   <maxTime>${solr.autoSoftCommit.maxTime:-1}</maxTime>
@@ -240,7 +240,7 @@ Solr allows configuration properties to be overridden using Java system properti
 
 In general, whenever you see a property in a Solr configuration file that uses the `${solr.PROPERTY:DEFAULT_VALUE}` syntax, then you know it can be overridden using a Java system property. For instance, to set the maxTime for soft-commits to be 10 seconds, then you can start Solr with `-Dsolr.autoSoftCommit.maxTime=10000`, such as:
 
-[source,plain]
+[source,bash]
 ----
 $ bin/solr start -Dsolr.autoSoftCommit.maxTime=10000
 ----
@@ -273,14 +273,14 @@ Because of the potential garbage collection issues and the particular issues tha
 
 If your use case requires multiple instances, at a minimum you will need unique Solr home directories for each node you want to run; ideally, each home should be on a different physical disk so that multiple Solr nodes don’t have to compete with each other when accessing files on disk. Having different Solr home directories implies that you’ll need a different include file for each node. Moreover, if using the `/etc/init.d/solr` script to control Solr as a service, then you’ll need a separate script for each node. The easiest approach is to use the service installation script to add multiple services on the same host, such as:
 
-[source,plain]
+[source,bash,subs="attributes"]
 ----
-$ sudo bash ./install_solr_service.sh solr-X.Y.Z.tgz -s solr2 -p 8984
+$ sudo bash ./install_solr_service.sh solr-{solr-docs-version}.0.tgz -s solr2 -p 8984
 ----
 
 The command shown above will add a service named `solr2` running on port 8984 using `/var/solr2` for writable (aka "live") files; the second server will still be owned and run by the `solr` user and will use the Solr distribution files in `/opt`. After installing the solr2 service, verify it works correctly by doing:
 
-[source,plain]
+[source,bash]
 ----
 $ sudo service solr2 restart
 $ sudo service solr2 status

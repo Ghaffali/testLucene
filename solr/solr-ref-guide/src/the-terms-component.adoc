@@ -262,7 +262,7 @@ You can use the parameter `omitHeader=true` to omit the response header from the
 
 Result:
 
-[source,plain]
+[source,json]
 ----
 {
   "terms": {

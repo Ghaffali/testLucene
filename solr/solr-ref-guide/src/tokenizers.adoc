@@ -2,6 +2,8 @@
 :page-shortname: tokenizers
 :page-permalink: tokenizers.html
 
+Tokenizers are responsible for breaking field data into lexical units, or _tokens_.
+
 You configure the tokenizer for a text field type in `schema.xml` with a `<tokenizer>` element, as a child of `<analyzer>`:
 
 [source,xml]
@@ -154,7 +156,7 @@ Tokenizes the input stream by delimiting at non-letters and then converting all 
 </analyzer>
 ----
 
-*In:* "I just *LOVE* my iPhone!"
+*In:* "I just \*LOVE* my iPhone!"
 
 *Out:* "i", "just", "love", "my", "iphone"
 
