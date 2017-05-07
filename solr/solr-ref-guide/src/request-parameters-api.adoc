@@ -2,7 +2,9 @@
 :page-shortname: request-parameters-api
 :page-permalink: request-parameters-api.html
 
-The Request Parameters API allows creating parameter sets, a.k.a. paramsets, that can override or take the place of parameters defined in `solrconfig.xml`. The parameter sets defined with this API can be used in requests to Solr, or referenced directly in `solrconfig.xml` request handler definitions.
+The Request Parameters API allows creating parameter sets, a.k.a. paramsets, that can override or take the place of parameters defined in `solrconfig.xml`.
+
+The parameter sets defined with this API can be used in requests to Solr, or referenced directly in `solrconfig.xml` request handler definitions.
 
 It is really another endpoint of the <<config-api.adoc#config-api,Config API>> instead of a separate API, and has distinct commands. It does not replace or modify any sections of `solrconfig.xml`, but instead provides another approach to handling parameters used in requests. It behaves in the same way as the Config API, by storing parameters in another file that will be used at runtime. In this case, the parameters are stored in a file named `params.json`. This file is kept in ZooKeeper or in the `conf` directory of a standalone Solr instance.
 
@@ -43,7 +45,7 @@ curl http://localhost:8983/solr/techproducts/config/params -H 'Content-type:appl
   "set":{
     "myFacets":{
       "facet":"true",
-      "facet.limit":5}}, 
+      "facet.limit":5}},
   "set":{
     "myQueries":{
       "defType":"edismax",
@@ -59,7 +61,7 @@ In the above example all the parameters are equivalent to the "defaults" in `sol
 curl http://localhost:8983/solr/techproducts/config/params -H 'Content-type:application/json'  -d '{
   "set":{
     "my_handler_params":{
-      "facet.limit":5,      
+      "facet.limit":5,
       "_invariants_": {
         "facet":true,
         "wt":"json"
@@ -88,9 +90,9 @@ It will be equivalent to a standard request handler definition such as this one:
   <lst name="defaults">
     <int name="facet.limit">5</int>
   </lst>
-  <lst name="invariants>
-    <str name="wt">json</>
-    <bool name="facet">true<bool>
+  <lst name="invariants">
+    <str name="wt">json</str>
+    <bool name="facet">true</bool>
   </lst>
   <lst name="appends">
     <arr name="facet.field">
@@ -113,7 +115,7 @@ To see the expanded paramset and the resulting effective parameters for a Reques
 
 [source,bash]
 ----
-curl "http://localhost:8983/solr/techproducts/config/requestHandler?componentName=/export&expandParams=true"
+curl http://localhost:8983/solr/techproducts/config/requestHandler?componentName=/export&expandParams=true
 ----
 
 [[RequestParametersAPI-ViewingRequestParameters]]
@@ -124,7 +126,7 @@ To see the paramsets that have been created, you can use the `/config/params` en
 [source,bash]
 ----
 curl http://localhost:8983/solr/techproducts/config/params
- 
+
 #Or use the paramset name
 curl http://localhost:8983/solr/techproducts/config/params/myQueries
 ----
@@ -148,9 +150,9 @@ It is possible to pass more than one parameter set in the same request. For exam
 http://localhost/solr/techproducts/select?useParams=myFacets,myQueries
 ----
 
-In the above example the param set 'myQueries' is applied on top of 'myFacets'. So, values in 'myQueries' take precedence over values in 'myFacets'. Additionally, any values passed in the request take precedence over 'useParams'parameters. This acts like the "defaults" specified in the '`<requestHandler>`' definition in `solrconfig.xml`.
+In the above example the param set 'myQueries' is applied on top of 'myFacets'. So, values in 'myQueries' take precedence over values in 'myFacets'. Additionally, any values passed in the request take precedence over `useParams` parameters. This acts like the "defaults" specified in the `<requestHandler>` definition in `solrconfig.xml`.
 
-The parameter sets can be used directly in a request handler definition as follows. Please note that the 'useParams' specified is always applied even if the request contains `useParams`.
+The parameter sets can be used directly in a request handler definition as follows. Please note that the `useParams` specified is always applied even if the request contains `useParams`.
 
 [source,xml]
 ----
@@ -158,7 +160,7 @@ The parameter sets can be used directly in a request handler definition as follo
   <lst name="defaults">
     <bool name="terms">true</bool>
     <bool name="distrib">false</bool>
-  </lst>     
+  </lst>
   <arr name="components">
     <str>terms</str>
   </arr>
@@ -168,7 +170,7 @@ The parameter sets can be used directly in a request handler definition as follo
 To summarize, parameters are applied in this order:
 
 * parameters defined in `<invariants>` in `solrconfig.xml`.
-* parameters applied in _invariants_ in params.json and that is specified in the requesthandler definition or even in request
+* parameters applied in `invariants` in `params.json` and that is specified in the requesthandler definition or even in request
 * parameters defined in the request directly.
 * parameter sets defined in the request, in the order they have been listed with `useParams`.
 * parameter sets defined in `params.json` that have been defined in the request handler.

@@ -15,12 +15,12 @@ These are often referred to as "requestHandler" and "searchComponent", which is 
 
 Every request handler is defined with a name and a class. The name of the request handler is referenced with the request to Solr, typically as a path. For example, if Solr is installed at ` http://localhost:8983/solr/ `and you have a collection named "```gettingstarted```", you can make a request using URLs like this:
 
-[source,xml]
+[source,text]
 ----
 http://localhost:8983/solr/gettingstarted/select?q=solr
 ----
 
-This query will be processed by the request handler with the name "`/select`". We've only used the "q" parameter here, which includes our query term, a simple keyword of "solr". If the request handler has more parameters defined, those will be used with any query we send to this request handler unless they are over-ridden by the client (or user) in the query itself.
+This query will be processed by the request handler with the name `/select`. We've only used the "q" parameter here, which includes our query term, a simple keyword of "solr". If the request handler has more parameters defined, those will be used with any query we send to this request handler unless they are over-ridden by the client (or user) in the query itself.
 
 If you have another request handler defined, you would send your request with that name. For example, `/update` is a request handler that handles index updates (i.e., sending new documents to the index). By default, `/select` is a request handler that handles query requests.
 
@@ -47,7 +47,7 @@ For example, in the default `solrconfig.xml`, the first request handler defined 
 
 This example defines the `rows` parameter, which defines how many search results to return, to "10". The `echoParams` parameter defines that the parameters defined in the query should be returned when debug information is returned. Note also that the way the defaults are defined in the list varies if the parameter is a string, an integer, or another type.
 
-All of the parameters described in the section on <<searching.adoc#searching,searching>> can be defined as defaults for any of the SearchHandlers.
+All of the parameters described in the section  <<searching.adoc#searching,Searching>> can be defined as defaults for any of the SearchHandlers.
 
 Besides `defaults`, there are other options for the SearchHandler, which are:
 
@@ -106,7 +106,7 @@ Search components define the logic that is used by the SearchHandler to perform 
 
 There are several default search components that work with all SearchHandlers without any additional configuration. If no components are defined (with the exception of `first-components` and `last-components` - see below), these are executed by default, in the following order:
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Component Name |Class Name |More Information
 |query |solr.QueryComponent |Described in the section <<query-syntax-and-parsing.adoc#query-syntax-and-parsing,Query Syntax and Parsing>>.
@@ -127,9 +127,7 @@ It's possible to define some components as being used before (with `first-compon
 
 [IMPORTANT]
 ====
-
 `first-components` and/or `last-components` may only be used in conjunction with the default components. If you define your own `components`, the default components will not be executed, and `first-components` and `last-components` are disallowed.
-
 ====
 
 [source,xml]

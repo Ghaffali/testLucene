@@ -2,21 +2,21 @@
 :page-shortname: result-grouping
 :page-permalink: result-grouping.html
 
-Result Grouping groups documents with a common field value into groups and returns the top documents for each group. For example, if you searched for "DVD" on an electronic retailer's e-commerce site, you might be returned three categories such as "TV and Video," "Movies," and "Computers," with three results per category. In this case, the query term "DVD" appeared in all three categories, so Solr groups them together in order to increase relevancy for the user.
+Result Grouping groups documents with a common field value into groups and returns the top documents for each group.
+
+For example, if you searched for "DVD" on an electronic retailer's e-commerce site, you might be returned three categories such as "TV and Video", "Movies", and "Computers" with three results per category. In this case, the query term "DVD" appeared in all three categories, so Solr groups them together in order to increase relevancy for the user.
 
 .Prefer Collapse & Expand instead
 [NOTE]
 ====
-
 Solr's <<collapse-and-expand-results.adoc#collapse-and-expand-results,Collapse and Expand>> feature is newer and mostly overlaps with Result Grouping. There are features unique to both, and they have different performance characteristics. That said, in most cases Collapse and Expand is preferable to Result Grouping.
-
 ====
 
 Result Grouping is separate from <<faceting.adoc#faceting,Faceting>>. Though it is conceptually similar, faceting returns all relevant results and allows the user to refine the results based on the facet category. For example, if you search for "shoes" on a footwear retailer's e-commerce site, Solr would return all results for that query term, along with selectable facets such as "size," "color," "brand," and so on.
 
 You can however combine grouping with faceting. Grouped faceting supports `facet.field` and `facet.range` but currently doesn't support date and pivot faceting. The facet counts are computed based on the first `group.field` parameter, and other `group.field` parameters are ignored.
 
-Grouped faceting differs from non grouped facets (sum of all facets) == (total of products with that property) as shown in the following example:
+Grouped faceting differs from non grouped facets `(sum of all facets) == (total of products with that property)` as shown in the following example:
 
 Object 1
 
@@ -45,7 +45,7 @@ Result Grouping takes the following request parameters. Any number of these requ
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Type |Description
 |group |Boolean |If true, query results will be grouped.
@@ -73,7 +73,7 @@ See below for <<ResultGrouping-DistributedResultGroupingCaveats,Distributed Resu
 |group.facet |Boolean a|
 Determines whether to compute grouped facets for the field facets specified in facet.field parameters. Grouped facets are computed based on the first specified group. As with normal field faceting, fields shouldn't be tokenized (otherwise counts are computed for each token). Grouped faceting supports single and multivalued fields. Default is false.
 
-**Warning**: There can be a heavy performance cost to this option.
+*Warning*: There can be a heavy performance cost to this option.
 
 See below for <<ResultGrouping-DistributedResultGroupingCaveats,Distributed Result Grouping Caveats>> when using sharded indexes
 
@@ -92,12 +92,12 @@ All of the following sample queries work with Solr's "`bin/solr -e techproducts`
 
 In this example, we will group results based on the `manu_exact` field, which specifies the manufacturer of the items in the sample dataset.
 
-`http://localhost:8983/solr/techproducts/select?wt=json&indent=true&fl=id,name&q=solr+memory&group=true&group.field=manu_exact`
+`\http://localhost:8983/solr/techproducts/select?wt=json&indent=true&fl=id,name&q=solr+memory&group=true&group.field=manu_exact`
 
-[source,java]
+[source,json]
 ----
 {
-...
+"..."
 "grouped":{
   "manu_exact":{
     "matches":6,
@@ -136,19 +136,16 @@ In this example, we will group results based on the `manu_exact` field, which sp
               "id":"EN7800GTX/2DHTV/256M",
               "name":"ASUS Extreme N7800GTX/2DHTV (256 MB)"}]
         }
-      }
-    ]
-  }
-}
+      }]}}}
 ----
 
 The response indicates that there are six total matches for our query. For each of the five unique values of `group.field`, Solr returns a `docList` for that `groupValue` such that the `numFound` indicates the total number of documents in that group, and the top documents are returned according to the implicit default `group.limit=1` and `group.sort=score desc` parameters. The resulting groups are then sorted by the score of the top document within each group based on the implicit `sort=score desc`, and the number of groups returned is limited to the implicit `rows=10`.
 
 We can run the same query with the request parameter `group.main=true`. This will format the results as a single flat document list. This flat format does not include as much information as the normal result grouping query results – notably the `numFound` in each group – but it may be easier for existing Solr clients to parse.
 
-`http://localhost:8983/solr/techproducts/select?wt=json&indent=true&fl=id,name,manufacturer&q=solr+memory&group=true&group.field=manu_exact&group.main=true`
+`\http://localhost:8983/solr/techproducts/select?wt=json&indent=true&fl=id,name,manufacturer&q=solr+memory&group=true&group.field=manu_exact&group.main=true`
 
-[source,java]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -188,9 +185,9 @@ We can run the same query with the request parameter `group.main=true`. This wil
 
 In this example, we will use the `group.query` parameter to find the top three results for "memory" in two different price ranges: 0.00 to 99.99, and over 100.
 
-http://localhost:8983/solr/techproducts/select?wt=json&indent=true&fl=name,price&q=memory&group=true&group.query=price:%5B0+TO+99.99%5D&group.query=price:%5B100+TO+*%5D&group.limit=3[`http://localhost:8983/solr/techproducts/select?wt=json&indent=true&fl=name,price&q=memory&group=true&group.query=price:[0+TO+99.99]&group.query=price:[100+TO+*]&group.limit=3`]
+`\http://localhost:8983/solr/techproducts/select?wt=json&indent=true&fl=name,price&q=memory&group=true&group.query=price:[0+TO+99.99]&group.query=price:[100+TO+*]&group.limit=3`
 
-[source,java]
+[source,json]
 ----
 {
   "responseHeader":{

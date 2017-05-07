@@ -2,7 +2,9 @@
 :page-shortname: running-solr-on-hdfs
 :page-permalink: running-solr-on-hdfs.html
 
-Solr has support for writing and reading its index and transaction log files to the HDFS distributed filesystem. This does not use Hadoop MapReduce to process Solr data, rather it only uses the HDFS filesystem for index and transaction log file storage. To use Hadoop MapReduce to process Solr data, see the MapReduceIndexerTool in the Solr contrib area.
+Solr has support for writing and reading its index and transaction log files to the HDFS distributed filesystem.
+
+This does not use Hadoop MapReduce to process Solr data, rather it only uses the HDFS filesystem for index and transaction log file storage. To use Hadoop MapReduce to process Solr data, see the MapReduceIndexerTool in the Solr contrib area.
 
 To use HDFS rather than a local filesystem, you must be using Hadoop 2.x and you will need to instruct Solr to use the `HdfsDirectoryFactory`. There are also several additional parameters to define. These can be set in one of three ways:
 
@@ -18,18 +20,18 @@ To use HDFS rather than a local filesystem, you must be using Hadoop 2.x and you
 
 For standalone Solr instances, there are a few parameters you should be sure to modify before starting Solr. These can be set in `solrconfig.xml`(more on that <<RunningSolronHDFS-Settings,below>>), or passed to the `bin/solr` script at startup.
 
-* You need to use an HdfsDirectoryFactory and a data dir of the form `hdfs://host:port/path`
+* You need to use an `HdfsDirectoryFactory` and a data dir of the form `hdfs://host:port/path`
 * You need to specify an UpdateLog location of the form `hdfs://host:port/path`
 * You should specify a lock factory type of '`hdfs`' or none.
 
 If you do not modify `solrconfig.xml`, you can instead start Solr on HDFS with the following command:
 
-[source,java]
+[source,bash]
 ----
 bin/solr start -Dsolr.directoryFactory=HdfsDirectoryFactory
      -Dsolr.lock.type=hdfs
      -Dsolr.data.dir=hdfs://host:port/path
-     -Dsolr.updatelog=hdfs://host:port/path 
+     -Dsolr.updatelog=hdfs://host:port/path
 ----
 
 This example will start Solr in standalone mode, using the defined JVM properties (explained in more detail <<RunningSolronHDFS-Settings,below>>).
@@ -42,11 +44,11 @@ In SolrCloud mode, it's best to leave the data and update log directories as the
 * Set `solr.hdfs.home` in the form `hdfs://host:port/path`
 * You should specify a lock factory type of '`hdfs`' or none.
 
-[source,java]
+[source,bash]
 ----
 bin/solr start -c -Dsolr.directoryFactory=HdfsDirectoryFactory
      -Dsolr.lock.type=hdfs
-     -Dsolr.hdfs.home=hdfs://host:port/path 
+     -Dsolr.hdfs.home=hdfs://host:port/path
 ----
 
 This command starts Solr in SolrCloud mode, using the defined JVM properties.
@@ -60,7 +62,7 @@ The examples above assume you will pass JVM arguments as part of the start comma
 
 For example, to set JVM arguments to always use HDFS when running in SolrCloud mode (as shown above), you would add a section such as this:
 
-[source,java]
+[source,bash]
 ----
 # Set HDFS DirectoryFactory & Settings
 -Dsolr.directoryFactory=HdfsDirectoryFactory \
@@ -73,7 +75,7 @@ For example, to set JVM arguments to always use HDFS when running in SolrCloud m
 
 For performance, the HdfsDirectoryFactory uses a Directory that will cache HDFS blocks. This caching mechanism is meant to replace the standard file system cache that Solr utilizes so much. By default, this cache is allocated off heap. This cache will often need to be quite large and you may need to raise the off heap memory limit for the specific JVM you are running Solr in. For the Oracle/OpenJDK JVMs, the follow is an example command line parameter that you can use to raise the limit when starting Solr:
 
-[source,java]
+[source,bash]
 ----
 -XX:MaxDirectMemorySize=20g
 ----
@@ -86,7 +88,7 @@ The `HdfsDirectoryFactory` has a number of settings that are defined as part of 
 [[RunningSolronHDFS-SolrHDFSSettings]]
 === Solr HDFS Settings
 
-[width="100%",cols="25%,25%,25%,25%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Example Value |Default |Description
 |`solr.hdfs.home` |`hdfs://host:port/path/solr` |N/A |A root location in HDFS for Solr to write collection data to. Rather than specifying an HDFS location for the data directory or update log directory, use this to specify one root location and have everything automatically created within this HDFS location.
@@ -97,25 +99,21 @@ The `HdfsDirectoryFactory` has a number of settings that are defined as part of 
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default |Description
 |`solr.hdfs.blockcache.enabled` |true |Enable the blockcache
 |`solr.hdfs.blockcache.read.enabled` |true |Enable the read cache
 |`solr.hdfs.blockcache.direct.memory.allocation` |true |Enable direct memory allocation. If this is false, heap is used
 |`solr.hdfs.blockcache.slab.count` |1 |Number of memory slabs to allocate. Each slab is 128 MB in size.
-a|
-....
-solr.hdfs.blockcache.global
-....
-
- |true |Enable/Disable using one global cache for all SolrCores. The settings used will be from the first HdfsDirectoryFactory created.
+|`solr.hdfs.blockcache.global`
+|true |Enable/Disable using one global cache for all SolrCores. The settings used will be from the first HdfsDirectoryFactory created.
 |===
 
 [[RunningSolronHDFS-NRTCachingDirectorySettings]]
 === NRTCachingDirectory Settings
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default |Description
 |`solr.hdfs.nrtcachingdirectory.enable` |true |Enable the use of NRTCachingDirectory
@@ -128,7 +126,7 @@ solr.hdfs.blockcache.global
 
 solr.hdfs.confdir pass the location of HDFS client configuration files - needed for HDFS HA for example.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default |Description
 |`solr.hdfs.confdir` |N/A |Pass the location of HDFS client configuration files - needed for HDFS HA for example.
@@ -141,7 +139,7 @@ Hadoop can be configured to use the Kerberos protocol to verify user identity wh
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default |Description
 |`solr.hdfs.security.kerberos.enabled` |false |Set to true to enable Kerberos authentication
@@ -158,7 +156,7 @@ This file will need to be present on all Solr servers at the same path provided 
 
 Here is a sample `solrconfig.xml` configuration for storing Solr indexes on HDFS:
 
-[source,java]
+[source,xml]
 ----
 <directoryFactory name="DirectoryFactory" class="solr.HdfsDirectoryFactory">
   <str name="solr.hdfs.home">hdfs://host:port/solr</str>
@@ -175,7 +173,7 @@ Here is a sample `solrconfig.xml` configuration for storing Solr indexes on HDFS
 
 If using Kerberos, you will need to add the three Kerberos related properties to the `<directoryFactory>` element in solrconfig.xml, such as:
 
-[source,java]
+[source,xml]
 ----
 <directoryFactory name="DirectoryFactory" class="solr.HdfsDirectoryFactory">
    ...
@@ -192,7 +190,7 @@ One benefit to running Solr in HDFS is the ability to automatically add new repl
 
 Collections created using `autoAddReplicas=true` on a shared file system have automatic addition of replicas enabled. The following settings can be used to override the defaults in the `<solrcloud>` section of `solr.xml`.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Param |Default |Description
 |autoReplicaFailoverWorkLoopDelay |10000 |The time (in ms) between clusterstate inspections by the Overseer to detect and possibly act on creation of a replacement replica.
@@ -207,14 +205,14 @@ When doing offline maintenance on the cluster and for various other use cases wh
 
 Disable auto addition of replicas cluster wide by setting the cluster property `autoAddReplicas` to `false`:
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=CLUSTERPROP&name=autoAddReplicas&val=false
 ----
 
 Re-enable auto addition of replicas (for those collections created with autoAddReplica=true) by unsetting the `autoAddReplicas` cluster property (when no `val` param is provided, the cluster property is unset):
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=CLUSTERPROP&name=autoAddReplicas
 ----

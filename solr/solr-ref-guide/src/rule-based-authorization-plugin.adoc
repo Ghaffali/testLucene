@@ -2,7 +2,9 @@
 :page-shortname: rule-based-authorization-plugin
 :page-permalink: rule-based-authorization-plugin.html
 
-Solr allows configuring roles to control user access to the system. This is accomplished through rule-based permission definitions which are assigned to users. The roles are fully customizable, and provide the ability to limit access to specific collections, request handlers, request parameters, and request methods.
+Solr allows configuring roles to control user access to the system.
+
+This is accomplished through rule-based permission definitions which are assigned to users. The roles are fully customizable, and provide the ability to limit access to specific collections, request handlers, request parameters, and request methods.
 
 The roles can be used with any of the authentication plugins or with a custom authentication plugin if you have created one. You will only need to ensure that you configure the role-to-user mappings with the proper user IDs that your authentication system provides.
 
@@ -58,14 +60,14 @@ There are several permissions that are pre-defined. These have fixed default val
 The pre-defined permissions are:
 
 * *security-edit:* this permission is allowed to edit the security configuration, meaning any update action that modifies `security.json` through the APIs will be allowed.
-* **security-read**: this permission is allowed to read the security configuration, meaning any action that reads `security.json` settings through the APIs will be allowed.
-* **schema-edit**: this permission is allowed to edit a collection's schema using the <<schema-api.adoc#schema-api,Schema API>>. Note that this allows schema edit permissions for _all_ collections. If edit permissions should only be applied to specific collections, a custom permission would need to be created.
-* **schema-read**: this permission is allowed to read a collection's schema using the <<schema-api.adoc#schema-api,Schema API>>. Note that this allows schema read permissions for _all_ collections. If read permissions should only be applied to specific collections, a custom permission would need to be created.
-* **config-edit**: this permission is allowed to edit a collection's configuration using the <<config-api.adoc#config-api,Config API>>, the <<request-parameters-api.adoc#request-parameters-api,Request Parameters API>>, and other APIs which modify `configoverlay.json`. Note that this allows configuration edit permissions for _all_ collections. If edit permissions should only be applied to specific collections, a custom permission would need to be created.
+* *security-read*: this permission is allowed to read the security configuration, meaning any action that reads `security.json` settings through the APIs will be allowed.
+* *schema-edit*: this permission is allowed to edit a collection's schema using the <<schema-api.adoc#schema-api,Schema API>>. Note that this allows schema edit permissions for _all_ collections. If edit permissions should only be applied to specific collections, a custom permission would need to be created.
+* *schema-read*: this permission is allowed to read a collection's schema using the <<schema-api.adoc#schema-api,Schema API>>. Note that this allows schema read permissions for _all_ collections. If read permissions should only be applied to specific collections, a custom permission would need to be created.
+* *config-edit*: this permission is allowed to edit a collection's configuration using the <<config-api.adoc#config-api,Config API>>, the <<request-parameters-api.adoc#request-parameters-api,Request Parameters API>>, and other APIs which modify `configoverlay.json`. Note that this allows configuration edit permissions for _all_ collections. If edit permissions should only be applied to specific collections, a custom permission would need to be created.
 * *core-admin-read* : Read operations on the core admin API
-* **core-admin-edit**: Core admin commands that can mutate the system state.
-* **config-read**: this permission is allowed to read a collection's configuration using the <<config-api.adoc#config-api,Config API>>, the <<request-parameters-api.adoc#request-parameters-api,Request Parameters API>>, and other APIs which modify `configoverlay.json`. Note that this allows configuration read permissions for _all_ collections. If read permissions should only be applied to specific collections, a custom permission would need to be created.
-* **collection-admin-edit**: this permission is allowed to edit a collection's configuration using the <<collections-api.adoc#collections-api,Collections API>>. Note that this allows configuration edit permissions for _all_ collections. If edit permissions should only be applied to specific collections, a custom permission would need to be created. Specifically, the following actions of the Collections API would be allowed:
+* *core-admin-edit*: Core admin commands that can mutate the system state.
+* *config-read*: this permission is allowed to read a collection's configuration using the <<config-api.adoc#config-api,Config API>>, the <<request-parameters-api.adoc#request-parameters-api,Request Parameters API>>, and other APIs which modify `configoverlay.json`. Note that this allows configuration read permissions for _all_ collections. If read permissions should only be applied to specific collections, a custom permission would need to be created.
+* *collection-admin-edit*: this permission is allowed to edit a collection's configuration using the <<collections-api.adoc#collections-api,Collections API>>. Note that this allows configuration edit permissions for _all_ collections. If edit permissions should only be applied to specific collections, a custom permission would need to be created. Specifically, the following actions of the Collections API would be allowed:
 ** CREATE
 ** RELOAD
 ** SPLITSHARD
@@ -84,14 +86,14 @@ The pre-defined permissions are:
 ** DELETEREPLICAPROP
 ** BALANCESHARDUNIQUE
 ** REBALANCELEADERS
-* **collection-admin-read**: this permission is allowed to read a collection's configuration using the <<collections-api.adoc#collections-api,Collections API>>. Note that this allows configuration read permissions for _all_ collections. If read permissions should only be applied to specific collections, a custom permission would need to be created. Specifically, the following actions of the Collections API would be allowed:
+* *collection-admin-read*: this permission is allowed to read a collection's configuration using the <<collections-api.adoc#collections-api,Collections API>>. Note that this allows configuration read permissions for _all_ collections. If read permissions should only be applied to specific collections, a custom permission would need to be created. Specifically, the following actions of the Collections API would be allowed:
 ** LIST
 ** OVERSEERSTATUS
 ** CLUSTERSTATUS
 ** REQUESTSTATUS
-* **update**: this permission is allowed to perform any update action on any collection. This includes sending documents for indexing (using an <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-UpdateRequestHandlers,update request handler>>). This applies to all collections by default (`collection:"*"`).
-* **read**: this permission is allowed to perform any read action on any collection. This includes querying using search handlers (using <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-SearchHandlers,request handlers>>) such as `/select`, `/get`, `/browse`, `/tvrh`, `/terms`, `/clustering`, `/elevate`, `/export`, `/spell`, `/clustering`, and `/sql`. This applies to all collections by default ( `collection:"*"` ).
-* **all**: Any requests coming to Solr.
+* *update*: this permission is allowed to perform any update action on any collection. This includes sending documents for indexing (using an <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-UpdateRequestHandlers,update request handler>>). This applies to all collections by default (`collection:"*"`).
+* *read*: this permission is allowed to perform any read action on any collection. This includes querying using search handlers (using <<requesthandlers-and-searchcomponents-in-solrconfig.adoc#RequestHandlersandSearchComponentsinSolrConfig-SearchHandlers,request handlers>>) such as `/select`, `/get`, `/browse`, `/tvrh`, `/terms`, `/clustering`, `/elevate`, `/export`, `/spell`, `/clustering`, and `/sql`. This applies to all collections by default ( `collection:"*"` ).
+* *all*: Any requests coming to Solr.
 
 [[Rule-BasedAuthorizationPlugin-AuthorizationAPI]]
 == Authorization API
@@ -116,7 +118,7 @@ Several properties can be used to define your custom permission.
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Property |Description
 |name |The name of the permission. This is required only if it is a predefined permission.
@@ -135,11 +137,11 @@ For example, this property could be used to limit the actions a role is allowed 
 [source,json]
 ----
 "params": {
-   "action": [LIST, CLUSTERSTATUS]
+   "action": ["LIST", "CLUSTERSTATUS"]
 }
 ----
 
-The value of the parameter can be a simple string or it could be a regular expression. use the prefix `REGEX:` to use a regular expression match instead of a string identity match
+The value of the parameter can be a simple string or it could be a regular expression. Use the prefix `REGEX:` to use a regular expression match instead of a string identity match
 
 If the commands LIST and CLUSTERSTATUS are case insensitive, the above example should be as follows
 
@@ -158,23 +160,23 @@ The following creates a new permission named "collection-mgr" that is allowed to
 
 [source,bash]
 ----
-curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{ 
+curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{
   "set-permission": {"collection": null,
                      "path":"/admin/collections",
                      "params":{"action":[LIST, CREATE]},
                      "before: 3,
                      "role": "admin"}
-}' http://localhost:8983/solr/admin/authorization 
+}' http://localhost:8983/solr/admin/authorization
 ----
 
-Apply an update permission on all collections to a role called '`dev`' and read permissions to a role called '`guest`':
+Apply an update permission on all collections to a role called `dev` and read permissions to a role called `guest`:
 
 [source,bash]
 ----
-curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{ 
+curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{
   "set-permission": {"name": "update, "role":"dev"},
   "set-permission": {"name": "read, "role":"guest"},
-}' http://localhost:8983/solr/admin/authorization 
+}' http://localhost:8983/solr/admin/authorization
 ----
 
 [[Rule-BasedAuthorizationPlugin-UpdateorDeletePermissions]]
@@ -186,19 +188,19 @@ The following example updates the '`role`' attribute of permission at index '`3`
 
 [source,bash]
 ----
-curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{ 
+curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{
   "update-permission": {"index": 3,
                        "role": ["admin", "dev"]}
-}' http://localhost:8983/solr/admin/authorization 
+}' http://localhost:8983/solr/admin/authorization
 ----
 
 The following example deletes permission at index '`3`':
 
 [source,bash]
 ----
-curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{ 
+curl --user solr:SolrRocks -H 'Content-type:application/json' -d '{
   "delete-permission": 3
-}' http://localhost:8983/solr/admin/authorization 
+}' http://localhost:8983/solr/admin/authorization
 ----
 
 [[Rule-BasedAuthorizationPlugin-MapRolestoUsers]]

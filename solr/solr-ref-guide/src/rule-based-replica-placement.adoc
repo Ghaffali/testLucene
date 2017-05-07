@@ -2,7 +2,9 @@
 :page-shortname: rule-based-replica-placement
 :page-permalink: rule-based-replica-placement.html
 
-When Solr needs to assign nodes to collections, it can either automatically assign them randomly or the user can specify a set of nodes where it should create the replicas. With very large clusters, it is hard to specify exact node names and it still does not give you fine grained control over how nodes are chosen for a shard. The user should be in complete control of where the nodes are allocated for each collection, shard and replica. This helps to optimally allocate hardware resources across the cluster.
+When Solr needs to assign nodes to collections, it can either automatically assign them randomly or the user can specify a set of nodes where it should create the replicas.
+
+With very large clusters, it is hard to specify exact node names and it still does not give you fine grained control over how nodes are chosen for a shard. The user should be in complete control of where the nodes are allocated for each collection, shard and replica. This helps to optimally allocate hardware resources across the cluster.
 
 Rule-based replica assignment allows the creation of rules to determine the placement of replicas in the cluster. In the future, this feature will help to automatically add or remove replicas when systems go down, or when higher throughput is required. This enables a more hands-off approach to administration of the cluster.
 
@@ -30,24 +32,21 @@ There are several situations where this functionality may be used. A few of the 
 
 A rule is a set of conditions that a node must satisfy before a replica core can be created there.
 
-[[Rule-basedReplicaPlacement-RuleConditions.1]]
-=== Rule Conditions
-
 There are three possible conditions.
 
-* **shard**: this is the name of a shard or a wild card (* means for all shards). If shard is not specified, then the rule applies to the entire collection.
-* **replica**: this can be a number or a wild-card (* means any number zero to infinity).
-* **tag**: this is an attribute of a node in the cluster that can be used in a rule, e.g. “freedisk”, “cores”, “rack”, “dc”, etc. The tag name can be a custom string. If creating a custom tag, a snitch is responsible for providing tags and values. The section <<Rule-basedReplicaPlacement-Snitches,Snitches>> below describes how to add a custom tag, and defines six pre-defined tags (cores, freedisk, host, port, node, and sysprop).
+* *shard*: this is the name of a shard or a wild card (* means for all shards). If shard is not specified, then the rule applies to the entire collection.
+* *replica*: this can be a number or a wild-card (* means any number zero to infinity).
+* *tag*: this is an attribute of a node in the cluster that can be used in a rule, e.g., “freedisk”, “cores”, “rack”, “dc”, etc. The tag name can be a custom string. If creating a custom tag, a snitch is responsible for providing tags and values. The section <<Rule-basedReplicaPlacement-Snitches,Snitches>> below describes how to add a custom tag, and defines six pre-defined tags (cores, freedisk, host, port, node, and sysprop).
 
 [[Rule-basedReplicaPlacement-RuleOperators]]
 === Rule Operators
 
 A condition can have one of the following operators to set the parameters for the rule.
 
-* **equals (no operator required)**: tag:x means tag value must be equal to ‘x’
-* **greater than (>)**: tag:>x means tag value greater than ‘x’. x must be a number
-* **less than (<)**: tag:<x means tag value less than ‘x’. x must be a number
-* **not equal (!)**: tag:!x means tag value MUST NOT be equal to ‘x’. The equals check is performed on String value
+* *equals (no operator required)*: `tag:x` means tag value must be equal to ‘x’
+* *greater than (>)*: `tag:>x` means tag value greater than ‘x’. x must be a number
+* *less than (<)*: `tag:<x` means tag value less than ‘x’. x must be a number
+* *not equal (!)*: `tag:!x` means tag value MUST NOT be equal to ‘x’. The equals check is performed on String value
 
 // OLD_CONFLUENCE_ID: Rule-basedReplicaPlacement-FuzzyOperator(~)
 
@@ -73,14 +72,14 @@ The same is applicable to shard splitting. Shard splitting is treated exactly th
 
 Tag values come from a plugin called Snitch. If there is a tag named ‘rack’ in a rule, there must be Snitch which provides the value for ‘rack’ for each node in the cluster. A snitch implements the Snitch interface. Solr, by default, provides a default snitch which provides the following tags:
 
-* **cores**: Number of cores in the node
-* **freedisk**: Disk space available in the node
-* **host**: host name of the node
-* **port**: port of the node
-* **node**: node name
+* *cores*: Number of cores in the node
+* *freedisk*: Disk space available in the node
+* *host*: host name of the node
+* *port*: port of the node
+* *node*: node name
 * *role* : The role of the node. The only supported role is 'overseer'
-* **ip_1, ip_2, ip_3, ip_4**: These are ip fragments for each node. For example, in a host with ip `192.168.1.2`, `ip_1 = 2`, `ip_2 =1`, `ip_3 = 168` and` ip_4 = 192`
-* **sysprop.\{PROPERTY_NAME}**: These are values available from system properties. `sysprop.key` means a value that is passed to the node as `-Dkey=keyValue` during the node startup. It is possible to use rules like `sysprop.key:expectedVal,shard:*`
+* *ip_1, ip_2, ip_3, ip_4*: These are ip fragments for each node. For example, in a host with ip `192.168.1.2`, `ip_1 = 2`, `ip_2 =1`, `ip_3 = 168` and` ip_4 = 192`
+* *sysprop.{PROPERTY_NAME}*: These are values available from system properties. `sysprop.key` means a value that is passed to the node as `-Dkey=keyValue` during the node startup. It is possible to use rules like `sysprop.key:expectedVal,shard:*`
 
 [[Rule-basedReplicaPlacement-HowSnitchesareConfigured]]
 === How Snitches are Configured
@@ -94,11 +93,11 @@ snitch=class:fqn.ClassName,key1:val1,key2:val2,key3:val3
 
 *How Tag Values are Collected*
 
-1.  Identify the set of tags in the rules
-2.  Create instances of Snitches specified. The default snitch is always created.
-3.  Ask each Snitch if it can provide values for the any of the tags. If even one tag does not have a snitch, the assignment fails.
-4.  After identifying the Snitches, they provide the tag values for each node in the cluster.
-5.  If the value for a tag is not obtained for a given node, it cannot participate in the assignment.
+. Identify the set of tags in the rules
+. Create instances of Snitches specified. The default snitch is always created.
+. Ask each Snitch if it can provide values for the any of the tags. If even one tag does not have a snitch, the assignment fails.
+. After identifying the Snitches, they provide the tag values for each node in the cluster.
+. If the value for a tag is not obtained for a given node, it cannot participate in the assignment.
 
 [[Rule-basedReplicaPlacement-Examples]]
 == Examples
@@ -110,7 +109,7 @@ snitch=class:fqn.ClassName,key1:val1,key2:val2,key3:val3
 
 For this rule, we define the `replica` condition with operators for "less than 2", and use a pre-defined tag named `node` to define nodes with any name.
 
-[source,bash]
+[source,text]
 ----
 replica:<2,node:*
 // this is equivalent to replica:<2,node:*,shard:**. We can omit shard:** because ** is the default value of shard

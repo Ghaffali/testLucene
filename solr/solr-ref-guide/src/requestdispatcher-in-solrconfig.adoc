@@ -2,16 +2,16 @@
 :page-shortname: requestdispatcher-in-solrconfig
 :page-permalink: requestdispatcher-in-solrconfig.html
 
-The `requestDispatcher` element of `solrconfig.xml` controls the way the Solr HTTP `RequestDispatcher` implementation responds to requests. Included are parameters for defining if it should handle `/select` urls (for Solr 1.1 compatibility), if it will support remote streaming, the maximum size of file uploads and how it will respond to HTTP cache headers in requests.
+The `requestDispatcher` element of `solrconfig.xml` controls the way the Solr HTTP `RequestDispatcher` implementation responds to requests.
+
+Included are parameters for defining if it should handle `/select` urls (for Solr 1.1 compatibility), if it will support remote streaming, the maximum size of file uploads and how it will respond to HTTP cache headers in requests.
 
 [[RequestDispatcherinSolrConfig-handleSelectElement]]
 == `handleSelect` Element
 
 [IMPORTANT]
 ====
-
 `handleSelect` is for legacy back-compatibility; those new to Solr do not need to change anything about the way this is configured by default.
-
 ====
 
 The first configurable item is the `handleSelect` attribute on the `<requestDispatcher>` element itself. This attribute can be set to one of two values, either "true" or "false". It governs how Solr responds to requests such as `/select?qt=XXX`. The default value "false" will ignore requests to `/select` if a requestHandler is not explicitly registered with the name `/select`. A value of "true" will route query requests to the parser defined with the `qt` value.
@@ -42,7 +42,7 @@ The attribute `addHttpRequestToContext` can be used to indicate that the origina
 
 [source,xml]
 ----
-<requestParsers enableRemoteStreaming="true" 
+<requestParsers enableRemoteStreaming="true"
                 multipartUploadLimitInKB="2048000"
                 formdataUploadLimitInKB="2048"
                 addHttpRequestToContext="false" />

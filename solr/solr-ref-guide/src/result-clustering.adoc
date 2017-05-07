@@ -2,14 +2,15 @@
 :page-shortname: result-clustering
 :page-permalink: result-clustering.html
 
-The *clustering* (or **cluster analysis**) plugin attempts to automatically discover groups of related search hits (documents) and assign human-readable labels to these groups. By default in Solr, the clustering algorithm is applied to the search result of each single query—this is called an _on-line_ clustering. While Solr contains an extension for full-index clustering (__off-line__ clustering) this section will focus on discussing on-line clustering only.
+The *clustering* (or *cluster analysis*) plugin attempts to automatically discover groups of related search hits (documents) and assign human-readable labels to these groups.
 
-Clusters discovered for a given query can be perceived as __dynamic facets__. This is beneficial when regular faceting is difficult (field values are not known in advance) or when the queries are exploratory in nature. Take a look at the http://search.carrot2.org/stable/search?query=solr&results=100&source=web&view=foamtree[Carrot2] project's demo page to see an example of search results clustering in action (the groups in the visualization have been discovered automatically in search results to the right, there is no external information involved).
+By default in Solr, the clustering algorithm is applied to the search result of each single query -— this is called an _on-line_ clustering. While Solr contains an extension for full-index clustering (_off-line_ clustering) this section will focus on discussing on-line clustering only.
+
+Clusters discovered for a given query can be perceived as _dynamic facets_. This is beneficial when regular faceting is difficult (field values are not known in advance) or when the queries are exploratory in nature. Take a look at the http://search.carrot2.org/stable/search?query=solr&results=100&source=web&view=foamtree[Carrot2] project's demo page to see an example of search results clustering in action (the groups in the visualization have been discovered automatically in search results to the right, there is no external information involved).
 
 image::images/result-clustering/carrot2.png[image,width=900]
 
-
-The query issued to the system was __Solr__. It seems clear that faceting could not yield a similar set of groups, although the goals of both techniques are similar—to let the user explore the set of search results and either rephrase the query or narrow the focus to a subset of current documents. Clustering is also similar to <<result-grouping.adoc#result-grouping,Result Grouping>> in that it can help to look deeper into search results, beyond the top few hits.
+The query issued to the system was _Solr_. It seems clear that faceting could not yield a similar set of groups, although the goals of both techniques are similar—to let the user explore the set of search results and either rephrase the query or narrow the focus to a subset of current documents. Clustering is also similar to <<result-grouping.adoc#result-grouping,Result Grouping>> in that it can help to look deeper into search results, beyond the top few hits.
 
 [[ResultClustering-PreliminaryConcepts]]
 == Preliminary Concepts
@@ -29,7 +30,7 @@ A *clustering algorithm* is the actual logic (implementation) that discovers rel
 [[ResultClustering-QuickStartExample]]
 == Quick Start Example
 
-The "```techproducts```" example included with Solr is pre-configured with all the necessary components for result clustering - but they are disabled by default.
+The "```techproducts```" example included with Solr is pre-configured with all the necessary components for result clustering -- but they are disabled by default.
 
 To enable the clustering component contrib and a dedicated search handler configured to use it, specify a JVM System Property when running the example:
 
@@ -40,7 +41,7 @@ bin/solr start -e techproducts -Dsolr.clustering.enabled=true
 
 You can now try out the clustering handler by opening the following URL in a browser:
 
-* `http://localhost:8983/solr/techproducts/clustering?q=*:*&rows=100`
+`\http://localhost:8983/solr/techproducts/clustering?q=*:*&rows=100`
 
 The output XML should include search hits and an array of automatically discovered clusters at the end, resembling the output shown here:
 
@@ -116,7 +117,7 @@ The output XML should include search hits and an array of automatically discover
 </response>
 ----
 
-There were a few clusters discovered for this query (`*:*`), separating search hits into various categories: DDR, iPod, Hard Drive, etc. Each cluster has a label and score that indicates the "goodness" of the cluster. The score is algorithm-specific and is meaningful only in relation to the scores of other clusters in the same set. In other words, if cluster _A_ has a higher score than cluster __B__, cluster _A_ should be of better quality (have a better label and/or more coherent document set). Each cluster has an array of identifiers of documents belonging to it. These identifiers correspond to the `uniqueKey` field declared in the schema.
+There were a few clusters discovered for this query (`\*:*`), separating search hits into various categories: DDR, iPod, Hard Drive, etc. Each cluster has a label and score that indicates the "goodness" of the cluster. The score is algorithm-specific and is meaningful only in relation to the scores of other clusters in the same set. In other words, if cluster _A_ has a higher score than cluster _B_, cluster _A_ should be of better quality (have a better label and/or more coherent document set). Each cluster has an array of identifiers of documents belonging to it. These identifiers correspond to the `uniqueKey` field declared in the schema.
 
 Depending on the quality of input documents, some clusters may not make much sense. Some documents may be left out and not be clustered at all; these will be assigned to the synthetic _Other Topics_ group, marked with the `other-topics` property set to `true` (see the XML dump above for an example). The score of the other topics group is zero.
 
@@ -135,15 +136,14 @@ Clustering extension is a search component and must be declared in `solrconfig.x
 
 An example configuration could look as shown below.
 
-________________________________________________________________________________________________________________________________________________________________________________________________________________
-1.  Include the required contrib JARs. Note that by default paths are relative to the Solr core so they may need adjustments to your configuration, or an explicit specification of the `$solr.install.dir`.
+. Include the required contrib JARs. Note that by default paths are relative to the Solr core so they may need adjustments to your configuration, or an explicit specification of the `$solr.install.dir`.
 +
 [source,xml]
 ----
 <lib dir="${solr.install.dir:../../..}/contrib/clustering/lib/" regex=".*\.jar" />
 <lib dir="${solr.install.dir:../../..}/dist/" regex="solr-clustering-\d.*\.jar" />
 ----
-2.  Declaration of the search component. Each component can also declare multiple clustering pipelines ("engines"), which can be selected at runtime by passing `clustering.engine=(engine name)` URL parameter.
+. Declaration of the search component. Each component can also declare multiple clustering pipelines ("engines"), which can be selected at runtime by passing `clustering.engine=(engine name)` URL parameter.
 +
 [source,xml]
 ----
@@ -161,7 +161,7 @@ ________________________________________________________________________________
   </lst>
 </searchComponent>
 ----
-3.  A request handler to which we append the clustering component declared above.
+. A request handler to which we append the clustering component declared above.
 +
 [source,xml]
 ----
@@ -188,14 +188,14 @@ ________________________________________________________________________________
   </arr>
 </requestHandler>
 ----
-________________________________________________________________________________________________________________________________________________________________________________________________________________
+
 
 [[ResultClustering-ConfigurationParametersoftheClusteringComponent]]
 === Configuration Parameters of the Clustering Component
 
 The table below summarizes parameters of each clustering engine or the entire clustering component (depending where they are declared).
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |`clustering` |When `true`, clustering component is enabled.
@@ -206,7 +206,7 @@ The table below summarizes parameters of each clustering engine or the entire cl
 
 At the engine declaration level, the following parameters are supported.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |`carrot.algorithm` |The algorithm class.
@@ -235,7 +235,7 @@ The question of which algorithm to choose depends on the amount of traffic (STC 
 
 The clustering engine can apply clustering to the full content of (stored) fields or it can run an internal highlighter pass to extract context-snippets before clustering. Highlighting is recommended when the logical snippet field contains a lot of content (this would affect clustering performance). Highlighting can also increase the quality of clustering because the content passed to the algorithm will be more focused around the query (it will be query-specific context). The following parameters control the internal highlighter.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |`carrot.produceSummary` |When `true` the clustering component will run a highlighter pass on the content of logical fields pointed to by `carrot.title` and `carrot.snippet`. Otherwise full content of those fields will be clustered.
@@ -248,7 +248,7 @@ The clustering engine can apply clustering to the full content of (stored) field
 
 As already mentioned in <<ResultClustering-PreliminaryConcepts,Preliminary Concepts>>, the clustering component clusters "documents" consisting of logical parts that need to be mapped onto physical schema of data stored in Solr. The field mapping attributes provide a connection between fields and logical document parts. Note that the content of title and snippet fields must be *stored* so that it can be retrieved at search time.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |`carrot.title` |The field (alternatively comma- or space-separated list of fields) that should be mapped to the logical document's title. The clustering algorithms typically give more weight to the content of the title field compared to the content (snippet). For best results, the field should contain concise, noise-free content. If there is no clear title in your data, you can leave this parameter blank.
@@ -263,7 +263,7 @@ The field mapping specification can include a `carrot.lang` parameter, which def
 
 The language hint makes it easier for clustering algorithms to separate documents from different languages on input and to pick the right language resources for clustering. If you do have multi-lingual query results (or query results in a language different than English), it is strongly advised to map the language field appropriately.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |`carrot.lang` |The field that stores ISO 639-1 code of the language of the document's text fields.
@@ -278,7 +278,6 @@ The default language can also be set using Carrot2-specific algorithm attributes
 The algorithms that come with Solr are using their default settings which may be inadequate for all data sets. All algorithms have lexical resources and resources (stop words, stemmers, parameters) that may require tweaking to get better clusters (and cluster labels). For Carrot2-based algorithms it is probably best to refer to a dedicated tuning application called Carrot2 Workbench (screenshot below). From this application one can export a set of algorithm attributes as an XML file, which can be then placed under the location pointed to by `carrot.resourcesDir`.
 
 image::images/result-clustering/carrot2-workbench.png[image,scaledwidth=75.0%]
-
 
 [[ResultClustering-ProvidingDefaults]]
 === Providing Defaults
@@ -298,7 +297,7 @@ An example XML file changing the default language of documents to Polish is show
       </attribute>
     </value-set>
   </attribute-set>
-</attribute-sets> 
+</attribute-sets>
 ----
 
 [[ResultClustering-TweakingatQuery-Time]]

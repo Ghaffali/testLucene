@@ -41,7 +41,7 @@ The `version` parameter determines the XML protocol used in the response. Client
 
 Currently supported version values are:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |XML Version |Notes
 |2.2 |The format of the responseHeader changed to use the same `<lst>` structure as the rest of the response.
@@ -58,9 +58,7 @@ The default behavior is not to return any stylesheet declaration at all.
 
 [IMPORTANT]
 ====
-
 Use of the `stylesheet` parameter is discouraged, as there is currently no way to specify external stylesheets, and no stylesheets are provided in the Solr distributions. This is a legacy parameter, which may be developed further in a future release.
-
 ====
 
 [[ResponseWriters-TheindentParameter]]
@@ -108,7 +106,7 @@ A very commonly used Response Writer is the `JsonResponseWriter`, which formats 
 
 Here is a sample response for a simple query like `q=id:VS1GB400C3&wt=json`:
 
-[source,xml]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -161,12 +159,12 @@ This parameter controls the output format of NamedLists, where order is more imp
 
 [cols=",,",options="header",]
 |===
-|json.nl Parameter setting |Example output forNamedList("a"=1, "bar"="foo", null=3, null=null) |Description
-|flat _(the default)_ |["a",1, "bar","foo", null,3, null,null] |NamedList is represented as a flat array, alternating names and values.
-|map |\{"a":1, "bar":"foo", "":3, "":null} |NamedList is represented as a JSON object. Although this is the simplest mapping, a NamedList can have optional keys, repeated keys, and preserves order. Using a JSON object (essentially a map or hash) for a NamedList results in the loss of some information.
-|arrarr |[["a",1], ["bar","foo"], [null,3], [null,null]] |NamedList is represented as an array of two element arrays.
-|arrmap |[\{"a":1}, \{"b":2}, 3, null] |NamedList is represented as an array of JSON objects.
-|arrntv |[\{"name":"a","type":"int","value":1}, \{"name":"bar","type":"str","value":"foo"}, \{"name":null,"type":"int","value":3}, \{"name":null,"type":"null","value":null}] |NamedList is represented as an array of Name Type Value JSON objects.
+|json.nl Parameter setting |Example output for `NamedList("a"=1, "bar"="foo", null=3, null=null)` |Description
+|flat _(the default)_ |`["a",1, "bar","foo", null,3, null,null]` |NamedList is represented as a flat array, alternating names and values.
+|map |`{"a":1, "bar":"foo", "":3, "":null}` |NamedList is represented as a JSON object. Although this is the simplest mapping, a NamedList can have optional keys, repeated keys, and preserves order. Using a JSON object (essentially a map or hash) for a NamedList results in the loss of some information.
+|arrarr |`[["a",1], ["bar","foo"], [null,3], [null,null]]` |NamedList is represented as an array of two element arrays.
+|arrmap |[`{"a":1}, {"b":2}, 3, null]` |NamedList is represented as an array of JSON objects.
+|arrntv |`[{"name":"a","type":"int","value":1}, {"name":"bar","type":"str","value":"foo"}, {"name":null,"type":"int","value":3}, {"name":null,"type":"null","value":null}]` |NamedList is represented as an array of Name Type Value JSON objects.
 |===
 
 [[ResponseWriters-json.wrf]]
@@ -205,7 +203,7 @@ Solr has a PHP response format that outputs an array (as PHP code) which can be 
 
 Example usage:
 
-[source,java]
+[source,php]
 ----
 $code = file_get_contents('http://localhost:8983/solr/techproducts/select?q=iPod&wt=php');
 eval("$result = " . $code . ";");
@@ -216,7 +214,7 @@ Solr also includes a PHP Serialized Response Writer that formats output in a ser
 
 Example usage:
 
-[source,java]
+[source,php]
 ----
 $serializedResult = file_get_contents('http://localhost:8983/solr/techproducts/select?q=iPod&wt=phps');
 $result = unserialize($serializedResult);
@@ -236,7 +234,7 @@ Solr has an optional Ruby response format that extends its JSON output in the fo
 
 Here is a simple example of how one may query Solr using the Ruby response format:
 
-[source,java]
+[source,ruby]
 ----
 require 'net/http'
 h = Net::HTTP.new('localhost', 8983)
@@ -259,7 +257,7 @@ The CSV response writer supports multi-valued fields, as well as<<transforming-r
 
 These parameters specify the CSV format that will be returned. You can accept the default values or specify your own.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default Value
 |csv.encapsulator |"
@@ -275,7 +273,7 @@ These parameters specify the CSV format that will be returned. You can accept th
 
 These parameters specify how multi-valued fields are encoded. Per-field overrides for these values can be done using `f.<fieldname>.csv.separator=|`.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default Value
 |csv.mv.encapsulator |None
@@ -286,9 +284,9 @@ These parameters specify how multi-valued fields are encoded. Per-field override
 [[ResponseWriters-Example]]
 === Example
 
-`http://localhost:8983/solr/techproducts/select?q=ipod&fl=id,cat,name,popularity,price,score&wt=csv` returns:
+`\http://localhost:8983/solr/techproducts/select?q=ipod&fl=id,cat,name,popularity,price,score&wt=csv` returns:
 
-[source,java]
+[source,text]
 ----
 id,cat,name,popularity,price,score
 IW-02,"electronics,connector",iPod & iPod Mini USB 2.0 Cable,1,11.5,0.98867977
@@ -315,7 +313,7 @@ Use this to get the response as a spreadsheet in the .xlsx (Microsoft Excel) for
 
 This response writer has been added as part of the extraction library, and will only work if the extraction contrib is present in the server classpath. Defining the classpath with the `lib` directive is not sufficient. Instead, you will need to copy the necessary .jars to the Solr webapp's `lib` directory manually. You can run these commands from your `$SOLR_INSTALL` directory:
 
-[source,java]
+[source,text]
 ----
 cp contrib/extraction/lib/*.jar server/solr-webapp/webapp/WEB-INF/lib/
 cp dist/solr-cell-6.3.0.jar server/solr-webapp/webapp/WEB-INF/lib/
