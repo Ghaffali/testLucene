@@ -8,7 +8,7 @@ The tool can be used from command line, or it can be instantiated and executed i
 
 In a Solr distribution, the Lucene files are located in `./server/solr-webapp/webapp/WEB-INF/lib`. You will need to include the `lucene-core-<version>.jar` and `lucene-backwards-codecs-<version>.jar` on the classpath when running the tool.
 
-[source,text]
+[source,bash]
 ----
 java -cp lucene-core-6.0.0.jar:lucene-backward-codecs-6.0.0.jar org.apache.lucene.index.IndexUpgrader [-delete-prior-commits] [-verbose] /path/to/index
 ----
@@ -19,7 +19,5 @@ Upgrading large indexes may take a long time. As a rule of thumb, the upgrade pr
 
 [WARNING]
 ====
-
 This tool may reorder documents if the index was partially upgraded before execution (e.g., documents were added). If your application relies on monotonicity of document IDs (which means that the order in which the documents were added to the index is preserved), do a full forceMerge instead.
-
 ====

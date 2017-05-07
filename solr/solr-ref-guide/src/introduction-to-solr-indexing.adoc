@@ -2,7 +2,9 @@
 :page-shortname: introduction-to-solr-indexing
 :page-permalink: introduction-to-solr-indexing.html
 
-This section describes the process of indexing: adding content to a Solr index and, if necessary, modifying that content or deleting it. By adding content to an index, we make it searchable by Solr.
+This section describes the process of indexing: adding content to a Solr index and, if necessary, modifying that content or deleting it.
+
+By adding content to an index, we make it searchable by Solr.
 
 A Solr index can accept data from many different sources, including XML files, comma-separated value (CSV) files, data extracted from tables in a database, and files in common file formats such as Microsoft Word or PDF.
 
@@ -12,7 +14,7 @@ Here are the three most common ways of loading data into a Solr index:
 
 * Uploading XML files by sending HTTP requests to the Solr server from any environment where such requests can be generated.
 
-* Writing a custom Java application to ingest data through Solr's Java Client API (which is described in more detail in <<client-apis.adoc#client-apis,Client APIs>>. Using the Java API may be the best choice if you're working with an application, such as a Content Management System (CMS), that offers a Java API.
+* Writing a custom Java application to ingest data through Solr's Java Client API (which is described in more detail in <<client-apis.adoc#client-apis,Client APIs>>). Using the Java API may be the best choice if you're working with an application, such as a Content Management System (CMS), that offers a Java API.
 
 Regardless of the method used to ingest data, there is a common basic data structure for data being fed into a Solr index: a _document_ containing multiple _fields,_ each with a _name_ and containing _content,_ which may be empty. One of the fields is usually designated as a unique ID field (analogous to a primary key in a database), although the use of a unique ID field is not strictly required by Solr.
 
@@ -32,9 +34,7 @@ Many of the instructions and examples in this section make use of the `curl` uti
 
 [IMPORTANT]
 ====
-
 Using `curl` or other command line tools for posting data is just fine for examples or tests, but it's not the recommended method for achieving the best performance for updates in production environments. You will achieve better performance with Solr Cell or the other methods described in this section.
 
 Instead of `curl`, you can use utilities such as GNU `wget` (http://www.gnu.org/software/wget/) or manage GETs and POSTS with Perl, although the command line options will differ.
-
 ====
