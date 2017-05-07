@@ -5,7 +5,7 @@
 Solr ships with many out-of-the-box RequestHandlers, which are called implicit because they are not configured in `solrconfig.xml`.
 
 [[ImplicitRequestHandlers-ListofImplicitlyAvailableEndpoints]]
-=== List of Implicitly Available Endpoints
+== List of Implicitly Available Endpoints
 
 [cols=",,,",options="header",]
 |===
@@ -39,7 +39,7 @@ Solr ships with many out-of-the-box RequestHandlers, which are called implicit b
 |===
 
 [[ImplicitRequestHandlers-HowtoViewtheConfiguration]]
-=== How to View the Configuration
+== How to View the Configuration
 
 You can see configuration for all request handlers, including the implicit request handlers, via the <<config-api.adoc#config-api,Config API>>. E.g. for the `gettingstarted` collection:
 
@@ -54,6 +54,6 @@ To include the expanded paramset in the response, as well as the effective param
 `curl "http://localhost:8983/solr/gettingstarted/config/requestHandler?componentName=/export&expandParams=true"`
 
 [[ImplicitRequestHandlers-HowtoEdittheConfiguration]]
-=== How to Edit the Configuration
+== How to Edit the Configuration
 
 Because implicit request handlers are not present in `solrconfig.xml`, configuration of their associated `default`, `invariant` and `appends` parameters may be edited via<<request-parameters-api.adoc#request-parameters-api, Request Parameters API>> using the paramset listed in the above table. However, other parameters, including SearchHandler components, may not be modified. The invariants and appends specified in the implicit configuration cannot be overridden.

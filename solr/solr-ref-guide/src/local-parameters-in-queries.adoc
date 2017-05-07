@@ -2,7 +2,9 @@
 :page-shortname: local-parameters-in-queries
 :page-permalink: local-parameters-in-queries.html
 
-Local parameters are arguments in a Solr request that are specific to a query parameter. Local parameters provide a way to add meta-data to certain argument types such as query strings. (In Solr documentation, local parameters are sometimes referred to as LocalParams.)
+Local parameters are arguments in a Solr request that are specific to a query parameter.
+
+Local parameters provide a way to add meta-data to certain argument types such as query strings. (In Solr documentation, local parameters are sometimes referred to as LocalParams.)
 
 Local parameters are specified as prefixes to arguments. Take the following query argument, for example:
 
@@ -19,11 +21,11 @@ These local parameters would change the query to require a match on both "solr" 
 
 To specify a local parameter, insert the following before the argument to be modified:
 
-* Begin with \{!
+* Begin with `{!`
 
 * Insert any number of key=value pairs separated by white space
 
-* End with } and immediately follow with the query argument
+* End with `}` and immediately follow with the query argument
 
 You may specify only one local parameters prefix per argument. Values in the key-value pairs may be quoted via single or double quotes, and backslash escaping works within quoted strings.
 
@@ -46,10 +48,7 @@ is equivilent to:
 
 `fq={!type=lucene df=summary}solr rocks`
 
-// OLD_CONFLUENCE_ID: LocalParametersinQueries-SpecifyingtheParameterValuewiththe'v'Key
-
-[[LocalParametersinQueries-SpecifyingtheParameterValuewiththe_v_Key]]
-== Specifying the Parameter Value with the '`v`' Key
+== Specifying the Parameter Value with the `v` Key
 
 A special key of `v` within local parameters is an alternate way to specify the value of that parameter.
 
@@ -62,7 +61,7 @@ is equivalent to
 [[LocalParametersinQueries-ParameterDereferencing]]
 == Parameter Dereferencing
 
-Parameter dereferencing or indirection lets you use the value of another argument rather than specifying it directly. This can be used to simplify queries, decouple user input from query parameters, or decouple front-end GUI parameters from defaults set in `solrconfig.xml`.
+Parameter dereferencing, or indirection, lets you use the value of another argument rather than specifying it directly. This can be used to simplify queries, decouple user input from query parameters, or decouple front-end GUI parameters from defaults set in `solrconfig.xml`.
 
 `q={!dismax qf=myfield}solr rocks`
 
