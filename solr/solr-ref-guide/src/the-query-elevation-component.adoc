@@ -47,7 +47,7 @@ Optionally, in the Query Elevation Component configuration you can also specify 
 
 The Query Elevation Search Component takes the following arguments:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Argument |Description
 |`queryFieldType` |Specifies which fieldType should be used to analyze the incoming text. For example, it may be appropriate to use a fieldType with a LowerCaseFilter.

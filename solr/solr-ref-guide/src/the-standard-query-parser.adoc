@@ -11,7 +11,7 @@ The key advantage of the standard query parser is that it supports a robust and 
 
 In addition to the <<common-query-parameters.adoc#common-query-parameters,Common Query Parameters>>, <<faceting.adoc#faceting,Faceting Parameters>>, <<highlighting.adoc#highlighting,Highlighting Parameters>>, and <<morelikethis.adoc#morelikethis,MoreLikeThis Parameters>>, the standard query parser supports the parameters described in the table below.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |q |Defines a query using standard query syntax. This parameter is mandatory.
@@ -107,7 +107,7 @@ Solr supports a variety of term modifiers that add flexibility or precision, as 
 
 Solr's standard query parser supports single and multiple character wildcard searches within single terms. Wildcard characters can be applied to single terms, but not to search phrases.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Wildcard Search Type |Special Character |Example
 |Single character (matches a single character) |? |The search string `te?t` would match both test and text.
@@ -222,7 +222,7 @@ The field is only valid for the term that it directly precedes, so the query `ti
 
 Boolean operators allow you to apply Boolean logic to queries, requiring the presence or absence of specific terms or conditions in fields in order to match documents. The table below summarizes the Boolean operators supported by the standard query parser.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Boolean Operator |Alternative Symbol |Description
 |AND |`&&` |Requires both terms on either side of the Boolean operator to be present for a match.

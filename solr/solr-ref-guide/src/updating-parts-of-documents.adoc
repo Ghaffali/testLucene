@@ -21,7 +21,7 @@ To use atomic updates, add a modifier to the field that needs to be updated. The
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Modifier |Usage
 |set a|
@@ -67,12 +67,12 @@ If the following document exists in our collection:
 
 [source,json]
 ----
-{"id":"mydoc", 
- "price":10, 
+{"id":"mydoc",
+ "price":10,
  "popularity":42,
  "categories":["kids"],
  "promo_ids":["a123x"],
- "tags":["free_to_try","buy_now","clearance","on_sale"] 
+ "tags":["free_to_try","buy_now","clearance","on_sale"]
 }
 ----
 
@@ -80,8 +80,8 @@ And we apply the following update command:
 
 [source,json]
 ----
-{"id":"mydoc", 
- "price":{"set":99}, 
+{"id":"mydoc",
+ "price":{"set":99},
  "popularity":{"inc":20},
  "categories":{"add":["toys","games"]},
  "promo_ids":{"remove":"a123x"},
@@ -93,11 +93,11 @@ The resulting document in our collection will be:
 
 [source,json]
 ----
-{"id":"mydoc", 
- "price":99, 
+{"id":"mydoc",
+ "price":99,
  "popularity":62,
  "categories":["kids","toys","games"],
- "tags":["buy_now","clearance"] 
+ "tags":["buy_now","clearance"]
 }
 ----
 
@@ -116,7 +116,7 @@ To use in-place updates, add a modifier to the field that needs to be updated. T
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Modifier |Usage
 |set a|
@@ -145,12 +145,12 @@ If the following document exists in our collection:
 [source,json]
 ----
 {
- "id":"mydoc", 
- "price":10, 
+ "id":"mydoc",
+ "price":10,
  "popularity":42,
  "categories":["kids"],
  "promo_ids":["a123x"],
- "tags":["free_to_try","buy_now","clearance","on_sale"] 
+ "tags":["free_to_try","buy_now","clearance","on_sale"]
 }
 ----
 
@@ -159,8 +159,8 @@ And we apply the following update command:
 [source,json]
 ----
 {
- "id":"mydoc", 
- "price":{"set":99}, 
+ "id":"mydoc",
+ "price":{"set":99},
  "popularity":{"inc":20}
 }
 ----
@@ -170,12 +170,12 @@ The resulting document in our collection will be:
 [source,json]
 ----
 {
- "id":"mydoc", 
- "price":99, 
+ "id":"mydoc",
+ "price":99,
  "popularity":62,
  "categories":["kids"],
  "promo_ids":["a123x"],
- "tags":["free_to_try","buy_now","clearance","on_sale"] 
+ "tags":["free_to_try","buy_now","clearance","on_sale"]
 }
 ----
 
@@ -207,19 +207,19 @@ For example...
 [source,bash]
 ----
 $ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/techproducts/update?versions=true' --data-binary '
-[ { "id" : "aaa" }, 
+[ { "id" : "aaa" },
   { "id" : "bbb" } ]'
 {"responseHeader":{"status":0,"QTime":6},
  "adds":["aaa",1498562471222312960,
          "bbb",1498562471225458688]}
 $ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/techproducts/update?_version_=999999&versions=true' --data-binary '
-[{ "id" : "aaa", 
+[{ "id" : "aaa",
    "foo_s" : "update attempt with wrong existing version" }]'
 {"responseHeader":{"status":409,"QTime":3},
  "error":{"msg":"version conflict for aaa expected=999999 actual=1498562471222312960",
           "code":409}}
 $ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/techproducts/update?_version_=1498562471222312960&versions=true&commit=true' --data-binary '
-[{ "id" : "aaa", 
+[{ "id" : "aaa",
    "foo_s" : "update attempt with correct existing version" }]'
 {"responseHeader":{"status":0,"QTime":5},
  "adds":["aaa",1498562624496861184]}
@@ -238,7 +238,7 @@ $ curl 'http://localhost:8983/solr/techproducts/query?q=*:*&fl=id,_version_'
       {
         "id":"aaa",
         "_version_":1498562624496861184}]
-  }} 
+  }}
 ----
 
 For more information, please also see https://www.youtube.com/watch?v=WYVM6Wz-XTw[Yonik Seeley's presentation on NoSQL features in Solr 4] from Apache Lucene EuroCon 2012.

@@ -18,7 +18,7 @@ The Stats Component accepts the following parameters:
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |stats |If **true**, then invokes the Stats component.
@@ -94,7 +94,7 @@ The table below explains the statistics supported by the Stats component. Not al
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Local Param |Sample Input |Description a|
 Supported

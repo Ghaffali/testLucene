@@ -17,7 +17,7 @@ The old API and the v2 API differ in three principle ways:
 
 Following are some v2 API URL paths and path prefixes, along with some of the operations that are supported at these paths and their sub-paths.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Path prefix |Some Supported Operations
 |`/v2/collections` or equivalently: `/v2/c` |Create, alias, backup, and restore a collection.
@@ -147,8 +147,8 @@ For the "gettingstarted" collection, set the replication factor and whether to a
 ----
 $ curl http://localhost:8983/v2/c/gettingstarted -H 'Content-type:application/json' -d '
 { modify: { replicationFactor: "3", autoAddReplicas: false } }'
- 
-{"responseHeader":{"status":0,"QTime":842}} 
+
+{"responseHeader":{"status":0,"QTime":842}}
 ----
 
 See the state of the cluster:
@@ -157,7 +157,7 @@ See the state of the cluster:
 ----
 $ curl http://localhost:8983/v2/cluster
 
-{"responseHeader":{"status":0,"QTime":0},"collections":["gettingstarted",".system"]} 
+{"responseHeader":{"status":0,"QTime":0},"collections":["gettingstarted",".system"]}
 ----
 
 Set a cluster property:

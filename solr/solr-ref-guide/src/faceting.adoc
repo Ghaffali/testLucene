@@ -295,7 +295,7 @@ To ensure you avoid double-counting, do not choose both `lower` and `upper`, do 
 
 The `facet.range.other` parameter specifies that in addition to the counts for each range constraint between `facet.range.start` and `facet.range.end`, counts should also be computed for these options:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Option |Description
 |before |All records with field values lower then lower bound of the first range.

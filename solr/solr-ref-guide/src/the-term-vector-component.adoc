@@ -117,7 +117,7 @@ The example below shows the available request parameters for this component:
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Boolean Parameters |Description |Type
 |tv |Should the component run or not |boolean

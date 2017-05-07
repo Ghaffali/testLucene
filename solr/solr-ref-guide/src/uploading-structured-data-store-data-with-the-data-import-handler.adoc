@@ -19,7 +19,7 @@ For more information about the Data Import Handler, see https://wiki.apache.org/
 
 Descriptions of the Data Import Handler use several familiar terms, such as entity and processor, in specific ways, as explained in the table below.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Term |Definition
 |Datasource |As its name suggests, a datasource defines the location of the data of interest. For a database, it's a DSN. For an HTTP datasource, it's the base URL.
@@ -60,14 +60,14 @@ An annotated configuration file, based on the "```db```" collection in the `dih`
 <!-- The first element is the dataSource, in this case an HSQLDB database.
      The path to the JDBC driver and the JDBC URL and login credentials are all specified here.
      Other permissible attributes include whether or not to autocommit to Solr, the batchsize
-     used in the JDBC connection, a 'readOnly' flag. 
+     used in the JDBC connection, a 'readOnly' flag.
      The password attribute is optional if there is no password set for the DB.
 -->
   <dataSource driver="org.hsqldb.jdbcDriver" url="jdbc:hsqldb:./example-DIH/hsqldb/ex" user="sa" password="secret"/>
 <!--
-Alternately the password can be encrypted as follows. This is the value obtained as a result of the command 
+Alternately the password can be encrypted as follows. This is the value obtained as a result of the command
 openssl enc -aes-128-cbc -a -salt -in pwd.txt
-password="U2FsdGVkX18QMjY0yfCqlfBMvAB4d3XkwY96L7gfO2o=" 
+password="U2FsdGVkX18QMjY0yfCqlfBMvAB4d3XkwY96L7gfO2o="
 WHen the password is encrypted, you must provide an extra attribute
 encryptKeyFile="/location/of/encryptionkey"
 This file should a text file with a single line containing the encrypt/decrypt password
@@ -92,7 +92,7 @@ This file should a text file with a single line containing the encrypt/decrypt p
 <!-- This entity is nested and reflects the one-to-many relationship between an item and its multiple features.
      Note the use of variables; ${item.ID} is the value of the column 'ID' for the current item
      ('item' referring to the entity name)  -->
-      <entity name="feature"  
+      <entity name="feature"
               query="select DESCRIPTION from FEATURE where ITEM_ID='${item.ID}'"
               deltaQuery="select ITEM_ID from FEATURE where last_modified > '${dataimporter.last_index_time}'"
               parentDeltaQuery="select ID from item where ID=${feature.ITEM_ID}">
@@ -151,7 +151,7 @@ DIH commands are sent to Solr via an HTTP request. The following operations are 
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Command |Description
 |`abort` |Aborts an ongoing operation. The URL is `\http://<host>:<port>/solr/<collection_name>/dataimport?command=abort`.
@@ -171,7 +171,7 @@ If the configuration file has been changed and you wish to reload it without res
 
 The `full-import` command accepts the following parameters:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |clean |Default is true. Tells whether to clean up the index before the indexing is started.
@@ -195,7 +195,7 @@ The `propertyWriter` element defines the date format and locale for use with del
 
 The parameters available are:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |dateFormat |A java.text.SimpleDateFormat to use when converting the date to text. The default is "yyyy-MM-dd HH:mm:ss".
@@ -233,13 +233,13 @@ This can be used where a database field contains XML which you wish to process u
 <document>
 
   <!-- processor for database -->
-  
+
   <entity name ="e1" dataSource="a1" processor="SqlEntityProcessor" pk="docid"
           query="select * from t1 ...">
 
     <!-- nested XpathEntity; the field in the parent which is to be used for
          Xpath is set in the "datafield" attribute in place of the "url" attribute -->
-   
+
     <entity name="e2" dataSource="a2" processor="XPathEntityProcessor"
             dataField="e1.fieldToUseForXPath">
 
@@ -247,6 +247,7 @@ This can be used where a database field contains XML which you wish to process u
       ...
     </entity>
   </entity>
+</document>
 ----
 
 The FieldReaderDataSource can take an `encoding` parameter, which will default to "UTF-8" if not specified.It must be specified as language-country. For example, `en-US`.
@@ -258,7 +259,7 @@ This can be used like an <<UploadingStructuredDataStoreDatawiththeDataImportHand
 
 This data source accepts these optional attributes.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Optional Attribute |Description
 |basePath |The base path relative to which the value is evaluated if it is not absolute.
@@ -272,7 +273,7 @@ This is the default datasource. It's used with the <<UploadingStructuredDataStor
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attributes |Description
 |driver, url, user, password, encryptKeyFile |Usual jdbc connection properties
@@ -309,7 +310,7 @@ This data source is often used with XPathEntityProcessor to fetch content from a
 
 The URLDataSource type accepts these optional parameters:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Optional Parameter |Description
 |baseURL |Specifies a new baseURL for pathnames. You can use this to specify host/port changes between Dev/QA/Prod environments. Using this attribute isolates the changes to be made to the `solrconfig.xml`
@@ -325,7 +326,7 @@ Entity processors extract data, transform it, and add it to a Solr index. Exampl
 
 Each processor has its own set of attributes, described in its own section below. In addition, there are non-specific attributes common to all entities which may be specified.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Use
 |dataSource |The name of a data source. If there are multiple data sources defined, use this attribute with the name of the data source for this entity.
@@ -352,8 +353,8 @@ In the example below, each `manufacturer` entity is cached using the '`id`' prop
 [source,xml]
 ----
 <entity name="product" query="select description,sku, manu from product" >
-  <entity name="manufacturer" query="select id, name from manufacturer" 
-          cacheKey="id" cacheLookup="product.manu" cacheImpl="SortedMapBackedCache"/>     
+  <entity name="manufacturer" query="select id, name from manufacturer"
+          cacheKey="id" cacheLookup="product.manu" cacheImpl="SortedMapBackedCache"/>
 </entity>
 ----
 
@@ -364,7 +365,7 @@ The SqlEntityProcessor is the default processor. The associated <<UploadingStruc
 
 The entity attributes specific to this processor are shown in the table below.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Use
 |query |Required. The SQL query used to select rows.
@@ -381,7 +382,7 @@ This processor is used when indexing XML formatted data. The data source is typi
 
 The entity attributes unique to this processor are shown below.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Use
 |Processor |Required. Must be set to "XpathEntityProcessor".
@@ -396,7 +397,7 @@ Each field element in the entity can have the following attributes as well as th
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Use
 |xpath |Required. The XPath expression which will extract the content from the record for this field. Only a subset of Xpath syntax is supported.
@@ -453,14 +454,14 @@ Here is an example from the "```mail```" collection of the `dih` example (`examp
 ----
 <dataConfig>
   <document>
-      <entity processor="MailEntityProcessor" 
+      <entity processor="MailEntityProcessor"
               user="email@gmail.com"
-              password="password" 
-              host="imap.gmail.com" 
+              password="password"
+              host="imap.gmail.com"
               protocol="imaps"
-              fetchMailsSince="2009-09-20 00:00:00" 
-              batchSize="20" 
-              folders="inbox" 
+              fetchMailsSince="2009-09-20 00:00:00"
+              batchSize="20"
+              folders="inbox"
               processAttachement="false"
               name="sample_entity"/>
   </document>
@@ -471,7 +472,7 @@ The entity attributes unique to the MailEntityProcessor are shown below.
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Use
 |processor |Required. Must be set to "MailEntityProcessor".
@@ -531,7 +532,7 @@ The parameters for this processor are described in the table below:
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Use
 |dataSource a|
@@ -557,7 +558,7 @@ This processor is basically a wrapper, and is designed to generate a set of file
 
 The attributes specific to this processor are described in the table below:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Use
 |fileName |Required. A regular expression pattern to identify files to be included.
@@ -588,7 +589,7 @@ The example below shows the combination of the FileListEntityProcessor with anot
             baseDir="/my/document/directory">
 
       <!-- this processor extracts content using Xpath from each file found -->
-      
+
       <entity name="nested" processor="XPathEntityProcessor"
               forEach="/rootelement" url="${f.fileAbsolutePath}" >
         <field column="name" xpath="/rootelement/name"/>
@@ -606,7 +607,7 @@ This EntityProcessor reads all content from the data source on a line by line ba
 
 The lines read can be filtered by two regular expressions specified with the `acceptLineRegex` and `omitLineRegex` attributes. The table below describes the LineEntityProcessor's attributes:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |url |A required attribute that specifies the location of the input file in a way that is compatible with the configured data source. If this value is relative and you are using FileDataSource or URLDataSource, it assumed to be relative to baseLoc.
@@ -675,7 +676,7 @@ The Data Import Handler contains several built-in transformers. You can also wri
 
 Solr includes the following built-in transformers:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Transformer Name |Use
 |<<UploadingStructuredDataStoreDatawiththeDataImportHandler-ClobTransformer,ClobTransformer>> |Used to create a String out of a Clob type in database.
@@ -705,7 +706,7 @@ You can use the ClobTransformer to create a string out of a CLOB in a database. 
 
 The ClobTransformer accepts these attributes:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |clob |Boolean value to signal if ClobTransformer should process this field or not. If this attribute is omitted, then the corresponding field is not transformed.
@@ -721,7 +722,7 @@ DateFormatTransformer applies only on the fields with an attribute `dateTimeForm
 
 This transformer recognizes the following attributes:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |dateTimeFormat |The format used for parsing this field. This must comply with the syntax of the http://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html[Java SimpleDateFormat] class.
@@ -779,7 +780,7 @@ NumberFormatTransformer will be applied only to fields with an attribute `format
 
 This transformer recognizes the following attributes:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |formatStyle |The format used for parsing this field. The value of the attribute must be one of (`number|percent|integer|currency`). This uses the semantics of the Java NumberFormat class.
@@ -807,7 +808,7 @@ The regex transformer helps in extracting or manipulating values from fields (fr
 
 The table below describes the attributes recognized by the regex transformer.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |regex |The regular expression that is used to match against the column or sourceColName's value(s). If replaceWith is absent, each regex _group_ is taken as a value and a list of values is returned.
@@ -858,9 +859,9 @@ Here is a simple example.
   <!-- simple script to generate a new row, converting a temperature from Fahrenheit to Centigrade -->
 
   <script><![CDATA[
-    function f2c(row) {  
-      var tempf, tempc;  
-      tempf = row.get('temp_f'); 
+    function f2c(row) {
+      var tempf, tempc;
+      tempf = row.get('temp_f');
       if (tempf != null) {
         tempc = (tempf - 32.0)*5.0/9.0;
         row.put('temp_c', temp_c);
@@ -899,7 +900,7 @@ You can use the template transformer to construct or modify a field value, perha
 
 You can pass special commands to the DIH by adding any of the variables listed below to any row returned by any component:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Variable |Description
 |$skipDoc |Skip the current document; that is, do not add it to Solr. The value can be the string `true\|false`.

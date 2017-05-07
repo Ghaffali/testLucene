@@ -74,7 +74,7 @@ TIP: The input need not be an HTML document. The filter removes only constructs 
 
 The table below presents examples of HTML stripping.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Input |Output
 |`my <a href="www.foo.bar">link</a>` |my link
@@ -145,7 +145,7 @@ You can configure this filter in `schema.xml` like this:
 
 The table below presents examples of regex-based pattern replacement:
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Input |Pattern |Replacement |Output |Description
 |see-ing looking |`(\w+)(ing)` |`$1` |see-ing look |Removes "ing" from the end of word.

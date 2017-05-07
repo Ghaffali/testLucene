@@ -85,7 +85,7 @@ This command allows you to query the document using an attribute, as in: `http:/
 
 The table below describes the parameters accepted by the Extracting Request Handler.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |capture |Captures XHTML elements with the specified name for a supplementary addition to the Solr document. This parameter can be useful for copying chunks of the XHTML into a separate field. For instance, it could be used to grab paragraphs (`<p>`) and index them into a separate field. Note that content is still also captured into the overall "content" field.
@@ -146,7 +146,7 @@ You can then configure the `ExtractingRequestHandler` in `solrconfig.xml`.
   <lst name="date.formats">
     <str>yyyy-MM-dd</str>
   </lst>
-  <!-- Optional. Specify an external file containing parser-specific properties. 
+  <!-- Optional. Specify an external file containing parser-specific properties.
        This file is located in the same directory as solrconfig.xml by default.-->
   <str name="parseContext.config">parseContext.xml</str>
 </requestHandler>
@@ -223,7 +223,7 @@ As mentioned before, Tika produces metadata about the document. Metadata describ
 
 In addition to Tika's metadata, Solr adds the following metadata (defined in `ExtractingMetadataConstants`):
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Solr Metadata |Description
 |stream_name |The name of the Content Stream as uploaded to Solr. Depending on how the file is uploaded, this may or may not be set

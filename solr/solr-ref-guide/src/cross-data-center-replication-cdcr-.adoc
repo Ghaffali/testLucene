@@ -717,8 +717,6 @@ http://host:port/solr/collection_name/cdcr?action=DISABLEBUFFER
 [[CrossDataCenterReplication_CDCR_-Monitoring.1]]
 == Monitoring
 
-// TODO: This 'ol' has problematic nested lists inside of it, needs manual editing
-
 .  Network and disk space monitoring are essential. Ensure that the system has plenty of available storage to queue up changes if there is a disconnect between the Source and Target. A network outage between the two data centers can cause your disk usage to grow.
 ..  Tip: Set a monitor for your disks to send alerts when the disk gets over a certain percentage (e.g., 70%)
 ..  Tip: Run a test. With moderate indexing, how long can the system queue changes before you run out of disk space?

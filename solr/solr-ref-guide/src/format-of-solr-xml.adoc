@@ -43,10 +43,10 @@ There are no attributes that you can specify in the `<solr>` tag, which is the r
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Node |Description
-|`adminHandler` |If used, this attribute should be set to the FQN (Fully qualified name) of a class that inherits from CoreAdminHandler. For example, `<str name="adminHandler">com.myorg.MyAdminHandler</str>` would configure the custom admin handler (MyAdminHandler) to handle admin requests. If this attribute isn't set, Solr uses the default admin handler, org.apache.solr.handler.admin.CoreAdminHandler. For more information on this parameter, see the Solr Wiki at http://wiki.apache.org/solr/CoreAdmin#cores.
+|`adminHandler` |If used, this attribute should be set to the FQN (Fully qualified name) of a class that inherits from CoreAdminHandler. For example, `<str name="adminHandler">com.myorg.MyAdminHandler</str>` would configure the custom admin handler (MyAdminHandler) to handle admin requests. If this attribute isn't set, Solr uses the default admin handler, `org.apache.solr.handler.admin.CoreAdminHandler`. For more information on this parameter, see the Solr Wiki at http://wiki.apache.org/solr/CoreAdmin#cores.
 |`collectionsHandler` |As above, for custom CollectionsHandler implementations.
 | `infoHandler` |As above, for custom InfoHandler implementations.
 |`coreLoadThreads` |Specifies the number of threads that will be assigned to load cores in parallel.
@@ -62,7 +62,7 @@ There are no attributes that you can specify in the `<solr>` tag, which is the r
 
 This element defines several parameters that relate so SolrCloud. This section is ignored unless the solr instance is started with either `-DzkRun` or `-DzkHost`
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Node |Description
 |`distribUpdateConnTimeout` |Used to set the underlying "connTimeout" for intra-cluster updates.
@@ -80,7 +80,7 @@ This element defines several parameters that relate so SolrCloud. This section i
 
 ==== The `<logging>` element
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Node |Description
 |`class` |The class to use for logging. The corresponding JAR file must be available to solr, perhaps through a `<lib>` directive in solrconfig.xml.
@@ -89,7 +89,7 @@ This element defines several parameters that relate so SolrCloud. This section i
 
 ===== The `<logging><watcher>` element
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Node |Description
 |`size` |The number of log events that are buffered.

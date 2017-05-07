@@ -39,7 +39,7 @@ The parameters below allow you to control what terms are returned. You can also 
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="25%,25%,25%,25%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Required |Default |Description
 |terms |No |false a|
@@ -228,7 +228,7 @@ Results:
     query.setTermsPrefix("s");
     query.addTermsField("terms_s");
     query.setTermsMinCount(1);
-    
+
     QueryRequest request = new QueryRequest(query);
     List<Term> terms = request.process(getSolrClient()).getTermsResponse().getTerms("terms_s");
 ----
@@ -281,7 +281,7 @@ Result:
 
 The TermsComponent also supports distributed indexes. For the `/terms` request handler, you must provide the following two parameters:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |shards |Specifies the shards in your distributed indexing configuration. For more information about distributed indexing, see <<distributed-search-with-index-sharding.adoc#distributed-search-with-index-sharding,Distributed Search with Index Sharding>>.

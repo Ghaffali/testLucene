@@ -31,7 +31,7 @@ The above example shows the optional initialization and custom tool parameters u
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Default value
 |template.base.dir |If specified and exists as a file system directory, a file resource loader will be added for this directory. Templates in this directory will override "solr" resource loader templates. |
@@ -53,7 +53,7 @@ where `v.template=custom` says to render a template called "custom" and `v.templ
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Default value
 |v.template |Specifies the name of the template to render. |

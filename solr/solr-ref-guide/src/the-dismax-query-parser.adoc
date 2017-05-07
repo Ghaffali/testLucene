@@ -21,7 +21,7 @@ Whether or not you remember this explanation, do remember that the DisMax Query 
 
 In addition to the common request parameter, highlighting parameters, and simple facet parameters, the DisMax query parser supports the parameters described below. Like the standard query parser, the DisMax query parser allows default parameter values to be specified in `solrconfig.xml`, or overridden by query-time values in the request.
 
-[width="100%",cols="20%,80%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |<<TheDisMaxQueryParser-TheqParameter,q>> |Defines the raw input strings for the query.
@@ -75,7 +75,7 @@ When processing queries, Lucene/Solr recognizes three types of clauses: mandator
 
 The table below explains the various ways that mm values can be specified.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Syntax |Example |Description
 |Positive integer |3 |Defines the minimum number of clauses that must match, regardless of how many clauses there are in total.
@@ -138,7 +138,7 @@ The `bq` parameter specifies an additional, optional, query clause that will be 
 
 [source,text]
 ----
-q=cheese 
+q=cheese
 bq=date:[NOW/DAY-1YEAR TO NOW/DAY]
 ----
 

@@ -10,7 +10,7 @@ image::images/getting-assistance/Assistance.png[image]
 
 These icons include the following links.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Link |Description
 |Documentation |Navigates to the Apache Solr documentation hosted on https://lucene.apache.org/solr/.

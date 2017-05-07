@@ -159,7 +159,7 @@ This adds substantial weight to the index – similar in size to the compressed 
 
 The Unified Highlighter supports these following additional parameters to the ones listed earlier:
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Default |Description
 |hl.offsetSource |_(blank)_ |By default, the Unified Highlighter will usually pick the right offset source (see above). However it may be ambiguous such as during a migration from one offset source to another that hasn't completed. The offset source can be explicitly configured to one of: *ANALYSIS,* *POSTINGS*, *POSTINGS_WITH_TERM_VECTORS*, *TERM_VECTORS*

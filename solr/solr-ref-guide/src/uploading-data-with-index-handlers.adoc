@@ -58,7 +58,7 @@ For example:
 
 The add command supports some optional attributes which may be specified.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Optional Parameter |Parameter Description
 |commitWithin=__number__ |Add the document within the specified number of milliseconds
@@ -83,7 +83,7 @@ The `<optimize>` operation requests Solr to merge internal data structures in or
 
 The `<commit>` and `<optimize>` elements accept these optional attributes:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Optional Attribute |Description
 |waitSearcher |Default is true. Blocks until a new searcher is opened and registered as the main query searcher, making the changes visible.
@@ -190,7 +190,7 @@ Here is an example XSLT stylesheet:
     <add>
       <xsl:apply-templates select="response/result/doc"/>
     </add>
-  </xsl:template>  
+  </xsl:template>
   <!-- Ignore score (makes no sense to index) -->
   <xsl:template match="doc/*[@name='score']" priority="100"></xsl:template>
   <xsl:template match="doc">
@@ -283,7 +283,7 @@ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_
     "id": "2",
     "title": "Doc 2"
   }
-]' 
+]'
 ----
 
 A sample JSON file is provided at `example/exampledocs/books.json` and contains an array of objects that you can add to the Solr `techproducts` example:
@@ -323,7 +323,7 @@ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_
 
   "delete": { "id":"ID" },         /* delete by ID */
   "delete": { "query":"QUERY" }    /* delete by query */
-}' 
+}'
 ----
 
 [IMPORTANT]
@@ -358,7 +358,7 @@ You can also specify `\_version_` with each "delete":
 [source,json]
 ----
 {
-  "delete":"id":50, 
+  "delete":"id":50,
   "_version_":12345
 }
 ----
@@ -370,7 +370,7 @@ You can specify the version of deletes in the body of the update request as well
 
 In addition to the `/update` handler, there are a few additional JSON specific request handler paths available by default in Solr, that implicitly override the behavior of some request parameters:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Path |Default Parameters
 |`/update/json` |`stream.contentType=application/json`
@@ -408,7 +408,7 @@ The CSV handler allows the specification of many parameters in the URL in the fo
 
 The table below describes the parameters for the update handler.
 
-[width="100%",cols="25%,25%,25%,25%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Usage |Global (g) or Per Field (f) |Example
 |separator |Character used as field separator; default is "," |g,(f: see split) |separator=%09
@@ -479,16 +479,16 @@ For example, here are two documents and their child documents:
 [source,xml]
 ----
 <add>
-  <doc> 
+  <doc>
   <field name="id">1</field>
   <field name="title">Solr adds block join support</field>
   <field name="content_type">parentDocument</field>
     <doc>
-      <field name="id">2</field>   
+      <field name="id">2</field>
       <field name="comments">SolrCloud supports it too!</field>
     </doc>
   </doc>
-  <doc> 
+  <doc>
     <field name="id">3</field>
     <field name="title">New Lucene and Solr release is out</field>
     <field name="content_type">parentDocument</field>
@@ -542,4 +542,3 @@ This example is equivalent to the XML example above, note the special `\_childDo
 One limitation of indexing nested documents is that the whole block of parent-children documents must be updated together whenever any changes are required. In other words, even if a single child document or the parent document is changed, the whole block of parent-child documents must be indexed together.
 
 ====
-
