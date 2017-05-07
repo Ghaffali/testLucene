@@ -28,19 +28,21 @@ CDCR is configured to replicate from collections in the source cluster to collec
 
 CDCR can be configured to replicate from one collection to a second collection _within the same cluster_. That is a specialized scenario not covered in this document.
 
+[glossary]
 == CDCR Glossary
 
 Terms used in this document include:
 
-* *Node*: A JVM instance running Solr; a server.
-* *Cluster*: A set of Solr nodes managed as a single unit by a ZooKeeper ensemble, hosting one or more Collections.
-* *Data Center:* A group of networked servers hosting a Solr cluster. In this document, the terms _Cluster_ and _Data Center_ are interchangeable as we assume that each Solr cluster is hosted in a different group of networked servers.
-* *Shard*: A sub-index of a single logical collection. This may be spread across multiple nodes of the cluster. Each shard can have as many replicas as needed.
-* *Leader*: Each shard has one node identified as its leader. All the writes for documents belonging to a shard are routed through the leader.
-* *Replica*: A copy of a shard for use in failover or load balancing. Replicas comprising a shard can either be leaders or non-leaders.
-* *Follower:* A convenience term for a replica that is _not_ the leader of a shard.
-* *Collection*: Multiple documents that make up one logical index. A cluster can have multiple collections.
-* *Updates Log*: An append-only log of write operations maintained by each node.
+[glossary]
+Node:: A JVM instance running Solr; a server.
+Cluster:: A set of Solr nodes managed as a single unit by a ZooKeeper ensemble, hosting one or more Collections.
+Data Center:: A group of networked servers hosting a Solr cluster. In this document, the terms _Cluster_ and _Data Center_ are interchangeable as we assume that each Solr cluster is hosted in a different group of networked servers.
+Shard:: A sub-index of a single logical collection. This may be spread across multiple nodes of the cluster. Each shard can have as many replicas as needed.
+Leader:: Each shard has one node identified as its leader. All the writes for documents belonging to a shard are routed through the leader.
+Replica:: A copy of a shard for use in failover or load balancing. Replicas comprising a shard can either be leaders or non-leaders.
+Follower:: A convenience term for a replica that is _not_ the leader of a shard.
+Collection:: Multiple documents that make up one logical index. A cluster can have multiple collections.
+Updates Log:: An append-only log of write operations maintained by each node.
 
 == CDCR Architecture
 
