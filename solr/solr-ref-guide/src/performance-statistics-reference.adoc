@@ -2,21 +2,20 @@
 :page-shortname: performance-statistics-reference
 :page-permalink: performance-statistics-reference.html
 
-This page explains some of the <<using-jmx-with-solr.adoc#using-jmx-with-solr,JMX>> statistics that Solr exposes. The same statistics are also exposed via the<<mbean-request-handler.adoc#mbean-request-handler,MBean Request Handler>> when statistics are requested.
+This page explains some of the <<using-jmx-with-solr.adoc#using-jmx-with-solr,JMX>> statistics that Solr exposes.
+
+The same statistics are also exposed via the<<mbean-request-handler.adoc#mbean-request-handler,MBean Request Handler>> when statistics are requested.
 
 These statistics are per core. When you are running in SolrCloud mode these statistics would co-relate to each performance of an individual replica.
 
-[[PerformanceStatisticsReference-RequestHandlers]]
 == Request Handlers
 
-[[PerformanceStatisticsReference-UpdateRequestHandler]]
 === Update Request Handler
 
 The update request handler is an endpoint to send data to Solr. We can see how many update requests are being fired, how fast is it performing, and other valuable information regarding requests.
 
 *Path:* `/solr/<core>/update`
 
-[[PerformanceStatisticsReference-SearchRequestHandler]]
 === Search Request Handler
 
 Can be useful to measure and track number of search queries , response times etc. If you are not using the “select” handler then the path needs to be changed appropriately. Similarly if you are using the “sql” handler or “export” handler , the realtime handler “get”, or any other handler similar statistics can be found for that as well.
@@ -25,7 +24,7 @@ Can be useful to measure and track number of search queries , response times etc
 
 Both Update Request Handler and Search Request Handler along with handlers like “sql”, “export” and realtime “get” handler will provide the following attributes in their statistics.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |15minRateReqsPerSecond |Requests per second received over the past 15 minutes.
@@ -46,14 +45,13 @@ Both Update Request Handler and Search Request Handler along with handlers like 
 |totalTime |The sum of all request processing times since the Solr process was started.
 |===
 
-[[PerformanceStatisticsReference-UpdateHandler]]
 == Update Handler
 
 *Update Handler:* This section has information on the total number of adds, how many commits have been fired against a solr core.
 
 *Path:* `/solr/<core>/updateHandler/DirectUpdateHandler2`
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |adds |Total number of “add” requests since last commit.
@@ -76,31 +74,27 @@ Both Update Request Handler and Search Request Handler along with handlers like 
 |transaction_logs_total_size |Total size of all the TLogs created so far from the beginning of the Solr instance.
 |===
 
-[[PerformanceStatisticsReference-Caches]]
 == Caches
 
-[[PerformanceStatisticsReference-DocumentCache]]
 === Document Cache
 
 This cache holds Lucene Document objects (the stored fields for each document). Since Lucene internal document IDs are transient, this cache cannot be auto-warmed.
 
 *Path:* `/solr/<cache>/documentCache`
 
-[[PerformanceStatisticsReference-QueryResultCache]]
 === Query Result Cache
 
 This cache holds the results of previous searches: ordered lists of document IDs based on a query, a sort, and the range of documents requested
 
 *Path:* `/solr/<cache>/queryResultCache`
 
-[[PerformanceStatisticsReference-FilterCache]]
 === Filter Cache
 
 This cache is used for filters for unordered sets of all documents that match a query.
 
 *Path:* `/solr/<cache>/filterCache`
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Attribute |Description
 |cumulative_evictions |Number of cache evictions across all caches since this node has been running.

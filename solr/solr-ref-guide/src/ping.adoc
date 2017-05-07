@@ -4,21 +4,20 @@
 
 Choosing Ping under a core name issues a `ping` request to check whether the core is up and responding to requests.
 
+.Ping Option in Core Dropdown
 image::images/ping/ping.png[image,width=171,height=195]
-
 
 The search executed by a Ping is configured with the <<request-parameters-api.adoc#request-parameters-api,Request Parameters API>>. See <<implicit-requesthandlers.adoc#implicit-requesthandlers,Implicit RequestHandlers>> for the paramset to use for the `/admin/ping` endpoint.
 
 The Ping option doesn't open a page, but the status of the request can be seen on the core overview page shown when clicking on a collection name. The length of time the request has taken is displayed next to the Ping option, in milliseconds.
 
-[[Ping-APIExamples]]
 == API Examples
 
 While the UI screen makes it easy to see the ping response time, the underlying ping command can be more useful when executed by remote monitoring tools:
 
 *Input*
 
-[source,xml]
+[source,text]
 ----
 http://localhost:8983/solr/<core-name>/admin/ping
 ----
@@ -27,7 +26,7 @@ This command will ping the core name for a response.
 
 *Input*
 
-[source,xml]
+[source,text]
 ----
   http://localhost:8983/solr/<collection-name>admin/ping?wt=json&distrib=true&indent=true
 ----
