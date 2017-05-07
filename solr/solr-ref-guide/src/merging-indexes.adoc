@@ -16,20 +16,16 @@ Optimally, the two indexes should be built using the same schema.
 
 To merge the indexes, do the following:
 
-1.  Make sure that both indexes you want to merge are closed.
-2.  Issue this command:
+. Make sure that both indexes you want to merge are closed.
+. Issue this command:
 +
-[source,java]
+[source,bash]
 ----
-java -cp $SOLR/server/solr-webapp/webapp/WEB-INF/lib/lucene-core-VERSION.jar:$SOLR/server/solr-webapp/webapp/WEB-INF/lib/lucene-misc-VERSION.jar
- org/apache/lucene/misc/IndexMergeTool
- /path/to/newindex
- /path/to/old/index1
- /path/to/old/index2
+java -cp $SOLR/server/solr-webapp/webapp/WEB-INF/lib/lucene-core-VERSION.jar:$SOLR/server/solr-webapp/webapp/WEB-INF/lib/lucene-misc-VERSION.jar org/apache/lucene/misc/IndexMergeTool /path/to/newindex /path/to/old/index1 /path/to/old/index2
 ----
 +
 This will create a new index at `/path/to/newindex` that contains both index1 and index2.
-3.  Copy this new directory to the location of your application's solr index (move the old one aside first, of course) and start Solr.
+. Copy this new directory to the location of your application's solr index (move the old one aside first, of course) and start Solr.
 
 [[MergingIndexes-UsingCoreAdmin]]
 == Using CoreAdmin
