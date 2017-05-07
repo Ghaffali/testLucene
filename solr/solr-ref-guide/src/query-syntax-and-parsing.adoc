@@ -15,5 +15,3 @@ The parsers discussed in this Guide are:
 * <<other-parsers.adoc#other-parsers,Other Parsers>>
 
 The query parser plugins are all subclasses of {solr-javadocs}/solr-core/org/apache/solr/search/QParserPlugin.html[QParserPlugin]. If you have custom parsing needs, you may want to extend that class to create your own query parser.
-
-For more detailed information about the many query parsers available in Solr, see https://wiki.apache.org/solr/SolrQuerySyntax.
