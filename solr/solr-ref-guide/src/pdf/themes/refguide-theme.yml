@@ -13,6 +13,12 @@ font:
       bold: Inconsolata/Inconsolata-Bold.ttf
       italic: Inconsolata/Inconsolata-Regular.ttf
       bold_italic: Inconsolata/Inconsolata-Bold.ttf
+    # M+ 1mn is only used for callout numbers in code examples
+    M+ 1mn:
+      normal: mplus1mn/mplus1mn-regular-ascii-conums.ttf
+      bold: mplus1mn/mplus1mn-bold-ascii.ttf
+      italic: mplus1mn/mplus1mn-italic-ascii.ttf
+      bold_italic: mplus1mn/mplus1mn-bold_italic-ascii.ttf
     # M+ 1p supports Latin, Latin-1 Supplement, Latin Extended, Greek, Cyrillic, Vietnamese, Japanese & an assortment of symbols
     # It also provides arrows for ->, <-, => and <= replacements in case these glyphs are missing from font
     # This is a fallback font, and will only be used when it can fill in missing glyphs from other fonts
@@ -155,8 +161,9 @@ blockquote:
   padding: [$vertical_rhythm / 2, $horizontal_rhythm, $vertical_rhythm / -2, $horizontal_rhythm + $blockquote_border_width / 2]
   cite_font_size: $base_font_size_small
   cite_font_color: '#999999'
+#conums are used for inline callouts
 conum:
-  font_family: $base_font_family
+  font_family: M+ 1mn
   font_color: $literal_font_color
   font_size: $base_font_size
   line_height: 4 / 3
