@@ -324,7 +324,7 @@ Currently, none of the CDCR API calls have parameters.
 
 The current state of the CDCR, which includes the state of the replication process and the state of the buffer.
 
-===== Examples
+===== [[cdcr_examples]]Examples
 
 *Input*
 

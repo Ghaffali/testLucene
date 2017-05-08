@@ -252,7 +252,7 @@ A few query parameters are available to limit the request:
 
 Like other request handlers, the Metrics API can also take the `wt` parameter to define the output format.
 
-=== Examples
+=== [[metrics_examples]]Examples
 
 Request only "counter" type metrics in the "core" group, returned in JSON:
 
