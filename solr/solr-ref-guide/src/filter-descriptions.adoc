@@ -1150,7 +1150,6 @@ When used in the following configuration:
 
 *Out:* "Watch"(1) "Television"(2) "TV"(2)
 
-[[FilterDescriptions-ReversedWildcardFilter]]
 == Reversed Wildcard Filter
 
 This filter reverses tokens to provide faster leading wildcard and prefix queries. Tokens without wildcards are not reversed.
