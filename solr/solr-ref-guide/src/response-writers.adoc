@@ -7,7 +7,7 @@ A Response Writer generates the formatted response of a search. Solr supports a 
 
 The `wt` parameter selects the Response Writer to be used. The table below lists the most common settings for the `wt` parameter.
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |`wt` Parameter Setting |Response Writer Selected
 |csv |<<ResponseWriters-CSVResponseWriter,CSVResponseWriter>>

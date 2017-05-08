@@ -2,18 +2,18 @@
 :page-shortname: schema-api
 :page-permalink: schema-api.html
 
+The Schema API allows you to use an HTTP API to manage many of the elements of your schema.
+
 The Schema API utilizes the ManagedIndexSchemaFactory class, which is the default schema factory in modern Solr versions. See the section <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>> for more information about choosing a schema factory for your index.
 
 This API provides read and write access to the Solr schema for each collection (or core, when using standalone Solr). Read access to all schema elements is supported. Fields, dynamic fields, field types and copyField rules may be added, removed or replaced. Future Solr releases will extend write access to allow more schema elements to be modified.
 
 .Why is hand editing of the managed schema discouraged?
-[IMPORTANT]
+[NOTE]
 ====
-
 The file named "managed-schema" in the example configurations may include a note that recommends never hand-editing the file. Before the Schema API existed, such edits were the only way to make changes to the schema, and users may have a strong desire to continue making changes this way.
 
 The reason that this is discouraged is because hand-edits of the schema may be lost if the Schema API described here is later used to make a change, unless the core or collection is reloaded or Solr is restarted before using the Schema API. If care is taken to always reload or restart after a manual edit, then there is no problem at all with doing those edits.
-
 ====
 
 The API allows two output modes for all calls: JSON or XML. When requesting the complete schema, there is another output mode which is XML modeled after the managed-schema file itself, which is in XML format.
@@ -23,14 +23,12 @@ When modifying the schema with the API, a core reload will automatically occur i
 .Re-index after schema modifications!
 [IMPORTANT]
 ====
-
 If you modify your schema, you will likely need to re-index all documents. If you do not, you may lose access to documents, or not be able to interpret them properly, e.g. after replacing a field type.
 
 Modifying your schema will never modify any documents that are already indexed. You must re-index documents in order to apply schema changes to them. Queries and updates made after the change may encounter errors that were not present before the change. Completely deleting the index and rebuilding it is usually the only option to fix such errors.
-
 ====
 
-The base address for the API is `http://<host>:<port>/solr/<collection_name>`. If for example you run Solr's "```cloud```" example (via the `bin/solr` command shown below), which creates a "```gettingstarted```" collection, then the base URL for that collection (as in all the sample URLs in this section) would be: `http://localhost:8983/solr/gettingstarted` .
+The base address for the API is `\http://<host>:<port>/solr/<collection_name>`. If, for example, you run Solr's "```cloud```" example (via the `bin/solr` command shown below), which creates a "```gettingstarted```" collection, then the base URL for that collection (as in all the sample URLs in this section) would be: `\http://localhost:8983/solr/gettingstarted`.
 
 [source,bash]
 ----
@@ -40,27 +38,33 @@ bin/solr -e cloud -noprompt
 [[SchemaAPI-APIEntryPoints]]
 == API Entry Points
 
-`/schema`: <<SchemaAPI-RetrievetheEntireSchema,retrieve>> the schema, or <<SchemaAPI-ModifytheSchema,modify>> the schema to add, remove, or replace fields, dynamic fields, copy fields, or field types `/schema/fields`: <<SchemaAPI-ListFields,retrieve information>> about all defined fields or a specific named field `/schema/dynamicfields`: <<SchemaAPI-ListDynamicFields,retrieve information>> about all dynamic field rules or a specific named dynamic rule `/schema/fieldtypes`: <<SchemaAPI-ListFieldTypes,retrieve information>> about all field types or a specific field type `/schema/copyfields`: <<SchemaAPI-ListCopyFields,retrieve information>> about copy fields `/schema/name`: <<SchemaAPI-ShowSchemaName,retrieve>> the schema name `/schema/version`: <<SchemaAPI-ShowtheSchemaVersion,retrieve>> the schema version `/schema/uniquekey`: <<SchemaAPI-ListUniqueKey,retrieve>> the defined uniqueKey `/schema/similarity`: <<SchemaAPI-ShowGlobalSimilarity,retrieve>> the global similarity definition `/schema/solrqueryparser/defaultoperator`: <<SchemaAPI-GettheDefaultQueryOperator,retrieve>> the default operator
+* `/schema`: <<SchemaAPI-RetrievetheEntireSchema,retrieve>> the schema, or <<SchemaAPI-ModifytheSchema,modify>> the schema to add, remove, or replace fields, dynamic fields, copy fields, or field types
+* `/schema/fields`: <<SchemaAPI-ListFields,retrieve information>> about all defined fields or a specific named field
+* `/schema/dynamicfields`: <<SchemaAPI-ListDynamicFields,retrieve information>> about all dynamic field rules or a specific named dynamic rule
+* `/schema/fieldtypes`: <<SchemaAPI-ListFieldTypes,retrieve information>> about all field types or a specific field type
+* `/schema/copyfields`: <<SchemaAPI-ListCopyFields,retrieve information>> about copy fields
+* `/schema/name`: <<SchemaAPI-ShowSchemaName,retrieve>> the schema name
+* `/schema/version`: <<SchemaAPI-ShowtheSchemaVersion,retrieve>> the schema version
+* `/schema/uniquekey`: <<SchemaAPI-ListUniqueKey,retrieve>> the defined uniqueKey
+* `/schema/similarity`: <<SchemaAPI-ShowGlobalSimilarity,retrieve>> the global similarity definition
+* `/schema/solrqueryparser/defaultoperator`: <<SchemaAPI-GettheDefaultQueryOperator,retrieve>> the default operator
 
 [[SchemaAPI-ModifytheSchema]]
 == Modify the Schema
 
-`POST /__collection__/schema`
+`POST /_collection_/schema`
 
 To add, remove or replace fields, dynamic field rules, copy field rules, or new field types, you can send a POST request to the `/collection/schema/` endpoint with a sequence of commands to perform the requested actions. The following commands are supported:
 
 * `add-field`: add a new field with parameters you provide.
 * `delete-field`: delete a field.
 * `replace-field`: replace an existing field with one that is differently configured.
-
 * `add-dynamic-field`: add a new dynamic field rule with parameters you provide.
 * `delete-dynamic-field`: delete a dynamic field rule.
 * `replace-dynamic-field`: replace an existing dynamic field rule with one that is differently configured.
-
 * `add-field-type`: add a new field type with parameters you provide.
 * `delete-field-type`: delete a field type.
 * `replace-field-type`: replace an existing field type with one that is differently configured.
-
 * `add-copy-field`: add a new copy field rule.
 * `delete-copy-field`: delete a copy field rule.
 
@@ -82,7 +86,7 @@ For example, to define a new stored field named "sell-by", of type "tdate", you 
 [source,bash]
 ----
 curl -X POST -H 'Content-type:application/json' --data-binary '{
-  "add-field":{ 
+  "add-field":{
      "name":"sell-by",
      "type":"tdate",
      "stored":true }
@@ -115,7 +119,7 @@ For example, to replace the definition of an existing field "sell-by", to make i
 [source,bash]
 ----
 curl -X POST -H 'Content-type:application/json' --data-binary '{
-  "replace-field":{ 
+  "replace-field":{
      "name":"sell-by",
      "type":"date",
      "stored":false }
@@ -134,7 +138,7 @@ For example, to create a new dynamic field rule where all incoming fields ending
 [source,bash]
 ----
 curl -X POST -H 'Content-type:application/json' --data-binary '{
-  "add-dynamic-field":{ 
+  "add-dynamic-field":{
      "name":"*_s",
      "type":"string",
      "stored":true }
@@ -167,7 +171,7 @@ For example, to replace the definition of the "*_s" dynamic field rule with one 
 [source,bash]
 ----
 curl -X POST -H 'Content-type:application/json' --data-binary '{
-  "replace-dynamic-field":{ 
+  "replace-dynamic-field":{
      "name":"*_s",
      "type":"text_general",
      "stored":false }
@@ -195,12 +199,12 @@ curl -X POST -H 'Content-type:application/json' --data-binary '{
            "class":"solr.PatternReplaceCharFilterFactory",
            "replacement":"$1$1",
            "pattern":"([a-zA-Z])\\\\1+" }],
-        "tokenizer":{ 
+        "tokenizer":{
            "class":"solr.WhitespaceTokenizerFactory" },
         "filters":[{
            "class":"solr.WordDelimiterFilterFactory",
            "preserveOriginal":"0" }]}}
-}' http://localhost:8983/solr/gettingstarted/schema 
+}' http://localhost:8983/solr/gettingstarted/schema
 ----
 
 Note in this example that we have only defined a single analyzer section that will apply to index analysis and query analysis. If we wanted to define separate analysis, we would replace the `analyzer` section in the above example with separate sections for `indexAnalyzer` and `queryAnalyzer`. As in this example:
@@ -213,12 +217,12 @@ curl -X POST -H 'Content-type:application/json' --data-binary '{
      "class":"solr.TextField",
      "indexAnalyzer":{
         "tokenizer":{
-           "class":"solr.PathHierarchyTokenizerFactory", 
+           "class":"solr.PathHierarchyTokenizerFactory",
            "delimiter":"/" }},
      "queryAnalyzer":{
-        "tokenizer":{ 
+        "tokenizer":{
            "class":"solr.KeywordTokenizerFactory" }}}
-}' http://localhost:8983/solr/gettingstarted/schema 
+}' http://localhost:8983/solr/gettingstarted/schema
 ----
 
 [[SchemaAPI-DeleteaFieldType]]
@@ -232,7 +236,7 @@ For example, to delete the field type named "myNewTxtField", you can make a POST
 ----
 curl -X POST -H 'Content-type:application/json' --data-binary '{
   "delete-field-type":{ "name":"myNewTxtField" }
-}' http://localhost:8983/solr/gettingstarted/schema 
+}' http://localhost:8983/solr/gettingstarted/schema
 ----
 
 [[SchemaAPI-ReplaceaFieldType]]
@@ -252,9 +256,9 @@ curl -X POST -H 'Content-type:application/json' --data-binary '{
      "class":"solr.TextField",
      "positionIncrementGap":"100",
      "analyzer":{
-        "tokenizer":{ 
+        "tokenizer":{
            "class":"solr.StandardTokenizerFactory" }}}
-}' http://localhost:8983/solr/gettingstarted/schema 
+}' http://localhost:8983/solr/gettingstarted/schema
 ----
 
 [[SchemaAPI-AddaNewCopyFieldRule]]
@@ -264,7 +268,7 @@ The `add-copy-field` command adds a new copy field rule to your schema.
 
 The attributes supported by the command are the same as when creating copy field rules by manually editing the `schema.xml`, as below:
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Name |Required |Description
 |source |Yes |The source field.
@@ -320,12 +324,12 @@ curl -X POST -H 'Content-type:application/json' --data-binary '{
            "class":"solr.PatternReplaceCharFilterFactory",
            "replacement":"$1$1",
            "pattern":"([a-zA-Z])\\\\1+" }],
-        "tokenizer":{ 
+        "tokenizer":{
            "class":"solr.WhitespaceTokenizerFactory" },
         "filters":[{
            "class":"solr.WordDelimiterFilterFactory",
            "preserveOriginal":"0" }]}},
-   "add-field" : { 
+   "add-field" : {
       "name":"sell-by",
       "type":"myNewTxtField",
       "stored":true }
@@ -337,15 +341,15 @@ Or, the same command can be repeated, as in this example:
 [source,bash]
 ----
 curl -X POST -H 'Content-type:application/json' --data-binary '{
-  "add-field":{ 
+  "add-field":{
      "name":"shelf",
      "type":"myNewTxtField",
      "stored":true },
-  "add-field":{ 
+  "add-field":{
      "name":"location",
      "type":"myNewTxtField",
      "stored":true },
-  "add-copy-field":{ 
+  "add-copy-field":{
      "source":"shelf",
       "dest":[ "location", "catchall" ]}
 }' http://localhost:8983/solr/gettingstarted/schema
@@ -369,9 +373,13 @@ curl -X POST -H 'Content-type:application/json' --data-binary '{
 [[SchemaAPI-SchemaChangesamongReplicas]]
 === Schema Changes among Replicas
 
-When running in SolrCloud mode, changes made to the schema on one node will propagate to all replicas in the collection. You can pass the *updateTimeoutSecs* parameter with your request to set the number of seconds to wait until all replicas confirm they applied the schema updates. This helps your client application be more robust in that you can be sure that all replicas have a given schema change within a defined amount of time. If agreement is not reached by all replicas in the specified time, then the request fails and the error message will include information about which replicas had trouble. In most cases, the only option is to re-try the change after waiting a brief amount of time. If the problem persists, then you'll likely need to investigate the server logs on the replicas that had trouble applying the changes. If you do not supply an *updateTimeoutSecs* parameter, the default behavior is for the receiving node to return immediately after persisting the updates to ZooKeeper. All other replicas will apply the updates asynchronously. Consequently, without supplying a timeout, your client application cannot be sure that all replicas have applied the changes.
+When running in SolrCloud mode, changes made to the schema on one node will propagate to all replicas in the collection.
 
-<<main,Back to Top>>
+You can pass the `updateTimeoutSecs` parameter with your request to set the number of seconds to wait until all replicas confirm they applied the schema updates. This helps your client application be more robust in that you can be sure that all replicas have a given schema change within a defined amount of time.
+
+If agreement is not reached by all replicas in the specified time, then the request fails and the error message will include information about which replicas had trouble. In most cases, the only option is to re-try the change after waiting a brief amount of time. If the problem persists, then you'll likely need to investigate the server logs on the replicas that had trouble applying the changes.
+
+If you do not supply an `updateTimeoutSecs` parameter, the default behavior is for the receiving node to return immediately after persisting the updates to ZooKeeper. All other replicas will apply the updates asynchronously. Consequently, without supplying a timeout, your client application cannot be sure that all replicas have applied the changes.
 
 [[SchemaAPI-RetrieveSchemaInformation]]
 == Retrieve Schema Information
@@ -383,14 +391,14 @@ To modify the schema, see the previous section <<SchemaAPI-ModifytheSchema,Modif
 [[SchemaAPI-RetrievetheEntireSchema]]
 === Retrieve the Entire Schema
 
-`GET /__collection__/schema`
+`GET /_collection_/schema`
 
 [[SchemaAPI-INPUT]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -400,10 +408,10 @@ To modify the schema, see the previous section <<SchemaAPI-ModifytheSchema,Modif
 
 The query parameters should be added to the API request after '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are **json**, *xml* or **schema.xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json*, *xml* or *schema.xml*. If not specified, JSON will be returned by default.
 |===
 
 [[SchemaAPI-OUTPUT]]
@@ -449,8 +457,7 @@ curl http://localhost:8983/solr/gettingstarted/schema?wt=json
               "class":"solr.PatternReplaceFilterFactory",
               "replace":"all",
               "replacement":"",
-              "pattern":"([^a-z])"}]}},
-...
+              "pattern":"([^a-z])"}]}}],
     "fields":[{
         "name":"_version_",
         "type":"long",
@@ -466,8 +473,7 @@ curl http://localhost:8983/solr/gettingstarted/schema?wt=json
         "type":"string",
         "multiValued":true,
         "indexed":true,
-        "stored":true},
-...
+        "stored":true}],
     "copyFields":[{
         "source":"author",
         "dest":"text"},
@@ -477,7 +483,6 @@ curl http://localhost:8983/solr/gettingstarted/schema?wt=json
       {
         "source":"content",
         "dest":"text"},
-...
       {
         "source":"author",
         "dest":"author_s"}]}}
@@ -564,21 +569,20 @@ curl http://localhost:8983/solr/gettingstarted/schema?wt=schema.xml
 </schema>
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-ListFields]]
 === List Fields
 
-`GET /__collection__/schema/fields`
+`GET /_collection_/schema/fields`
 
-`GET /__collection__/schema/fields/__fieldname__`
+`GET /_collection_/schema/fields/_fieldname_`
 
 [[SchemaAPI-INPUT.1]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -589,13 +593,13 @@ curl http://localhost:8983/solr/gettingstarted/schema?wt=schema.xml
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
 |fl |string |No |(all fields) |Comma- or space-separated list of one or more fields to return. If not specified, all fields will be returned by default.
-|includeDynamic |boolean |No |false |If **true**, and if the *fl* query parameter is specified or the *fieldname* path parameter is used, matching dynamic fields are included in the response and identified with the *dynamicBase* property. If neither the *fl* query parameter nor the *fieldname* path parameter is specified, the *includeDynamic* query parameter is ignored. If **false**, matching dynamic fields will not be returned.
-|showDefaults |boolean |No |false |If **true**, all default field properties from each field's field type will be included in the response (e.g. *tokenized* for **solr.TextField**). If **false**, only explicitly specified field properties will be included.
+|includeDynamic |boolean |No |false |If *true*, and if the *fl* query parameter is specified or the *fieldname* path parameter is used, matching dynamic fields are included in the response and identified with the *dynamicBase* property. If neither the *fl* query parameter nor the *fieldname* path parameter is specified, the *includeDynamic* query parameter is ignored. If *false*, matching dynamic fields will not be returned.
+|showDefaults |boolean |No |false |If *true*, all default field properties from each field's field type will be included in the response (e.g. *tokenized* for `solr.TextField`). If *false*, only explicitly specified field properties will be included.
 |===
 
 [[SchemaAPI-OUTPUT.1]]
@@ -617,53 +621,52 @@ curl http://localhost:8983/solr/gettingstarted/schema/fields?wt=json
 
 The sample output below has been truncated to only show a few fields.
 
-[source,javascript]
+[source,json]
 ----
 {
     "fields": [
         {
-            "indexed": true, 
-            "name": "_version_", 
-            "stored": true, 
+            "indexed": true,
+            "name": "_version_",
+            "stored": true,
             "type": "long"
-        }, 
+        },
         {
-            "indexed": true, 
-            "name": "author", 
-            "stored": true, 
+            "indexed": true,
+            "name": "author",
+            "stored": true,
             "type": "text_general"
-        }, 
+        },
         {
-            "indexed": true, 
-            "multiValued": true, 
-            "name": "cat", 
-            "stored": true, 
+            "indexed": true,
+            "multiValued": true,
+            "name": "cat",
+            "stored": true,
             "type": "string"
-        }, 
-...
-    ], 
+        },
+"..."
+    ],
     "responseHeader": {
-        "QTime": 1, 
+        "QTime": 1,
         "status": 0
     }
 }
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-ListDynamicFields]]
 === List Dynamic Fields
 
-`GET /__collection__/schema/dynamicfields`
+`GET /_collection_/schema/dynamicfields`
 
-`GET /__collection__/schema/dynamicfields/__name__`
+`GET /_collection_/schema/dynamicfields/_name_`
 
 [[SchemaAPI-INPUT.2]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -674,11 +677,11 @@ The sample output below has been truncated to only show a few fields.
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json,* **xml**. If not specified, JSON will be returned by default.
-|showDefaults |boolean |No |false |If **true**, all default field properties from each dynamic field's field type will be included in the response (e.g. *tokenized* for **solr.TextField**). If **false**, only explicitly specified field properties will be included.
+|wt |string |No |json |Defines the format of the response. The options are *json,* *xml*. If not specified, JSON will be returned by default.
+|showDefaults |boolean |No |false |If *true*, all default field properties from each dynamic field's field type will be included in the response (e.g. *tokenized* for `solr.TextField`). If *false*, only explicitly specified field properties will be included.
 |===
 
 [[SchemaAPI-OUTPUT.2]]
@@ -700,63 +703,61 @@ curl http://localhost:8983/solr/gettingstarted/schema/dynamicfields?wt=json
 
 The sample output below has been truncated.
 
-[source,javascript]
+[source,json]
 ----
 {
     "dynamicFields": [
         {
-            "indexed": true, 
-            "name": "*_coordinate", 
-            "stored": false, 
+            "indexed": true,
+            "name": "*_coordinate",
+            "stored": false,
             "type": "tdouble"
-        }, 
+        },
         {
-            "multiValued": true, 
-            "name": "ignored_*", 
+            "multiValued": true,
+            "name": "ignored_*",
             "type": "ignored"
-        }, 
+        },
         {
-            "name": "random_*", 
+            "name": "random_*",
             "type": "random"
-        }, 
+        },
         {
-            "indexed": true, 
-            "multiValued": true, 
-            "name": "attr_*", 
-            "stored": true, 
+            "indexed": true,
+            "multiValued": true,
+            "name": "attr_*",
+            "stored": true,
             "type": "text_general"
-        }, 
+        },
         {
-            "indexed": true, 
-            "multiValued": true, 
-            "name": "*_txt", 
-            "stored": true, 
+            "indexed": true,
+            "multiValued": true,
+            "name": "*_txt",
+            "stored": true,
             "type": "text_general"
-        } 
-...
-    ], 
+        }
+"..."
+    ],
     "responseHeader": {
-        "QTime": 1, 
+        "QTime": 1,
         "status": 0
     }
 }
 ----
 
-<<main,Back to Top>>
-
 [[SchemaAPI-ListFieldTypes]]
 === List Field Types
 
-`GET /__collection__/schema/fieldtypes`
+`GET /_collection_/schema/fieldtypes`
 
-`GET /__collection__/schema/fieldtypes/__name__`
+`GET /_collection_/schema/fieldtypes/_name_`
 
 [[SchemaAPI-INPUT.3]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -767,11 +768,11 @@ The sample output below has been truncated.
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
-|showDefaults |boolean |No |false |If **true**, all default field properties from each field type will be included in the response (e.g. *tokenized* for **solr.TextField**). If **false**, only explicitly specified field properties will be included.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
+|showDefaults |boolean |No |false |If *true*, all default field properties from each field type will be included in the response (e.g. *tokenized* for `solr.TextField`). If *false*, only explicitly specified field properties will be included.
 |===
 
 [[SchemaAPI-OUTPUT.3]]
@@ -793,70 +794,66 @@ curl http://localhost:8983/solr/gettingstarted/schema/fieldtypes?wt=json
 
 The sample output below has been truncated to show a few different field types from different parts of the list.
 
-[source,javascript]
+[source,json]
 ----
 {
     "fieldTypes": [
         {
             "analyzer": {
-                "class": "solr.TokenizerChain", 
+                "class": "solr.TokenizerChain",
                 "filters": [
                     {
                         "class": "solr.LowerCaseFilterFactory"
-                    }, 
+                    },
                     {
                         "class": "solr.TrimFilterFactory"
-                    }, 
+                    },
                     {
-                        "class": "solr.PatternReplaceFilterFactory", 
-                        "pattern": "([^a-z])", 
-                        "replace": "all", 
+                        "class": "solr.PatternReplaceFilterFactory",
+                        "pattern": "([^a-z])",
+                        "replace": "all",
                         "replacement": ""
                     }
-                ], 
+                ],
                 "tokenizer": {
                     "class": "solr.KeywordTokenizerFactory"
                 }
-            }, 
-            "class": "solr.TextField", 
-            "dynamicFields": [], 
-            "fields": [], 
-            "name": "alphaOnlySort", 
-            "omitNorms": true, 
+            },
+            "class": "solr.TextField",
+            "dynamicFields": [],
+            "fields": [],
+            "name": "alphaOnlySort",
+            "omitNorms": true,
             "sortMissingLast": true
-        }, 
-...
+        },
         {
-            "class": "solr.TrieFloatField", 
+            "class": "solr.TrieFloatField",
             "dynamicFields": [
-                "*_fs", 
+                "*_fs",
                 "*_f"
-            ], 
+            ],
             "fields": [
-                "price", 
+                "price",
                 "weight"
-            ], 
-            "name": "float", 
-            "positionIncrementGap": "0", 
+            ],
+            "name": "float",
+            "positionIncrementGap": "0",
             "precisionStep": "0"
-        }, 
-...
+        }]
 }
 ----
-
-<<main,Back to Top>>
 
 [[SchemaAPI-ListCopyFields]]
 === List Copy Fields
 
-`GET /__collection__/schema/copyfields`
+`GET /_collection_/schema/copyfields`
 
 [[SchemaAPI-INPUT.4]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -866,10 +863,10 @@ The sample output below has been truncated to show a few different field types f
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
 |source.fl |string |No |(all source fields) |Comma- or space-separated list of one or more copyField source fields to include in the response - copyField directives with all other source fields will be excluded from the response. If not specified, all copyField-s will be included in the response.
 |dest.fl |string |No |(all dest fields) |Comma- or space-separated list of one or more copyField dest fields to include in the response - copyField directives with all other dest fields will be excluded. If not specified, all copyField-s will be included in the response.
 |===
@@ -893,48 +890,46 @@ curl http://localhost:8983/solr/gettingstarted/schema/copyfields?wt=json
 
 The sample output below has been truncated to the first few copy definitions.
 
-[source,javascript]
+[source,json]
 ----
 {
     "copyFields": [
         {
-            "dest": "text", 
+            "dest": "text",
             "source": "author"
-        }, 
+        },
         {
-            "dest": "text", 
+            "dest": "text",
             "source": "cat"
-        }, 
+        },
         {
-            "dest": "text", 
+            "dest": "text",
             "source": "content"
-        }, 
+        },
         {
-            "dest": "text", 
+            "dest": "text",
             "source": "content_type"
-        }, 
-...
-    ], 
+        },
+    ],
     "responseHeader": {
-        "QTime": 3, 
+        "QTime": 3,
         "status": 0
     }
 }
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-ShowSchemaName]]
 === Show Schema Name
 
-`GET /__collection__/schema/name`
+`GET /_collection_/schema/name`
 
 [[SchemaAPI-INPUT.5]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -944,10 +939,10 @@ The sample output below has been truncated to the first few copy definitions.
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
 |===
 
 [[SchemaAPI-OUTPUT.5]]
@@ -965,7 +960,7 @@ Get the schema name.
 curl http://localhost:8983/solr/gettingstarted/schema/name?wt=json
 ----
 
-[source,javascript]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -974,19 +969,18 @@ curl http://localhost:8983/solr/gettingstarted/schema/name?wt=json
   "name":"example"}
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-ShowtheSchemaVersion]]
 === Show the Schema Version
 
-`GET /__collection__/schema/version`
+`GET /_collection_/schema/version`
 
 [[SchemaAPI-INPUT.6]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -996,10 +990,10 @@ curl http://localhost:8983/solr/gettingstarted/schema/name?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
 |===
 
 [[SchemaAPI-OUTPUT.6]]
@@ -1019,7 +1013,7 @@ Get the schema version
 curl http://localhost:8983/solr/gettingstarted/schema/version?wt=json
 ----
 
-[source,javascript]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -1028,19 +1022,18 @@ curl http://localhost:8983/solr/gettingstarted/schema/version?wt=json
   "version":1.5}
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-ListUniqueKey]]
 === List UniqueKey
 
-`GET /__collection__/schema/uniquekey`
+`GET /_collection_/schema/uniquekey`
 
 [[SchemaAPI-INPUT.7]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -1050,10 +1043,10 @@ curl http://localhost:8983/solr/gettingstarted/schema/version?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
 |===
 
 [[SchemaAPI-OUTPUT.7]]
@@ -1073,7 +1066,7 @@ List the uniqueKey.
 curl http://localhost:8983/solr/gettingstarted/schema/uniquekey?wt=json
 ----
 
-[source,javascript]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -1082,19 +1075,18 @@ curl http://localhost:8983/solr/gettingstarted/schema/uniquekey?wt=json
   "uniqueKey":"id"}
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-ShowGlobalSimilarity]]
 === Show Global Similarity
 
-`GET /__collection__/schema/similarity`
+`GET /_collection_/schema/similarity`
 
 [[SchemaAPI-INPUT.8]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -1104,10 +1096,10 @@ curl http://localhost:8983/solr/gettingstarted/schema/uniquekey?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
 |===
 
 [[SchemaAPI-OUTPUT.8]]
@@ -1127,7 +1119,7 @@ Get the similarity implementation.
 curl http://localhost:8983/solr/gettingstarted/schema/similarity?wt=json
 ----
 
-[source,javascript]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -1137,19 +1129,18 @@ curl http://localhost:8983/solr/gettingstarted/schema/similarity?wt=json
     "class":"org.apache.solr.search.similarities.DefaultSimilarityFactory"}}
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-GettheDefaultQueryOperator]]
 === Get the Default Query Operator
 
-`GET /__collection__/schema/solrqueryparser/defaultoperator`
+`GET /_collection_/schema/solrqueryparser/defaultoperator`
 
 [[SchemaAPI-INPUT.9]]
 ==== INPUT
 
 *Path Parameters*
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -1159,10 +1150,10 @@ curl http://localhost:8983/solr/gettingstarted/schema/similarity?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",cols="20%,20%,20%,20%,20%",options="header",]
+[width="100%",options="header",]
 |===
 |Key |Type |Required |Default |Description
-|wt |string |No |json |Defines the format of the response. The options are *json* or **xml**. If not specified, JSON will be returned by default.
+|wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
 |===
 
 [[SchemaAPI-OUTPUT.9]]
@@ -1182,7 +1173,7 @@ Get the default operator.
 curl http://localhost:8983/solr/gettingstarted/schema/solrqueryparser/defaultoperator?wt=json
 ----
 
-[source,javascript]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -1191,7 +1182,6 @@ curl http://localhost:8983/solr/gettingstarted/schema/solrqueryparser/defaultope
   "defaultOperator":"OR"}
 ----
 
-<<main,Back to Top>>
 
 [[SchemaAPI-ManageResourceData]]
 == Manage Resource Data

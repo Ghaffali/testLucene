@@ -2,23 +2,27 @@
 :page-shortname: setting-up-an-external-zookeeper-ensemble
 :page-permalink: setting-up-an-external-zookeeper-ensemble.html
 
-Although Solr comes bundled with http://zookeeper.apache.org[Apache ZooKeeper], you should consider yourself discouraged from using this internal ZooKeeper in production, because shutting down a redundant Solr instance will also shut down its ZooKeeper server, which might not be quite so redundant. Because a ZooKeeper ensemble must have a quorum of more than half its servers running at any given time, this can be a problem.
+Although Solr comes bundled with http://zookeeper.apache.org[Apache ZooKeeper], you should consider yourself discouraged from using this internal ZooKeeper in production.
+
+Shutting down a redundant Solr instance will also shut down its ZooKeeper server, which might not be quite so redundant. Because a ZooKeeper ensemble must have a quorum of more than half its servers running at any given time, this can be a problem.
 
 The solution to this problem is to set up an external ZooKeeper ensemble. Fortunately, while this process can seem intimidating due to the number of powerful options, setting up a simple ensemble is actually quite straightforward, as described below.
 
 .How Many ZooKeepers?
-[NOTE]
-====
-
-"For a ZooKeeper service to be active, there must be a majority of non-failing machines that can communicate with each other. *_To create a deployment that can tolerate the failure of F machines, you should count on deploying 2xF+1 machines_* . Thus, a deployment that consists of three machines can handle one failure, and a deployment of five machines can handle two failures. Note that a deployment of six machines can only handle two failures since three machines is not a majority.
+[quote,ZooKeeper Administrator's Guide,http://zookeeper.apache.org/doc/r3.4.6/zookeeperAdmin.html]
+____
+"For a ZooKeeper service to be active, there must be a majority of non-failing machines that can communicate with each other. *To create a deployment that can tolerate the failure of F machines, you should count on deploying 2xF+1 machines*. Thus, a deployment that consists of three machines can handle one failure, and a deployment of five machines can handle two failures. Note that a deployment of six machines can only handle two failures since three machines is not a majority.
 
 For this reason, ZooKeeper deployments are usually made up of an odd number of machines."
+____
 
-_-- http://zookeeper.apache.org/doc/r3.4.6/zookeeperAdmin.html[ZooKeeper Administrator's Guide]._
+When planning how many ZooKeeper nodes to configure, keep in mind that the main principle for a ZooKeeper ensemble is maintaining a majority of servers to serve requests. This majority is also called a _quorum_.
 
-====
+It is generally recommended to have an odd number of ZooKeeper servers in your ensemble, so a majority is maintained.
 
-When planning how many ZooKeeper nodes to configure, keep in mind that the main principle for a ZooKeeper ensemble is maintaining a majority of servers to serve requests. This majority is also called a __quorum__. It is generally recommended to have an odd number of ZooKeeper servers in your ensemble, so a majority is maintained. For example, if you only have two ZooKeeper nodes and one goes down, 50% of available servers is not a majority, so ZooKeeper will no longer serve requests. However, if you have three ZooKeeper nodes and one goes down, you have 66% of available servers available, and ZooKeeper will continue normally while you repair the one down node. If you have 5 nodes, you could continue operating with two down nodes if necessary. More information on ZooKeeper clusters is available from the ZooKeeper documentation at http://zookeeper.apache.org/doc/r3.4.6/zookeeperAdmin.html#sc_zkMulitServerSetup.
+For example, if you only have two ZooKeeper nodes and one goes down, 50% of available servers is not a majority, so ZooKeeper will no longer serve requests. However, if you have three ZooKeeper nodes and one goes down, you have 66% of available servers available, and ZooKeeper will continue normally while you repair the one down node. If you have 5 nodes, you could continue operating with two down nodes if necessary.
+
+More information on ZooKeeper clusters is available from the ZooKeeper documentation at http://zookeeper.apache.org/doc/r3.4.6/zookeeperAdmin.html#sc_zkMulitServerSetup.
 
 [[SettingUpanExternalZooKeeperEnsemble-DownloadApacheZooKeeper]]
 == Download Apache ZooKeeper
@@ -27,11 +31,9 @@ The first step in setting up Apache ZooKeeper is, of course, to download the sof
 
 [IMPORTANT]
 ====
-
 When using stand-alone ZooKeeper, you need to take care to keep your version of ZooKeeper updated with the latest version distributed with Solr. Since you are using it as a stand-alone application, it does not get upgraded when you upgrade Solr.
 
 Solr currently uses Apache ZooKeeper v3.4.6.
-
 ====
 
 [[SettingUpanExternalZooKeeperEnsemble-SettingUpaSingleZooKeeper]]
@@ -39,12 +41,10 @@ Solr currently uses Apache ZooKeeper v3.4.6.
 
 [[SettingUpanExternalZooKeeperEnsemble-Createtheinstance]]
 === Create the instance
-
 Creating the instance is a simple matter of extracting the files into a specific target directory. The actual directory itself doesn't matter, as long as you know where it is, and where you'd like to have ZooKeeper store its internal data.
 
 [[SettingUpanExternalZooKeeperEnsemble-Configuretheinstance]]
 === Configure the instance
-
 The next step is to configure your ZooKeeper instance. To do that, create the following file: `<ZOOKEEPER_HOME>/conf/zoo.cfg`. To this file, add the following information:
 
 [source,plain]
@@ -56,11 +56,11 @@ clientPort=2181
 
 The parameters are as follows:
 
-**tickTime**: Part of what ZooKeeper does is to determine which servers are up and running at any given time, and the minimum session time out is defined as two "ticks". The `tickTime` parameter specifies, in miliseconds, how long each tick should be.
+`tickTime`:: Part of what ZooKeeper does is to determine which servers are up and running at any given time, and the minimum session time out is defined as two "ticks". The `tickTime` parameter specifies, in miliseconds, how long each tick should be.
 
-**dataDir**: This is the directory in which ZooKeeper will store data about the cluster. This directory should start out empty.
+`dataDir`:: This is the directory in which ZooKeeper will store data about the cluster. This directory should start out empty.
 
-**clientPort**: This is the port on which Solr will access ZooKeeper.
+`clientPort`:: This is the port on which Solr will access ZooKeeper.
 
 Once this file is in place, you're ready to start the ZooKeeper instance.
 
@@ -90,7 +90,7 @@ Add a node pointing to an existing ZooKeeper at port 2181:
  bin/solr start -cloud -s <path to solr home for new node> -p 8987 -z localhost:2181
 ----
 
-*NOTE:* When you are not using an example to start solr, make sure you upload the configuration set to zookeeper before creating the collection.
+NOTE: When you are not using an example to start solr, make sure you upload the configuration set to ZooKeeper before creating the collection.
 
 [[SettingUpanExternalZooKeeperEnsemble-ShutdownZooKeeper]]
 === Shut down ZooKeeper
@@ -104,7 +104,7 @@ With an external ZooKeeper ensemble, you need to set things up just a little mor
 
 The difference is that rather than simply starting up the servers, you need to configure them to know about and talk to each other first. So your original `zoo.cfg` file might look like this:
 
-[source,java]
+[source,text]
 ----
 dataDir=/var/lib/zookeeperdata/1
 clientPort=2181
@@ -117,17 +117,17 @@ server.3=localhost:2890:3890
 
 Here you see three new parameters:
 
-**initLimit**: Amount of time, in ticks, to allow followers to connect and sync to a leader. In this case, you have 5 ticks, each of which is 2000 milliseconds long, so the server will wait as long as 10 seconds to connect and sync with the leader.
+initLimit:: Amount of time, in ticks, to allow followers to connect and sync to a leader. In this case, you have 5 ticks, each of which is 2000 milliseconds long, so the server will wait as long as 10 seconds to connect and sync with the leader.
 
-**syncLimit**: Amount of time, in ticks, to allow followers to sync with ZooKeeper. If followers fall too far behind a leader, they will be dropped.
+syncLimit:: Amount of time, in ticks, to allow followers to sync with ZooKeeper. If followers fall too far behind a leader, they will be dropped.
 
-**server.X**: These are the IDs and locations of all servers in the ensemble, the ports on which they communicate with each other. The server ID must additionally stored in the `<dataDir>/myid` file and be located in the `dataDir` of each ZooKeeper instance. The ID identifies each server, so in the case of this first instance, you would create the file `/var/lib/zookeeperdata/1/myid` with the content "1".
+server.X:: These are the IDs and locations of all servers in the ensemble, the ports on which they communicate with each other. The server ID must additionally stored in the `<dataDir>/myid` file and be located in the `dataDir` of each ZooKeeper instance. The ID identifies each server, so in the case of this first instance, you would create the file `/var/lib/zookeeperdata/1/myid` with the content "1".
 
 Now, whereas with Solr you need to create entirely new directories to run multiple instances, all you need for a new ZooKeeper instance, even if it's on the same machine for testing purposes, is a new configuration file. To complete the example you'll create two more configuration files.
 
 The `<ZOOKEEPER_HOME>/conf/zoo2.cfg` file should have the content:
 
-[source,java]
+[source,text]
 ----
 tickTime=2000
 dataDir=c:/sw/zookeeperdata/2
@@ -141,7 +141,7 @@ server.3=localhost:2890:3890
 
 You'll also need to create `<ZOOKEEPER_HOME>/conf/zoo3.cfg`:
 
-[source,java]
+[source,text]
 ----
 tickTime=2000
 dataDir=c:/sw/zookeeperdata/3
@@ -157,7 +157,7 @@ Finally, create your `myid` files in each of the `dataDir` directories so that e
 
 To start the servers, you can simply explicitly reference the configuration files:
 
-[source,java]
+[source,bash]
 ----
 cd <ZOOKEEPER_HOME>
 bin/zkServer.sh start zoo.cfg
@@ -167,7 +167,7 @@ bin/zkServer.sh start zoo3.cfg
 
 Once these servers are running, you can reference them from Solr just as you did before:
 
-[source,java]
+[source,bash]
 ----
  bin/solr start -e cloud -z localhost:2181,localhost:2182,localhost:2183 -noprompt
 ----

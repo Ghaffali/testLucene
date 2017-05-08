@@ -2,11 +2,13 @@
 :page-shortname: schemaless-mode
 :page-permalink: schemaless-mode.html
 
-Schemaless Mode is a set of Solr features that, when used together, allow users to rapidly construct an effective schema by simply indexing sample data, without having to manually edit the schema. These Solr features, all controlled via `solrconfig.xml`, are:
+Schemaless Mode is a set of Solr features that, when used together, allow users to rapidly construct an effective schema by simply indexing sample data, without having to manually edit the schema.
 
-1.  Managed schema: Schema modifications are made at runtime through Solr APIs, which requires the use of `schemaFactory` that supports these changes - see <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>> for more details.
-2.  Field value class guessing: Previously unseen fields are run through a cascading set of value-based parsers, which guess the Java class of field values - parsers for Boolean, Integer, Long, Float, Double, and Date are currently available.
-3.  Automatic schema field addition, based on field value class(es): Previously unseen fields are added to the schema, based on field value Java classes, which are mapped to schema field types - see <<solr-field-types.adoc#solr-field-types,Solr Field Types>>.
+These Solr features, all controlled via `solrconfig.xml`, are:
+
+. Managed schema: Schema modifications are made at runtime through Solr APIs, which requires the use of `schemaFactory` that supports these changes - see <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>> for more details.
+. Field value class guessing: Previously unseen fields are run through a cascading set of value-based parsers, which guess the Java class of field values - parsers for Boolean, Integer, Long, Float, Double, and Date are currently available.
+. Automatic schema field addition, based on field value class(es): Previously unseen fields are added to the schema, based on field value Java classes, which are mapped to schema field types - see <<solr-field-types.adoc#solr-field-types,Solr Field Types>>.
 
 [[SchemalessMode-UsingtheSchemalessExample]]
 == Using the Schemaless Example
@@ -18,11 +20,11 @@ The three features of schemaless mode are pre-configured in the `data_driven_sch
 bin/solr start -e schemaless
 ----
 
-This will launch a Solr server, and automatically create a collection (named "```gettingstarted```") that contains only three fields in the initial schema: `id`, `_version_`, and `_text_`.
+This will launch a Solr server, and automatically create a collection (named "```gettingstarted```") that contains only three fields in the initial schema: `id`, `\_version_`, and `\_text_`.
 
-You can use the `/schema/fields` <<schema-api.adoc#schema-api,Schema API>> to confirm this: `curl http://localhost:8983/solr/gettingstarted/schema/fields` will output:
+You can use the `/schema/fields` <<schema-api.adoc#schema-api,Schema API>> to confirm this: `curl \http://localhost:8983/solr/gettingstarted/schema/fields` will output:
 
-[source,javascript]
+[source,json]
 ----
 {
   "responseHeader":{
@@ -49,11 +51,9 @@ You can use the `/schema/fields` <<schema-api.adoc#schema-api,Schema API>> to co
       "uniqueKey":true}]}
 ----
 
-[IMPORTANT]
+[TIP]
 ====
-
-Because the `data_driven_schema_configs` config set includes a `copyField` directive that causes all content to be indexed in a predefined "catch-all" `_text_` field, to enable single-field search that includes all fields' content, the index will be larger than it would be without the `copyField`. When you nail down your schema, consider removing the `_text_` field and the corresponding `copyField` directive if you don't need it.
-
+Because the `data_driven_schema_configs` config set includes a `copyField` directive that causes all content to be indexed in a predefined "catch-all" `\_text_` field, to enable single-field search that includes all fields' content, the index will be larger than it would be without the `copyField`. When you nail down your schema, consider removing the `\_text_` field and the corresponding `copyField` directive if you don't need it.
 ====
 
 [[SchemalessMode-ConfiguringSchemalessMode]]
@@ -168,9 +168,7 @@ Once the UpdateRequestProcessorChain has been defined, you must instruct your Up
 
 [IMPORTANT]
 ====
-
 After each of these changes have been made, Solr should be restarted (or, you can reload the cores to load the new `solrconfig.xml` definitions).
-
 ====
 
 [[SchemalessMode-ExamplesofIndexedDocuments]]
@@ -196,9 +194,9 @@ Output indicating success:
 </response>
 ----
 
-The fields now in the schema (output from `curl http://localhost:8983/solr/gettingstarted/schema/fields` ):
+The fields now in the schema (output from `curl \http://localhost:8983/solr/gettingstarted/schema/fields` ):
 
-[source,javascript]
+[source,text]
 ----
 {
   "responseHeader":{
@@ -209,7 +207,7 @@ The fields now in the schema (output from `curl http://localhost:8983/solr/getti
       "type":"strings"},      // Field value guessed as String -> strings fieldType
     {
       "name":"Artist",
-      "type":"strings"},      // Field value guessed as String -> strings fieldType 
+      "type":"strings"},      // Field value guessed as String -> strings fieldType
     {
       "name":"FromDistributor",
       "type":"tlongs"},       // Field value guessed as Long -> tlongs fieldType
@@ -232,18 +230,16 @@ The fields now in the schema (output from `curl http://localhost:8983/solr/getti
     },
     {
       "name":"id",
-... 
+...
     }]}
 ----
 
 .You Can Still Be Explicit
 [TIP]
 ====
-
 Even if you want to use schemaless mode for most fields, you can still use the <<schema-api.adoc#schema-api,Schema API>> to pre-emptively create some fields, with explicit types, before you index documents that use them.
 
 Internally, the Schema API and the Schemaless Update Processors both use the same <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Managed Schema>> functionality.
-
 ====
 
 Once a field has been added to the schema, its field type is fixed. As a consequence, adding documents with field value(s) that conflict with the previously guessed field type will fail. For example, after adding the above document, the "```Sold```" field has the fieldType `tlongs`, but the document below has a non-integral decimal value in this field:
