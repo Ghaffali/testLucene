@@ -8,7 +8,7 @@ All of the required configuration is already set up in the sample configurations
 
 These properties exist in 3 files: `schema.xml`, `solrconfig.xml`, and `solr.xml`.
 
-. In `schema.xml`, you must have a `_version_` field defined:
+. In `schema.xml`, you must have a `\_version_` field defined:
 +
 [source,xml]
 ----

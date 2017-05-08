@@ -532,7 +532,7 @@ The topic function should be considered in beta until https://issues.apache.org/
 * `id`: (Mandatory) The unique ID for the topic. The checkpoints will be saved under this id.
 * `q`: (Mandatory) The topic query.
 * `fl`: (Mandatory) The field list returned by the topic function.
-* `initialCheckpoint`: (Optional) Sets the initial Solr `_version_` number to start reading from the queue. If not set, it defaults to the highest version in the index. Setting to 0 will process all records that match query in the index.
+* `initialCheckpoint`: (Optional) Sets the initial Solr `\_version_` number to start reading from the queue. If not set, it defaults to the highest version in the index. Setting to 0 will process all records that match query in the index.
 
 [[StreamingExpressions-Syntax.10]]
 ==== Syntax

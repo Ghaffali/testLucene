@@ -110,7 +110,7 @@ curl -XPUT 'http://localhost:8983/solr/techproducts/schema/feature-store' --data
 
 To view the features you just uploaded please open the following URL in a browser:
 
-`\http://localhost:8983/solr/techproducts/schema/feature-store/_DEFAULT_`
+`\http://localhost:8983/solr/techproducts/schema/feature-store/\_DEFAULT_`
 
 .Example: /path/myFeatures.json
 [source,json]
@@ -475,7 +475,7 @@ It is recommended that you organise all your features into stores which are akin
 
 * Features within a store must be named uniquely.
 * Across stores identical or similar features can share the same name.
-* If no store name is specified then the default `_DEFAULT_` feature store will be used.
+* If no store name is specified then the default `\_DEFAULT_` feature store will be used.
 
 To discover the names of all your feature stores:
 
@@ -489,7 +489,7 @@ To inspect the content of the `commonFeatureStore` feature store:
 === Models
 
 * A model uses features from exactly one feature store.
-* If no store is specified then the default `_DEFAULT_` feature store will be used.
+* If no store is specified then the default `\_DEFAULT_` feature store will be used.
 * A model need not use all the features defined in a feature store.
 * Multiple models can use the same feature store.
 

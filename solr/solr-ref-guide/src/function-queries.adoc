@@ -50,7 +50,7 @@ the output would be:
 ----
 q=dismax&bf="ord(popularity)^0.5 recip(rord(price),1,1000,1000)^0.3"
 ----
-* Introduce a function query inline in the lucene QParser with the `_val_` keyword. For example:
+* Introduce a function query inline in the lucene QParser with the `\_val_` keyword. For example:
 +
 [source,java]
 ----
