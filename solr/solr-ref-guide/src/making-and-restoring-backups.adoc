@@ -199,7 +199,7 @@ The repository interfaces needs to be configured in the solr.xml file . While ru
 
 If no repository is configured then the local filesystem repository will be used automatically.
 
-Example solr.xml section to configure a repository like https://cwiki.apache.org/confluence/display/solr/Running+Solr+on+HDFS[HDFS]:
+Example solr.xml section to configure a repository like <<running-solr-on-hdfs.adoc#running-solr-on-hdfs,HDFS>>:
 
 [source,xml]
 ----

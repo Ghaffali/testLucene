@@ -2,6 +2,12 @@
 :page-shortname: v2-api
 :page-permalink: v2-api.html
 
+// TODO: most of the sample introspection calls below include cwiki.apache.org URLs that should be replaced...
+// TODO: ...but they come directly from the API.
+// TODO: so first the core/src/resources/apispec/*.json files need updated, then update the docs to match
+// TODO: What URLs shold the apispec files even point to? version specific or something general?
+
+
 The v2 API is a modernized self-documenting API interface covering most current Solr APIs. It is anticipated that once the v2 API reaches full coverage, and Solr-internal API usages like SolrJ and the Admin UI have been converted from the old API to the v2 API, the old API will eventually be retired.
 
 For now the two API styles will coexist, and all the old APIs will continue to work without any change. You can disable all v2 API endpoints by starting your servers with this system property: `-Ddisable.v2.api=true`.

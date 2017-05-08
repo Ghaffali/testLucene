@@ -20,4 +20,4 @@ Many of the options defined in these configuration files are described throughou
 * <<indexing-and-basic-data-operations.adoc#indexing-and-basic-data-operations,Indexing and Basic Data Operations>>
 * <<searching.adoc#searching,Searching>>
 * <<the-well-configured-solr-instance.adoc#the-well-configured-solr-instance,The Well-Configured Solr Instance>>
-* https://cwiki.apache.org/confluence/display/solr/Documents%2C+Fields%2C+and+Schema+Design[Documents, Fields, and Schema Design]
+* <<documents-fields-and-schema-design.adoc#documents-fields-and-schema-design,Documents, Fields, and Schema Design>>

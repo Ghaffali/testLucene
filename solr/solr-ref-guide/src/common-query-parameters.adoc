@@ -4,7 +4,7 @@
 
 Several query parsers share supported query parameters.
 
-The table below summarizes Solr's common query parameters, which are supported by the https://cwiki.apache.org/confluence/display/solr/RequestHandlers+and+SearchComponents+in+SolrConfig#RequestHandlersandSearchComponentsinSolrConfig-SearchHandlers[Search RequestHandlers]
+The table below summarizes Solr's common query parameters, which are supported by the <<requesthandlers-and-searchcomponents-in-solrconfig#RequestHandlersandSearchComponentsinSolrConfig-SearchHandlers,Search RequestHandlers>>
 
 // TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
