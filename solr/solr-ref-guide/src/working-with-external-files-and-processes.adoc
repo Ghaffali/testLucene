@@ -9,9 +9,7 @@ The `ExternalFileField` type makes it possible to specify the values for a field
 
 [IMPORTANT]
 ====
-
 External fields are not searchable. They can be used only for function queries or display. For more information on function queries, see the section on <<function-queries.adoc#function-queries,Function Queries>>.
-
 ====
 
 The `ExternalFileField` type is handy for cases where you want to update a particular field in many documents more often than you want to update the rest of the documents. For example, suppose you have implemented a document rank based on the number of views. You might want to update the rank of all the documents daily or hourly, while the rest of the contents of the documents might be updated much less frequently. Without `ExternalFileField`, you would need to update each document just to change the rank. Using `ExternalFileField` is much more efficient because all document values for a particular field are stored in an external file that can be updated as frequently as you wish.
@@ -34,9 +32,7 @@ The file itself is located in Solr's index directory, which by default is `$SOLR
 
 [TIP]
 ====
-
 If any files using the name pattern `.*` (such as `.txt`) appear, the last (after being sorted by name) will be used and previous versions will be deleted. This behavior supports implementations on systems where one may not be able to overwrite a file (for example, on Windows, if the file is in use).
-
 ====
 
 The file contains entries that map a key field, on the left of the equals sign, to a value, on the right. Here are a few example entries:
@@ -90,9 +86,11 @@ By default, the query-time analyzer for fields of this type will be the same as 
 
 This is the default serialization format used by PreAnalyzedField type. It uses a top-level JSON map with the following keys:
 
-[cols=",,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,60,20",options="header"]
 |===
-|Key |Description |Required?
+|Key |Description |Required
 |`v` |Version key. Currently the supported version is `1`. |required
 |`str` |Stored string value of a field. You can use at most one of `str` or `bin`. |optional
 |`bin` |Stored binary value of a field. The binary value has to be Base64 encoded. |optional
@@ -106,7 +104,9 @@ Any other top-level key is silently ignored.
 
 The token stream is expressed as a JSON list of JSON maps. The map for each token consists of the following keys and values:
 
-[cols=",,,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="10,20,20,30,20",options="header"]
 |===
 |Key |Description |Lucene Attribute |Value |Required?
 |`t` |token |{lucene-javadocs}/core/org/apache/lucene/analysis/tokenattributes/CharTermAttribute.html[CharTermAttribute] |UTF-8 string representing the current token |required
@@ -162,7 +162,7 @@ value ::= text
 
 Special characters in "text" values can be escaped using the escape character `\` . The following escape sequences are recognized:
 
-[cols=",",options="header",]
+[width="30%",options="header",]
 |===
 |EscapeSequence |Description
 |"`\` " |literal space character
@@ -181,7 +181,9 @@ Please note that Unicode sequences (e.g. `\u0001`) are not supported.
 
 The following token attributes are supported, and identified with short symbolic names:
 
-[cols=",,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="10,30,30,30",options="header"]
 |===
 |Name |Description |Lucene attribute |Value format
 |`i` |position increment |{lucene-javadocs}/core/org/apache/lucene/analysis/tokenattributes/PositionIncrementAttribute.html[PositionIncrementAttribute] |integer
@@ -261,7 +263,7 @@ Note that unknown attributes and their values are ignored, so in this example, t
 
 [source,text]
 ----
-1 =This is the stored part with \= 
+1 =This is the stored part with \=
 \n \t escapes.=one two three
 ----
 

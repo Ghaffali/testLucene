@@ -12,7 +12,9 @@ image::images/thread-dump/thread_dump_1.png[image,width=484,height=250]
 
 When you move your cursor over a thread name, a box floats over the name with the state for that thread. Thread states can be:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="25,75",options="header"]
 |===
 |State |Meaning
 |NEW |A thread that has not yet started.
@@ -27,7 +29,5 @@ When you click on one of the threads that can be expanded, you'll see the stackt
 
 .Inspecting a Thread
 image::images/thread-dump/thread_dump_2.png[image,width=453,height=250]
-
-
 
 You can also check the *Show all Stacktraces* button to automatically enable expansion for all threads.

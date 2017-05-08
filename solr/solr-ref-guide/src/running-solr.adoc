@@ -216,7 +216,7 @@ Here is another example which searches for "black" in the `name` field only. If 
 
 You can provide ranges for fields. The following query finds every document whose price is between $0 and $400.
 
-`http://localhost:8983/solr/gettingstarted/select?q=price:[0%20TO%20400]&fl=id,name,price`
+`\http://localhost:8983/solr/gettingstarted/select?q=price:[0%20TO%20400]&fl=id,name,price`
 
 <<faceting.adoc#faceting,Faceted browsing>> is one of Solr's key features. It allows users to narrow search results in ways that are meaningful to your application. For example, a shopping site could provide facets to narrow search results by manufacturer or price.
 

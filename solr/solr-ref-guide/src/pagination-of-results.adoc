@@ -31,7 +31,7 @@ If an index modification (such as adding or removing documents) which affects th
 
 For example, consider an index containing 26 documents like so:
 
-[options="header",%autowidth]
+[options="header",%autowidth,width="30%"]
 |===
 |id |name
 |1 |A
@@ -193,7 +193,7 @@ while (! done) {
 
 Unlike basic pagination, Cursor pagination does not rely on using an absolute "offset" into the completed sorted list of matching documents. Instead, the `cursorMark` specified in a request encapsulates information about the *relative* position of the last document returned, based on the *absolute* sort values of that document. This means that the impact of index modifications is much smaller when using a cursor compared to basic pagination. Consider the same example index described when discussing basic pagination:
 
-[options="header",%autowidth]
+[options="header",%autowidth,width="30%"]
 |===
 |id |name
 |1 |A

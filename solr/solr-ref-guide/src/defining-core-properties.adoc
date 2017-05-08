@@ -8,7 +8,7 @@ The `core.properties` file is a simple Java Properties file where each line is j
 
 A minimal `core.properties` file looks like the example below. However, it can also be empty, see information on placement of `core.properties` below.
 
-[source]
+[source,text]
 ----
 name=my_core_name
 ----
@@ -18,7 +18,7 @@ name=my_core_name
 
 Solr cores are configured by placing a file named `core.properties` in a sub-directory under `solr.home`. There are no a-priori limits to the depth of the tree, nor are there limits to the number of cores that can be defined. Cores may be anywhere in the tree with the exception that cores may _not_ be defined under an existing core. That is, the following is not allowed:
 
-[source]
+[source,text]
 ----
 ./cores/core1/core.properties
 ./cores/core1/coremore/core5/core.properties
@@ -28,7 +28,7 @@ In this example, the enumeration will stop at "core1".
 
 The following is legal:
 
-[source]
+[source,text]
 ----
 ./cores/somecores/core1/core.properties
 ./cores/somecores/core2/core.properties

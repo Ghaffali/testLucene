@@ -354,7 +354,7 @@ The `facet.pivot.mincount` parameter defines the minimum number of documents tha
 
 Using the "`bin/solr -e techproducts`" example, A query URL like this one will return the data below, with the pivot faceting results found in the section "facet_pivot":
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/techproducts/select?q=*:*&facet.pivot=cat,popularity,inStock
    &facet.pivot=popularity,cat&facet=true&facet.field=cat&facet.limit=5
@@ -397,7 +397,7 @@ In addition to some of the <<Faceting-LocalParametersforFaceting,general local p
 
 In the example below, two different (overlapping) sets of statistics are computed for each of the facet.pivot result hierarchies:
 
-[source]
+[source,text]
 ----
 stats=true
 stats.field={!tag=piv1,piv2 min=true max=true}price
@@ -487,7 +487,7 @@ A `query` local parameter can be used with `facet.pivot` to refer to `facet.quer
 
 In the example below, two query facets are computed for h of the `facet.pivot` result hierarchies:
 
-[source]
+[source,text]
 ----
 facet=true
 facet.query={!tag=q1}manufacturedate_dt:[2006-01-01T00:00:00Z TO NOW]
@@ -532,7 +532,7 @@ facet.pivot={!query=q1}cat,inStock
 
 In a similar way, in the example below, two range facets are computed for each of the `facet.pivot` result hierarchies:
 
-[source]
+[source,text]
 ----
 facet=true
 facet.range={!tag=r1}manufacturedate_dt
@@ -641,7 +641,7 @@ This parameter Indicates the field where interval faceting must be applied. It c
 
 This parameter is used to set the intervals for the field, it can be specified multiple times to indicate multiple intervals. This parameter is global, which means that it will be used for all fields indicated with `facet.interval` unless there is an override for a specific field. To override this parameter on a specific field you can use: `f.<fieldname>.facet.interval.set`, for example:
 
-[source]
+[source,text]
 f.price.facet.interval.set=[0,10]&f.price.facet.interval.set=(10,100]
 
 
@@ -668,7 +668,7 @@ The start limit can't be grater than the end limit. Equal limits are allowed, th
 
 Interval faceting supports output key replacement described below. Output keys can be replaced in both the `facet.interval parameter` and in the `facet.interval.set parameter`. For example:
 
-[source]
+[source,text]
 ----
 &facet.interval={!key=popularity}some_field
 &facet.interval.set={!key=bad}[0,5]
@@ -694,7 +694,7 @@ Because everything is already constrained by the filter `doctype:pdf`, the `face
 
 To implement a multi-select facet for doctype, a GUI may want to still display the other doctype values and their associated counts, as if the http://doctypepdf[`doctype:pdf`] constraint had not yet been applied. For example:
 
-[source]
+[source,text]
 ----
 === Document Type ===
   [ ] Word (42)

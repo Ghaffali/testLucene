@@ -50,7 +50,7 @@ The response will include the status of the request and the new core names. If t
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=CREATE&name=newCollection&numShards=2&replicationFactor=1
 ----
@@ -143,7 +143,7 @@ The response will include the status of the request and the cores that were relo
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=RELOAD&name=newCollection
 ----
@@ -219,7 +219,7 @@ The output will include the status of the request and the new shard names, which
 
 Split shard1 of the "anotherCollection" collection.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=SPLITSHARD&collection=anotherCollection&shard=shard1
 ----
@@ -320,7 +320,7 @@ The output will include the status of the request. If the status is anything oth
 
 Create 'shard-z' for the "anImplicitCollection" collection.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=CREATESHARD&collection=anImplicitCollection&shard=shard-z
 ----
@@ -372,7 +372,7 @@ The output will include the status of the request. If the status is anything oth
 
 Delete 'shard1' of the "anotherCollection" collection.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=DELETESHARD&collection=anotherCollection&shard=shard1
 ----
@@ -429,7 +429,7 @@ The output will simply be a responseHeader with details of the time it took to p
 
 Create an alias named "testalias" and link it to the collections named "anotherCollection" and "testCollection".
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=CREATEALIAS&name=testalias&collections=anotherCollection,testCollection
 ----
@@ -475,7 +475,7 @@ The output will simply be a responseHeader with details of the time it took to p
 
 Remove the alias named "testalias".
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=DELETEALIAS&name=testalias
 ----
@@ -521,7 +521,7 @@ The response will include the status of the request and the cores that were dele
 
 Delete the collection named "newCollection".
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=DELETE&name=newCollection
 ----
@@ -583,7 +583,7 @@ Delete a named replica from the specified collection and shard. If the correspon
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=DELETEREPLICA&collection=test2&shard=shard2&replica=core_node3
 ----
@@ -640,7 +640,7 @@ Ignored if the shard param is also specified.
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=ADDREPLICA&collection=test2&shard=shard2&node=192.167.1.2:8983_solr
 ----
@@ -695,7 +695,7 @@ The response will include the status of the request and the properties that were
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=CLUSTERPROP&name=urlScheme&val=https
 ----
@@ -753,7 +753,7 @@ The response will include the status of the request.
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=MIGRATE&collection=test1&split.key=a!&target.collection=test2
 ----
@@ -933,7 +933,7 @@ The response will include the status of the request and the properties that were
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=ADDROLE&role=overseer&node=192.167.1.2:8983_solr
 ----
@@ -979,7 +979,7 @@ The response will include the status of the request and the properties that were
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=REMOVEROLE&role=overseer&node=192.167.1.2:8983_solr
 ----
@@ -1101,7 +1101,7 @@ The response will include the status of the request and the status of the cluste
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=clusterstatus&wt=json
 ----
@@ -1198,7 +1198,7 @@ Request the status and response of an already submitted <<CollectionsAPI-Asynchr
 
 *Input: Valid Request Status*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=REQUESTSTATUS&requestid=1000
 ----
@@ -1221,7 +1221,7 @@ http://localhost:8983/solr/admin/collections?action=REQUESTSTATUS&requestid=1000
 
 *Input: Invalid RequestId*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=REQUESTSTATUS&requestid=1004
 ----
@@ -1266,7 +1266,7 @@ Delete the stored response of an already failed or completed <<CollectionsAPI-As
 
 *Input: Valid Request Status*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=DELETESTATUS&requestid=foo
 ----
@@ -1336,7 +1336,7 @@ Fetch the names of the collections in the cluster.
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=LIST&wt=json
 ----
@@ -1400,7 +1400,7 @@ The response will include the status of the request. If the status is anything o
 
 This command would set the preferredLeader (`property.preferredLeader`) to true on core_node1, and remove that property from any other replica in the shard.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=ADDREPLICAPROP&shard=shard1&collection=collection1&replica=core_node1&property=preferredLeader&property.value=true
 ----
@@ -1421,7 +1421,7 @@ http://localhost:8983/solr/admin/collections?action=ADDREPLICAPROP&shard=shard1&
 
 This pair of commands will set the "testprop" (`property.testprop`) to 'value1' and 'value2' respectively for two nodes in the same shard.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=ADDREPLICAPROP&shard=shard1&collection=collection1&replica=core_node1&property=testprop&property.value=value1
 
@@ -1432,7 +1432,7 @@ http://localhost:8983/solr/admin/collections?action=ADDREPLICAPROP&shard=shard1&
 
 This pair of commands would result in core_node_3 having the testprop (`property.testprop`) value set because the second command specifies `shardUnique=true`, which would cause the property to be removed from core_node_1.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=ADDREPLICAPROP&shard=shard1&collection=collection1&replica=core_node1&property=testprop&property.value=value1
 
@@ -1482,7 +1482,7 @@ The response will include the status of the request. If the status is anything o
 
 This command would delete the preferredLeader (`property.preferredLeader`) from core_node1.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=DELETEREPLICAPROP&shard=shard1&collection=collection1&replica=core_node1&property=preferredLeader
 ----
@@ -1532,7 +1532,7 @@ The response will include the status of the request. If the status is anything o
 
 Either of these commands would put the "preferredLeader" property on one replica in every shard in the "collection1" collection.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=BALANCESHARDUNIQUE&collection=collection1&property=preferredLeader
 
@@ -1587,7 +1587,7 @@ The response will include the status of the request. If the status is anything o
 
 Either of these commands would cause all the active replicas that had the "preferredLeader" property set and were _not_ already the preferred leader to become leaders.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=REBALANCELEADERS&collection=collection1
 http://localhost:8983/solr/admin/collections?action=REBALANCELEADERS&collection=collection1&maxAtOnce=5&maxWaitSeconds=30
@@ -1818,7 +1818,7 @@ As of now, REQUESTSTATUS does not automatically clean up the tracking data struc
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/collections?action=SPLITSHARD&collection=collection1&shard=shard1&async=1000
 ----

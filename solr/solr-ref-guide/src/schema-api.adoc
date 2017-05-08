@@ -268,7 +268,9 @@ The `add-copy-field` command adds a new copy field rule to your schema.
 
 The attributes supported by the command are the same as when creating copy field rules by manually editing the `schema.xml`, as below:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,20,60",options="header"]
 |===
 |Name |Required |Description
 |source |Yes |The source field.
@@ -398,7 +400,8 @@ To modify the schema, see the previous section <<SchemaAPI-ModifytheSchema,Modif
 
 *Path Parameters*
 
-[width="100%",options="header",]
+
+[options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -408,7 +411,9 @@ To modify the schema, see the previous section <<SchemaAPI-ModifytheSchema,Modif
 
 The query parameters should be added to the API request after '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="10,20,10,10,50",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json*, *xml* or *schema.xml*. If not specified, JSON will be returned by default.
@@ -593,7 +598,9 @@ curl http://localhost:8983/solr/gettingstarted/schema?wt=schema.xml
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,15,10,20,40",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
@@ -666,7 +673,7 @@ The sample output below has been truncated to only show a few fields.
 
 *Path Parameters*
 
-[width="100%",options="header",]
+[options="header",]
 |===
 |Key |Description
 |collection |The collection (or core) name.
@@ -677,7 +684,9 @@ The sample output below has been truncated to only show a few fields.
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json,* *xml*. If not specified, JSON will be returned by default.
@@ -768,7 +777,9 @@ The sample output below has been truncated.
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
@@ -863,7 +874,9 @@ The sample output below has been truncated to show a few different field types f
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
@@ -939,7 +952,9 @@ The sample output below has been truncated to the first few copy definitions.
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
@@ -990,7 +1005,9 @@ curl http://localhost:8983/solr/gettingstarted/schema/name?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
@@ -1043,7 +1060,9 @@ curl http://localhost:8983/solr/gettingstarted/schema/version?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
@@ -1096,7 +1115,9 @@ curl http://localhost:8983/solr/gettingstarted/schema/uniquekey?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.
@@ -1150,7 +1171,9 @@ curl http://localhost:8983/solr/gettingstarted/schema/similarity?wt=json
 
 The query parameters can be added to the API request after a '?'.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,10,10,10,55",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |wt |string |No |json |Defines the format of the response. The options are *json* or *xml*. If not specified, JSON will be returned by default.

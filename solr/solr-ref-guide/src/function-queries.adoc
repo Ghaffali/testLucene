@@ -17,19 +17,19 @@ There are several ways of using function queries in a Solr query:
 
 * Via an explicit QParser that expects function arguments, such <<other-parsers.adoc#OtherParsers-FunctionQueryParser,`func`>> or <<other-parsers.adoc#OtherParsers-FunctionRangeQueryParser,`frange`>> . For example:
 +
-[source]
+[source,text]
 ----
 q={!func}div(popularity,price)&fq={!frange l=1000}customer_ratings
 ----
 * In a Sort expression. For example:
 +
-[source]
+[source,text]
 ----
 sort=div(popularity,price) desc, score desc
 ----
 * Add the results of functions as pseudo-fields to documents in query results. For instance, for:
 +
-[source]
+[source,text]
 ----
 &fl=sum(x, y),id,a,b,c,score
 ----
@@ -46,13 +46,13 @@ the output would be:
 ----
 * Use in a parameter that is explicitly for specifying functions, such as the EDisMax query parser's <<the-extended-dismax-query-parser.adoc#the-extended-dismax-query-parser,`boost`>> param, or DisMax query parser's <<the-dismax-query-parser.adoc#TheDisMaxQueryParser-Thebf_BoostFunctions_Parameter,`bf` (boost function) parameter>>. (Note that the `bf` parameter actually takes a list of function queries separated by white space and each with an optional boost. Make sure you eliminate any internal white space in single function queries when using `bf`). For example:
 +
-[source]
+[source,text]
 ----
 q=dismax&bf="ord(popularity)^0.5 recip(rord(price),1,1000,1000)^0.3"
 ----
 * Introduce a function query inline in the lucene QParser with the `\_val_` keyword. For example:
 +
-[source,java]
+[source,text]
 ----
 q=_val_:mynumericfield _val_:"recip(rord(myfield),1,2,3)"
 ----
@@ -64,9 +64,9 @@ Only functions with fast random access are recommended.
 
 The table below summarizes the functions available for function queries.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Function |Description |Syntax Examples
 |abs |Returns the absolute value of the specified value or function. |`abs(x)` `abs(-5)`
@@ -223,7 +223,7 @@ This query will rank the results based on volumes. In order to get the computed 
 
 Suppose that you also have a field storing the weight of the box as `weight`. To sort by the density of the box and return the value of the density in score, you would submit the following query:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/collection_name/select?q=boxname:findbox _val_:"div(weight,product(x,y,z))"&fl=boxname x y z weight score
 ----
@@ -233,7 +233,7 @@ http://localhost:8983/solr/collection_name/select?q=boxname:findbox _val_:"div(w
 
 You can sort your query results by the output of a function. For example, to sort results by distance, you could enter:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/collection_name/select?q=*:*&sort=dist(2, point1, point2) desc
 ----

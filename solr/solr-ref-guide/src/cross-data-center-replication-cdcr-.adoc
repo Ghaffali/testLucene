@@ -328,7 +328,7 @@ The current state of the CDCR, which includes the state of the replication proce
 
 *Input*
 
-[source]
+[source,text]
 ----
  http://host:8983/solr/<collection_name>/cdcr?action=STATUS
 ----
@@ -368,7 +368,7 @@ The status of the process and an indication of whether the buffer is enabled
 
 *Input*
 
-[source]
+[source,text]
 ----
  http://host:8983/solr/<collection_name>/cdcr?action=ENABLEBUFFER
 ----
@@ -406,7 +406,7 @@ The status of the process and an indication of whether the buffer is enabled
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://host:8983/solr/<collection_name>/cdcr?action=DISABLEBUFFER
 ----
@@ -444,7 +444,7 @@ http://host:8983/solr/<collection_name>/cdcr?action=DISABLEBUFFER
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://host:8983/solr/<collection_name>/cdcr?action=START
 ----
@@ -482,7 +482,7 @@ http://host:8983/solr/<collection_name>/cdcr?action=START
 
 *Input*
 
-[source]
+[source,text]
 ----
  http://host:8983/solr/<collection_name>/cdcr?action=STOP
 ----
@@ -529,7 +529,7 @@ The “queues” object also contains information about the updates log, such as
 
 *Input*
 
-[source]
+[source,text]
 ----
  http://host:8983/solr/<replica_name>/cdcr?action=QUEUES
 ----
@@ -574,7 +574,7 @@ The “queues” object also contains information about the updates log, such as
 
 *Input*
 
-[source]
+[source,text]
 ----
  http://host:8983/solr/<collection_name>/cdcr?action=OPS
 ----
@@ -617,7 +617,7 @@ The “queues” object also contains information about the updates log, such as
 
 *Input*
 
-[source]
+[source,text]
 ----
  http://host:8983/solr/<collection_name>/cdcr?action=ERRORS
 ----
@@ -705,13 +705,13 @@ For example, if there are 2 shards on collection1 with 2 replicas for each shard
 * Start the SolrCloud on the Source side. As a general rule, the Target (DR) side of the SolrCloud should be started before the Source side.
 * Activate the CDCR on Source instance using the CDCR API: `\http://host:port/solr/collection_name/cdcr?action=START`
 +
-[source]
+[source,text]
 http://host:port/solr/<collection_name>/cdcr?action=START
 +
 * There is no need to run the /cdcr?action=START command on the Target
 * Disable the buffer on the Target
 +
-[source]
+[source,text]
 http://host:port/solr/collection_name/cdcr?action=DISABLEBUFFER
 +
 * Renable indexing
@@ -729,7 +729,7 @@ http://host:port/solr/collection_name/cdcr?action=DISABLEBUFFER
 
 With CDCR, the target ZooKeepers will have connections from the Target clouds and the Source clouds. You may need to increase the `maxClientCnxns` setting in `zoo.cfg`.
 
-[source]
+[source,text]
 ----
 ## set numbers of connection to 200 from client
 ## is maxClientCnxns=0 that means no limit

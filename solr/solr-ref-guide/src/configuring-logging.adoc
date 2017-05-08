@@ -82,7 +82,7 @@ When starting Solr in the foreground (`-f` option), all logs will be sent to the
 
 Also, in `log4j.properties` the default log rotation size threshold of 4MB is most likely too small for production servers and should be increased to a larger value (such as 100MB or more).
 
-[source]
+[source,text]
 ----
 log4j.appender.file.MaxFileSize=100MB
 ----
@@ -102,7 +102,7 @@ On the other hand, if you're only concerned about warnings and error messages re
 
 Solr provides a way to set your log verbosity threshold to WARN and be able to set a latency threshold above which a request is considered "slow" and log that request at the WARN level to help you identify slow queries in your application. To enable this behavior, configure the `<slowQueryThresholdMillis>` element in the *query* section of solrconfig.xml:
 
-[source]
+[source,text]
 ----
 <slowQueryThresholdMillis>1000</slowQueryThresholdMillis>
 ----

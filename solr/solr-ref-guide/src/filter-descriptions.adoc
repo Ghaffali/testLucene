@@ -1467,7 +1467,7 @@ If `tokenizerFactory` is specified, then `analyzer` may not be, and vice versa.
 
 For the following examples, assume a synonyms file named `mysynonyms.txt`:
 
-[source]
+[source,text]
 ----
 couch,sofa,divan
 teh => the

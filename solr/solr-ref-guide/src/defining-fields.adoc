@@ -17,7 +17,9 @@ The following example defines a field named `price` with a type named `float` an
 [[DefiningFields-FieldProperties]]
 == Field Properties
 
-[cols=",",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Property |Description
 |name |The name of the field. Field names should consist of alphanumeric or underscore characters only and not start with a digit. This is not currently strictly enforced, but other field names will not have first class support from all components and back compatibility is not guaranteed. Names with both leading and trailing underscores (e.g., `\_version_`) are reserved. Every field must have a `name`.
@@ -30,7 +32,9 @@ The following example defines a field named `price` with a type named `float` an
 
 Fields can have many of the same properties as field types. Properties from the table below which are specified on an individual field will override any explicit value for that property specified on the the `fieldType` of the field, or any implicit default property value provided by the underlying `fieldType` implementation. The table below is reproduced from <<field-type-definitions-and-properties.adoc#field-type-definitions-and-properties,Field Type Definitions and Properties>>, which has more details:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,20,20",options="header"]
 |===
 |Property |Description |Values |Implicit Default
 |indexed |If true, the value of the field can be used in queries to retrieve matching documents. |true or false |true

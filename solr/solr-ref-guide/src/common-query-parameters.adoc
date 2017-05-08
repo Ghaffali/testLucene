@@ -94,14 +94,14 @@ When using the `fq` parameter, keep in mind the following:
 
 * The `fq` parameter can be specified multiple times in a query. Documents will only be included in the result if they are in the intersection of the document sets resulting from each instance of the parameter. In the example below, only documents which have a popularity greater then 10 and have a section of 0 will match.
 +
-[source]
+[source,text]
 ----
 fq=popularity:[10 TO *]&fq=section:0
 ----
 
 * Filter queries can involve complicated Boolean queries. The above example could also be written as a single `fq` with two mandatory clauses like so:
 +
-[source]
+[source,text]
 ----
 fq=+popularity:[10 TO *] +section:0
 ----
@@ -137,7 +137,7 @@ This table shows some basic examples of how to use `fl`:
 
 <<function-queries.adoc#function-queries,Functions>> can be computed for each document in the result and returned as a pseudo-field:
 
-[source]
+[source,text]
 ----
 fl=id,title,product(price,popularity)
 ----
@@ -147,7 +147,7 @@ fl=id,title,product(price,popularity)
 
 <<transforming-result-documents.adoc#transforming-result-documents,Document Transformers>> can be used to modify the information returned about each documents in the results of a query:
 
-[source]
+[source,text]
 ----
 fl=id,title,[explain]
 ----
@@ -157,7 +157,7 @@ fl=id,title,[explain]
 
 You can change the key used to in the response for a field, function, or transformer by prefixing it with a `_"displayName_:`". For example:
 
-[source]
+[source,text]
 ----
 fl=id,sales_price:price,secret_sauce:prod(price,popularity),why_score:[explain style=nl]
 ----
@@ -201,7 +201,7 @@ The default behavior is not to include debugging information.
 
 The `explainOther` parameter specifies a Lucene query in order to identify a set of documents. If this parameter is included and is set to a non-blank value, the query will return debugging information, along with the "explain info" of each document that matches the Lucene query, relative to the main query (which is specified by the q parameter). For example:
 
-[source]
+[source,text]
 ----
 q=supervillians&debugQuery=on&explainOther=id:juggernaut
 ----
@@ -258,7 +258,7 @@ For very high cost filters, if `cache=false` and `cost>=100` and the query imple
 
 For example:
 // TODO: fix this, it looks horrible (CT)
-[source]
+[source,text]
 ----
 // normal function range query used as a filter, all matching documents
 // generated up front and cached

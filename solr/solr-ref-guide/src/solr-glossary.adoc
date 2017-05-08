@@ -30,18 +30,18 @@ These control the inclusion or exclusion of keywords in a query by using operato
 == C
 
 [[cluster]]Cluster::
-In Solr, a cluster is a set of Solr nodes operating in coordination with each other via <<zookeeper,ZooKeeper>>, and managed as a unit. A cluster may contain many collections. See also <<solrcloud,SolrCloud>>.
+In Solr, a cluster is a set of Solr nodes operating in coordination with each other via <<zookeeper,ZooKeeper>>, and managed as a unit. A cluster may contain many collections. See also <<solrclouddef,SolrCloud>>.
 
 [[collection]]Collection::
 In Solr, one or more <<document,Documents>> grouped together in a single logical index using a single configuration and Schema.
 +
-In <<solrcloud,SolrCloud>> a collection may be divided up into multiple logical shards, which may in turn be distributed across many nodes, or in a Single node Solr installation, a collection may be a single <<core,Core>>.
+In <<solrclouddef,SolrCloud>> a collection may be divided up into multiple logical shards, which may in turn be distributed across many nodes, or in a Single node Solr installation, a collection may be a single <<core,Core>>.
 
 [[commit]]Commit::
 To make document changes permanent in the index. In the case of added documents, they would be searchable after a _commit_.
 
 [[core]]Core::
-An individual Solr instance (represents a logical index). Multiple cores can run on a single node. See also <<solrcloud,SolrCloud>>.
+An individual Solr instance (represents a logical index). Multiple cores can run on a single node. See also <<solrclouddef,SolrCloud>>.
 
 [[corereload]]Core reload::
 To re-initialize a Solr core after changes to `schema.xml`, `solrconfig.xml` or other configuration files.
@@ -83,7 +83,7 @@ A way of creating a searchable index that lists every word and the documents tha
 == L
 
 [[leader]]Leader::
-A single <<replica,Replica>> for each <<shard,Shard>> that takes charge of coordinating index updates (document additions or deletions) to other replicas in the same shard. This is a transient responsibility assigned to a node via an election, if the current Shard Leader goes down, a new node will automatically be elected to take its place. See also <<solrcloud,SolrCloud>>.
+A single <<replica,Replica>> for each <<shard,Shard>> that takes charge of coordinating index updates (document additions or deletions) to other replicas in the same shard. This is a transient responsibility assigned to a node via an election, if the current Shard Leader goes down, a new node will automatically be elected to take its place. See also <<solrclouddef,SolrCloud>>.
 
 [[SolrGlossary-M]]
 == M
@@ -107,7 +107,7 @@ A JVM instance running Solr. Also known as a Solr server.
 Also known as "optimistic locking", this is an approach that allows for updates to documents currently in the index while retaining locking or version control.
 
 [[overseer]]Overseer::
-A single node in <<solrcloud,SolrCloud>> that is responsible for processing and coordinating actions involving the entire cluster. It keeps track of the state of existing nodes, collections, shards, and replicas, and assigns new replicas to nodes. This is a transient responsibility assigned to a node via an election, if the current Overseer goes down, a new node will be automatically elected to take its place. See also <<solrcloud,SolrCloud>>.
+A single node in <<solrclouddef,SolrCloud>> that is responsible for processing and coordinating actions involving the entire cluster. It keeps track of the state of existing nodes, collections, shards, and replicas, and assigns new replicas to nodes. This is a transient responsibility assigned to a node via an election, if the current Overseer goes down, a new node will be automatically elected to take its place. See also <<solrclouddef,SolrCloud>>.
 
 [[SolrGlossary-Q]]
 == Q
@@ -125,7 +125,7 @@ The ability of a search engine to retrieve _all_ of the possible matches to a us
 The appropriateness of a document to the search conducted by the user.
 
 [[replica]]Replica::
-A <<core,Core>> that acts as a physical copy of a <<shard,Shard>> in a <<solrcloud,SolrCloud>> <<collection,Collection>>.
+A <<core,Core>> that acts as a physical copy of a <<shard,Shard>> in a <<solrclouddef,SolrCloud>> <<collection,Collection>>.
 
 [[replication]]<<index-replication.adoc#index-replication,Replication>>::
 
@@ -141,9 +141,9 @@ Logic and configuration parameters that tell Solr how to handle incoming "reques
 Logic and configuration parameters used by request handlers to process query requests. Examples of search components include faceting, highlighting, and "more like this" functionality.
 
 [[shard]]Shard::
-In SolrCloud, a logical partition of a single <<collection,Collection>>. Every shard consists of at least one physical <<replica,Replica>>, but there may be multiple Replicas distributed across multiple <<node,Nodes>> for fault tolerance. See also <<solrcloud,SolrCloud>>.
+In SolrCloud, a logical partition of a single <<collection,Collection>>. Every shard consists of at least one physical <<replica,Replica>>, but there may be multiple Replicas distributed across multiple <<node,Nodes>> for fault tolerance. See also <<solrclouddef,SolrCloud>>.
 
-[[solrcloud]]<<solrcloud.adoc#solrcloud,SolrCloud>>::
+[[solrclouddef]]<<solrcloud.adoc#solrcloud,SolrCloud>>::
 Umbrella term for a suite of functionality in Solr which allows managing a <<cluster,Cluster>> of Solr <<node,Nodes>> for scalability, fault tolerance, and high availability.
 
 [[schema]]<<documents-fields-and-schema-design.adoc#documents-fields-and-schema-design,Solr Schema (managed-schema or schema.xml)>>::
@@ -184,4 +184,4 @@ A wildcard allows a substitution of one or more letters of a word to account for
 == Z
 
 [[zookeeper]]ZooKeeper::
-Also known as http://zookeeper.apache.org/[Apache ZooKeeper]. The system used by SolrCloud to keep track of configuration files and node names for a cluster. A ZooKeeper cluster is used as the central configuration store for the cluster, a coordinator for operations requiring distributed synchronization, and the system of record for cluster topology. See also <<solrcloud,SolrCloud>>.
+Also known as http://zookeeper.apache.org/[Apache ZooKeeper]. The system used by SolrCloud to keep track of configuration files and node names for a cluster. A ZooKeeper cluster is used as the central configuration store for the cluster, a coordinator for operations requiring distributed synchronization, and the system of record for cluster topology. See also <<solrclouddef,SolrCloud>>.

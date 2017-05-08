@@ -13,21 +13,21 @@ While one of the advantages of using SolrCloud is the ability to query very larg
 
 Querying all shards for a collection should look familiar; it's as though SolrCloud didn't even come into play:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/gettingstarted/select?q=*:*
 ----
 
 If, on the other hand, you wanted to search just one shard, you can specify that shard by its logical ID, as in:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=shard1
 ----
 
 If you want to search a group of shard Ids, you can specify them together:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=shard1,shard2
 ----
@@ -36,21 +36,21 @@ In both of the above examples, the shard Id(s) will be used to pick a random rep
 
 Alternatively, you can specify the explicit replicas you wish to use in place of a shard Ids:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=localhost:7574/solr/gettingstarted,localhost:8983/solr/gettingstarted
 ----
 
 Or you can specify a list of replicas to choose from for a single shard (for load balancing purposes) by using the pipe symbol (|):
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=localhost:7574/solr/gettingstarted|localhost:7500/solr/gettingstarted
 ----
 
 And of course, you can specify a list of shards (seperated by commas) each defined by a list of replicas (seperated by pipes). In this example, 2 shards are queried, the first being a random replica from shard1, the second being a random replica from the explicit pipe delimited list:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/gettingstarted/select?q=*:*&shards=shard1,localhost:7574/solr/gettingstarted|localhost:7500/solr/gettingstarted
 ----

@@ -52,42 +52,42 @@ There are three null policies:
 
 Collapse on `group_field` selecting the document in each group with the highest scoring document:
 
-[source]
+[source,text]
 ----
 fq={!collapse field=group_field}
 ----
 
 Collapse on `group_field` selecting the document in each group with the minimum value of `numeric_field`:
 
-[source]
+[source,text]
 ----
 fq={!collapse field=group_field min=numeric_field}
 ----
 
 Collapse on `group_field` selecting the document in each group with the maximum value of `numeric_field`:
 
-[source]
+[source,text]
 ----
 fq={!collapse field=group_field max=numeric_field}
 ----
 
 Collapse on `group_field` selecting the document in each group with the maximum value of a function. Note that the *cscore()* function can be used with the min/max options to use the score of the current document being collapsed.
 
-[source]
+[source,text]
 ----
 fq={!collapse field=group_field max=sum(cscore(),numeric_field)}
 ----
 
 Collapse on `group_field` with a null policy so that all docs that do not have a value in the `group_field` will be treated as a single group. For each group, the selected document will be based first on a `numeric_field`, but ties will be broken by score:
 
-[source]
+[source,text]
 ----
 fq={!collapse field=group_field nullPolicy=collapse sort='numeric_field asc, score desc'}
 ----
 
 Collapse on `group_field` with a hint to use the top level field cache:
 
-[source]
+[source,text]
 ----
 fq={!collapse field=group_field hint=top_fc}
 ----
@@ -101,7 +101,7 @@ The ExpandComponent can be used to expand the groups that were collapsed by the 
 
 Example usage with the CollapsingQParserPlugin:
 
-[source]
+[source,text]
 ----
 q=foo&fq={!collapse field=ISBN}
 ----
@@ -110,7 +110,7 @@ In the query above, the CollapsingQParserPlugin will collapse the search results
 
 The ExpandComponent can now be used to expand the results so you can see the documents grouped by ISBN. For example:
 
-[source]
+[source,text]
 ----
 q=foo&fq={!collapse field=ISBN}&expand=true
 ----

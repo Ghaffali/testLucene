@@ -35,9 +35,9 @@ When using the `restart` command, you must pass all of the parameters you initia
 
 The`bin/solr` script provides many options to allow you to customize the server in common ways, such as changing the listening port. However, most of the defaults are adequate for most Solr installations, especially when just getting started.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-a "<string>" |Start Solr with additional JVM parameters, such as those starting with -X. If you are passing JVM parameters that begin with "-D", you can omit the -a option. |`bin/solr start -a "-Xdebug -Xrunjdwp:transport=dt_socket, server=y,suspend=n,address=1044"`
@@ -163,7 +163,9 @@ The `stop` command sends a STOP request to a running Solr node, which allows it 
 [[SolrControlScriptReference-AvailableParameters.1]]
 ==== Available Parameters
 
-[cols=",,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-p <port> |Stop Solr running on the given port. If you are running more than one instance, or are running in SolrCloud mode, you either need to specify the ports in separate requests or use the -all option. |`bin/solr stop -p 8983`
@@ -237,7 +239,9 @@ The `healthcheck` command generates a JSON-formatted health report for a collect
 [[SolrControlScriptReference-AvailableParameters.2]]
 ==== Available Parameters
 
-[cols=",,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-c <collection> |Name of the collection to run a healthcheck against (required). |`bin/solr healthcheck -c gettingstarted`
@@ -313,9 +317,9 @@ The `create` command detects the mode that Solr is running in (standalone or Sol
 [[SolrControlScriptReference-AvailableParameters.3]]
 ==== Available Parameters
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-c <name> |Name of the core or collection to create (required). |`bin/solr create -c mycollection`
@@ -381,9 +385,9 @@ If running in SolrCloud mode, the delete command checks if the configuration dir
 [[SolrControlScriptReference-AvailableParameters.4]]
 ==== Available Parameters
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-c <name> |Name of the core / collection to delete (required). |`bin/solr delete -c mycoll`
@@ -422,9 +426,9 @@ Use the `zk upconfig` command to upload one of the pre-configured configuration 
 [[SolrControlScriptReference-AvailableParameters_allparametersarerequired_]]
 ==== Available Parameters (all parameters are required)
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-n <name> a|
@@ -468,9 +472,9 @@ Use the `zk downconfig` command to download a configuration set from ZooKeeper t
 [[SolrControlScriptReference-AvailableParameters_allparametersarerequired_.1]]
 ==== Available Parameters (all parameters are required)
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-n <name> |Name of config set in ZooKeeper to download. The Admin UI Cloud -> Tree -> configs node lists all available configuration sets. |`-n myconfig`
@@ -497,9 +501,9 @@ Use the `zk cp` command for transferring files and directories between ZooKeeper
 [[SolrControlScriptReference-AvailableParameters.5]]
 ==== Available Parameters
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-r |Optional. Do a recursive copy. The command will fail if the <src> has children unless '-r' is specified. |`-r`
@@ -530,9 +534,9 @@ Use the `zk rm` command to remove a znode (and optionally all child nodes) from 
 [[SolrControlScriptReference-AvailableParameters.6]]
 ==== Available Parameters
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-r |Optional. Do a recursive removal. The command will fail if the <path> has children unless '-r' is specified. |`-r`
@@ -569,7 +573,9 @@ Use the `zk mv` command to move (rename) a ZooKeeper znode
 [[SolrControlScriptReference-AvailableParameters.7]]
 ==== Available Parameters
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |<src> |The znode to rename. The `zk:` prefix is assumed. |`/configs/oldconfigset`
@@ -591,7 +597,9 @@ Use the `zk ls` command to see the children of a znode.
 [[SolrControlScriptReference-AvailableParameters.8]]
 ==== Available Parameters
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |-r |Optional. Recursively list all descendants of a znode. |`-r`
@@ -615,7 +623,9 @@ Use the `zk mkroot` command to create a znode. The primary use-case for this com
 [[SolrControlScriptReference-AvailableParameters.9]]
 ==== Available Parameters
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,40",options="header"]
 |===
 |Parameter |Description |Example
 |<path> |The path on ZooKeeper to create. Intermediate znodes will be created if necessary. A leading slash is assumed even if not specified. |`/solr`

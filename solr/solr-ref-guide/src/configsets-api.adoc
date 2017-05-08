@@ -51,7 +51,7 @@ The output will include the status of the request. If the status is anything oth
 
 Create a ConfigSet named 'myConfigSet' based on a 'predefinedTemplate' ConfigSet, overriding the immutable property to false.
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/configs?action=CREATE&name=myConfigSet&baseConfigSet=predefinedTemplate&configSetProp.immutable=false
 ----
@@ -102,7 +102,7 @@ The output will include the status of the request. If the status is anything oth
 
 Delete ConfigSet 'myConfigSet'
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/configs?action=DELETE&name=myConfigSet
 ----
@@ -133,7 +133,7 @@ Fetch the names of the ConfigSets in the cluster.
 
 *Input*
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/admin/configs?action=LIST&wt=json
 ----

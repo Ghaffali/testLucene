@@ -32,7 +32,7 @@ The supported response writers are `json` and `javabin`. For backward compatibil
 
 Here is an example of an export request of some indexed log data:
 
-[source]
+[source,text]
 ----
 http://localhost:8983/solr/core_name/export?q=my-query&sort=severity+desc,timestamp+desc&fl=severity,timestamp,msg
 ----
