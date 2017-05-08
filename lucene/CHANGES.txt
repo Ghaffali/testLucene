@@ -91,6 +91,11 @@ Other
 
 ======================= Lucene 6.6.0 =======================
 
+New Features
+
+* LUCENE-7811: Add a concurrent SortedSet facets implementation.
+  (Mike McCandless)
+
 Bug Fixes
 
 * LUCENE-7777: ByteBlockPool.readBytes sometimes throws
@@ -109,8 +114,12 @@ Bug Fixes
 * LUCENE-7798: Add .equals and .hashCode to ToParentBlockJoinSortField 
   (Mikhail Khludnev)
 
-* LUCENE-7814: DateRangePrefixTree (in spatial-extras ) had edge-case bugs for
+* LUCENE-7814: DateRangePrefixTree (in spatial-extras) had edge-case bugs for
   years >= 292,000,000. (David Smiley)
+
+* LUCENE-5365, LUCENE-7818: Fix incorrect condition in queryparser's
+  QueryNodeOperation#logicalAnd().  (Olivier Binda, Amrit Sarkar,
+  AppChecker via Uwe Schindler)
 
 Improvements
 
@@ -126,6 +135,9 @@ Improvements
 
 * LUCENE-7792: OfflineSorter can now run concurrently if you pass it
   an optional ExecutorService (Dawid Weiss, Mike McCandless)
+
+* LUCENE-7811: Sorted set facets now use sparse storage when
+  collecting hits, when appropriate.  (Mike McCandless)
 
 Optimizations
 

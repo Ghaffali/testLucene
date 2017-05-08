@@ -5208,7 +5208,6 @@ public class StreamExpressionTest extends SolrCloudTestCase {
 
   }
 
-
   @Test
   public void testCorrelationStream() throws Exception {
     UpdateRequest updateRequest = new UpdateRequest();
@@ -5255,6 +5254,100 @@ public class StreamExpressionTest extends SolrCloudTestCase {
   }
 
 
+  @Test
+  public void testCovariance() throws Exception {
+    UpdateRequest updateRequest = new UpdateRequest();
+
+    int i=0;
+    while(i<50) {
+      updateRequest.add(id, "id_"+(++i),"test_dt", getDateString("2016", "5", "1"), "price_f", "400.00");
+    }
+
+    while(i<100) {
+      updateRequest.add(id, "id_"+(++i),"test_dt", getDateString("2015", "5", "1"), "price_f", "300.0");
+    }
+
+    while(i<150) {
+      updateRequest.add(id, "id_"+(++i),"test_dt", getDateString("2014", "5", "1"), "price_f", "500.0");
+    }
+
+    while(i<250) {
+      updateRequest.add(id, "id_"+(++i),"test_dt", getDateString("2013", "5", "1"), "price_f", "100.00");
+    }
+
+    updateRequest.commit(cluster.getSolrClient(), COLLECTIONORALIAS);
+
+    String expr = "timeseries("+COLLECTIONORALIAS+", q=\"*:*\", start=\"2013-01-01T01:00:00.000Z\", " +
+        "end=\"2016-12-01T01:00:00.000Z\", " +
+        "gap=\"+1YEAR\", " +
+        "field=\"test_dt\", " +
+        "count(*), sum(price_f), max(price_f), min(price_f))";
+
+    String cexpr = "let(a="+expr+", b=select("+expr+",mult(-1, count(*)) as nvalue), c=col(a, count(*)), d=col(b, nvalue), tuple(colc=c, cold=d, cov=cov(c,d)))";
+
+    ModifiableSolrParams paramsLoc = new ModifiableSolrParams();
+    paramsLoc.set("expr", cexpr);
+    paramsLoc.set("qt", "/stream");
+
+    String url = cluster.getJettySolrRunners().get(0).getBaseUrl().toString()+"/"+COLLECTIONORALIAS;
+    TupleStream solrStream = new SolrStream(url, paramsLoc);
+
+    StreamContext context = new StreamContext();
+    solrStream.setStreamContext(context);
+    List<Tuple> tuples = getTuples(solrStream);
+    assertTrue(tuples.size() == 1);
+    assertTrue(tuples.get(0).getDouble("cov").equals(-625.0D));
+  }
+
+
+
+  @Test
+  public void testRegressAndPredict() throws Exception {
+    UpdateRequest updateRequest = new UpdateRequest();
+
+
+    updateRequest.add(id, "1", "price_f", "100.0", "col_s", "a", "order_i", "1");
+    updateRequest.add(id, "2", "price_f", "200.0", "col_s", "a", "order_i", "2");
+    updateRequest.add(id, "3", "price_f", "300.0", "col_s", "a", "order_i", "3");
+    updateRequest.add(id, "4", "price_f", "100.0", "col_s", "a", "order_i", "4");
+    updateRequest.add(id, "5", "price_f", "200.0", "col_s", "a", "order_i", "5");
+    updateRequest.add(id, "6", "price_f", "400.0", "col_s", "a", "order_i", "6");
+    updateRequest.add(id, "7", "price_f", "600.0", "col_s", "a", "order_i", "7");
+
+    updateRequest.add(id, "8", "price_f", "200.0", "col_s", "b", "order_i", "1");
+    updateRequest.add(id, "9", "price_f", "400.0", "col_s", "b", "order_i", "2");
+    updateRequest.add(id, "10", "price_f", "600.0", "col_s", "b", "order_i", "3");
+    updateRequest.add(id, "11", "price_f", "200.0", "col_s", "b", "order_i", "4");
+    updateRequest.add(id, "12", "price_f", "400.0", "col_s", "b", "order_i", "5");
+    updateRequest.add(id, "13", "price_f", "800.0", "col_s", "b", "order_i", "6");
+    updateRequest.add(id, "14", "price_f", "1200.0", "col_s", "b", "order_i", "7");
+    updateRequest.commit(cluster.getSolrClient(), COLLECTIONORALIAS);
+
+    String expr1 = "search("+COLLECTIONORALIAS+", q=\"col_s:a\", fl=\"price_f, order_i\", sort=\"order_i asc\")";
+    String expr2 = "search("+COLLECTIONORALIAS+", q=\"col_s:b\", fl=\"price_f, order_i\", sort=\"order_i asc\")";
+
+    String cexpr = "let(a="+expr1+", b="+expr2+", c=col(a, price_f), d=col(b, price_f), e=regress(c, d), tuple(regress=e, p=predict(e, 300)))";
+
+    ModifiableSolrParams paramsLoc = new ModifiableSolrParams();
+    paramsLoc.set("expr", cexpr);
+    paramsLoc.set("qt", "/stream");
+
+    String url = cluster.getJettySolrRunners().get(0).getBaseUrl().toString()+"/"+COLLECTIONORALIAS;
+    TupleStream solrStream = new SolrStream(url, paramsLoc);
+
+    StreamContext context = new StreamContext();
+    solrStream.setStreamContext(context);
+    List<Tuple> tuples = getTuples(solrStream);
+    assertTrue(tuples.size() == 1);
+    Tuple tuple = tuples.get(0);
+    Map regression = (Map)tuple.get("regress");
+    double slope = (double)regression.get("slope");
+    double intercept= (double) regression.get("intercept");
+    assertTrue(slope == 2.0D);
+    assertTrue(intercept == 0.0D);
+    double prediction = tuple.getDouble("p");
+    assertTrue(prediction == 600.0D);
+  }
 
   @Test
   public void testListStream() throws Exception {

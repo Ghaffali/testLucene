@@ -1360,14 +1360,41 @@ public class TestJsonFacets extends SolrTestCaseHS {
             "}"
     );
 
+
     // test acc reuse (i.e. reset() method).  This is normally used for stats that are not calculated in the first phase,
     // currently non-sorting stats.
     client.testJQ(params(p, "q", "*:*"
-        , "json.facet", "{f1:{type:terms, field:'${cat_s}', facet:{h:'hll(${where_s})'}   }}"
+        , "json.facet", "{f1:{type:terms, field:'${cat_s}', facet:{h:'hll(${where_s})' , u:'unique(${where_s})', mind:'min(${num_d})', maxd:'max(${num_d})', sumd:'sum(${num_d})', avgd:'avg(${num_d})', variance:'variance(${num_d})', stddev:'stddev(${num_d})'         }   }}"
         )
         , "facets=={ 'count':6, " +
-            "'f1':{  buckets:[{val:B, count:3, h:2},{val:A, count:2, h:2}] } } "
+            "'f1':{  buckets:[{val:B, count:3, h:2, u:2, mind:-9.0, maxd:11.0, sumd:-3.0, avgd:-1.0, variance:74.66666666666667, stddev:8.640987597877148}," +
+            "                 {val:A, count:2, h:2, u:2, mind:2.0, maxd:4.0, sumd:6.0, avgd:3.0, variance:1.0, stddev:1.0}] } } "
+
     );
+
+
+    // test min/max of string field
+    if (where_s.equals("where_s") || where_s.equals("where_sd")) {  // supports only single valued currently...
+      client.testJQ(params(p, "q", "*:* -(+${cat_s}:A +${where_s}:NJ)"  // make NY the only value in bucket A
+          , "json.facet", "{" +
+              "  f1:{type:terms, field:'${cat_s}', facet:{min:'min(${where_s})', max:'max(${where_s})'}   }" +
+              ", f2:{type:terms, field:'${cat_s}', facet:{min:'min(${where_s})', max:'max(${where_s})'} , sort:'min desc'}" +
+              ", f3:{type:terms, field:'${cat_s}', facet:{min:'min(${where_s})', max:'max(${where_s})'} , sort:'min asc'}" +
+              ", f4:{type:terms, field:'${cat_s}', facet:{min:'min(${super_s})', max:'max(${super_s})'} , sort:'max asc'}" +
+              ", f5:{type:terms, field:'${cat_s}', facet:{min:'min(${super_s})', max:'max(${super_s})'} , sort:'max desc'}" +
+              "}"
+          )
+          , "facets=={ count:5, " +
+              " f1:{ buckets:[{val:B, count:3, min:NJ, max:NY}, {val:A, count:1, min:NY, max:NY}]}" +
+              ",f2:{ buckets:[{val:A, count:1, min:NY, max:NY}, {val:B, count:3, min:NJ, max:NY}]}" +
+              ",f3:{ buckets:[{val:B, count:3, min:NJ, max:NY}, {val:A, count:1, min:NY, max:NY}]}" +
+              ",f4:{ buckets:[{val:B, count:3, min:batman, max:superman}, {val:A, count:1, min:zodiac, max:zodiac}]}" +
+              ",f5:{ buckets:[{val:A, count:1, min:zodiac, max:zodiac}, {val:B, count:3, min:batman, max:superman}]}" +
+              " } "
+      );
+
+
+    }
 
   }
 

@@ -85,6 +85,9 @@ New Features
 
 * SOLR-10046: Add UninvertDocValuesMergePolicyFactory class. (Keith Laban, Christine Poerschke)
 
+* SOLR-10547: JSON Facet API: Implement support for single-valued string fields for min/max aggregations.
+  (yonik)
+
 Bug Fixes
 ----------------------
 * SOLR-9262: Connection and read timeouts are being ignored by UpdateShardHandler after SOLR-4509.
@@ -128,6 +131,8 @@ Other Changes
 
 * SOLR-10310: By default, stop splitting on whitespace prior to analysis
   in edismax and standard/"lucene" query parsers. (Steve Rowe)
+
+* SOLR-10572: Removed three "no longer supported in solrconfig.xml" asserts. (Christine Poerschke)
 
 ==================  6.6.0 ==================
 
@@ -206,6 +211,33 @@ New Features
 
 * SOLR-10583: JSON Faceting now supports a query time 'join' domain change option (hossman)
 
+* SOLR-9530: An Update Processor to convert normal update operation to an atomic operations such as
+  add, set,inc, remove ,set, removeregex (Amrit Sarkar, noble)
+
+* SOLR-10303: Add date/time Stream Evaluators (Gethin James, Dennis Gove, Joel Bernstein)
+
+* SOLR-10351: Add analyze Stream Evaluator to support streaming NLP (Joel Bernstein)
+
+* SOLR-10426: Add shuffle Streaming Expression (Joel Bernstein)
+
+* SOLR-10274: The search Streaming Expression should work in non-SolrCloud mode (Joel Bernstein)
+
+* SOLR-10504: Add echo Streaming Expression (Joel Bernstein)
+
+* SOLR-10516: Add eval Streaming Expression (Joel Bernstein)
+
+* SOLR-10566: Add timeseries Streaming Expression (Joel Bernstein)
+
+* SOLR-10559: Add let, get and tuple Streaming Expressions (Dennis Gove, Joel Bernstein)
+
+* SOLR-10582: Add Correlation Stream Evaluator (Joel Bernstein)
+
+* SOLR-10536: stats Streaming Expression should work in non-SolrCloud mode (Joel Bernstein)
+
+* SOLR-10622: Add regress and predict Stream Evaluators (Joel Bernstein)
+
+* SOLR-10626: Add covariance Stream Evaluator (Joel Bernstein)
+
 Optimizations
 ----------------------
 
@@ -221,6 +253,8 @@ Optimizations
 
 * SOLR-10548: JSON Facet API now uses hyper-log-log++ for determining the number of buckets
   when merging requests from a multi-shard distributed request. (yonik)
+
+* SOLR-10524: Explore in-memory partitioning for processing Overseer queue messages (Cao Manh Dat, Noble Paul, shalin, Scott Blum)
 
 Bug Fixes
 ----------------------
@@ -279,6 +313,15 @@ Bug Fixes
 
 * SOLR-10549: The new 'large' attribute had been forgotten in /schema/fieldtypes?showDefaults=true (David Smiley)
 
+* SOLR-10615: requests are suspended until SolrDispatchFilter initialization is completed. 
+  After core container shutdown or severe initialization problem Solr responds with 
+  http stauts 404 Not Found instead of 500 as it was before (Mikhail Khludnev) 
+
+* SOLR-8149: Admin UI - Plugins / Stats - active item is now highlighted (Labuzov Dmitriy via janhoy)
+
+* SOLR-10630: HttpSolrCall.getAuthCtx().new AuthorizationContext() {...}.getParams()
+  sometimes throws java.lang.NullPointerException (hu xiaodong via shalin)
+
 Other Changes
 ----------------------
 
@@ -334,6 +377,13 @@ Other Changes
 
 * SOLR-9867: Adding isLoading=true as core status. Fixing start after stop scenario in bin/solr
   (Andrey Kudryavtsev, Mikhail Khludnev)
+
+* SOLR-7041: Cutover tests to using 'q.op' and 'df' instead of schema 'defaultOperator' and 'defaultSearchField' (janhoy)
+
+* SOLR-10601: StreamExpressionParser should handle white space around = in named parameters (Joel Bernstein)
+
+* SOLR-10614: Static fields have turned to instance's field in SimplePostTool. 
+  Enabled TestSolrCLIRunExample.testTechproductsExample(). (Andrey Kudryavtsev, Mikhail Khludnev)
 
 ==================  6.5.1 ==================
 
