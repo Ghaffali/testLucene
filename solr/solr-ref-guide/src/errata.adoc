@@ -7,8 +7,16 @@
 
 Any mistakes found in this documentation after its release will be listed on the on-line version of this page:
 
-//TODO we need to update this URL or make a decision about this page
-http://s.apache.org/errata[https://cwiki.apache.org/confluence/display/solr/Errata]
+//TODO we need to update this URL or make a decision about this page...
+//  since we'll have the ability to regen the "hosted" HTML version of the guide,
+//  after release, we can always use the verion variable to generate the Errata URL
+//  specific to this "version" of the guide...
+//        https://lucene.apache.org/solr/guide/{solr-docs-version}/errata.html
+//  ...and/or a URL to the "latest" nightly build of the guide...
+//        https://lucene.apache.org/solr/guide/nightly-draft/errata.html
+//  (assuming some URL RewriteRule that maps /solr/guide/nightly/.* to our jenkins build)
+//
+http://s.apache.org/errata[http://s.apache.org/errata]
 
 [[Errata-ErrataForPastVersionsofThisDocumentation]]
 == Errata For Past Versions of This Documentation
