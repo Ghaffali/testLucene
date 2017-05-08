@@ -81,8 +81,6 @@ In addition to returning the top N sorted results (where you can control N using
 
 There are a few important constraints to be aware of when using `cursorMark` parameter in a Solr request
 
-// TODO: This 'ol' has problematic nested lists inside of it, needs manual editing
-
 . `cursorMark` and `start` are mutually exclusive parameters.
 * Your requests must either not include a `start` parameter, or it must be specified with a value of "```0```".
 . `sort` clauses must include the uniqueKey field (either `asc` or `desc`).
