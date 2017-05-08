@@ -19,7 +19,9 @@ For more information about the Data Import Handler, see https://wiki.apache.org/
 
 Descriptions of the Data Import Handler use several familiar terms, such as entity and processor, in specific ways, as explained in the table below.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Term |Definition
 |Datasource |As its name suggests, a datasource defines the location of the data of interest. For a database, it's a DSN. For an HTTP datasource, it's the base URL.
@@ -149,14 +151,14 @@ Then, these parameters can be passed to the full-import command or defined in th
 
 DIH commands are sent to Solr via an HTTP request. The following operations are supported.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Command |Description
 |`abort` |Aborts an ongoing operation. The URL is `\http://<host>:<port>/solr/<collection_name>/dataimport?command=abort`.
 |`delta-import` |For incremental imports and change detection. The command is of the form `\http://<host>:<port>/solr/<collection_name>/dataimport?command=delta-import`.  It supports the same clean, commit, optimize and debug parameters as full-import command. Only the SqlEntityProcessor supports delta imports.
-|`full-import` |A Full Import operation can be started with a URL of the form `\http://<host>:<port>/solr/<collection_name>/dataimport?command=full-import`. The command returns immediately. The operation will be started in a new thread and the _status_ attribute in the response should be shown as __busy__. The operation may take some time depending on the size of dataset. Queries to Solr are not blocked during full-imports. When a full-import command is executed, it stores the start time of the operation in a file located at `conf/dataimport.properties`. This stored timestamp is used when a delta-import operation is executed. For a list of parameters that can be passed to this command, see below.
+|`full-import` |A Full Import operation can be started with a URL of the form `\http://<host>:<port>/solr/<collection_name>/dataimport?command=full-import`. The command returns immediately. The operation will be started in a new thread and the _status_ attribute in the response should be shown as _busy_. The operation may take some time depending on the size of dataset. Queries to Solr are not blocked during full-imports. When a full-import command is executed, it stores the start time of the operation in a file located at `conf/dataimport.properties`. This stored timestamp is used when a delta-import operation is executed. For a list of parameters that can be passed to this command, see below.
 |`reload-config` a|
 If the configuration file has been changed and you wish to reload it without restarting Solr, run the command
 
@@ -171,7 +173,9 @@ If the configuration file has been changed and you wish to reload it without res
 
 The `full-import` command accepts the following parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |clean |Default is true. Tells whether to clean up the index before the indexing is started.
@@ -195,7 +199,9 @@ The `propertyWriter` element defines the date format and locale for use with del
 
 The parameters available are:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |dateFormat |A java.text.SimpleDateFormat to use when converting the date to text. The default is "yyyy-MM-dd HH:mm:ss".
@@ -229,7 +235,7 @@ This can be used where a database field contains XML which you wish to process u
 [source,xml]
 ----
 <dataSource name="a1" driver="org.hsqldb.jdbcDriver" ...  />
-<dataSource name="a2" type=FieldReaderDataSource" />
+<dataSource name="a2" type="FieldReaderDataSource" />
 <document>
 
   <!-- processor for database -->
@@ -259,7 +265,9 @@ This can be used like an <<UploadingStructuredDataStoreDatawiththeDataImportHand
 
 This data source accepts these optional attributes.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Optional Attribute |Description
 |basePath |The base path relative to which the value is evaluated if it is not absolute.
@@ -271,23 +279,19 @@ This data source accepts these optional attributes.
 
 This is the default datasource. It's used with the <<UploadingStructuredDataStoreDatawiththeDataImportHandler-TheSQLEntityProcessor,SqlEntityProcessor>>. See the example in the <<UploadingStructuredDataStoreDatawiththeDataImportHandler-FieldReaderDataSource,FieldReaderDataSource>> section for details on configuration. `JdbcDatasource` supports at least the following attributes: .
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Attributes |Description
 |driver, url, user, password, encryptKeyFile |Usual jdbc connection properties
-a|
-....
-batchSize
-....
-
+|`batchSize`
  a|
 Passed to Statement#setFetchSize, default value 500.
 
 For MySQL driver, which doesn't honor fetchSize and pulls whole resultSet, which often lead to OutOfMemoryError.
 
-In this case, set batchSize=-1 that pass setFetchSize(Integer.MIN_VALUE), and switch result set to pull row by row
+In this case, set `batchSize=-1` that pass setFetchSize(Integer.MIN_VALUE), and switch result set to pull row by row
 
 |===
 
@@ -310,7 +314,9 @@ This data source is often used with XPathEntityProcessor to fetch content from a
 
 The URLDataSource type accepts these optional parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Optional Parameter |Description
 |baseURL |Specifies a new baseURL for pathnames. You can use this to specify host/port changes between Dev/QA/Prod environments. Using this attribute isolates the changes to be made to the `solrconfig.xml`
@@ -326,7 +332,9 @@ Entity processors extract data, transform it, and add it to a Solr index. Exampl
 
 Each processor has its own set of attributes, described in its own section below. In addition, there are non-specific attributes common to all entities which may be specified.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Use
 |dataSource |The name of a data source. If there are multiple data sources defined, use this attribute with the name of the data source for this entity.
@@ -365,7 +373,9 @@ The SqlEntityProcessor is the default processor. The associated <<UploadingStruc
 
 The entity attributes specific to this processor are shown in the table below.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Use
 |query |Required. The SQL query used to select rows.
@@ -382,7 +392,9 @@ This processor is used when indexing XML formatted data. The data source is typi
 
 The entity attributes unique to this processor are shown below.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Use
 |Processor |Required. Must be set to "XpathEntityProcessor".
@@ -395,9 +407,9 @@ The entity attributes unique to this processor are shown below.
 
 Each field element in the entity can have the following attributes as well as the default ones.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Attribute |Use
 |xpath |Required. The XPath expression which will extract the content from the record for this field. Only a subset of Xpath syntax is supported.
@@ -470,9 +482,9 @@ Here is an example from the "```mail```" collection of the `dih` example (`examp
 
 The entity attributes unique to the MailEntityProcessor are shown below.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Attribute |Use
 |processor |Required. Must be set to "MailEntityProcessor".
@@ -504,7 +516,7 @@ After running a full import, the MailEntityProcessor keeps track of the timestam
 [[UploadingStructuredDataStoreDatawiththeDataImportHandler-GMailExtensions]]
 ==== GMail Extensions
 
-When connecting to a GMail account, you can improve the efficiency of the MailEntityProcessor by setting the protocol to *gimap* or **gimaps**. This allows the processor to send the fetchMailsSince filter to the GMail server to have the date filter applied on the server, which means the processor only receives new messages from the server. However, GMail only supports date granularity, so the server-side filter may return previously seen messages if run more than once a day.
+When connecting to a GMail account, you can improve the efficiency of the MailEntityProcessor by setting the protocol to *gimap* or *gimaps*. This allows the processor to send the fetchMailsSince filter to the GMail server to have the date filter applied on the server, which means the processor only receives new messages from the server. However, GMail only supports date granularity, so the server-side filter may return previously seen messages if run more than once a day.
 
 [[UploadingStructuredDataStoreDatawiththeDataImportHandler-TheTikaEntityProcessor]]
 === The TikaEntityProcessor
@@ -530,9 +542,9 @@ Here is an example from the "```tika```" collection of the `dih` example (`examp
 
 The parameters for this processor are described in the table below:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Attribute |Use
 |dataSource a|
@@ -543,11 +555,11 @@ This parameter defines the data source and an optional name which can be referre
 * BinFileDataSource: used for content on the local filesystem.
 
 |url |The path to the source file(s), as a file path or a traditional internet URL. This parameter is required.
-|htmlMapper |Allows control of how Tika parses HTML. The "default" mapper strips much of the HTML from documents while the "identity" mapper passes all HTML as-is with no modifications. If this parameter is defined, it must be either *default* or **identity**; if it is absent, "default" is assumed.
-|format |The output format. The options are **text**, **xml**, *html* or **none**. The default is "text" if not defined. The format "none" can be used if metadata only should be indexed and not the body of the documents.
+|htmlMapper |Allows control of how Tika parses HTML. The "default" mapper strips much of the HTML from documents while the "identity" mapper passes all HTML as-is with no modifications. If this parameter is defined, it must be either *default* or *identity*; if it is absent, "default" is assumed.
+|format |The output format. The options are *text*, *xml*, *html* or *none*. The default is "text" if not defined. The format "none" can be used if metadata only should be indexed and not the body of the documents.
 |parser |The default parser is `org.apache.tika.parser.AutoDetectParser`. If a custom or other parser should be used, it should be entered as a fully-qualified name of the class and path.
 |fields |The list of fields from the input documents and how they should be mapped to Solr fields. If the attribute `meta` is defined as "true", the field will be obtained from the metadata of the document and not parsed from the body of the main text.
-|extractEmbedded |Instructs the TikaEntityProcessor to extract embedded documents or attachments when **true**. If false, embedded documents and attachments will be ignored.
+|extractEmbedded |Instructs the TikaEntityProcessor to extract embedded documents or attachments when *true*. If false, embedded documents and attachments will be ignored.
 |onError |By default, the TikaEntityProcessor will stop processing documents if it finds one that generates an error. If you define `onError` to "skip", the TikaEntityProcessor will instead skip documents that fail processing and log a message that the document was skipped.
 |===
 
@@ -558,7 +570,9 @@ This processor is basically a wrapper, and is designed to generate a set of file
 
 The attributes specific to this processor are described in the table below:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Use
 |fileName |Required. A regular expression pattern to identify files to be included.
@@ -607,7 +621,9 @@ This EntityProcessor reads all content from the data source on a line by line ba
 
 The lines read can be filtered by two regular expressions specified with the `acceptLineRegex` and `omitLineRegex` attributes. The table below describes the LineEntityProcessor's attributes:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
 |url |A required attribute that specifies the location of the input file in a way that is compatible with the configured data source. If this value is relative and you are using FileDataSource or URLDataSource, it assumed to be relative to baseLoc.
@@ -654,7 +670,9 @@ Ensure that the dataSource is of type `DataSource<Reader>` (`FileDataSource`, `U
 
 Uses Solr instance as a datasource, see https://wiki.apache.org/solr/DataImportHandler#SolrEntityProcessor. In addition to that, SolrEntityProcessor also supports the following parameters:
 
-[cols=",",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |cursorMark="true" |specify it to enable cursor for efficient result set scrolling
 |sort="id asc" |in this case it usually needs to specify sort param referencing uniqueKey field. see <<pagination-of-results.adoc#pagination-of-results,Pagination of Results>> for details.
@@ -676,7 +694,9 @@ The Data Import Handler contains several built-in transformers. You can also wri
 
 Solr includes the following built-in transformers:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="40,60",options="header"]
 |===
 |Transformer Name |Use
 |<<UploadingStructuredDataStoreDatawiththeDataImportHandler-ClobTransformer,ClobTransformer>> |Used to create a String out of a Clob type in database.
@@ -706,7 +726,9 @@ You can use the ClobTransformer to create a string out of a CLOB in a database. 
 
 The ClobTransformer accepts these attributes:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
 |clob |Boolean value to signal if ClobTransformer should process this field or not. If this attribute is omitted, then the corresponding field is not transformed.
@@ -722,7 +744,9 @@ DateFormatTransformer applies only on the fields with an attribute `dateTimeForm
 
 This transformer recognizes the following attributes:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
 |dateTimeFormat |The format used for parsing this field. This must comply with the syntax of the http://docs.oracle.com/javase/8/docs/api/java/text/SimpleDateFormat.html[Java SimpleDateFormat] class.
@@ -780,10 +804,12 @@ NumberFormatTransformer will be applied only to fields with an attribute `format
 
 This transformer recognizes the following attributes:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
-|formatStyle |The format used for parsing this field. The value of the attribute must be one of (`number|percent|integer|currency`). This uses the semantics of the Java NumberFormat class.
+|formatStyle |The format used for parsing this field. The value of the attribute must be one of (`number\|percent\|integer\|currency`). This uses the semantics of the Java NumberFormat class.
 |sourceColName |The column on which the NumberFormat is to be applied. This is attribute is absent. The source column and the target column are the same.
 |locale |The locale to be used for parsing the strings. The locale. If not defined, the ROOT locale is used. It must be specified as language-country (https://tools.ietf.org/html/bcp47[BCP 47 language tag]). For example, `en-US`.
 |===
@@ -808,7 +834,9 @@ The regex transformer helps in extracting or manipulating values from fields (fr
 
 The table below describes the attributes recognized by the regex transformer.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
 |regex |The regular expression that is used to match against the column or sourceColName's value(s). If replaceWith is absent, each regex _group_ is taken as a value and a list of values is returned.
@@ -900,7 +928,9 @@ You can use the template transformer to construct or modify a field value, perha
 
 You can pass special commands to the DIH by adding any of the variables listed below to any row returned by any component:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Variable |Description
 |$skipDoc |Skip the current document; that is, do not add it to Solr. The value can be the string `true\|false`.

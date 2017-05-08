@@ -1130,7 +1130,7 @@ The second pass is to pick up -dom and -het endings. Consider this example:
 
 [width="100%",options="header",]
 |===
-|*One pass* | |*Two passes* |
+2+^|*One pass* 2+^|*Two passes*
 |*Before* |*After* |*Before* |*After*
 |forlegen |forleg |forlegen |forleg
 |forlegenhet |forlegen |forlegenhet |forleg

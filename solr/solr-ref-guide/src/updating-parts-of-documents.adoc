@@ -19,9 +19,9 @@ Solr supports several modifiers that atomically update values of a document. Thi
 
 To use atomic updates, add a modifier to the field that needs to be updated. The content can be updated, added to, or incrementally increased if a number.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Modifier |Usage
 |set a|
@@ -114,21 +114,19 @@ An atomic update operation is performed using this approach only when the fields
 
 To use in-place updates, add a modifier to the field that needs to be updated. The content can be updated or incrementally increased.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Modifier |Usage
 |set a|
 Set or replace the field value(s) with the specified value(s).
 
 May be specified as a single value.
-
 |inc a|
 Increments a numeric value by a specific amount.
 
 Must be specified as a single numeric value.
-
 |===
 
 [[UpdatingPartsofDocuments-Example.1]]

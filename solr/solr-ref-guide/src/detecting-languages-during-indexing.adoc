@@ -55,7 +55,9 @@ Here is an example of a minimal LangDetect `langid` configuration in `solrconfig
 
 As previously mentioned, both implementations of the `langid` UpdateRequestProcessor take the same parameters.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,10,10,10,50",options="header"]
 |===
 |Parameter |Type |Default |Required |Description
 |langid |Boolean |true |no |Enables and disables language detection.

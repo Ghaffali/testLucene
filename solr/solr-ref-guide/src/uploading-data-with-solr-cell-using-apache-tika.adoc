@@ -60,14 +60,14 @@ The URL above calls the Extracting Request Handler, uploads the file `solr-word.
 
 * The argument `myfile=@tutorial.html` needs a valid path, which can be absolute or relative.
 
-You can also use `bin/post` to send a PDF file into Solr (without the params, the literal.id parameter would be set to the absolute path to the file):
+You can also use `bin/post` to send a PDF file into Solr (without the params, the `literal.id` parameter would be set to the absolute path to the file):
 
 [source,bash]
 ----
 bin/post -c techproducts example/exampledocs/solr-word.pdf -params "literal.id=a"
 ----
 
-Now you should be able to execute a query and find that document. You can make a request like `http://localhost:8983/solr/techproducts/select?q=pdf` .
+Now you should be able to execute a query and find that document. You can make a request like `\http://localhost:8983/solr/techproducts/select?q=pdf` .
 
 You may notice that although the content of the sample document has been indexed and stored, there are not a lot of metadata fields associated with this document. This is because unknown fields are ignored according to the default parameters configured for the `/update/extract` handler in `solrconfig.xml`, and this behavior can be easily changed or overridden. For example, to store and see all metadata and content, execute the following:
 
@@ -78,14 +78,16 @@ bin/post -c techproducts example/exampledocs/solr-word.pdf -params "literal.id=d
 
 In this command, the `uprefix=attr_` parameter causes all generated fields that aren't defined in the schema to be prefixed with `attr_`, which is a dynamic field that is stored and indexed.
 
-This command allows you to query the document using an attribute, as in: `http://localhost:8983/solr/techproducts/select?q=attr_meta:microsoft`.
+This command allows you to query the document using an attribute, as in: `\http://localhost:8983/solr/techproducts/select?q=attr_meta:microsoft`.
 
 [[UploadingDatawithSolrCellusingApacheTika-InputParameters]]
 == Input Parameters
 
 The table below describes the parameters accepted by the Extracting Request Handler.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |capture |Captures XHTML elements with the specified name for a supplementary addition to the Solr document. This parameter can be useful for copying chunks of the XHTML into a separate field. For instance, it could be used to grab paragraphs (`<p>`) and index them into a separate field. Note that content is still also captured into the overall "content" field.
@@ -223,7 +225,9 @@ As mentioned before, Tika produces metadata about the document. Metadata describ
 
 In addition to Tika's metadata, Solr adds the following metadata (defined in `ExtractingMetadataConstants`):
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Solr Metadata |Description
 |stream_name |The name of the Content Stream as uploaded to Solr. Depending on how the file is uploaded, this may or may not be set
@@ -340,8 +344,3 @@ This operation streams the file `my-file.pdf` into the Solr index for `my_collec
 The sample code above calls the extract command, but you can easily substitute other commands that are supported by Solr Cell. The key class to use is the `ContentStreamUpdateRequest`, which makes sure the ContentStreams are set properly. SolrJ takes care of the rest.
 
 Note that the `ContentStreamUpdateRequest` is not just specific to Solr Cell. You can send CSV to the CSV Update handler and to any other Request Handler that works with Content Streams for updates.
-
-[[UploadingDatawithSolrCellusingApacheTika-RelatedTopics]]
-== Related Topics
-
-* http://wiki.apache.org/solr/ExtractingRequestHandler[ExtractingRequestHandler]

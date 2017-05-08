@@ -6,7 +6,9 @@ If duplicate, or near-duplicate documents are a concern in your index, de-duplic
 
 Preventing duplicate or near duplicate documents from entering an index or tagging documents with a signature/fingerprint for duplicate field collapsing can be efficiently achieved with a low collision or fuzzy hash algorithm. Solr natively supports de-duplication techniques of this type via the `Signature` class and allows for the easy addition of new hash/signature implementations. A Signature can be implemented several ways:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Method |Description
 |MD5Signature |128-bit hash used for exact duplicate detection.
@@ -50,9 +52,9 @@ The `SignatureUpdateProcessorFactory` has to be registered in `solrconfig.xml` a
 
 The `SignatureUpdateProcessorFactory` takes several properties:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,30,50",options="header"]
 |===
 |Parameter |Default |Description
 |signatureClass |`org.apache.solr.update.processor.Lookup3Signature` a|

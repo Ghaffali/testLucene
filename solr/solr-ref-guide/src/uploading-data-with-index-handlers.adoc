@@ -58,11 +58,13 @@ For example:
 
 The add command supports some optional attributes which may be specified.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Optional Parameter |Parameter Description
-|commitWithin=__number__ |Add the document within the specified number of milliseconds
-|overwrite=__boolean__ |Default is true. Indicates if the unique key constraints should be checked to overwrite previous versions of the same document (see below)
+|commitWithin=_number_ |Add the document within the specified number of milliseconds
+|overwrite=_boolean_ |Default is true. Indicates if the unique key constraints should be checked to overwrite previous versions of the same document (see below)
 |===
 
 If the document schema defines a unique key, then by default an `/update` operation to add a document will overwrite (ie: replace) any document in the index with the same unique key. If no unique key has been defined, indexing performance is somewhat faster, as no check has to be made for an existing documents to replace.
@@ -83,7 +85,9 @@ The `<optimize>` operation requests Solr to merge internal data structures in or
 
 The `<commit>` and `<optimize>` elements accept these optional attributes:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Optional Attribute |Description
 |waitSearcher |Default is true. Blocks until a new searcher is opened and registered as the main query searcher, making the changes visible.
@@ -298,7 +302,7 @@ curl 'http://localhost:8983/solr/techproducts/update?commit=true' --data-binary 
 
 In general, the JSON update syntax supports all of the update commands that the XML update handler supports, through a straightforward mapping. Multiple commands, adding and deleting documents, may be contained in one message:
 
-[source,bash]
+[source,text]
 ----
 curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_collection/update' --data-binary '
 {
@@ -404,11 +408,13 @@ curl 'http://localhost:8983/solr/my_collection/update?commit=true' --data-binary
 [[UploadingDatawithIndexHandlers-CSVUpdateParameters]]
 === CSV Update Parameters
 
-The CSV handler allows the specification of many parameters in the URL in the form: `f.__parameter__.__optional_fieldname__=__value__` .
+The CSV handler allows the specification of many parameters in the URL in the form: `f._parameter_._optional_fieldname_=_value_` .
 
 The table below describes the parameters for the update handler.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,20,20",options="header"]
 |===
 |Parameter |Usage |Global (g) or Per Field (f) |Example
 |separator |Character used as field separator; default is "," |g,(f: see split) |separator=%09
@@ -469,7 +475,7 @@ Solr indexes nested documents in blocks as a way to model documents containing o
 
 Nested documents may be indexed via either the XML or JSON data syntax (or using <<using-solrj.adoc#using-solrj,SolrJ)>> - but regardless of syntax, you must include a field that identifies the parent document as a parent; it can be any field that suits this purpose, and it will be used as input for the <<other-parsers.adoc#OtherParsers-BlockJoinQueryParsers,block join query parsers>>.
 
-To support nested documents, the schema must include an indexed/non-stored field ___root__ _ . The value of that field is populated automatically and is the same for all documents in the block, regardless of the inheritance depth.
+To support nested documents, the schema must include an indexed/non-stored field `\_root_`. The value of that field is populated automatically and is the same for all documents in the block, regardless of the inheritance depth.
 
 [[UploadingDatawithIndexHandlers-XMLExamples]]
 === XML Examples
@@ -538,7 +544,5 @@ This example is equivalent to the XML example above, note the special `\_childDo
 .Note
 [NOTE]
 ====
-
 One limitation of indexing nested documents is that the whole block of parent-children documents must be updated together whenever any changes are required. In other words, even if a single child document or the parent document is changed, the whole block of parent-child documents must be indexed together.
-
 ====
