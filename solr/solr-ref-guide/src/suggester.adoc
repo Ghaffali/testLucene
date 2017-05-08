@@ -2,9 +2,13 @@
 :page-shortname: suggester
 :page-permalink: suggester.html
 
-The SuggestComponent in Solr provides users with automatic suggestions for query terms. You can use this to implement a powerful auto-suggest feature in your search application.
+The SuggestComponent in Solr provides users with automatic suggestions for query terms.
 
-Although it is possible to use the <<spell-checking.adoc#spell-checking,Spell Checking>> functionality to power autosuggest behavior, Solr has a dedicated http://lucene.apache.org/solr/api/solr-core/org/apache/solr/handler/component/SuggestComponent.html[SuggestComponent] designed for this functionality. This approach utilizes Lucene's Suggester implementation and supports all of the lookup implementations available in Lucene.
+You can use this to implement a powerful auto-suggest feature in your search application.
+
+Although it is possible to use the <<spell-checking.adoc#spell-checking,Spell Checking>> functionality to power autosuggest behavior, Solr has a dedicated http://lucene.apache.org/solr/api/solr-core/org/apache/solr/handler/component/SuggestComponent.html[SuggestComponent] designed for this functionality.
+
+This approach utilizes Lucene's Suggester implementation and supports all of the lookup implementations available in Lucene.
 
 The main features of this Suggester are:
 
@@ -46,7 +50,7 @@ The Suggester search component takes several configuration parameters. The choic
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |searchComponent name |Arbitrary name for the search component.
@@ -66,7 +70,7 @@ To be used as the basis for a suggestion, the field must be stored. You may want
     <filter class="solr.StandardFilterFactory"/>
     <filter class="solr.LowerCaseFilterFactory"/>
   </analyzer>
-</fieldType> 
+</fieldType>
 ----
 
 However, this minimal analysis is not required if you want more analysis to occur on terms. If using the AnalyzingLookupFactory as your lookupImpl, however, you have the option of defining the field type rules to use for index and query time analysis.
@@ -223,10 +227,9 @@ If using a dictionary file, it should be a plain text file in UTF-8 encoding. Yo
 
 This dictionary implementation takes one parameter in addition to parameters described for the Suggester generally and for the lookup implementation:
 
-* fieldDelimiter: Specify the delimiter to be used separating the entries, weights and payloads. The default is tab ('\t').
+fieldDelimiter:: Specify the delimiter to be used separating the entries, weights and payloads. The default is tab ('\t').
 
-*Example*
-
+.Example File
 [source,text]
 ----
 acquire
@@ -237,7 +240,7 @@ accommodate 3.0
 [[Suggester-MultipleDictionaries]]
 ==== Multiple Dictionaries
 
-It is possible to include multiple dictionaryImpl definitions in a single SuggestComponent definition.
+It is possible to include multiple `dictionaryImpl` definitions in a single SuggestComponent definition.
 
 To do this, simply define separate suggesters, as in this example:
 
@@ -246,8 +249,8 @@ To do this, simply define separate suggesters, as in this example:
 <searchComponent name="suggest" class="solr.SuggestComponent">
   <lst name="suggester">
     <str name="name">mySuggester</str>
-    <str name="lookupImpl">FuzzyLookupFactory</str>      
-    <str name="dictionaryImpl">DocumentDictionaryFactory</str>      
+    <str name="lookupImpl">FuzzyLookupFactory</str>
+    <str name="dictionaryImpl">DocumentDictionaryFactory</str>
     <str name="field">cat</str>
     <str name="weightField">price</str>
     <str name="suggestAnalyzerFieldType">string</str>
@@ -262,7 +265,7 @@ To do this, simply define separate suggesters, as in this example:
     <str name="sortField">price</str>
     <str name="storeDir">suggest_fuzzy_doc_expr_dict</str>
     <str name="suggestAnalyzerFieldType">text_en</str>
-  </lst>  
+  </lst>
 </searchComponent>
 ----
 
@@ -291,7 +294,7 @@ After adding the search component, a request handler must be added to `solrconfi
 
 The following parameters allow you to set defaults for the Suggest request handler:
 
-[width="100%",cols="50%,50%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description
 |suggest=true |This parameter should always be true, because we always want to run the Suggester for queries submitted to this handler.
@@ -310,9 +313,7 @@ These properties can also be overridden at query time, or not set in the request
 .Context Filtering
 [IMPORTANT]
 ====
-
 Context filtering (`suggest.cfq`) is currently only supported by AnalyzingInfixLookupFactory and BlendedInfixLookupFactory, and only when backed by a Document*Dictionary. All other implementations will return unfiltered matches as if filtering was not requested.
-
 ====
 
 [[Suggester-ExampleUsages]]
@@ -429,8 +430,7 @@ Context filtering lets you filter suggestions by a separate context field, such 
 
 Add `contextField` to your suggester configuration. This example will suggest names and allow to filter by category:
 
-*solrconfig.xml*
-
+.solrconfig.xml
 [source,xml]
 ----
 <searchComponent name="suggest" class="solr.SuggestComponent">
@@ -451,7 +451,7 @@ Example context filtering suggest query:
 
 [source,text]
 ----
-http://localhost:8983/solr/techproducts/suggest?suggest=true&suggest.build=true& \ 
+http://localhost:8983/solr/techproducts/suggest?suggest=true&suggest.build=true& \
    suggest.dictionary=mySuggester&wt=json&suggest.q=c&suggest.cfq=memory
 ----
 

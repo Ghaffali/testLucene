@@ -3,7 +3,7 @@
 :page-permalink: solrcloud.html
 :page-children: getting-started-with-solrcloud, how-solrcloud-works, solrcloud-configuration-and-parameters, rule-based-replica-placement, cross-data-center-replication-cdcr-
 
-Apache Solr includes the ability to set up a cluster of Solr servers that combines fault tolerance and high availability. Called **SolrCloud**, these capabilities provide distributed indexing and search capabilities, supporting the following features:
+Apache Solr includes the ability to set up a cluster of Solr servers that combines fault tolerance and high availability. Called *SolrCloud*, these capabilities provide distributed indexing and search capabilities, supporting the following features:
 
 * Central configuration for the entire cluster
 * Automatic load balancing and fail-over for queries

@@ -2,11 +2,13 @@
 :page-shortname: solr-control-script-reference
 :page-permalink: solr-control-script-reference.html
 
-Solr includes a script known as "`bin/solr`" that allows you to start and stop Solr, create and delete collections or cores, perform operations on ZooKeeper and check the status of Solr and configured shards. You can find the script in the `bin/` directory of your Solr installation. The `bin/solr` script makes Solr easier to work with by providing simple commands and options to quickly accomplish common goals.
+Solr includes a script known as "`bin/solr`" that allows you to perform many common operations on your Solr installation or cluster.
 
-The headings below correspond to available commands. For each command, the available options are described with examples.
+You can start and stop Solr, create and delete collections or cores, perform operations on ZooKeeper and check the status of Solr and configured shards.
 
-More examples of bin/solr in use are available throughout the Solr Reference Guide, but particularly in the sections <<running-solr.adoc#running-solr,Running Solr>> and <<getting-started-with-solrcloud.adoc#getting-started-with-solrcloud,Getting Started with SolrCloud>>.
+You can find the script in the `bin/` directory of your Solr installation. The `bin/solr` script makes Solr easier to work with by providing simple commands and options to quickly accomplish common goals.
+
+More examples of `bin/solr` in use are available throughout the Solr Reference Guide, but particularly in the sections <<running-solr.adoc#running-solr,Running Solr>> and <<getting-started-with-solrcloud.adoc#getting-started-with-solrcloud,Getting Started with SolrCloud>>.
 
 [[SolrControlScriptReference-StartingandStopping]]
 == Starting and Stopping
@@ -14,9 +16,9 @@ More examples of bin/solr in use are available throughout the Solr Reference Gui
 [[SolrControlScriptReference-StartandRestart]]
 === Start and Restart
 
-The start command starts Solr. The restart command allows you to restart Solr while it is already running or if it has been stopped already.
+The `start` command starts Solr. The `restart` command allows you to restart Solr while it is already running or if it has been stopped already.
 
-The start and restart commands have several options to allow you to run in SolrCloud mode, use an example configuration set, start with a hostname or port that is not the default and point to a local ZooKeeper ensemble.
+The `start` and `restart` commands have several options to allow you to run in SolrCloud mode, use an example configuration set, start with a hostname or port that is not the default and point to a local ZooKeeper ensemble.
 
 `bin/solr start [options]`
 
@@ -26,16 +28,16 @@ The start and restart commands have several options to allow you to run in SolrC
 
 `bin/solr restart -help`
 
-When using the restart command, you must pass all of the parameters you initially passed when you started Solr. Behind the scenes, a stop request is initiated, so Solr will be stopped before being started again. If no nodes are already running, restart will skip the step to stop and proceed to starting Solr.
+When using the `restart` command, you must pass all of the parameters you initially passed when you started Solr. Behind the scenes, a stop request is initiated, so Solr will be stopped before being started again. If no nodes are already running, restart will skip the step to stop and proceed to starting Solr.
 
 [[SolrControlScriptReference-AvailableParameters]]
 ==== Available Parameters
 
-The bin/solr script provides many options to allow you to customize the server in common ways, such as changing the listening port. However, most of the defaults are adequate for most Solr installations, especially when just getting started.
+The`bin/solr` script provides many options to allow you to customize the server in common ways, such as changing the listening port. However, most of the defaults are adequate for most Solr installations, especially when just getting started.
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-a "<string>" |Start Solr with additional JVM parameters, such as those starting with -X. If you are passing JVM parameters that begin with "-D", you can omit the -a option. |`bin/solr start -a "-Xdebug -Xrunjdwp:transport=dt_socket, server=y,suspend=n,address=1044"`
@@ -61,7 +63,6 @@ The available options are:
 * schemaless
 
 See the section <<SolrControlScriptReference-RunningwithExampleConfigurations,Running with Example Configurations>> below for more details on the example configurations.
-
  |`bin/solr start -e schemaless`
 |-f |Start Solr in the foreground; you cannot use this option when running examples with the -e option. |`bin/solr start -f`
 |-h <hostname> |Start Solr with the defined hostname. If this is not specified, 'localhost' will be assumed. |`bin/solr start -h search.mysolr.com`
@@ -97,26 +98,30 @@ It is not necessary to define all of the options when starting if the defaults a
 [[SolrControlScriptReference-SettingJavaSystemProperties]]
 ==== Setting Java System Properties
 
-The bin/solr script will pass any additional parameters that begin with -D to the JVM, which allows you to set arbitrary Java system properties. For example, to set the auto soft-commit frequency to 3 seconds, you can do:
+The `bin/solr` script will pass any additional parameters that begin with `-D` to the JVM, which allows you to set arbitrary Java system properties.
+
+For example, to set the auto soft-commit frequency to 3 seconds, you can do:
 
 `bin/solr start -Dsolr.autoSoftCommit.maxTime=3000`
 
 [[SolrControlScriptReference-SolrCloudMode]]
 ==== SolrCloud Mode
 
-The -c and -cloud options are equivalent:
+The `-c` and `-cloud` options are equivalent:
 
 `bin/solr start -c`
 
 `bin/solr start -cloud`
 
-If you specify a ZooKeeper connection string, such as `-z 192.168.1.4:2181`, then Solr will connect to ZooKeeper and join the cluster. If you do not specify the -z option when starting Solr in cloud mode, then Solr will launch an embedded ZooKeeper server listening on the Solr port + 1000, i.e., if Solr is running on port 8983, then the embedded ZooKeeper will be listening on port 9983.
+If you specify a ZooKeeper connection string, such as `-z 192.168.1.4:2181`, then Solr will connect to ZooKeeper and join the cluster.
+
+If you do not specify the `-z` option when starting Solr in cloud mode, then Solr will launch an embedded ZooKeeper server listening on the Solr port + 1000, i.e., if Solr is running on port 8983, then the embedded ZooKeeper will be listening on port 9983.
 
 [IMPORTANT]
 ====
-
-IMPORTANT: If your ZooKeeper connection string uses a chroot, such as `localhost:2181/solr`, then you need to create the /solr znode before launching SolrCloud using the bin/solr script. To do this use the "mkroot" command outlined below, for example: `bin/solr zk mkroot /solr -z 192.168.1.4:2181`
-
+If your ZooKeeper connection string uses a chroot, such as `localhost:2181/solr`, then you need to create the /solr znode before launching SolrCloud using the `bin/solr` script.
++
+To do this use the `mkroot` command outlined below, for example: `bin/solr zk mkroot /solr -z 192.168.1.4:2181`
 ====
 
 When starting in SolrCloud mode, the interactive script session will prompt you to choose a configset to use.
@@ -130,28 +135,26 @@ For more information about starting Solr in SolrCloud mode, see also the section
 
 The example configurations allow you to get started quickly with a configuration that mirrors what you hope to accomplish with Solr.
 
-Each example launches Solr in with a managed schema, which allows use of the <<schema-api.adoc#schema-api,Schema API>> to make schema edits, but does not allow manual editing of a Schema file If you would prefer to manually modify a `schema.xml` file directly, you can change this default as described in the section <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>>.
+Each example launches Solr with a managed schema, which allows use of the <<schema-api.adoc#schema-api,Schema API>> to make schema edits, but does not allow manual editing of a Schema file If you would prefer to manually modify a `schema.xml` file directly, you can change this default as described in the section <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>>.
 
 Unless otherwise noted in the descriptions below, the examples do not enable <<solrcloud.adoc#solrcloud,SolrCloud>> nor <<schemaless-mode.adoc#schemaless-mode,schemaless mode>>.
 
 The following examples are provided:
 
-* **cloud**: This example starts a 1-4 node SolrCloud cluster on a single machine. When chosen, an interactive session will start to guide you through options to select the initial configset to use, the number of nodes for your example cluster, the ports to use, and name of the collection to be created. When using this example, you can choose from any of the available configsets found in `$SOLR_HOME/server/solr/configsets`.
-* **techproducts**: This example starts Solr in standalone mode with a schema designed for the sample documents included in the `$SOLR_HOME/example/exampledocs` directory. The configset used can be found in `$SOLR_HOME/server/solr/configsets/sample_techproducts_configs`.
-* **dih**: This example starts Solr in standalone mode with the DataImportHandler (DIH) enabled and several example `dataconfig.xml` files pre-configured for different types of data supported with DIH (such as, database contents, email, RSS feeds, etc.). The configset used is customized for DIH, and is found in `$SOLR_HOME/example/example-DIH/solr/conf`. For more information about DIH, see the section <<uploading-structured-data-store-data-with-the-data-import-handler.adoc#uploading-structured-data-store-data-with-the-data-import-handler,Uploading Structured Data Store Data with the Data Import Handler>>.
-* **schemaless**: This example starts Solr in standalone mode using a managed schema, as described in the section <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>>, and provides a very minimal pre-defined schema. Solr will run in <<schemaless-mode.adoc#schemaless-mode,Schemaless Mode>> with this configuration, where Solr will create fields in the schema on the fly and will guess field types used in incoming documents. The configset used can be found in `$SOLR_HOME/server/solr/configsets/data_driven_schema_configs`.
+* *cloud*: This example starts a 1-4 node SolrCloud cluster on a single machine. When chosen, an interactive session will start to guide you through options to select the initial configset to use, the number of nodes for your example cluster, the ports to use, and name of the collection to be created. When using this example, you can choose from any of the available configsets found in `$SOLR_HOME/server/solr/configsets`.
+* *techproducts*: This example starts Solr in standalone mode with a schema designed for the sample documents included in the `$SOLR_HOME/example/exampledocs` directory. The configset used can be found in `$SOLR_HOME/server/solr/configsets/sample_techproducts_configs`.
+* *dih*: This example starts Solr in standalone mode with the DataImportHandler (DIH) enabled and several example `dataconfig.xml` files pre-configured for different types of data supported with DIH (such as, database contents, email, RSS feeds, etc.). The configset used is customized for DIH, and is found in `$SOLR_HOME/example/example-DIH/solr/conf`. For more information about DIH, see the section <<uploading-structured-data-store-data-with-the-data-import-handler.adoc#uploading-structured-data-store-data-with-the-data-import-handler,Uploading Structured Data Store Data with the Data Import Handler>>.
+* *schemaless*: This example starts Solr in standalone mode using a managed schema, as described in the section <<schema-factory-definition-in-solrconfig.adoc#schema-factory-definition-in-solrconfig,Schema Factory Definition in SolrConfig>>, and provides a very minimal pre-defined schema. Solr will run in <<schemaless-mode.adoc#schemaless-mode,Schemaless Mode>> with this configuration, where Solr will create fields in the schema on the fly and will guess field types used in incoming documents. The configset used can be found in `$SOLR_HOME/server/solr/configsets/data_driven_schema_configs`.
 
 [IMPORTANT]
 ====
-
-The run in-foreground option (-f) is not compatible with the -e option since the script needs to perform additional tasks after starting the Solr server.
-
+The run in-foreground option (`-f`) is not compatible with the `-e` option since the script needs to perform additional tasks after starting the Solr server.
 ====
 
 [[SolrControlScriptReference-Stop]]
 === Stop
 
-The stop command sends a STOP request to a running Solr node, which allows it to shutdown gracefully. The command will wait up to 5 seconds for Solr to stop gracefully and then will forcefully kill the process (kill -9).
+The `stop` command sends a STOP request to a running Solr node, which allows it to shutdown gracefully. The command will wait up to 5 seconds for Solr to stop gracefully and then will forcefully kill the process (kill -9).
 
 `bin/solr stop [options]`
 
@@ -174,7 +177,7 @@ The stop command sends a STOP request to a running Solr node, which allows it to
 [[SolrControlScriptReference-Version]]
 === Version
 
-The version command simply returns the version of Solr currently installed and immediately exists.
+The `version` command simply returns the version of Solr currently installed and immediately exists.
 
 [source,plain]
 ----
@@ -185,7 +188,9 @@ X.Y.0
 [[SolrControlScriptReference-Status]]
 === Status
 
-The status command displays basic JSON-formatted information for any Solr nodes found running on the local system. The status command uses the SOLR_PID_DIR environment variable to locate Solr process ID files to find running Solr instances; the SOLR_PID_DIR variable defaults to the bin directory.
+The `status` command displays basic JSON-formatted information for any Solr nodes found running on the local system.
+
+The `status` command uses the `SOLR_PID_DIR` environment variable to locate Solr process ID files to find running Solr instances, which defaults to the `bin` directory.
 
 `bin/solr status`
 
@@ -193,7 +198,7 @@ The output will include a status of each node of the cluster, as in this example
 
 [source,plain]
 ----
-Found 2 Solr nodes: 
+Found 2 Solr nodes:
 
 Solr process 39920 running on port 7574
 {
@@ -223,7 +228,7 @@ Solr process 39827 running on port 8865
 [[SolrControlScriptReference-Healthcheck]]
 === Healthcheck
 
-The healthcheck command generates a JSON-formatted health report for a collection when running in SolrCloud mode. The health report provides information about the state of every replica for all shards in a collection, including the number of committed documents and its current state.
+The `healthcheck` command generates a JSON-formatted health report for a collection when running in SolrCloud mode. The health report provides information about the state of every replica for all shards in a collection, including the number of committed documents and its current state.
 
 `bin/solr healthcheck [options]`
 
@@ -241,10 +246,10 @@ The healthcheck command generates a JSON-formatted health report for a collectio
 
 Below is an example healthcheck request and response using a non-standard ZooKeeper connect string, with 2 nodes running:
 
-[source,plain]
-----
-$ bin/solr healthcheck -c gettingstarted -z localhost:9865
+`$ bin/solr healthcheck -c gettingstarted -z localhost:9865`
 
+[source,json]
+----
 {
   "collection":"gettingstarted",
   "status":"healthy",
@@ -294,12 +299,12 @@ $ bin/solr healthcheck -c gettingstarted -z localhost:9865
 [[SolrControlScriptReference-CollectionsandCores]]
 == Collections and Cores
 
-The bin/solr script can also help you create new collections (in SolrCloud mode) or cores (in standalone mode), or delete collections.
+The `bin/solr` script can also help you create new collections (in SolrCloud mode) or cores (in standalone mode), or delete collections.
 
 [[SolrControlScriptReference-Create]]
 === Create
 
-The create command detects the mode that Solr is running in (standalone or SolrCloud) and then creates a core or collection depending on the mode.
+The `create` command detects the mode that Solr is running in (standalone or SolrCloud) and then creates a core or collection depending on the mode.
 
 `bin/solr create [options]`
 
@@ -310,7 +315,7 @@ The create command detects the mode that Solr is running in (standalone or SolrC
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-c <name> |Name of the core or collection to create (required). |`bin/solr create -c mycollection`
@@ -345,7 +350,9 @@ a|
 [[SolrControlScriptReference-ConfigurationDirectoriesandSolrCloud]]
 ==== Configuration Directories and SolrCloud
 
-Before creating a collection in SolrCloud, the configuration directory used by the collection must be uploaded to ZooKeeper. The create command supports several use cases for how collections and configuration directories work. The main decision you need to make is whether a configuration directory in ZooKeeper should be shared across multiple collections. Let's work through a few examples to illustrate how configuration directories work in SolrCloud.
+Before creating a collection in SolrCloud, the configuration directory used by the collection must be uploaded to ZooKeeper. The create command supports several use cases for how collections and configuration directories work. The main decision you need to make is whether a configuration directory in ZooKeeper should be shared across multiple collections.
+
+Let's work through a few examples to illustrate how configuration directories work in SolrCloud.
 
 First, if you don't provide the `-d` or `-n` options, then the default configuration (`$SOLR_HOME/server/solr/configsets/data_driven_schema_configs/conf`) is uploaded to ZooKeeper using the same name as the collection. For example, the following command will result in the *data_driven_schema_configs* configuration being uploaded to `/configs/contacts` in ZooKeeper: `bin/solr create -c contacts`. If you create another collection, by doing `bin/solr create -c contacts2`, then another copy of the `data_driven_schema_configs` directory will be uploaded to ZooKeeper under `/configs/contacts2`. Any changes you make to the configuration for the contacts collection will not affect the contacts2 collection. Put simply, the default behavior creates a unique copy of the configuration directory for each collection you create.
 
@@ -363,7 +370,7 @@ The `data_driven_schema_configs` schema can mutate as data is indexed. Consequen
 [[SolrControlScriptReference-Delete]]
 === Delete
 
-The delete command detects the mode that Solr is running in (standalone or SolrCloud) and then deletes the specified core (standalone) or collection (SolrCloud) as appropriate.
+The `delete` command detects the mode that Solr is running in (standalone or SolrCloud) and then deletes the specified core (standalone) or collection (SolrCloud) as appropriate.
 
 `bin/solr delete [options]`
 
@@ -376,7 +383,7 @@ If running in SolrCloud mode, the delete command checks if the configuration dir
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-c <name> |Name of the core / collection to delete (required). |`bin/solr delete -c mycoll`
@@ -397,7 +404,7 @@ This option is useful if you are running multiple standalone Solr instances on t
 [[SolrControlScriptReference-ZooKeeperOperations]]
 == ZooKeeper Operations
 
-The bin/solr script allows certain operations affecting ZooKeeper. These operations are for SolrCloud mode only. The operations are available as sub-commands, which each have their own set of options.
+The `bin/solr` script allows certain operations affecting ZooKeeper. These operations are for SolrCloud mode only. The operations are available as sub-commands, which each have their own set of options.
 
 `bin/solr zk [sub-command] [options]`
 
@@ -417,7 +424,7 @@ Use the `zk upconfig` command to upload one of the pre-configured configuration 
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-n <name> a|
@@ -448,9 +455,7 @@ An example of this command with these parameters is:
 .Reload Collections When Changing Configurations
 [WARNING]
 ====
-
 This command does *not* automatically make changes effective! It simply uploads the configuration sets to ZooKeeper. You can use the Collection API's <<collections-api.adoc#CollectionsAPI-reload,RELOAD command>> to reload any collections that uses this configuration set.
-
 ====
 
 [[SolrControlScriptReference-DownloadaConfigurationSet]]
@@ -465,7 +470,7 @@ Use the `zk downconfig` command to download a configuration set from ZooKeeper t
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-n <name> |Name of config set in ZooKeeper to download. The Admin UI Cloud -> Tree -> configs node lists all available configuration sets. |`-n myconfig`
@@ -494,7 +499,7 @@ Use the `zk cp` command for transferring files and directories between ZooKeeper
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-r |Optional. Do a recursive copy. The command will fail if the <src> has children unless '-r' is specified. |`-r`
@@ -504,7 +509,7 @@ Use the `zk cp` command for transferring files and directories between ZooKeeper
 `file:/Users/apache/configs/src`
 
 |<dest> |The file or path to copy to. If prefixed with `zk:` then the source is presumed to be ZooKeeper. If no prefix or the prefix is 'file:' this is the local drive. At least one of <src> or <dest> must be prefixed by `zk:` or the command will fail. If <dest> ends in a slash character it names a directory. |`zk:/configs/myconfigs/solrconfig.xml` `file:/Users/apache/configs/src`
-|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181 `
+|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181`
 |===
 
 An example of this command with the parameters is:
@@ -527,7 +532,7 @@ Use the `zk rm` command to remove a znode (and optionally all child nodes) from 
 
 // TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-r |Optional. Do a recursive removal. The command will fail if the <path> has children unless '-r' is specified. |`-r`
@@ -545,7 +550,7 @@ The path is assumed to be a ZooKeeper node, no `zk:` prefix is necessary.
 
 `/configs/myconfigset/solrconfig.xml`
 
-|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181 `
+|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181`
 |===
 
 An example of this command with the parameters is:
@@ -564,12 +569,12 @@ Use the `zk mv` command to move (rename) a ZooKeeper znode
 [[SolrControlScriptReference-AvailableParameters.7]]
 ==== Available Parameters
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |<src> |The znode to rename. The `zk:` prefix is assumed. |`/configs/oldconfigset`
 |<dest> |The new name of the znode. The `zk:` prefix is assumed. |`/configs/newconfigset`
-|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181 `
+|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181`
 |===
 
 An example of this command is:
@@ -586,12 +591,12 @@ Use the `zk ls` command to see the children of a znode.
 [[SolrControlScriptReference-AvailableParameters.8]]
 ==== Available Parameters
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |-r |Optional. Recursively list all descendants of a znode. |`-r`
 |<path> |The path on ZooKeeper to list. |`/collections/mycollection`
-|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181 `
+|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181`
 |===
 
 An example of this command with the parameters is:
@@ -610,15 +615,15 @@ Use the `zk mkroot` command to create a znode. The primary use-case for this com
 [[SolrControlScriptReference-AvailableParameters.9]]
 ==== Available Parameters
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |Parameter |Description |Example
 |<path> |The path on ZooKeeper to create. Intermediate znodes will be created if necessary. A leading slash is assumed even if not specified. |`/solr`
-|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181 `
+|-z <zkHost> |The ZooKeeper connection string. Unnecessary if ZK_HOST is defined in `solr.in.sh` or `solr.in.cmd`. |`-z 123.321.23.43:2181`
 |===
 
 Examples of this command:
 
-`bin/solr zk mkroot /solr -z 123.321.23.43:2181 `
+`bin/solr zk mkroot /solr -z 123.321.23.43:2181`
 
 `bin/solr zk mkroot /solr/production`

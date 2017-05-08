@@ -8,5 +8,5 @@ The screen will insert everything up to the streaming expression itself, so you 
 
 Under the input box, the Execute button will run the expression. An option "with explanation" will show the parts of the streaming expression that were executed. Under this, the streamed results are shown. A URL to be able to view the output in a browser is also available.
 
+.Stream Screen with query and results
 image::images/stream-screen/StreamScreen.png[image,height=400]
-

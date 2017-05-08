@@ -3,7 +3,9 @@
 :page-permalink: streaming-expressions.html
 :page-children: graph-traversal
 
-Streaming Expressions provide a simple yet powerful stream processing language for Solr Cloud. They are a suite of functions that can be combined to perform many different parallel computing tasks. These functions are the basis for the <<parallel-sql-interface.adoc#parallel-sql-interface,Parallel SQL Interface>>.
+Streaming Expressions provide a simple yet powerful stream processing language for Solr Cloud.
+
+Streaming expressions are a suite of functions that can be combined to perform many different parallel computing tasks. These functions are the basis for the <<parallel-sql-interface.adoc#parallel-sql-interface,Parallel SQL Interface>>.
 
 There is a growing library of functions that can be combined to implement:
 
@@ -25,9 +27,7 @@ Streams from outside systems can be joined with streams originating from Solr an
 
 [IMPORTANT]
 ====
-
 Both streaming expressions and the streaming API are considered experimental, and the APIs are subject to change.
-
 ====
 
 [[StreamingExpressions-StreamLanguageBasics]]
@@ -48,10 +48,10 @@ The `/stream` request handler takes one parameter, `expr`, which is used to spec
 
 [source,bash]
 ----
-curl --data-urlencode 'expr=search(enron_emails, 
-                                   q="from:1800flowers*", 
-                                   fl="from, to", 
-                                   sort="from asc", 
+curl --data-urlencode 'expr=search(enron_emails,
+                                   q="from:1800flowers*",
+                                   fl="from, to",
+                                   sort="from asc",
                                    qt="/export")' http://localhost:8983/solr/enron_emails/stream
 ----
 
@@ -59,7 +59,7 @@ Details of the parameters for each function are included below.
 
 For the above example the `/stream` handler responded with the following JSON response:
 
-[source,java]
+[source,json]
 ----
 {"result-set":{"docs":[
    {"from":"1800flowers.133139412@s2u2.com","to":"lcampbel@enron.com"},
@@ -92,7 +92,7 @@ StreamFactory streamFactory = new StreamFactory().withCollectionZkHost("collecti
     .withStreamFunction("top", RankStream.class)
     .withStreamFunction("group", ReducerStream.class)
     .withStreamFunction("parallel", ParallelStream.class);
- 
+
 ParallelStream pstream = (ParallelStream)streamFactory.constructStream("parallel(collection1, group(search(collection1, q=\"*:*\", fl=\"id,a_s,a_i,a_f\", sort=\"a_s asc,a_f asc\", partitionKeys=\"a_s\"), by=\"a_s asc\"), workers=\"2\", zkHost=\""+zkHost+"\", sort=\"a_s asc\")");
 ----
 
@@ -108,6 +108,7 @@ Stream sources originate streams.
 
 [[StreamingExpressions-echo]]
 === echo
+//TODO
 
 [[StreamingExpressions-search]]
 === search
@@ -131,20 +132,19 @@ This expression allows you to specify a request hander using the `qt` parameter.
 [[StreamingExpressions-Syntax]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-expr=search(collection1, 
+expr=search(collection1,
        zkHost="localhost:9983",
-       qt="/export", 
-       q="*:*", 
-       fl="id,a_s,a_i,a_f", 
-       sort="a_f asc, a_i asc") 
+       qt="/export",
+       q="*:*",
+       fl="id,a_s,a_i,a_f",
+       sort="a_f asc, a_i asc")
 ----
 
-// OLD_CONFLUENCE_ID: StreamingExpressions-shuffle(6.6)
 
-[[StreamingExpressions-shuffle_6.6_]]
-=== shuffle (6.6)
+=== shuffle
+//TODO
 
 [[StreamingExpressions-jdbc]]
 === jdbc
@@ -172,7 +172,7 @@ When the JDBC stream is opened it will validate that a driver can be found for t
 
 Due to the inherent differences in datatypes across JDBC sources the following datatypes are supported. The table indicates what Java type will be used for a given JDBC type. Types marked as requiring conversion will go through a conversion for each value of that type. For performance reasons the cell data types are only considered when the stream is opened as this is when the converters are created.
 
-[width="100%",cols="34%,33%,33%",options="header",]
+[width="100%",options="header",]
 |===
 |JDBC Type |Java Type |Requires Conversion
 |String |String |No
@@ -189,11 +189,11 @@ Due to the inherent differences in datatypes across JDBC sources the following d
 
 A basic `jdbc` expression:
 
-[source,java]
+[source,text]
 ----
 jdbc(
-    connection="jdbc:hsqldb:mem:.", 
-    sql="select NAME, ADDRESS, EMAIL, AGE from PEOPLE where AGE > 25 order by AGE, NAME DESC", 
+    connection="jdbc:hsqldb:mem:.",
+    sql="select NAME, ADDRESS, EMAIL, AGE from PEOPLE where AGE > 25 order by AGE, NAME DESC",
     sort="AGE asc, NAME desc",
     driver="org.hsqldb.jdbcDriver"
 )
@@ -201,12 +201,12 @@ jdbc(
 
 A `jdbc` expression that passes a property to the driver:
 
-[source,java]
+[source,text]
 ----
 // get_column_name is a property to pass to the hsqldb driver
 jdbc(
-    connection="jdbc:hsqldb:mem:.", 
-    sql="select NAME as FIRST_NAME, ADDRESS, EMAIL, AGE from PEOPLE where AGE > 25 order by AGE, NAME DESC", 
+    connection="jdbc:hsqldb:mem:.",
+    sql="select NAME as FIRST_NAME, ADDRESS, EMAIL, AGE from PEOPLE where AGE > 25 order by AGE, NAME DESC",
     sort="AGE asc, NAME desc",
     driver="org.hsqldb.jdbcDriver",
     get_column_name="false"
@@ -233,21 +233,21 @@ The `facet` function provides aggregations that are rolled up over buckets. Unde
 
 Example 1:
 
-[source,java]
+[source,text]
 ----
-facet(collection1, 
-      q="*:*", 
+facet(collection1,
+      q="*:*",
       buckets="a_s",
       bucketSorts="sum(a_i) desc",
       bucketSizeLimit=100,
-      sum(a_i), 
-      sum(a_f), 
-      min(a_i), 
-      min(a_f), 
-      max(a_i), 
+      sum(a_i),
+      sum(a_f),
+      min(a_i),
+      min(a_f),
+      max(a_i),
       max(a_f),
-      avg(a_i), 
-      avg(a_f), 
+      avg(a_i),
+      avg(a_f),
       count(*))
 ----
 
@@ -255,21 +255,21 @@ The example above shows a facet function with rollups over a single bucket, wher
 
 Example 2:
 
-[source,java]
+[source,text]
 ----
-facet(collection1, 
-      q="*:*", 
+facet(collection1,
+      q="*:*",
       buckets="year_i, month_i, day_i",
       bucketSorts="year_i desc, month_i desc, day_i desc",
       bucketSizeLimit=100,
-      sum(a_i), 
-      sum(a_f), 
-      min(a_i), 
-      min(a_f), 
-      max(a_i), 
+      sum(a_i),
+      sum(a_f),
+      min(a_i),
+      min(a_f),
+      max(a_i),
       max(a_f),
-      avg(a_i), 
-      avg(a_f), 
+      avg(a_i),
+      avg(a_f),
       count(*))
 ----
 
@@ -278,7 +278,7 @@ The example above shows a facet function with rollups over three buckets, where 
 [[StreamingExpressions-features]]
 === features
 
-The `features` function extracts the key terms from a text field in a classification training set stored in a SolrCloud collection. It uses an algorithm known as **Information Gain**, to select the important terms from the training set. The `features` function was designed to work specifically with the <<StreamingExpressions-train,train>> function, which uses the extracted features to train a text classifier.
+The `features` function extracts the key terms from a text field in a classification training set stored in a SolrCloud collection. It uses an algorithm known as * Information Gain* , to select the important terms from the training set. The `features` function was designed to work specifically with the <<StreamingExpressions-train,train>> function, which uses the extracted features to train a text classifier.
 
 The `features` function is designed to work with a training set that provides both positive and negative examples of a class. It emits a tuple for each feature term that is extracted along with the inverse document frequency (IDF) for the term in the training set.
 
@@ -298,13 +298,13 @@ The `features` function uses a query to select the training set from a collectio
 [[StreamingExpressions-Syntax.3]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-features(collection1, 
-         q="*:*", 
-         featureSet="features1", 
-         field="body", 
-         outcome="out_i", 
+features(collection1,
+         q="*:*",
+         featureSet="features1",
+         field="body",
+         outcome="out_i",
          numTerms=250)
 ----
 
@@ -346,11 +346,11 @@ The storage format of the models in Solr is below. The `train` function outputs 
 [[StreamingExpressions-Syntax.4]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-model(modelCollection, 
+model(modelCollection,
       id="myModel"
-      cacheMillis="200000") 
+      cacheMillis="200000")
 ----
 
 [[StreamingExpressions-random]]
@@ -370,12 +370,12 @@ The `random` function searches a SolrCloud collection and emits a pseudo-random 
 [[StreamingExpressions-Syntax.5]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-random(baskets, 
-       q="productID:productX", 
-       rows="100", 
-       fl="basketID") 
+random(baskets,
+       q="productID:productX",
+       rows="100",
+       fl="basketID")
 ----
 
 In the example above the `random` function is searching the baskets collections for all rows where "productID:productX". It will return 100 pseudo-random results. The field list returned is the basketID.
@@ -398,10 +398,10 @@ The `significantTerms` function queries a SolrCloud collection, but instead of r
 [[StreamingExpressions-Syntax.6]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-significantTerms(collection1, 
-                 q="body:Solr", 
+significantTerms(collection1,
+                 q="body:Solr",
                  minDocFreq="10",
                  maxDocFreq=".20",
                  minTermLength="5")
@@ -429,21 +429,21 @@ The `shortestPath` function is an implementation of a shortest path graph traver
 [[StreamingExpressions-Syntax.7]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-shortestPath(collection, 
-             from="john@company.com", 
+shortestPath(collection,
+             from="john@company.com",
              to="jane@company.com",
              edge="from_address=to_address",
              threads="6",
-             partitionSize="300", 
-             fq="limiting query", 
+             partitionSize="300",
+             fq="limiting query",
              maxDepth="4")
 ----
 
 The expression above performs a breadth-first search to find the shortest paths in an unweighted, directed graph.
 
-The search starts from the nodeID "john@company.com" in the `from_address` field and searches for the nodeID "jane@company.com" in the `to_address` field. This search is performed iteratively until the `maxDepth` has been reached. Each level in the traversal is implemented as a parallel partitioned nested loop join across the entire collection. The `threads` parameter controls the number of threads performing the join at each level, while the `partitionSize` parameter controls the of number of nodes in each join partition. The `maxDepth` parameter controls the number of levels to traverse. `fq` is a limiting query applied to each level in the traversal.
+The search starts from the nodeID "\john@company.com" in the `from_address` field and searches for the nodeID "\jane@company.com" in the `to_address` field. This search is performed iteratively until the `maxDepth` has been reached. Each level in the traversal is implemented as a parallel partitioned nested loop join across the entire collection. The `threads` parameter controls the number of threads performing the join at each level, while the `partitionSize` parameter controls the of number of nodes in each join partition. The `maxDepth` parameter controls the number of levels to traverse. `fq` is a limiting query applied to each level in the traversal.
 
 [[StreamingExpressions-stats]]
 === stats
@@ -460,23 +460,25 @@ The `stats` function gathers simple aggregations for a search result set. The st
 [[StreamingExpressions-Syntax.8]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-stats(collection1, 
-      q=*:*, 
-      sum(a_i), 
-      sum(a_f), 
-      min(a_i), 
-      min(a_f), 
-      max(a_i), 
-      max(a_f), 
-      avg(a_i), 
-      avg(a_f), 
+stats(collection1,
+      q=*:*,
+      sum(a_i),
+      sum(a_f),
+      min(a_i),
+      min(a_f),
+      max(a_i),
+      max(a_f),
+      avg(a_i),
+      avg(a_f),
       count(*))
 ----
 
 [[StreamingExpressions-timeseries]]
 === timeseries
+
+//TODO
 
 [[StreamingExpressions-train]]
 === train
@@ -501,7 +503,7 @@ With each iteration the `train` function emits a tuple with the model. The model
 [[StreamingExpressions-Syntax.9]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 train(collection1,
       features(collection1, q="*:*", featureSet="first", field="body", outcome="out_i", numTerms=250),
@@ -519,9 +521,7 @@ The `topic` function provides publish/subscribe messaging capabilities built on 
 
 [WARNING]
 ====
-
 The topic function should be considered in beta until https://issues.apache.org/jira/browse/SOLR-8709[SOLR-8709] is committed and released.
-
 ====
 
 [[StreamingExpressions-Parameters.10]]
@@ -537,13 +537,13 @@ The topic function should be considered in beta until https://issues.apache.org/
 [[StreamingExpressions-Syntax.10]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 topic(checkpointCollection,
       collection,
-      id="uniqueId", 
+      id="uniqueId",
       q="topic query",
-      fl="id, name, country") 
+      fl="id, name, country")
 ----
 
 [[StreamingExpressions-StreamDecorators]]
@@ -553,11 +553,11 @@ Stream decorators wrap other stream functions or perform operations on the strea
 
 // OLD_CONFLUENCE_ID: StreamingExpressions-cartesianProduct(6.6)
 
-[[StreamingExpressions-cartesianProduct_6.6_]]
-=== cartesianProduct (6.6)
+=== cartesianProduct
+//TODO
 
-[[StreamingExpressions-cell]]
 === cell
+//TODO
 
 [[StreamingExpressions-classify]]
 === classify
@@ -566,9 +566,9 @@ The `classify` function classifies tuples using a logistic regression text class
 
 Each tuple that is classified is assigned two scores:
 
-**probability_d**: A float between 0 and 1 which describes the probability that the tuple belongs to the class. This is useful in the classification use case.
+* probability_d* : A float between 0 and 1 which describes the probability that the tuple belongs to the class. This is useful in the classification use case.
 
-**score_d**: The score of the document that has not be squashed between 0 and 1. The score may be positive or negative. The higher the score the better the document fits the class. This un-squashed score will be useful in query re-ranking and recommendation use cases. This score is particularly useful when multiple high ranking documents have a probability_d score of 1, which won't provide a meaningful ranking between documents.
+* score_d* : The score of the document that has not be squashed between 0 and 1. The score may be positive or negative. The higher the score the better the document fits the class. This un-squashed score will be useful in query re-ranking and recommendation use cases. This score is particularly useful when multiple high ranking documents have a probability_d score of 1, which won't provide a meaningful ranking between documents.
 
 [[StreamingExpressions-Parameters.11]]
 ==== Parameters
@@ -578,16 +578,16 @@ Each tuple that is classified is assigned two scores:
 * `analyzerField`: (Optional) Specifies a different field to find the analyzer from in the schema.
 
 [[StreamingExpressions-Syntax.11]]
-==== *Syntax*
+==== Syntax
 
-[source,java]
+[source,text]
 ----
-classify(model(modelCollection, 
-             id="model1", 
-             cacheMillis=5000), 
-         search(contentCollection, 
-             q="id:(a b c)", 
-             fl="text_t, id", 
+classify(model(modelCollection,
+             id="model1",
+             cacheMillis=5000),
+         search(contentCollection,
+             q="id:(a b c)",
+             fl="text_t, id",
              sort="id asc"),
              field="text_t")
 ----
@@ -612,14 +612,14 @@ The `commit` function wraps a single stream (A) and given a collection and batch
 [[StreamingExpressions-Syntax.12]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 commit(
-    destinationCollection, 
-    batchSize=2, 
+    destinationCollection,
+    batchSize=2,
     update(
-        destinationCollection, 
-        batchSize=5, 
+        destinationCollection,
+        batchSize=5,
         search(collection1, q=*:*, fl="id,a_s,a_i,a_f,s_multi,i_multi", sort="a_f asc, a_i asc")
     )
 )
@@ -640,14 +640,14 @@ The `complement` function wraps two streams (A and B) and emits tuples from A wh
 [[StreamingExpressions-Syntax.13]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 complement(
   search(collection1, q=a_s:(setA || setAB), fl="id,a_s,a_i", sort="a_i asc, a_s asc"),
   search(collection1, q=a_s:(setB || setAB), fl="id,a_s,a_i", sort="a_i asc"),
   on="a_i"
 )
- 
+
 complement(
   search(collection1, q=a_s:(setA || setAB), fl="id,a_s,a_i", sort="a_i asc, a_s asc"),
   search(collection1, q=a_s:(setB || setAB), fl="id,a_s,a_i", sort="a_i asc, a_s asc"),
@@ -661,7 +661,7 @@ complement(
 The `daemon` function wraps another function and runs it at intervals using an internal thread. The `daemon` function can be used to provide both continuous push and pull streaming.
 
 [[StreamingExpressions-Continuouspushstreaming]]
-==== Continuous push streaming
+==== Continuous Push Streaming
 
 With continuous push streaming the `daemon` function wraps another function and is then sent to the `/stream` handler for execution. The `/stream` handler recognizes the `daemon` function and keeps it resident in memory, so it can run its internal function at intervals.
 
@@ -670,17 +670,17 @@ In order to facilitate the pushing of tuples, the `daemon` function must wrap an
 [[StreamingExpressions-Syntax.14]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
-daemon(id="uniqueId", 
+daemon(id="uniqueId",
        runInterval="1000",
        terminate="true",
-       update(destinationCollection, 
-              batchSize=100, 
-              topic(checkpointCollection, 
-                    topicCollection, 
-                    q="topic query", 
-                    fl="id, title, abstract, text", 
+       update(destinationCollection,
+              batchSize=100,
+              topic(checkpointCollection,
+                    topicCollection,
+                    q="topic query",
+                    fl="id, title, abstract, text",
                     id="topicId",
                     initialCheckpoint=0)
                )
@@ -695,28 +695,28 @@ Push streaming can also be used for continuous background aggregation scenarios 
 
 The `/stream` handler supports a small set commands for listing and controlling daemon functions:
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/collection/stream?action=list
 ----
 
 This command will provide a listing of the current daemon's running on the specific node along with there current state.
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/collection/stream?action=stop&id=daemonId
 ----
 
 This command will stop a specific daemon function but leave it resident in memory.
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/collection/stream?action=start&id=daemonId
 ----
 
 This command will start a specific daemon function that has been stopped.
 
-[source,java]
+[source,text]
 ----
 http://localhost:8983/collection/stream?action=kill&id=daemonId
 ----
@@ -724,7 +724,7 @@ http://localhost:8983/collection/stream?action=kill&id=daemonId
 This command will stop a specific daemon function and remove it from memory.
 
 [[StreamingExpressions-ContinousPullStreaming]]
-==== Continous Pull Streaming
+==== Continuous Pull Streaming
 
 The {solr-javadocs}/solr-solrj/org/apache/solr/client/solrj/io/stream/DaemonStream.html[DaemonStream] java class (part of the SolrJ libraries) can also be embedded in a java application to provide continuous pull streaming. Sample code:
 
@@ -734,42 +734,42 @@ StreamContext context = new StreamContext()
 SolrClientCache cache = new SolrClientCache();
 context.setSolrClientCache(cache);
 
-Map topicQueryParams = new HashMap();  
+Map topicQueryParams = new HashMap();
 topicQueryParams.put("q","hello");  // The query for the topic
 topicQueryparams.put("rows", "500"); // How many rows to fetch during each run
-topicQueryparams.put("fl", "id, "title"); // The field list to return with the documents
+topicQueryparams.put("fl", "id", "title"); // The field list to return with the documents
 
-TopicStream topicStream = new TopicStream(zkHost,        // Host address for the zookeeper service housing the collections 
+TopicStream topicStream = new TopicStream(zkHost,        // Host address for the zookeeper service housing the collections
                                          "checkpoints",  // The collection to store the topic checkpoints
                                          "topicData",    // The collection to query for the topic records
                                          "topicId",      // The id of the topic
                                          -1,             // checkpoint every X tuples, if set -1 it will checkpoint after each run.
                                           topicQueryParams); // The query parameters for the TopicStream
 
-DaemonStream daemonStream = new DaemonStream(topicStream,             // The underlying stream to run. 
+DaemonStream daemonStream = new DaemonStream(topicStream,             // The underlying stream to run.
                                              "daemonId",              // The id of the daemon
                                              1000,                    // The interval at which to run the internal stream
                                              500);                    // The internal queue size for the daemon stream. Tuples will be placed in the queue
                                                                       // as they are read by the internal internal thread.
                                                                       // Calling read() on the daemon stream reads records from the internal queue.
-                                                                       
+
 daemonStream.setStreamContext(context);
 
 daemonStream.open();
- 
+
 //Read until it's time to shutdown the DaemonStream. You can define the shutdown criteria.
 while(!shutdown()) {
     Tuple tuple = daemonStream.read() // This will block until tuples become available from the underlying stream (TopicStream)
                                       // The EOF tuple (signaling the end of the stream) will never occur until the DaemonStream has been shutdown.
     //Do something with the tuples
 }
- 
+
 // Shutdown the DaemonStream.
 daemonStream.shutdown();
- 
+
 //Read the DaemonStream until the EOF Tuple is found.
 //This allows the underlying stream to perform an orderly shutdown.
- 
+
 while(true) {
     Tuple tuple = daemonStream.read();
     if(tuple.EOF) {
@@ -784,6 +784,8 @@ daemonStream.close();
 
 [[StreamingExpressions-eval]]
 === eval
+
+//todo
 
 [[StreamingExpressions-executor]]
 === executor
@@ -803,15 +805,15 @@ This model allows for asynchronous execution of jobs where the output is stored 
 [[StreamingExpressions-Syntax.15]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 daemon(id="myDaemon",
        terminate="true",
-       executor(threads=10, 
+       executor(threads=10,
                 topic(checkpointCollection
                       storedExpressions,
-                      q="*:*", 
-                      fl="id, expr_s", 
+                      q="*:*",
+                      fl="id, expr_s",
                       initialCheckPoint=0,
                       id="myTopic")))
 ----
@@ -835,12 +837,12 @@ The `fetch` function iterates a stream and fetches additional fields and adds th
 [[StreamingExpressions-Syntax.16]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 fetch(addresses,
       search(people, q="*:*", fl="username, firstName, lastName", sort="username asc"),
       fl="streetAddress, city, state, country, zip",
-      on="username=userId") 
+      on="username=userId")
 ----
 
 The example above fetches addresses for users by matching the username in the tuple with the userId field in the addresses collection.
@@ -848,32 +850,32 @@ The example above fetches addresses for users by matching the username in the tu
 [[StreamingExpressions-having]]
 === having
 
-The `having` expression wraps a stream and applies a boolean operation to each tuple. It emits only tuples for which the boolean operation returns **true**.
+The `having` expression wraps a stream and applies a boolean operation to each tuple. It emits only tuples for which the boolean operation returns *true*.
 
 [[StreamingExpressions-Parameters.16]]
 ==== Parameters
 
 * `StreamExpression`: (Mandatory) The stream source for the having function.
-* `booleanEvaluator`: (Madatory) The following boolean operations are supported: *eq* (equals), *gt* (greater than), *lt* (less than), *gteq* (greater than or equal to), *lteq* (less than or equal to), **and**, *or, eor* (exclusive or), and **not**. Boolean evaluators can be nested with other evaluators to form complex boolean logic.
+* `booleanEvaluator`: (Madatory) The following boolean operations are supported: *eq* (equals), *gt* (greater than), *lt* (less than), *gteq* (greater than or equal to), *lteq* (less than or equal to), *and*, *or, eor* (exclusive or), and *not*. Boolean evaluators can be nested with other evaluators to form complex boolean logic.
 
-The comparison evaluators compare the value in a specific field with a value, whether a string, number, or boolean. For example: **eq**(field1, 10), returns true if *field1* is equal to 10.
+The comparison evaluators compare the value in a specific field with a value, whether a string, number, or boolean. For example: *eq*(field1, 10), returns true if *field1* is equal to 10.
 
 [[StreamingExpressions-Syntax.17]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 having(rollup(over=a_s,
-              sum(a_i), 
-              search(collection1, 
-                     q=*:*, 
-                     fl="id,a_s,a_i,a_f", 
-                     sort="a_s asc")), 
+              sum(a_i),
+              search(collection1,
+                     q=*:*,
+                     fl="id,a_s,a_i,a_f",
+                     sort="a_s asc")),
        and(gt(sum(a_i), 100), lt(sum(a_i), 110)))
- 
+
 ----
 
-In this example, the `having` expression iterates the aggregated tuples from the `rollup` expression and emits all tuples where the field 'sum(a_i)' is greater then 100 and less then 110.
+In this example, the `having` expression iterates the aggregated tuples from the `rollup` expression and emits all tuples where the field `sum(a_i)` is greater then 100 and less then 110.
 
 [[StreamingExpressions-leftOuterJoin]]
 === leftOuterJoin
@@ -892,7 +894,7 @@ You can wrap the incoming streams with a `select` function to be specific about 
 [[StreamingExpressions-Syntax.18]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 leftOuterJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
@@ -905,7 +907,7 @@ leftOuterJoin(
   search(pets, q=type:cat, fl="ownerId,petName", sort="ownerId asc"),
   on="personId=ownerId"
 )
- 
+
 leftOuterJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
   select(
@@ -936,7 +938,7 @@ The hashJoin function can be used when the tuples of Left and Right cannot be pu
 [[StreamingExpressions-Syntax.19]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 hashJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
@@ -949,7 +951,7 @@ hashJoin(
   hashed=search(pets, q=type:cat, fl="ownerId,petName", sort="ownerId asc"),
   on="personId=ownerId"
 )
- 
+
 hashJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
   hashed=select(
@@ -976,7 +978,7 @@ Wraps two streams Left and Right and for every tuple in Left which exists in Rig
 [[StreamingExpressions-Syntax.20]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 innerJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
@@ -989,7 +991,7 @@ innerJoin(
   search(pets, q=type:cat, fl="ownerId,petName", sort="ownerId asc"),
   on="personId=ownerId"
 )
- 
+
 innerJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
   select(
@@ -1016,14 +1018,14 @@ The `intersect` function wraps two streams, A and B, and emits tuples from A whi
 [[StreamingExpressions-Syntax.21]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 intersect(
   search(collection1, q=a_s:(setA || setAB), fl="id,a_s,a_i", sort="a_i asc, a_s asc"),
   search(collection1, q=a_s:(setB || setAB), fl="id,a_s,a_i", sort="a_i asc"),
   on="a_i"
 )
- 
+
 intersect(
   search(collection1, q=a_s:(setA || setAB), fl="id,a_s,a_i", sort="a_i asc, a_s asc"),
   search(collection1, q=a_s:(setB || setAB), fl="id,a_s,a_i", sort="a_i asc, a_s asc"),
@@ -1047,47 +1049,48 @@ The `merge` function merges two or more streaming expressions and maintains the 
 [[StreamingExpressions-Syntax.22]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 # Merging two stream expressions together
 merge(
-      search(collection1, 
-             q="id:(0 3 4)", 
-             fl="id,a_s,a_i,a_f", 
+      search(collection1,
+             q="id:(0 3 4)",
+             fl="id,a_s,a_i,a_f",
              sort="a_f asc"),
-      search(collection1, 
-             q="id:(1)", 
-             fl="id,a_s,a_i,a_f", 
+      search(collection1,
+             q="id:(1)",
+             fl="id,a_s,a_i,a_f",
              sort="a_f asc"),
-      on="a_f asc") 
+      on="a_f asc")
 ----
 
-[source,py]
+[source,text]
 ----
-# Merging four stream expressions together. Notice that while the sorts of each stream are not identical they are 
+# Merging four stream expressions together. Notice that while the sorts of each stream are not identical they are
 # comparable. That is to say the first N fields in each stream's sort matches the N fields in the merge's on clause.
 merge(
-      search(collection1, 
-             q="id:(0 3 4)", 
-             fl="id,fieldA,fieldB,fieldC", 
+      search(collection1,
+             q="id:(0 3 4)",
+             fl="id,fieldA,fieldB,fieldC",
              sort="fieldA asc, fieldB desc"),
-      search(collection1, 
-             q="id:(1)", 
-             fl="id,fieldA", 
+      search(collection1,
+             q="id:(1)",
+             fl="id,fieldA",
              sort="fieldA asc"),
-      search(collection2, 
-             q="id:(10 11 13)", 
-             fl="id,fieldA,fieldC", 
+      search(collection2,
+             q="id:(10 11 13)",
+             fl="id,fieldA,fieldC",
              sort="fieldA asc"),
-      search(collection3, 
-             q="id:(987)", 
-             fl="id,fieldA,fieldC", 
+      search(collection3,
+             q="id:(987)",
+             fl="id,fieldA,fieldC",
              sort="fieldA asc"),
-      on="fieldA asc") 
+      on="fieldA asc")
 ----
 
 [[StreamingExpressions-list]]
 === list
+// TODO
 
 [[StreamingExpressions-null]]
 === null
@@ -1108,12 +1111,12 @@ The null expression can be wrapped by the parallel function and sent to worker n
 [[StreamingExpressions-Syntax.23]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
- parallel(workerCollection, 
+ parallel(workerCollection,
           null(search(collection1, q=*:*, fl="id,a_s,a_i,a_f", sort="a_s desc", qt="/export", partitionKeys="a_s")),
-          workers="20", 
-          zkHost="localhost:9983", 
+          workers="20",
+          zkHost="localhost:9983",
           sort="a_s desc")
 ----
 
@@ -1138,7 +1141,7 @@ The outerHashJoin stream can be used when the tuples of Left and Right cannot be
 [[StreamingExpressions-Syntax.24]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 outerHashJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
@@ -1151,7 +1154,7 @@ outerHashJoin(
   hashed=search(pets, q=type:cat, fl="ownerId,petName", sort="ownerId asc"),
   on="personId=ownerId"
 )
- 
+
 outerHashJoin(
   search(people, q=*:*, fl="personId,name", sort="personId asc"),
   hashed=select(
@@ -1175,9 +1178,7 @@ The parallel function maintains the sort order of the tuples returned by the wor
 .Worker Collections
 [TIP]
 ====
-
 The worker nodes can be from the same collection as the data, or they can be a different collection entirely, even one that only exists for parallel streaming expressions. A worker collection can be any SolrCloud collection that has the `/stream` handler configured. Unlike normal SolrCloud collections, worker collections don't have to hold any data. Worker collections can be empty collections that exist only to execute streaming expressions.
-
 ====
 
 [[StreamingExpressions-Parameters.24]]
@@ -1192,14 +1193,14 @@ The worker nodes can be from the same collection as the data, or they can be a d
 [[StreamingExpressions-Syntax.25]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
- parallel(workerCollection, 
+ parallel(workerCollection,
           reduce(search(collection1, q=*:*, fl="id,a_s,a_i,a_f", sort="a_s desc", partitionKeys="a_s"),
                  by="a_s",
                  group(sort="a_f desc", n="4")),
-          workers="20", 
-          zkHost="localhost:9983", 
+          workers="20",
+          zkHost="localhost:9983",
           sort="a_s desc")
 ----
 
@@ -1225,10 +1226,10 @@ The `priority` function will only emit a batch of tasks from one of the queues e
 [[StreamingExpressions-Syntax.26]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 daemon(id="myDaemon",
-       executor(threads=10, 
+       executor(threads=10,
                 priority(topic(checkpointCollection, storedExpressions, q="priority:high", fl="id, expr_s", initialCheckPoint=0,id="highPriorityTasks"),
                          topic(checkpointCollection, storedExpressions, q="priority:low", fl="id, expr_s", initialCheckPoint=0,id="lowPriorityTasks"))))
 ----
@@ -1244,9 +1245,7 @@ Each tuple group is operated on as a single block by a pluggable reduce operatio
 
 [IMPORTANT]
 ====
-
 The reduce function relies on the sort order of the underlying stream. Accordingly the sort order of the underlying stream must be aligned with the group by field.
-
 ====
 
 [[StreamingExpressions-Parameters.26]]
@@ -1259,7 +1258,7 @@ The reduce function relies on the sort order of the underlying stream. According
 [[StreamingExpressions-Syntax.27]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 reduce(search(collection1, q=*:*, fl="id,a_s,a_i,a_f", sort="a_s asc, a_f asc"),
        by="a_s",
@@ -1284,7 +1283,7 @@ The rollup function also needs to process entire result sets in order to perform
 [[StreamingExpressions-Syntax.28]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 rollup(
    search(collection1, q=*:*, fl="a_s,a_i,a_f", qt="/export", sort="a_s asc"),
@@ -1325,7 +1324,7 @@ The `select` function wraps a streaming expression and outputs tuples containing
 [[StreamingExpressions-Syntax.29]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 // output tuples with fields teamName, wins, losses, and winPercentages where a null value for wins or losses is translated to the value of 0
 select(
@@ -1355,12 +1354,12 @@ The `sort` function wraps a streaming expression and re-orders the tuples. The s
 
 The expression below finds dog owners and orders the results by owner and pet name. Notice that it uses an efficient innerJoin by first ordering by the person/owner id and then re-orders the final output by the owner and pet names.
 
-[source,java]
+[source,text]
 ----
 sort(
   innerJoin(
     search(people, q=*:*, fl="id,name", sort="id asc"),
-    search(pets, q=type:dog, fl="owner,petName", sort="owner asc"), 
+    search(pets, q=type:dog, fl="owner,petName", sort="owner asc"),
     on="id=owner"
   ),
   by="name asc, petName asc"
@@ -1384,13 +1383,13 @@ The `top` function wraps a streaming expression and re-orders the tuples. The to
 
 The expression below finds the top 3 results of the underlying search. Notice that it reverses the sort order. The top function re-orders the results of the underlying stream.
 
-[source,java]
+[source,text]
 ----
 top(n=3,
-     search(collection1, 
+     search(collection1,
             q="*:*",
-            qt="/export", 
-            fl="id,a_s,a_i,a_f", 
+            qt="/export",
+            fl="id,a_s,a_i,a_f",
             sort="a_f desc, a_i desc"),
       sort="a_f asc, a_i asc")
 ----
@@ -1411,7 +1410,7 @@ The unique function implements a non-co-located unique algorithm. This means tha
 [[StreamingExpressions-Syntax.32]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
 unique(
   search(collection1,
@@ -1437,15 +1436,15 @@ The `update` function wraps another functions and sends the tuples to a SolrClou
 [[StreamingExpressions-Syntax.33]]
 ==== Syntax
 
-[source,java]
+[source,text]
 ----
- update(destinationCollection, 
-        batchSize=500, 
-        search(collection1, 
-               q=*:*, 
-               fl="id,a_s,a_i,a_f,s_multi,i_multi", 
+ update(destinationCollection,
+        batchSize=500,
+        search(collection1,
+               q=*:*,
+               fl="id,a_s,a_i,a_f,s_multi,i_multi",
                sort="a_f asc, a_i asc"))
- 
+
 ----
 
 The example above sends the tuples returned by the `search` function to the `destinationCollection` to be indexed.
@@ -1479,7 +1478,7 @@ The `abs` function will return the absolute value of the provided single paramet
 
 The expressions below show the various ways in which you can use the `abs` evaluator. Only one parameter is accepted. Returns a numeric value.
 
-[source,java]
+[source,text]
 ----
 abs(1) // 1, not really a good use case for it
 abs(-1) // 1, not really a good use case for it
@@ -1505,7 +1504,7 @@ The `add` function will take 2 or more numeric values and add them together. The
 
 The expressions below show the various ways in which you can use the `add` evaluator. The number and order of these parameters do not matter and is not limited except that at least two parameters are required. Returns a numeric value.
 
-[source,java]
+[source,text]
 ----
 add(1,2,3,4) // 1 + 2 + 3 + 4 == 10
 add(1,fieldA) // 1 + value of fieldA
@@ -1531,7 +1530,7 @@ The `div` function will take two numeric values and divide them. The function wi
 
 The expressions below show the various ways in which you can use the `div` evaluator. The first value will be divided by the second and as such the second cannot be 0.
 
-[source,java]
+[source,text]
 ----
 div(1,2) // 1 / 2
 div(1,fieldA) // 1 / fieldA
@@ -1554,10 +1553,10 @@ The `log` function will return the natural log of the provided single parameter.
 
 The expressions below show the various ways in which you can use the `log` evaluator. Only one parameter is accepted. Returns a numeric value.
 
-[source,java]
+[source,text]
 ----
-log(100) 
-log(add(fieldA,fieldB)) 
+log(100)
+log(add(fieldA,fieldB))
 log(fieldA)
 ----
 
@@ -1579,7 +1578,7 @@ The `mult` function will take two or more numeric values and multiply them toget
 
 The expressions below show the various ways in which you can use the `mult` evaluator. The number and order of these parameters do not matter and is not limited except that at least two parameters are required. Returns a numeric value.
 
-[source,java]
+[source,text]
 ----
 mult(1,2,3,4) // 1 * 2 * 3 * 4
 mult(1,fieldA) // 1 * value of fieldA
@@ -1607,7 +1606,7 @@ The `sub` function will take 2 or more numeric values and subtract them, from le
 
 The expressions below show the various ways in which you can use the `sub` evaluator. The number of these parameters does not matter and is not limited except that at least two parameters are required. Returns a numeric value.
 
-[source,java]
+[source,text]
 ----
 sub(1,2,3,4) // 1 - 2 - 3 - 4
 sub(1,fieldA) // 1 - value of fieldA
@@ -1618,45 +1617,57 @@ if(gt(fieldA,fieldB),sub(fieldA,fieldB),sub(fieldB,fieldA)) // if fieldA > field
 ----
 
 [[StreamingExpressions-pow]]
-=== *pow*
+=== pow
+//TODO
 
 [[StreamingExpressions-mod]]
-=== *mod*
+=== mod
+//TODO
 
 [[StreamingExpressions-ceil]]
-=== *ceil*
+==== ceil
+//TODO
 
 [[StreamingExpressions-floor]]
-=== *floor*
+=== floor
+//TODO
 
 [[StreamingExpressions-sin]]
-=== *sin*
+=== sin
+//TODO
 
 [[StreamingExpressions-asin]]
-=== *asin*
+=== asin
+//TODO
 
 [[StreamingExpressions-sinh]]
-=== *sinh*
+=== sinh
+//TODO
 
 [[StreamingExpressions-cos]]
-=== *cos*
+=== cos
+//TODO
 
 [[StreamingExpressions-acos]]
-=== *acos*
+=== acos
+//TODO
 
 [[StreamingExpressions-atan]]
-=== *atan*
+=== atan
+//TODO
 
 [[StreamingExpressions-round]]
-=== *round*
+=== round
+//TODO
 
 [[StreamingExpressions-sqrt]]
-=== *sqrt*
+=== sqrt
+//TODO
 
 [[StreamingExpressions-cbrt]]
-=== *cbrt*
+=== cbrt
 
-*and*
+=== and
 
 The `and` function will return the logical AND of at least 2 boolean parameters. The function will fail to execute if any parameters are non-boolean or null. Returns a boolean value.
 
@@ -1673,7 +1684,7 @@ The `and` function will return the logical AND of at least 2 boolean parameters.
 
 The expressions below show the various ways in which you can use the `and` evaluator. At least two parameters are required, but there is no limit to how many you can use.
 
-[source,java]
+[source,text]
 ----
 and(true,fieldA) // true && fieldA
 and(fieldA,fieldB) // fieldA && fieldB
@@ -1699,7 +1710,7 @@ The `eq` function will return whether all the parameters are equal, as per Java'
 
 The expressions below show the various ways in which you can use the `eq` evaluator.
 
-[source,java]
+[source,text]
 ----
 eq(1,2) // 1 == 2
 eq(1,fieldA) // 1 == fieldA
@@ -1725,7 +1736,7 @@ The `eor` function will return the logical exclusive or of at least two boolean 
 
 The expressions below show the various ways in which you can use the `eor` evaluator. At least two parameters are required, but there is no limit to how many you can use.
 
-[source,java]
+[source,text]
 ----
 eor(true,fieldA) // true iff fieldA is false
 eor(fieldA,fieldB) // true iff either fieldA or fieldB is true but not both
@@ -1748,7 +1759,7 @@ The `gteq` function will return whether the first parameter is greater than or e
 
 The expressions below show the various ways in which you can use the `gteq` evaluator.
 
-[source,java]
+[source,text]
 ----
 gteq(1,2) // 1 >= 2
 gteq(1,fieldA) // 1 >= fieldA
@@ -1772,7 +1783,7 @@ The `gt` function will return whether the first parameter is greater than the se
 
 The expressions below show the various ways in which you can use the `gt` evaluator.
 
-[source,java]
+[source,text]
 ----
 gt(1,2) // 1 > 2
 gt(1,fieldA) // 1 > fieldA
@@ -1797,7 +1808,7 @@ The `if` function works like a standard conditional if/then statement. If the fi
 
 The expressions below show the various ways in which you can use the `if` evaluator.
 
-[source,java]
+[source,text]
 ----
 if(fieldA,fieldB,fieldC) // if fieldA is true then fieldB else fieldC
 if(gt(fieldA,5), fieldA, 5) // if fieldA > 5 then fieldA else 5
@@ -1820,7 +1831,7 @@ The l`teq` function will return whether the first parameter is less than or equa
 
 The expressions below show the various ways in which you can use the `lteq` evaluator.
 
-[source,java]
+[source,text]
 ----
 lteq(1,2) // 1 <= 2
 lteq(1,fieldA) // 1 <= fieldA
@@ -1844,7 +1855,7 @@ The `lt` function will return whether the first parameter is less than the secon
 
 The expressions below show the various ways in which you can use the `lt` evaluator.
 
-[source,java]
+[source,text]
 ----
 lt(1,2) // 1 < 2
 lt(1,fieldA) // 1 < fieldA
@@ -1867,7 +1878,7 @@ The `not` function will return the logical NOT of a single boolean parameter. Th
 
 The expressions below show the various ways in which you can use the `not` evaluator. Only one parameter is allowed.
 
-[source,java]
+[source,text]
 ----
 not(true) // false
 not(fieldA) // true if fieldA is false else false
@@ -1892,7 +1903,7 @@ The `or` function will return the logical OR of at least 2 boolean parameters. T
 
 The expressions below show the various ways in which you can use the `or` evaluator. At least two parameters are required, but there is no limit to how many you can use.
 
-[source,java]
+[source,text]
 ----
 or(true,fieldA) // true || fieldA
 or(fieldA,fieldB) // fieldA || fieldB
@@ -1902,27 +1913,35 @@ or(fieldA,fieldB,fieldC,and(fieldD,fieldE),fieldF)
 
 [[StreamingExpressions-analyze]]
 === analyze
+//TODO
 
 [[StreamingExpressions-second]]
 === second
+//TODO
 
 [[StreamingExpressions-minute]]
 === minute
+//TODO
 
 [[StreamingExpressions-hour]]
 === hour
+//TODO
 
 [[StreamingExpressions-day]]
 === day
+//TODO
 
 [[StreamingExpressions-month]]
 === month
+//TODO
 
 [[StreamingExpressions-year]]
 === year
+//TODO
 
 [[StreamingExpressions-convert]]
 === convert
+//TODO
 
 [[StreamingExpressions-raw]]
 === raw
@@ -1939,14 +1958,15 @@ The `raw` function will return whatever raw value is the parameter. This is usef
 
 The expressions below show the various ways in which you can use the `raw` evaluator. Whatever is inside will be returned as-is. Internal evaluators are considered strings and are not evaluated.
 
-[source,java]
+[source,text]
 ----
 raw(foo) // "foo"
 raw(count(*)) // "count(*)"
 raw(45) // 45
 raw(true) // "true" (note: this returns the string "true" and not the boolean true)
-eq(raw(fieldA), fieldA) // true if the value of fieldA equals the string "fieldA" 
+eq(raw(fieldA), fieldA) // true if the value of fieldA equals the string "fieldA"
 ----
 
 [[StreamingExpressions-UUID]]
 === UUID
+//TODO
