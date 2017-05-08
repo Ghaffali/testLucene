@@ -2,6 +2,8 @@
 import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.ArrayList;
@@ -118,10 +120,21 @@ public class CheckLinksAndAnchors {
               System.err.println(file.toURI().toString() + " contains relative link w/o an '#anchor': " + href);
             }
           }
-        } catch (URISyntaxException ex) {
-          problems++;
-          System.err.println(file.toURI().toString() + " contains link w/ invalid syntax: " + href);
-          System.err.println(" ... " + ex.toString());
+        } catch (URISyntaxException uri_ex) {
+          // before reporting a problem, see if it can be parsed as a valid (absolute) URL
+          // some solr examples URLs have characters that aren't legal URI characters
+          // Example: "ipod^3.0", "foo:[*+TO+*]", etc...
+          boolean href_is_valid_absolute_url = false;
+          try {
+            // if this isn't absolute, it will fail
+            final URL ignored = new URL(href);
+            href_is_valid_absolute_url = true;
+          } catch (MalformedURLException url_ex) {
+            problems++;
+            System.err.println(file.toURI().toString() + " contains link w/ invalid syntax: " + href);
+            System.err.println(" ... as URI: " + uri_ex.toString());
+            System.err.println(" ... as URL: " + url_ex.toString());
+          }
         }
       }
     }
