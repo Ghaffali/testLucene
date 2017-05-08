@@ -181,13 +181,17 @@
        Builds site with Jekyll.
        This (for now) assumes that Jekyll (http://jekyllrb.com) is installed locally. -->
   <target name="build-site"
+          depends="-build-site,check-links-and-anchors"
+          description="Builds an HTML Site w/Jekyll and verifies the anchors+links are valid" >
+    <echo>Ready to browse site: ${build.dir}/html-site/${main-page}.html</echo>
+  </target>
+  <target name="-build-site"
           depends="build-init,build-nav-data-files"
           description="Builds an HTML Site w/Jekyll">
     <echo>Running Jekyll...</echo>
     <exec executable="jekyll" dir="${build.content.dir}">
       <arg value="build"/>
     </exec>
-    <echo>Ready to browse site: ${build.dir}/html-site/${main-page}.html</echo>
   </target>
 
   <target name="default"
