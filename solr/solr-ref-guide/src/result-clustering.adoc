@@ -195,7 +195,9 @@ An example configuration could look as shown below.
 
 The table below summarizes parameters of each clustering engine or the entire clustering component (depending where they are declared).
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`clustering` |When `true`, clustering component is enabled.
@@ -206,7 +208,9 @@ The table below summarizes parameters of each clustering engine or the entire cl
 
 At the engine declaration level, the following parameters are supported.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`carrot.algorithm` |The algorithm class.
@@ -235,7 +239,9 @@ The question of which algorithm to choose depends on the amount of traffic (STC 
 
 The clustering engine can apply clustering to the full content of (stored) fields or it can run an internal highlighter pass to extract context-snippets before clustering. Highlighting is recommended when the logical snippet field contains a lot of content (this would affect clustering performance). Highlighting can also increase the quality of clustering because the content passed to the algorithm will be more focused around the query (it will be query-specific context). The following parameters control the internal highlighter.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`carrot.produceSummary` |When `true` the clustering component will run a highlighter pass on the content of logical fields pointed to by `carrot.title` and `carrot.snippet`. Otherwise full content of those fields will be clustered.
@@ -248,7 +254,9 @@ The clustering engine can apply clustering to the full content of (stored) field
 
 As already mentioned in <<ResultClustering-PreliminaryConcepts,Preliminary Concepts>>, the clustering component clusters "documents" consisting of logical parts that need to be mapped onto physical schema of data stored in Solr. The field mapping attributes provide a connection between fields and logical document parts. Note that the content of title and snippet fields must be *stored* so that it can be retrieved at search time.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`carrot.title` |The field (alternatively comma- or space-separated list of fields) that should be mapped to the logical document's title. The clustering algorithms typically give more weight to the content of the title field compared to the content (snippet). For best results, the field should contain concise, noise-free content. If there is no clear title in your data, you can leave this parameter blank.
@@ -263,7 +271,9 @@ The field mapping specification can include a `carrot.lang` parameter, which def
 
 The language hint makes it easier for clustering algorithms to separate documents from different languages on input and to pick the right language resources for clustering. If you do have multi-lingual query results (or query results in a language different than English), it is strongly advised to map the language field appropriately.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`carrot.lang` |The field that stores ISO 639-1 code of the language of the document's text fields.

@@ -16,9 +16,9 @@ bin/solr -e techproducts
 
 The Stats Component accepts the following parameters:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |stats |If **true**, then invokes the Stats component.
@@ -92,20 +92,11 @@ The query below demonstrates computing stats against two different fields numeri
 
 The table below explains the statistics supported by the Stats component. Not all statistics are supported for all field types, and not all statistics are computed by default (See <<TheStatsComponent-LocalParameters,Local Parameters>> below for details)
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="10,10,50,20,10",options="header"]
 |===
-|Local Param |Sample Input |Description a|
-Supported
-
-Types
-
- a|
-Computed
-
-by Default
-
+|Local Param |Sample Input |Description |Supported Types |Computed by Default
 |min |true |The minimum value of the field/function in all documents in the set. |All |Yes
 |max |true |The maximum value of the field/function in all documents in the set. |All |Yes
 |sum |true |The sum of all values of the field/function in all documents in the set. |Numeric & Date |Yes
@@ -133,9 +124,7 @@ Local parameters can also be used to specify individual statistics by name, over
 
 [IMPORTANT]
 ====
-
 If any supported statistics are specified via local parameters, then the entire set of default statistics is overridden and only the requested statistics are computed.
-
 ====
 
 Additional "Expert" local params are supported in some cases for affecting the behavior of some statistics:

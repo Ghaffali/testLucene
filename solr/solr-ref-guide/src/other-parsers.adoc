@@ -162,7 +162,9 @@ The `ComplexPhraseQParser` provides support for wildcards, ORs, etc., inside phr
 
 Under the covers, this query parser makes use of the Span group of queries, e.g., spanNear, spanOr, etc., and is subject to the same limitations as that family or parsers.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`inOrder` |Set to true to force phrase queries to match terms in the order specified. Default: *true*
@@ -268,7 +270,9 @@ The `FunctionRangeQParser` extends the `QParserPlugin` and creates a range query
 
 Other parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |l |The lower bound, optional
@@ -303,7 +307,9 @@ The graph is built according to linkages between documents based on the terms fo
 [[OtherParsers-Parameters]]
 === Parameters
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |to |The field name of matching documents to inspect to identify outgoing edges for graph traversal. Defaults to `edge_ids` .
@@ -325,8 +331,7 @@ The `graph` parser only works in single node Solr installations, or with <<solrc
 
 To understand how the graph parser works, consider the following Directed Cyclic Graph, containing 8 nodes (A to H) and 9 edges (1 to 9):
 
-image::images/other-parsers/graph_qparser_example.png[image,height=400]
-
+image::images/other-parsers/graph_qparser_example.png[image,height=200]
 
 One way to model this graph as Solr documents, would be to create one document per node, with mutivalued fields identifying the incoming and outgoing edges for each node:
 
@@ -569,7 +574,9 @@ Example:
 
 This query parser takes the following parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |qf |Specifies the fields to use for similarity.
@@ -651,7 +658,9 @@ The main query, for both of these parsers, is parsed straightforwardly from the 
 
 This parser accepts the following parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`f` |Field to use (required)
@@ -673,9 +682,9 @@ Example:
 
 This parser accepts the following parameters:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`f` |Field to use (required)
@@ -746,7 +755,9 @@ This parser takes the following parameters:
 q.operators::
 Comma-separated list of names of parsing operators to enable. By default, all operations are enabled, and this parameter can be used to effectively disable specific operators as needed, by excluding them from the list. Passing an empty string with this parameter disables all operators.
 +
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,20,50,15",options="header"]
 |===
 |Name |Operator |Description |Example query
 |`AND` |`+` |Specifies AND |`token1+token2`
@@ -756,19 +767,20 @@ Comma-separated list of names of parsing operators to enable. By default, all op
 |`PHRASE` |`"` |Creates a phrase |`"term1 term2"`
 |`PRECEDENCE` |`( )` |Specifies precedence; tokens inside the parenthesis will be analyzed first. Otherwise, normal order is left to right. |`token1 + (token2 \| token3)`
 |`ESCAPE` |`\` |Put it in front of operators to match them literally |`C\+\+`
-|`WHITESPACE` |space or` [\r\t\n]` |Delimits tokens on whitespace. If not enabled, whitespace splitting will not be performed prior to analysis – usually most desirable. Not splitting whitespace is a unique feature of this parser that enables multi-word synonyms to work. However, it probably actually won't unless synonyms are configured to normalize instead of expand to all that match a given synonym. Such a configuration requires normalizing synonyms at both index time and query time. Solr's analysis screen can help here. |`term1 term2`
+|`WHITESPACE` |space or `[\r\t\n]` a|Delimits tokens on whitespace. If not enabled, whitespace splitting will not be performed prior to analysis – usually most desirable.
+
+Not splitting whitespace is a unique feature of this parser that enables multi-word synonyms to work. However, it probably actually won't unless synonyms are configured to normalize instead of expand to all that match a given synonym. Such a configuration requires normalizing synonyms at both index time and query time. Solr's analysis screen can help here. |`term1 term2`
 |`FUZZY` a|
 `~`
 
-`~N`
+`~_N_`
 
  a|
 At the end of terms, specifies a fuzzy query.
 
 "N" is optional and may be either "1" or "2" (the default)
-
- |`term~1`
-|`NEAR` |`~N` |At the end of phrases, specifies a NEAR query |`"term1 term2"~5`
+|`term~1`
+|`NEAR` |`~_N_` |At the end of phrases, specifies a NEAR query |`"term1 term2"~5`
 |===
 
 q.op::
@@ -890,7 +902,9 @@ This can be useful for generating filter queries from the external human readabl
 
 This query parser takes the following parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |f |The field on which to search. Required.
@@ -915,16 +929,22 @@ Examples:
 
 The {solr-javadocs}/solr-core/org/apache/solr/search/XmlQParserPlugin.html[XmlQParserPlugin] extends the {solr-javadocs}/solr-core/org/apache/solr/search/QParserPlugin.html[QParserPlugin] and supports the creation of queries from XML. Example:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Value
 |defType |`xmlparser`
-|q |`<BooleanQuery fieldName="description"> <Clause occurs="must"> <TermQuery>shirt</TermQuery> </Clause> <Clause occurs="mustnot"> <TermQuery>plain</TermQuery> </Clause> <Clause occurs="should"> <TermQuery>cotton</TermQuery> </Clause> <Clause occurs="must"> <BooleanQuery fieldName="size"> <Clause occurs="should"> <TermsQuery>S M L</TermsQuery> </Clause> </BooleanQuery> </Clause> </BooleanQuery>`
+|q a|
+[source,xml]
+<BooleanQuery fieldName="description"> <Clause occurs="must"> <TermQuery>shirt</TermQuery> </Clause> <Clause occurs="mustnot"> <TermQuery>plain</TermQuery> </Clause> <Clause occurs="should"> <TermQuery>cotton</TermQuery> </Clause> <Clause occurs="must"> <BooleanQuery fieldName="size"> <Clause occurs="should"> <TermsQuery>S M L</TermsQuery> </Clause> </BooleanQuery> </Clause> </BooleanQuery>
 |===
 
 The XmlQParser implementation uses the {solr-javadocs}/solr-core/org/apache/solr/search/SolrCoreParser.html[SolrCoreParser] class which extends Lucene's {lucene-javadocs}/queryparser/org/apache/lucene/queryparser/xml/CoreParser.html[CoreParser] class. XML elements are mapped to {lucene-javadocs}/queryparser/org/apache/lucene/queryparser/xml/QueryBuilder.html[QueryBuilder] classes as follows:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[width="50%",cols="30,70",options="header"]
 |===
 |XML element |QueryBuilder class
 |<BooleanQuery> |{lucene-javadocs}/queryparser/org/apache/lucene/queryparser/xml/builders/BooleanQueryBuilder.html[BooleanQueryBuilder]

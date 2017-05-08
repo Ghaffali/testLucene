@@ -41,7 +41,9 @@ If you want Solr to perform both analysis (for searching) and faceting on the fu
 
 The table below summarizes Solr's field value faceting parameters.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |<<Faceting-Thefacet.fieldParameter,facet.field>> |Identifies a field to be treated as a facet.
@@ -210,7 +212,9 @@ This param will cause loading the underlying fields used in faceting to be execu
 
 You can use Range Faceting on any date field or any numeric field that supports range queries. This is particularly useful for stitching together a series of range queries (as facet by query) for things like prices. As of Solr 3.1, Range Faceting is preferred over <<Faceting-DateFacetingParameters,Date Faceting>> (described below).
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |<<Faceting-Thefacet.rangeParameter,facet.range>> |Specifies the field to facet by range.
@@ -273,7 +277,9 @@ This parameter can be specified on a per field basis with the syntax `f.<fieldna
 
 By default, the ranges used to compute range faceting between `facet.range.start` and `facet.range.end` are inclusive of their lower bounds and exclusive of the upper bounds. The "before" range defined with the `facet.range.other` parameter is exclusive and the "after" range is inclusive. This default, equivalent to "lower" below, will not result in double counting at the boundaries. You can use the `facet.range.include` parameter to modify this behavior using the following options:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Option |Description
 |lower |All gap-based ranges include their lower bound.
@@ -295,7 +301,9 @@ To ensure you avoid double-counting, do not choose both `lower` and `upper`, do 
 
 The `facet.range.other` parameter specifies that in addition to the counts for each range constraint between `facet.range.start` and `facet.range.end`, counts should also be computed for these options:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Option |Description
 |before |All records with field values lower then lower bound of the first range.
@@ -614,7 +622,7 @@ Although `facet.pivot.mincount` deviates in name from the `facet.mincount` param
 
 * `facet.limit`
 * `facet.offset`
-* `facet.sort` <<Faceting-Thefacet.sortParameter,The facet.sort Parameter>>
+* `facet.sort`
 * `facet.overrequest.count`
 * `facet.overrequest.ratio`
 

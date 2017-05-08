@@ -47,7 +47,9 @@ Optionally, in the Query Elevation Component configuration you can also specify 
 
 The Query Elevation Search Component takes the following arguments:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Argument |Description
 |`queryFieldType` |Specifies which fieldType should be used to analyze the incoming text. For example, it may be appropriate to use a fieldType with a LowerCaseFilter.
@@ -86,23 +88,23 @@ In this example, the query "foo bar" would first return documents 1, 2 and 3, th
 
 For debugging it may be useful to see results with and without the elevated docs. To hide results, use `enableElevation=false`:
 
-`http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&enableElevation=true`
+`\http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&enableElevation=true`
 
-`http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&enableElevation=false`
+`\http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&enableElevation=false`
 
 [[TheQueryElevationComponent-TheforceElevationParameter]]
 === The `forceElevation` Parameter
 
 You can force elevation during runtime by adding `forceElevation=true` to the query URL:
 
-`http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&enableElevation=true&forceElevation=true`
+`\http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&enableElevation=true&forceElevation=true`
 
 [[TheQueryElevationComponent-TheexclusiveParameter]]
 === The `exclusive` Parameter
 
 You can force Solr to return only the results specified in the elevation file by adding `exclusive=true` to the URL:
 
-`http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&exclusive=true`
+`\http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&debugQuery=true&exclusive=true`
 
 [[TheQueryElevationComponent-DocumentTransformersandthemarkExcludesParameter]]
 === Document Transformers and the `markExcludes` Parameter
@@ -122,13 +124,13 @@ When the elevation component is in use, the pre-configured list of elevations fo
 
 For example, in the request below documents 3007WFP and 9885A004 will be elevated, and document IW-02 will be excluded -- regardless of what elevations or exclusions are configured for the query "cable" in elevate.xml:
 
-`http://localhost:8983/solr/techproducts/elevate?q=cable&df=text&excludeIds=IW-02&elevateIds=3007WFP,9885A004`
+`\http://localhost:8983/solr/techproducts/elevate?q=cable&df=text&excludeIds=IW-02&elevateIds=3007WFP,9885A004`
 
 If either one of these parameters is specified at request time, the the entire elevation configuration for the query is ignored.
 
 For example, in the request below documents IW-02 and F8V7067-APL-KIT will be elevated, and no documents will be excluded – regardless of what elevations or exclusions are configured for the query "ipod" in elevate.xml:
 
-`http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&elevateIds=IW-02,F8V7067-APL-KIT`
+`\http://localhost:8983/solr/techproducts/elevate?q=ipod&df=text&elevateIds=IW-02,F8V7067-APL-KIT`
 
 [[TheQueryElevationComponent-ThefqParameter]]
 === The `fq` Parameter

@@ -115,9 +115,9 @@ The example below shows the available request parameters for this component:
 
 `\http://localhost:8983/solr/techproducts/tvrh?q=includes:[* TO *]&rows=10&indent=true&tv=true&tv.tf=true&tv.df=true&tv.positions=true&tv.offsets=true&tv.payloads=true&tv.fl=includes`
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,60,20",options="header"]
 |===
 |Boolean Parameters |Description |Type
 |tv |Should the component run or not |boolean

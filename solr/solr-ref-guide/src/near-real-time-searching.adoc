@@ -21,7 +21,9 @@ An *optimize* is like a *hard commit* except that it forces all of the index seg
 
 Soft commit takes uses two parameters: `maxDocs` and `maxTime`.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |`maxDocs` |Integer. Defines the number of documents to queue before pushing them to the index. It works in conjunction with the `update_handler_autosoftcommit_max_time` parameter in that if either limit is reached, the documents will be pushed to the index.
@@ -51,7 +53,9 @@ It's better to use `maxTime` rather than `maxDocs` to modify an `autoSoftCommit`
 [[NearRealTimeSearching-OptionalAttributesforcommitandoptimize]]
 === Optional Attributes for `commit` and `optimize`
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,20,60",options="header"]
 |===
 |Parameter |Valid Attributes |Description
 |`waitSearcher` |true, false |Block until a new searcher is opened and registered as the main query searcher, making the changes visible. Default is true.

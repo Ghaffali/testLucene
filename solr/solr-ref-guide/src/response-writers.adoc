@@ -157,7 +157,9 @@ The default mime type for the JSON writer is `application/json`, however this ca
 
 This parameter controls the output format of NamedLists, where order is more important than access by name. NamedList is currently used for field faceting data.
 
-[cols=",,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,40,40",options="header"]
 |===
 |json.nl Parameter setting |Example output for `NamedList("a"=1, "bar"="foo", null=3, null=null)` |Description
 |flat _(the default)_ |`["a",1, "bar","foo", null,3, null,null]` |NamedList is represented as a flat array, alternating names and values.
@@ -257,7 +259,7 @@ The CSV response writer supports multi-valued fields, as well as<<transforming-r
 
 These parameters specify the CSV format that will be returned. You can accept the default values or specify your own.
 
-[width="100%",options="header",]
+[width="50%",options="header",]
 |===
 |Parameter |Default Value
 |csv.encapsulator |"
@@ -273,7 +275,7 @@ These parameters specify the CSV format that will be returned. You can accept th
 
 These parameters specify how multi-valued fields are encoded. Per-field overrides for these values can be done using `f.<fieldname>.csv.separator=|`.
 
-[width="100%",options="header",]
+[width="50%",options="header",]
 |===
 |Parameter |Default Value
 |csv.mv.encapsulator |None

@@ -43,9 +43,9 @@ If you ask Solr to group these documents by "product_range", then the total amou
 
 Result Grouping takes the following request parameters. Any number of these request parameters can be included in a single request:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,20,60",options="header"]
 |===
 |Parameter |Type |Description
 |group |Boolean |If true, query results will be grouped.
@@ -53,7 +53,7 @@ Result Grouping takes the following request parameters. Any number of these requ
 |group.func |query a|
 Group based on the unique values of a function query.
 
-*NOTE:* This option does not work with <<ResultGrouping-DistributedResultGroupingCaveats,distributed searches>>.
+NOTE: This option does not work with <<ResultGrouping-DistributedResultGroupingCaveats,distributed searches>>.
 
 |group.query |query |Return a single group of documents that match the given query.
 |rows |integer |The number of groups to return. The default value is 10.

@@ -48,9 +48,9 @@ The first step is to add a search component to `solrconfig.xml` and tell it to u
 
 The Suggester search component takes several configuration parameters. The choice of the lookup implementation (`lookupImpl`, how terms are found in the suggestion dictionary) and the dictionary implementation (`dictionaryImpl`, how terms are stored in the suggestion dictionary) will dictate some of the parameters required. Below are the main parameters that can be used no matter what lookup or dictionary implementation is used. In the following sections additional parameters are provided for each implementation.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |searchComponent name |Arbitrary name for the search component.
@@ -294,7 +294,9 @@ After adding the search component, a request handler must be added to `solrconfi
 
 The following parameters allow you to set defaults for the Suggest request handler:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |suggest=true |This parameter should always be true, because we always want to run the Suggester for queries submitted to this handler.

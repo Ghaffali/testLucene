@@ -37,9 +37,9 @@ You could add this component to another handler if you wanted to, and pass "term
 
 The parameters below allow you to control what terms are returned. You can also configure any of these with the request handler if you'd like to set them permanently. Or, you can add them to the query request. These parameters are:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,15,15,50",options="header"]
 |===
 |Parameter |Required |Default |Description
 |terms |No |false a|
@@ -154,7 +154,7 @@ All of the following sample queries work with Solr's "`bin/solr -e techproducts`
 [[TheTermsComponent-GetTop10Terms]]
 === Get Top 10 Terms
 
-This query requests the first ten terms in the name field: `http://localhost:8983/solr/techproducts/terms?terms.fl=name`
+This query requests the first ten terms in the name field: `\http://localhost:8983/solr/techproducts/terms?terms.fl=name`
 
 Results:
 
@@ -187,7 +187,7 @@ Results:
 [[TheTermsComponent-GetFirst10TermsStartingwithLetter_a_]]
 === Get First 10 Terms Starting with Letter 'a'
 
-This query requests the first ten terms in the name field, in index order (instead of the top 10 results by document count): `http://localhost:8983/solr/techproducts/terms?terms.fl=name&terms.lower=a&terms.sort=index`
+This query requests the first ten terms in the name field, in index order (instead of the top 10 results by document count): `\http://localhost:8983/solr/techproducts/terms?terms.fl=name&terms.lower=a&terms.sort=index`
 
 Results:
 
@@ -216,7 +216,7 @@ Results:
 ----
 
 [[TheTermsComponent-SolrJinvocation]]
-=== SolrJ invocation
+=== SolrJ Invocation
 
 [source,java]
 ----
@@ -238,7 +238,7 @@ Results:
 
 If the <<suggester.adoc#suggester,Suggester>> doesn't suit your needs, you can use the Terms component in Solr to build a similar feature for your own search application. Simply submit a query specifying whatever characters the user has typed so far as a prefix. For example, if the user has typed "at", the search engine's interface would submit the following query:
 
-`http://localhost:8983/solr/techproducts/terms?terms.fl=name&terms.prefix=at`
+`\http://localhost:8983/solr/techproducts/terms?terms.fl=name&terms.prefix=at`
 
 Result:
 
@@ -258,7 +258,7 @@ Result:
 </response>
 ----
 
-You can use the parameter `omitHeader=true` to omit the response header from the query response, like in this example, which also returns the response in JSON format: `http://localhost:8983/solr/techproducts/terms?terms.fl=name&terms.prefix=at&indent=true&wt=json&omitHeader=true`
+You can use the parameter `omitHeader=true` to omit the response header from the query response, like in this example, which also returns the response in JSON format: `\http://localhost:8983/solr/techproducts/terms?terms.fl=name&terms.prefix=at&indent=true&wt=json&omitHeader=true`
 
 Result:
 
@@ -281,7 +281,9 @@ Result:
 
 The TermsComponent also supports distributed indexes. For the `/terms` request handler, you must provide the following two parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |shards |Specifies the shards in your distributed indexing configuration. For more information about distributed indexing, see <<distributed-search-with-index-sharding.adoc#distributed-search-with-index-sharding,Distributed Search with Index Sharding>>.
@@ -291,5 +293,4 @@ The TermsComponent also supports distributed indexes. For the `/terms` request h
 [[TheTermsComponent-MoreResources]]
 == More Resources
 
-* https://wiki.apache.org/solr/TermsComponent[TermsComponent wiki page]
 * {solr-javadocs}/solr-core/org/apache/solr/handler/component/TermsComponent.html[TermsComponent javadoc]

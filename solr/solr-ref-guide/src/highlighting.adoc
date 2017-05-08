@@ -13,9 +13,9 @@ Highlighting is extremely configurable, perhaps more than any other part of Solr
 
 You only need to set the `hl` and often `hl.fl` parameters to get results. The following table documents these and some other supported parameters. Note that many highlighting parameters support per-field overrides, such as: `f._title_txt_.hl.snippets`
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,15,65",options="header"]
 |===
 |Parameter |Default |Description
 |hl |false |Use this parameter to enable or disable highlighting.
@@ -159,7 +159,9 @@ This adds substantial weight to the index – similar in size to the compressed 
 
 The Unified Highlighter supports these following additional parameters to the ones listed earlier:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,65",options="header"]
 |===
 |Parameter |Default |Description
 |hl.offsetSource |_(blank)_ |By default, the Unified Highlighter will usually pick the right offset source (see above). However it may be ambiguous such as during a migration from one offset source to another that hasn't completed. The offset source can be explicitly configured to one of: *ANALYSIS,* *POSTINGS*, *POSTINGS_WITH_TERM_VECTORS*, *TERM_VECTORS*
@@ -201,7 +203,9 @@ This highlighter never returns separate snippets as separate values; they are al
 
 The Original Highlighter supports these following additional parameters to the ones listed earlier:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="25,15,60",options="header"]
 |===
 |Parameter |Default |Description
 |hl.mergeContiguous |false |Instructs Solr to collapse contiguous fragments into a single fragment. A value of *true* indicates contiguous fragments will be collapsed into single fragment. The default value, *false*, is also the backward-compatible setting.
@@ -235,7 +239,9 @@ In addition to the initial listed parameters, the following parameters documente
 
 And here are additional parameters supported by the FVH:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,65",options="header"]
 |===
 |Parameter |Default |Description
 |hl.fragListBuilder |weighted |The snippet fragmenting algorithm. The *weighted* fragListBuilder uses IDF-weights to order fragments. Other options are *single*, which returns the entire field contents as one snippet, or *simple*. You can select a fragListBuilder with this parameter, or modify an existing implementation in `solrconfig.xml` to be the default by adding "default=true".
