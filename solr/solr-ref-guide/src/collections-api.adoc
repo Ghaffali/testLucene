@@ -25,7 +25,7 @@ The Collections API is used to enable you to create, remove, or reload collectio
 |shards |string |No |empty |A comma separated list of shard names, e.g., shard-x,shard-y,shard-z. This is a required parameter when using the 'implicit' router.
 |replicationFactor |integer |No |1 |The number of replicas to be created for each shard.
 |maxShardsPerNode |integer |No |1 |When creating collections, the shards and/or replicas are spread across all available (i.e., live) nodes, and two replicas of the same shard will never be on the same node. If a node is not live when the CREATE operation is called, it will not get any parts of the new collection, which could lead to too many replicas being created on a single live node. Defining `maxShardsPerNode` sets a limit on the number of replicas CREATE will spread to each node. If the entire collection can not be fit into the live nodes, no collection will be created at all.
-|createNodeSet |string |No | |Allows defining the nodes to spread the new collection across. If not provided, the CREATE operation will create shard-replica spread across all live Solr nodes. The format is a comma-separated list of node_names, such as `localhost:8983_solr,` `localhost:8984_solr,` `localhost:8985_solr`. Alternatively, use the special value of `EMPTY` to initially create no shard-replica within the new collection and then later use the <<CollectionsAPI-api_addreplica,ADDREPLICA>> operation to add shard-replica when and where required.
+|createNodeSet |string |No | |Allows defining the nodes to spread the new collection across. If not provided, the CREATE operation will create shard-replica spread across all live Solr nodes. The format is a comma-separated list of node_names, such as `localhost:8983_solr,` `localhost:8984_solr,` `localhost:8985_solr`. Alternatively, use the special value of `EMPTY` to initially create no shard-replica within the new collection and then later use the <<CollectionsAPI-addreplica,ADDREPLICA>> operation to add shard-replica when and where required.
 |createNodeSet.shuffle |boolean |No |true a|
 Controls wether or not the shard-replicas created for this collection will be assigned to the nodes specified by the createNodeSet in a sequential manner, or if the list of nodes should be shuffled prior to creating individual replicas. A 'false' value makes the results of a collection creation predictible and gives more exact control over the location of the individual shard-replicas, but 'true' can be a better choice for ensuring replicas are distributed evenly across nodes.
 
@@ -34,8 +34,8 @@ Ignored if createNodeSet is not also specified.
 |collection.configName |string |No |empty |Defines the name of the configurations (which must already be stored in ZooKeeper) to use for this collection. If not provided, Solr will default to the collection name as the configuration name.
 |router.field |string |No |empty |If this field is specified, the router will look at the value of the field in an input document to compute the hash and identify a shard instead of looking at the `uniqueKey` field. If the field specified is null in the document, the document will be rejected. Please note that <<realtime-get.adoc#realtime-get,RealTime Get>> or retrieval by id would also require the parameter `\_route_` (or `shard.keys`) to avoid a distributed search.
 |property._name_=_value_ |string |No | |Set core property _name_ to _value_. See the section <<defining-core-properties.adoc#defining-core-properties,Defining core.properties>> for details on supported properties and values.
-|autoAddReplicas |boolean |No |false |When set to true, enables auto addition of replicas on shared file systems. See the section <<running-solr-on-hdfs.adoc#RunningSolronHDFS-autoAddReplicasSettings,autoAddReplicas Settings>> for more details on settings and overrides.
-|async |string |No | |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|autoAddReplicas |boolean |No |false |When set to true, enables auto addition of replicas on shared file systems. See the section <<running-solr-on-hdfs.adoc#RunningSolronHDFS-AutomaticallyAddReplicasinSolrCloud,autoAddReplicas Settings>> for more details on settings and overrides.
+|async |string |No | |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |rule |string |No | |Replica placement rules. See the section <<rule-based-replica-placement.adoc#rule-based-replica-placement,Rule-based Replica Placement>> for details.
 |snitch |string |No | |Details of the snitch provider. See the section <<rule-based-replica-placement.adoc#rule-based-replica-placement,Rule-based Replica Placement>> for details.
 |===
@@ -110,7 +110,7 @@ The attributes that can be modified are:
 * rule
 * snitch
 
-See the <<CollectionsAPI-api1,CREATE>> section above for details on these attributes.
+See the <<CollectionsAPI-create,CREATE>> section above for details on these attributes.
 
 |===
 
@@ -130,7 +130,7 @@ The RELOAD action is used when you have changed a configuration in ZooKeeper.
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The name of the collection to reload.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Output.1]]
@@ -189,7 +189,7 @@ One can also specify an optional `ranges` parameter to divide the original shard
 
 Another optional parameter `split.key` can be used to split a shard using a route key such that all documents of the specified route key end up in a single dedicated sub-shard. Providing the 'shard' parameter is not required in this case because the route key is enough to figure out the right shard. A route key which spans more than one shard is not supported. For example, suppose `split.key=A!` hashes to the range 12-15 and belongs to shard 'shard1' with range 0-20 then splitting by this route key would yield three sub-shards with ranges 0-11, 12-15 and 16-20. Note that the sub-shard with the hash range of the route key may also contain documents for other route keys whose hash ranges overlap.
 
-Shard splitting can be a long running process. In order to avoid timeouts, you should run this as an <<CollectionsAPI-AsynchronousCalls,asynchronous call>>.
+Shard splitting can be a long running process. In order to avoid timeouts, you should run this as an <<CollectionsAPI-async,asynchronous call>>.
 
 [[CollectionsAPI-Input.2]]
 === Input
@@ -204,7 +204,7 @@ Shard splitting can be a long running process. In order to avoid timeouts, you s
 |ranges |string |No |A comma-separated list of hash ranges in hexadecimal, such as `ranges=0-1f4,1f5-3e8,3e9-5dc`.
 |split.key |string |No |The key to use for splitting the index.
 |property._name_=_value_ |string |No |Set core property _name_ to _value_. See the section <<defining-core-properties.adoc#defining-core-properties,Defining core.properties>> for details on supported properties and values.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>
 |===
 
 [[CollectionsAPI-Output.2]]
@@ -305,7 +305,7 @@ Shards can only created with this API for collections that use the 'implicit' ro
 |shard |string |Yes |The name of the shard to be created.
 |createNodeSet |string |No |Allows defining the nodes to spread the new collection across. If not provided, the CREATE operation will create shard-replica spread across all live Solr nodes. The format is a comma-separated list of node_names, such as `localhost:8983_solr,` `localhost:8984_solr,` `localhost:8985_solr`.
 |property._name_=_value_ |string |No |Set core property _name_ to _value_. See the section <<defining-core-properties.adoc#defining-core-properties,Defining core.properties>> for details on supported properties and values.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Output.3]]
@@ -357,7 +357,7 @@ Deleting a shard will unload all replicas of the shard, remove them from `cluste
 |deleteInstanceDir |boolean |No |By default Solr will delete the entire instanceDir of each replica that is deleted. Set this to `false` to prevent the instance directory from being deleted.
 |deleteDataDir |boolean |No |By default Solr will delete the dataDir of each replica that is deleted. Set this to `false` to prevent the data directory from being deleted.
 |deleteIndex |boolean |No |By default Solr will delete the index of each replica that is deleted. Set this to `false` to prevent the index directory from being deleted.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Output.4]]
@@ -414,7 +414,7 @@ The `CREATEALIAS` action will create a new alias pointing to one or more collect
 |Key |Type |Required |Description
 |name |string |Yes |The alias name to be created.
 |collections |string |Yes |The list of collections to be aliased, separated by commas. They must already exist in the cluster.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Output.5]]
@@ -460,7 +460,7 @@ http://localhost:8983/solr/admin/collections?action=CREATEALIAS&name=testalias&c
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The name of the alias to delete.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Output.6]]
@@ -506,7 +506,7 @@ http://localhost:8983/solr/admin/collections?action=DELETEALIAS&name=testalias
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The name of the collection to delete.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Output.7]]
@@ -575,7 +575,7 @@ Delete a named replica from the specified collection and shard. If the correspon
 |deleteDataDir |boolean |No |By default Solr will delete the dataDir of the replica that is deleted. Set this to `false` to prevent the data directory from being deleted.
 |deleteIndex |boolean |No |By default Solr will delete the index of the replica that is deleted. Set this to `false` to prevent the index directory from being deleted.
 |onlyIfDown |boolean |No |When set to 'true' will not take any action if the replica is active. Default 'false'
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Examples.8]]
@@ -632,7 +632,7 @@ Ignored if the shard param is also specified.
 |instanceDir |string |No |The instanceDir for the core that will be created
 |dataDir |string |No |The directory in which the core should be created
 |property._name_=_value_ |string |No |Set core property _name_ to _value_. See <<defining-core-properties.adoc#defining-core-properties,Defining core.properties>>.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>
 |===
 
 [[CollectionsAPI-Examples.9]]
@@ -740,7 +740,7 @@ Please note that the migrate API does not perform any de-duplication on the docu
 |split.key |string |Yes |The routing key prefix. For example, if uniqueKey is a!123, then you would use `split.key=a!`.
 |forward.timeout |int |No |The timeout, in seconds, until which write requests made to the source collection for the given `split.key` will be forwarded to the target shard. The default is 60 seconds.
 |property._name_=_value_ |string |No |Set core property _name_ to _value_. See the section <<defining-core-properties.adoc#defining-core-properties,Defining core.properties>> for details on supported properties and values.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-Output.9]]
@@ -1178,7 +1178,7 @@ http://localhost:8983/solr/admin/collections?action=clusterstatus&wt=json
 [[CollectionsAPI-requeststatus]]
 == REQUESTSTATUS: Request Status of an Async Call
 
-Request the status and response of an already submitted <<CollectionsAPI-AsynchronousCalls,Asynchronous Collection API>> (below) call. This call is also used to clear up the stored statuses.
+Request the status and response of an already submitted <<CollectionsAPI-async,Asynchronous Collection API>> (below) call. This call is also used to clear up the stored statuses.
 
 `/admin/collections?action=REQUESTSTATUS&requestid=_request-id_`
 
@@ -1245,7 +1245,7 @@ http://localhost:8983/solr/admin/collections?action=REQUESTSTATUS&requestid=1004
 [[CollectionsAPI-deletestatus]]
 == DELETESTATUS: Delete Status
 
-Delete the stored response of an already failed or completed <<CollectionsAPI-AsynchronousCalls,Asynchronous Collection API>> call.
+Delete the stored response of an already failed or completed <<CollectionsAPI-async,Asynchronous Collection API>> call.
 
 `/admin/collections?action=DELETESTATUS&requestid=_request-id_`
 
@@ -1690,7 +1690,7 @@ A expert level utility API to move a collection from shared `clusterstate.json` 
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection to be migrated from `clusterstate.json` to its own `state.json` zookeeper node
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 This API is useful in migrating any collections created prior to Solr 5.0 to the more scalable cluster state format now used by default. If a collection was created in any Solr 5.x version or higher, then executing this command is not necessary.
@@ -1713,8 +1713,8 @@ The backup command will backup Solr indexes and configurations for a specified c
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection that needs to be backed up
-|location |string |No |The location on the shared drive for the backup command to write to. Alternately it can be set as a <<CollectionsAPI-api11,cluster property>>
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>
+|location |string |No |The location on the shared drive for the backup command to write to. Alternately it can be set as a <<CollectionsAPI-clusterprop,cluster property>>
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>
 |repository |string |No |The name of the repository to be used for the backup. If no repository is specified then the local filesystem repository will be used automatically.
 |===
 
@@ -1729,7 +1729,7 @@ The restore operation will create a collection with the specified name in the co
 
 The collection created will be of the same number of shards and replicas as the original collection, preserving routing information, etc. Optionally, you can override some parameters documented below. While restoring, if a configSet with the same name exists in ZooKeeper then Solr will reuse that, or else it will upload the backed up configSet in ZooKeeper and use that.
 
-You can use the collection <<CollectionsAPI-api4,alias>> API to make sure client's don't need to change the endpoint to query or index against the newly restored collection.
+You can use the collection <<CollectionsAPI-createalias,alias>> API to make sure client's don't need to change the endpoint to query or index against the newly restored collection.
 
 [[CollectionsAPI-Input.23]]
 === Input
@@ -1740,8 +1740,8 @@ You can use the collection <<CollectionsAPI-api4,alias>> API to make sure client
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The collection where the indexes will be restored into.
-|location |string |No |The location on the shared drive for the restore command to read from. Alternately it can be set as a <<CollectionsAPI-api11,cluster property>>.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|location |string |No |The location on the shared drive for the restore command to read from. Alternately it can be set as a <<CollectionsAPI-clusterprop,cluster property>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |repository |string |No |The name of the repository to be used for the backup. If no repository is specified then the local filesystem repository will be used automatically.
 |===
 
@@ -1775,7 +1775,7 @@ Deletes all replicas of all collections in that node. Please note that the node 
 |===
 |Key |Type |Required |Description
 |node |string |Yes |The node to be cleaned up
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [[CollectionsAPI-replacenode]]
@@ -1796,7 +1796,7 @@ This command recreates replicas in the source node to the target node. After eac
 |source |string |Yes |The source node from which the replicas need to be copied from
 |target |string |Yes |The target node
 |parallel |boolean |No |default=false. if this flag is set to true, all replicas are created inseparatee threads. Keep in mind that this can lead to very high network and disk I/O if the replicas have very large indices.
-|async |string |No |Request ID to track this action which will be <<CollectionsAPI-AsynchronousCalls,processed asynchronously>>.
+|async |string |No |Request ID to track this action which will be <<CollectionsAPI-async,processed asynchronously>>.
 |===
 
 [IMPORTANT]
@@ -1804,12 +1804,10 @@ This command recreates replicas in the source node to the target node. After eac
 This operation does not hold necessary locks on the replicas that belong to on the source node. So don't perform other collection operations in this period.
 ====
 
-[[CollectionsAPI-AsynchronousCalls]]
-
 [[CollectionsAPI-async]]
 == Asynchronous Calls
 
-Since some collection API calls can be long running tasks e.g. Shard Split, you can optionally have the calls run asynchronously. Specifying `async=<request-id>` enables you to make an asynchronous call, the status of which can be requested using the <<CollectionsAPI-RequestStatus,REQUESTSTATUS>> call at any time.
+Since some collection API calls can be long running tasks e.g. Shard Split, you can optionally have the calls run asynchronously. Specifying `async=<request-id>` enables you to make an asynchronous call, the status of which can be requested using the <<CollectionsAPI-requeststatus,REQUESTSTATUS>> call at any time.
 
 As of now, REQUESTSTATUS does not automatically clean up the tracking data structures, meaning the status of completed or failed tasks stays stored in ZooKeeper unless cleared manually. DELETESTATUS can be used to clear the stored statuses. However, there is a limit of 10,000 on the number of async call responses stored in a cluster.
 

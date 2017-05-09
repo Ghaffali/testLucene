@@ -365,7 +365,7 @@ In a nutshell this expression finds the products that most frequently co-occur w
 [[GraphTraversal-UsingthescoreNodesFunctiontoMakeaRecommendation]]
 === Using the scoreNodes Function to Make a Recommendation
 
-This use case builds on the market basket example <<GraphTraversal-CalculateMarketBasketCo-occurance,above>> that calculates which products co-occur most frequently with productID:ABC. The ranked co-occurrence counts provide candidates for a recommendation. The `scoreNodes` function can be used to score the candidates to find the best recommendation.
+This use case builds on the market basket example <<GraphTraversal-CalculateMarketBasketCo-occurrence,above>> that calculates which products co-occur most frequently with productID:ABC. The ranked co-occurrence counts provide candidates for a recommendation. The `scoreNodes` function can be used to score the candidates to find the best recommendation.
 
 Before diving into the syntax of the `scoreNodes` function it's useful to understand why the raw co-occurrence counts may not produce the best recommendation. The reason is that raw co-occurrence counts favor items that occur frequently across all baskets. A better recommendation would find the product that has the most significant relationship with productID ABC. The `scoreNodes` function uses a term frequency-inverse document frequency (TF-IDF) algorithm to find the most significant relationship.
 

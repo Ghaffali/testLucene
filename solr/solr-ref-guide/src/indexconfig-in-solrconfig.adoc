@@ -66,6 +66,7 @@ Other policies available are the `LogByteSizeMergePolicy` and `LogDocMergePolicy
 </mergePolicyFactory>
 ----
 
+[[merge-factors]]
 === Controlling Segment Sizes: Merge Factors
 
 The most common adjustment users make to the configuration of TieredMergePolicy (or LogByteSizeMergePolicy) are the "merge factors" to change how many segments should be merged at one time.

@@ -45,6 +45,7 @@ As noted, the choice between aggregation modes depends on the cardinality of the
 
 The request handlers used for the SQL interface are configured to load implicitly, meaning there is little to do to start using this feature.
 
+[[sql-request-handler]]
 === /sql Request Handler
 
 The `/sql` handler is the front end of the Parallel SQL interface. All SQL queries are sent to the `/sql` handler to be processed. The handler also coordinates the distributed MapReduce jobs when running `GROUP BY` and `SELECT DISTINCT` queries in `map_reduce` mode. By default the `/sql` handler will choose worker nodes from its own collection to handle the distributed operations. In this default scenario the collection where the `/sql` handler resides acts as the default worker collection for MapReduce queries.

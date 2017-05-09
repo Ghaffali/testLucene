@@ -47,7 +47,6 @@ Field types are defined in `schema.xml`. Each field type is defined between `fie
 
 The implementing class is responsible for making sure the field is handled correctly. In the class names in `schema.xml`, the string `solr` is shorthand for `org.apache.solr.schema` or `org.apache.solr.analysis`. Therefore, `solr.TextField` is really `org.apache.solr.schema.TextField.`.
 
-[[FieldTypeDefinitionsandProperties-FieldTypeProperties]]
 == Field Type Properties
 
 The field type `class` determines most of the behavior of a field type, but optional properties can also be defined. For example, the following definition of a date field type defines two properties, `sortMissingLast` and `omitNorms`.

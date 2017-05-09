@@ -210,7 +210,7 @@ This param will cause loading the underlying fields used in faceting to be execu
 [[Faceting-RangeFaceting]]
 == Range Faceting
 
-You can use Range Faceting on any date field or any numeric field that supports range queries. This is particularly useful for stitching together a series of range queries (as facet by query) for things like prices. As of Solr 3.1, Range Faceting is preferred over <<Faceting-DateFacetingParameters,Date Faceting>> (described below).
+You can use Range Faceting on any date field or any numeric field that supports range queries. This is particularly useful for stitching together a series of range queries (as facet by query) for things like prices.
 
 // TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 

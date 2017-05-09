@@ -157,7 +157,7 @@ The Apache Solr configuration file. Defines indexing options, RequestHandlers, h
 The ability to suggest alternative spellings of search terms to a user, as a check against spelling errors causing few or zero results.
 
 [[stopwords]]Stopwords::
-Generally, words that have little meaning to a user's search but which may have been entered as part of a <<Naturallanguagequery,natural language>> query. Stopwords are generally very small pronouns, conjunctions and prepositions (such as, "the", "with", or "and")
+Generally, words that have little meaning to a user's search but which may have been entered as part of a <<naturallanguagequery,natural language>> query. Stopwords are generally very small pronouns, conjunctions and prepositions (such as, "the", "with", or "and")
 
 [[suggesterdef]]<<suggester.adoc#suggester,Suggester>>::
 Functionality in Solr that provides the ability to suggest possible query terms to users as they type.

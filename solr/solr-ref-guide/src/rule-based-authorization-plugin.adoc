@@ -13,7 +13,7 @@ Once defined through the API, roles are stored in `security.json`.
 [[Rule-BasedAuthorizationPlugin-EnabletheAuthorizationPlugin]]
 == Enable the Authorization Plugin
 
-The plugin must be enabled in `security.json`. This file and where to put it in your system is described in detail in the section <<authentication-and-authorization-plugins.adoc#AuthenticationandAuthorizationPlugins-EnabledPluginswithsecurity.json,Enable Plugins with security.json>>.
+The plugin must be enabled in `security.json`. This file and where to put it in your system is described in detail in the section <<authentication-and-authorization-plugins.adoc#AuthenticationandAuthorizationPlugins-EnablePluginswithsecurity.json,Enable Plugins with security.json>>.
 
 This file has two parts, the `authentication` part and the `authorization` part. The `authentication` part stores information about the class being used for authentication.
 

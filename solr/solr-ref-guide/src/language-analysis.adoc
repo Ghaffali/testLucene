@@ -1365,7 +1365,7 @@ Solr includes two stemmers for Russian: one in the `solr.SnowballPorterFilterFac
 [[LanguageAnalysis-Scandinavian]]
 === Scandinavian
 
-Scandinavian is a language group spanning three languages <<LanguageAnalysis-Norwegian,Norwegian>>, <<LanguageAnalysis-Swed,Swedish>> and <<LanguageAnalysis-Danish,Danish>> which are very similar.
+Scandinavian is a language group spanning three languages <<LanguageAnalysis-Norwegian,Norwegian>>, <<LanguageAnalysis-Swedish,Swedish>> and <<LanguageAnalysis-Danish,Danish>> which are very similar.
 
 Swedish å, ä, ö are in fact the same letters as Norwegian and Danish å, æ, ø and thus interchangeable when used between these languages. They are however folded differently when people type them on a keyboard lacking these characters.
 

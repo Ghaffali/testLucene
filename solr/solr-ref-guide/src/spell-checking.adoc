@@ -185,7 +185,7 @@ The SpellCheck component accepts the parameters described in the table below.
 |<<SpellChecking-Thespellcheck.alternativeTermCountParameter,spellcheck.alternativeTermCount>> |The count of suggestions to return for each query term existing in the index and/or dictionary.
 |<<SpellChecking-Thespellcheck.reloadParameter,spellcheck.reload>> |Reloads the spellchecker.
 |<<SpellChecking-Thespellcheck.accuracyParameter,spellcheck.accuracy>> |Specifies an accuracy value to help decide whether a result is worthwhile.
-|<<SpellChecking-Thespellcheck.%3CDICT_NAME%3E.keyParameter,spellcheck.<DICT_NAME>.key>> |Specifies a key/value pair for the implementation handling a given dictionary.
+|<<spellcheck_DICT_NAME,spellcheck.<DICT_NAME>.key>> |Specifies a key/value pair for the implementation handling a given dictionary.
 |===
 
 [[SpellChecking-ThespellcheckParameter]]
@@ -295,7 +295,7 @@ Specifies an accuracy value to be used by the spell checking implementation to d
 
 // OLD_CONFLUENCE_ID: SpellChecking-Thespellcheck.<DICT_NAME>.keyParameter
 
-[[SpellChecking-Thespellcheck._DICT_NAME_.keyParameter]]
+[[spellcheck_DICT_NAME]]
 === The `spellcheck.<DICT_NAME>.key` Parameter
 
 Specifies a key/value pair for the implementation handling a given dictionary. The value that is passed through is just `key=value` (`spellcheck.<DICT_NAME>.` is stripped off.
