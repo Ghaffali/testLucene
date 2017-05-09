@@ -41,9 +41,9 @@ As you can see, the discovery Solr configuration is "SolrCloud friendly". Howeve
 
 There are no attributes that you can specify in the `<solr>` tag, which is the root element of `solr.xml`. The tables below list the child nodes of each XML element in `solr.xml`.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Node |Description
 |`adminHandler` |If used, this attribute should be set to the FQN (Fully qualified name) of a class that inherits from CoreAdminHandler. For example, `<str name="adminHandler">com.myorg.MyAdminHandler</str>` would configure the custom admin handler (MyAdminHandler) to handle admin requests. If this attribute isn't set, Solr uses the default admin handler, `org.apache.solr.handler.admin.CoreAdminHandler`. For more information on this parameter, see the Solr Wiki at http://wiki.apache.org/solr/CoreAdmin#cores.
@@ -62,7 +62,9 @@ There are no attributes that you can specify in the `<solr>` tag, which is the r
 
 This element defines several parameters that relate so SolrCloud. This section is ignored unless the solr instance is started with either `-DzkRun` or `-DzkHost`
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Node |Description
 |`distribUpdateConnTimeout` |Used to set the underlying "connTimeout" for intra-cluster updates.
@@ -80,7 +82,9 @@ This element defines several parameters that relate so SolrCloud. This section i
 
 ==== The `<logging>` element
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Node |Description
 |`class` |The class to use for logging. The corresponding JAR file must be available to solr, perhaps through a `<lib>` directive in solrconfig.xml.
@@ -89,7 +93,9 @@ This element defines several parameters that relate so SolrCloud. This section i
 
 ===== The `<logging><watcher>` element
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Node |Description
 |`size` |The number of log events that are buffered.
@@ -107,7 +113,9 @@ Custom shard handlers can be defined in `solr.xml` if you wish to create a custo
 
 Since this is a custom shard handler, sub-elements are specific to the implementation. The default and only shard handler provided by Solr is the HttpShardHandlerFactory in which case, the following sub-elements can be specified:
 
-[cols=",",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Node |Description
 |`socketTimeout` |The read timeout for intra-cluster query and administrative requests. The default is the same as the distribUpdateSoTimeout specified in the solrcloud section.

@@ -56,7 +56,9 @@ Java properties files allow the hash (`#`) or bang (`!`) characters to specify c
 
 This table defines the recognized properties:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="25,75",options="header"]
 |===
 |Property |Description
 |`name` |The name of the SolrCore. You'll use this name to reference the SolrCore when running commands with the CoreAdminHandler.

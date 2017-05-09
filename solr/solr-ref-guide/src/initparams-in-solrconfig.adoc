@@ -28,9 +28,9 @@ This sets the default search field ("df") to be "_text_" for all of the request 
 
 The syntax and semantics are similar to that of a `<requestHandler>` . The following are the attributes
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Property |Description
 |path |A comma-separated list of paths which will use the parameters. Wildcards can be used in paths to define nested paths, as described below.
@@ -43,7 +43,6 @@ For example, if an `<initParams>` section has the name "myParams", you can call 
 ----
 <requestHandler name="/dump1" class="DumpRequestHandler" initParams="myParams"/>
 ----
-
 |===
 
 [[InitParamsinSolrConfig-Wildcards]]

@@ -27,13 +27,19 @@ Let's begin learning about managed resources by looking at a couple of examples 
 
 To begin, you need to define a field type that uses the <<filter-descriptions.adoc#FilterDescriptions-ManagedStopFilter,ManagedStopFilterFactory>>, such as:
 
-[source,xml]
+// TODO callout isn't working in the PDF...
+//    http://asciidoctor.org/docs/user-manual/#xml-callouts
+// TODO: relevant github issues w/possible font related work arounds...
+//  - https://github.com/asciidoctor/asciidoctor-pdf/issues/409
+//  - https://github.com/asciidoctor/asciidoctor-pdf/issues/377
+//  - https://github.com/asciidoctor/asciidoctor-pdf/issues/133
+[source,xml,subs="verbatim,callouts"]
 ----
 <fieldType name="managed_en" positionIncrementGap="100">
   <analyzer>
     <tokenizer class="solr.StandardTokenizerFactory"/>
-    <filter class="solr.ManagedStopFilterFactory" <1>
-            managed="english" /> <2>
+    <filter class="solr.ManagedStopFilterFactory" <!--1-->
+            managed="english" /> <!--2-->
   </analyzer>
 </fieldType>
 ----

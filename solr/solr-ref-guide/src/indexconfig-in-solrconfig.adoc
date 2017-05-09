@@ -176,7 +176,9 @@ The maximum time to wait for a write lock on an IndexWriter. The default is 1000
 
 There are a few other parameters that may be important to configure for your implementation. These settings affect how or when updates are made to an index.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Setting |Description
 |reopenReaders |Controls if IndexReaders will be re-opened, instead of closed and then opened, which is often less efficient. The default is true.

@@ -7,7 +7,9 @@ Solr ships with many out-of-the-box RequestHandlers, which are called implicit b
 [[ImplicitRequestHandlers-ListofImplicitlyAvailableEndpoints]]
 == List of Implicitly Available Endpoints
 
-[cols=",,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="15,20,15,50",options="header"]
 |===
 |Endpoint |Request Handler class |Paramset |Description
 |`/admin/file` |{solr-javadocs}/solr-core/org/apache/solr/handler/admin/ShowFileRequestHandler.html[ShowFileRequestHandler] |`_ADMIN_FILE` |Returns content of files in `${solr.home}` `/conf/`.

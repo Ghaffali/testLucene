@@ -30,7 +30,9 @@ For more information about Near Real Time operations, see <<near-real-time-searc
 
 These settings control how often pending updates will be automatically pushed to the index. An alternative to `autoCommit` is to use `commitWithin`, which can be defined when making the update request to Solr (i.e., when pushing documents), or in an update RequestHandler.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Setting |Description
 |maxDocs |The number of updates that have occurred since the last commit.
@@ -81,7 +83,9 @@ The UpdateHandler section is also where update-related event listeners can be co
 
 Users can write custom update event listener classes, but a common use case is to run external executables via the `RunExecutableListener`:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Setting |Description
 |exe |The name of the executable to run. It should include the path to the file, relative to Solr home.
@@ -107,7 +111,9 @@ Realtime Get currently relies on the update log feature, which is enabled by def
 
 Three additional expert-level configuration settings affect indexing performance and how far a replica can fall behind on updates before it must enter into full recovery - see the section on <<read-and-write-side-fault-tolerance.adoc#ReadandWriteSideFaultTolerance-WriteSideFaultTolerance,write side fault tolerance>> for more information:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,10,10,60",options="header"]
 |===
 |Setting Name |Type |Default |Description
 |numRecordsToKeep |int |100 |The number of update records to keep per log
