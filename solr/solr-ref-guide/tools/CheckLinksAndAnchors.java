@@ -38,11 +38,10 @@ import org.jsoup.select.NodeVisitor;
  * </p>
  * <p>
  * This tool parses the generated HTML site, looking for these situations in order to fail the build -- since the 
- * equivilent PDF will be broken
+ * equivilent PDF will be broken.  It also does sme general check of the relative URLs to ensure the destination 
+ * files/anchors actaully exist.
  * </p>
  * 
- * TODO: This class could also generally check that no (relative) links are broken?
- *
  * @see https://github.com/asciidoctor/asciidoctor/issues/1865
  * @see https://github.com/asciidoctor/asciidoctor/issues/1866
  */
@@ -69,11 +68,16 @@ public class CheckLinksAndAnchors {
       System.exit(-1);
     }
 
-    final Map<String,List<File>> knownIds = new HashMap<>();
-    final Set<String> problemIds = new HashSet<>(0);
+    final Map<String,List<File>> idsToFiles = new HashMap<>();
+    final Map<File,List<URI>> filesToRelativeLinks = new HashMap<>();
+    final Set<String> idsInMultiFiles = new HashSet<>(0);
     
     for (File file : pages) {
       //System.out.println("input File URI: " + file.toURI().toString());
+
+      assert ! filesToRelativeLinks.containsKey(file);
+      final List<URI> linksInThisFile = new ArrayList<URI>(17);
+      filesToRelativeLinks.put(file, linksInThisFile);
       
       final String fileContents = readFile(file.getPath());
       final Document doc = Jsoup.parse(fileContents);
@@ -82,7 +86,7 @@ public class CheckLinksAndAnchors {
         throw new RuntimeException(file.getName() + " has no main-content div");
       }
 
-      // Add all of the IDs in this doc to knownIds (and problemIds if needed)
+      // Add all of the IDs in this doc to idsToFiles (and idsInMultiFiles if needed)
       final Elements nodesWithIds = mainContent.select("[id]");
       for (Element node : nodesWithIds) {
         final String id = node.id();
@@ -94,13 +98,32 @@ public class CheckLinksAndAnchors {
           continue;
         }
         
-        if (knownIds.containsKey(id)) {
-          problemIds.add(id);
+        if (idsToFiles.containsKey(id)) {
+          idsInMultiFiles.add(id);
         } else {
-          knownIds.put(id, new ArrayList<File>(1));
+          idsToFiles.put(id, new ArrayList<File>(1));
         }
-        knownIds.get(id).add(file);
+        idsToFiles.get(id).add(file);
       }
+
+      {
+        // special case: implicitly assume each file contains an id matching it's filename
+        // since that's the convention used in linking - for the HTML links these ID's don't
+        // exist but we don't care since #frags pointed at non-existend IDs are ignored br browsers.
+        // in the PDF these *will* exist and we need to ensure there won't be any dups / misdirected links
+        // in that case.
+        final String id = file.getName().substring(0, file.getName().lastIndexOf("."));
+        if (0 == mainContent.select("[id=\""+id+"\"]").size()) {
+          if (idsToFiles.containsKey(id)) {
+            idsInMultiFiles.add(id);
+          } else {
+            idsToFiles.put(id, new ArrayList<File>(1));
+          }
+          idsToFiles.get(id).add(file);
+        }
+      }
+          
+      
       
       // check for (relative) links that don't include a fragment
       final Elements links = mainContent.select("a[href]");
@@ -118,6 +141,9 @@ public class CheckLinksAndAnchors {
               // we must have a fragment for intra-page links to work correctly
               problems++;
               System.err.println(file.toURI().toString() + " contains relative link w/o an '#anchor': " + href);
+            } else {
+              // track the link to validate it exists in the target doc
+              linksInThisFile.add(uri);
             }
           }
         } catch (URISyntaxException uri_ex) {
@@ -140,11 +166,38 @@ public class CheckLinksAndAnchors {
     }
 
     // if there are problematic ids, report them
-    for (String id : problemIds) {
+    for (String id : idsInMultiFiles) {
       problems++;
       System.err.println("ID occurs multiple times: " + id);
-      for (File file : knownIds.get(id)) {
+      for (File file : idsToFiles.get(id)) {
         System.err.println(" ... " + file.toURI().toString());
+      }
+    }
+
+    // check every (realtive) link in every file to ensure the frag exists in the target page
+    for (Map.Entry<File,List<URI>> entry : filesToRelativeLinks.entrySet()) {
+      final File source = entry.getKey();
+      for (URI link : entry.getValue()) {
+        final String path = (null == link.getPath() || "".equals(link.getPath())) ? source.getName() : link.getPath();
+        final String frag = link.getFragment();
+        if ( ! idsInMultiFiles.contains(frag) ) { // skip problematic dups already reported
+          final File dest = new File(htmlDir, path);
+          if ( ! dest.exists() ) {
+            problems++;
+            System.err.println("Relative link points at dest file that doesn't exist: " + link);
+            System.err.println(" ... source: " + source.toURI().toString());
+          } else if ( ( ! idsToFiles.containsKey(frag) ) || // no file contains this id, or...
+                      // id exists, but not in linked file
+                      ( ! idsToFiles.get(frag).get(0).getName().equals(path) )) { 
+            problems++;
+            System.err.println("Relative link points at id that doesn't exist in dest: " + link);
+            System.err.println(" ... source: " + source.toURI().toString());
+            try {
+              System.err.println(" ... nocommit: " + idsToFiles.get(frag).get(0).getName());
+              System.err.println(" ... nocommit: " + path);
+            } catch (NullPointerException ignored) { /* nocommit: Noop */ }
+          }
+        }
       }
     }
 
