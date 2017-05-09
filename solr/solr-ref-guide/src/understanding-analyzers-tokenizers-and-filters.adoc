@@ -9,7 +9,6 @@ The following sections describe how Solr breaks down and works with textual data
 * <<about-tokenizers.adoc#about-tokenizers,Tokenizers>> break field data into lexical units, or __tokens__.
 * <<about-filters.adoc#about-filters,Filters>> examine a stream of tokens and keep them, transform or discard them, or create new ones. Tokenizers and filters may be combined to form pipelines, or __chains__, where the output of one is input to the next. Such a sequence of tokenizers and filters is called an _analyzer_ and the resulting output of an analyzer is used to match query results or build indices.
 
-// OLD_CONFLUENCE_ID: UnderstandingAnalyzers,Tokenizers,andFilters-UsingAnalyzers,Tokenizers,andFilters
 
 [[UnderstandingAnalyzers_Tokenizers_andFilters-UsingAnalyzers_Tokenizers_andFilters]]
 == Using Analyzers, Tokenizers, and Filters
@@ -18,7 +17,6 @@ Although the analysis process is used for both indexing and querying, the same a
 
 The tokens output by the analysis process define the values, or __terms__, of that field and are used either to build an index of those terms when a new document is added, or to identify which documents contain the terms you are querying for.
 
-// OLD_CONFLUENCE_ID: UnderstandingAnalyzers,Tokenizers,andFilters-ForMoreInformation
 
 [[UnderstandingAnalyzers_Tokenizers_andFilters-ForMoreInformation]]
 == For More Information

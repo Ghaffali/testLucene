@@ -53,7 +53,6 @@ bin/solr start -c -Dsolr.directoryFactory=HdfsDirectoryFactory
 
 This command starts Solr in SolrCloud mode, using the defined JVM properties.
 
-// OLD_CONFLUENCE_ID: RunningSolronHDFS-Modifyingsolr.in.sh(*nix)orsolr.in.cmd(Windows)
 
 [[RunningSolronHDFS-Modifyingsolr.in.sh_nix_orsolr.in.cmd_Windows_]]
 === Modifying solr.in.sh (*nix) or solr.in.cmd (Windows)

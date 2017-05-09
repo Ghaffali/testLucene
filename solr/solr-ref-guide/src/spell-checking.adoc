@@ -276,7 +276,6 @@ This parameter specifies the maximum number of documents that should be collect 
 
 The default value for this parameter is *0*, but when `spellcheck.collateExtendedResults` is *false*, the optimization is always used as if a *1* had been specified.
 
-// OLD_CONFLUENCE_ID: SpellChecking-Thespellcheck.collateParam.*ParameterPrefix
 
 [[SpellChecking-Thespellcheck.collateParam._ParameterPrefix]]
 === The `spellcheck.collateParam.*` Parameter Prefix
@@ -293,7 +292,6 @@ This parameter causes Solr to use the dictionary named in the parameter's argume
 
 Specifies an accuracy value to be used by the spell checking implementation to decide whether a result is worthwhile or not. The value is a float between 0 and 1. Defaults to `Float.MIN_VALUE`.
 
-// OLD_CONFLUENCE_ID: SpellChecking-Thespellcheck.<DICT_NAME>.keyParameter
 
 [[spellcheck_DICT_NAME]]
 === The `spellcheck.<DICT_NAME>.key` Parameter

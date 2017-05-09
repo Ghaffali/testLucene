@@ -81,7 +81,6 @@ Notice the overlap in system property names with credentials provider `VMParamsS
 
 You can give the readonly credentials to "clients" of your SolrCloud cluster - e.g. to be used by SolrJ clients. They will be able to read whatever is necessary to run a functioning SolrJ client, but they will not be able to modify any content in ZooKeeper.
 
-// OLD_CONFLUENCE_ID: ZooKeeperAccessControl-bin/solr&solr.cmd,server/scripts/cloud-scripts/zkcli.sh&zkcli.bat
 
 [[ZooKeeperAccessControl-bin_solr_solr.cmd_server_scripts_cloud-scripts_zkcli.sh_zkcli.bat]]
 === `bin/solr` & `solr.cmd`, `server/scripts/cloud-scripts/zkcli.sh` & `zkcli.bat`

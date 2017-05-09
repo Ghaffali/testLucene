@@ -178,7 +178,6 @@ curl "http://localhost:8983/solr/gettingstarted/update/json?update.chain=dedupe&
 
 The above should dedupe the two identical documents and index only one of them.
 
-// OLD_CONFLUENCE_ID: UpdateRequestProcessors-Processor&Post-ProcessorRequestParameters
 
 [[UpdateRequestProcessors-Processor_Post-ProcessorRequestParameters]]
 === Processor & Post-Processor Request Parameters

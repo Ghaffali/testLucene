@@ -24,7 +24,6 @@ In addition to the <<common-query-parameters.adoc#common-query-parameters,Common
 
 Default parameter values are specified in `solrconfig.xml`, or overridden by query-time values in the request.
 
-// OLD_CONFLUENCE_ID: TheStandardQueryParser-TheStandardQueryParser'sResponse
 
 [[TheStandardQueryParser-TheStandardQueryParser_sResponse]]
 == The Standard Query Parser's Response
@@ -170,7 +169,6 @@ The brackets around a query determine its inclusiveness.
 * Curly brackets `{` & `}` denote an exclusive range query that matches values between the upper and lower bounds, but excluding the upper and lower bounds themselves.
 * You can mix these types so one end of the range is inclusive and the other is exclusive. Here's an example: `count:{1 TO 10]`
 
-// OLD_CONFLUENCE_ID: TheStandardQueryParser-BoostingaTermwith^
 
 [[TheStandardQueryParser-BoostingaTermwith_]]
 === Boosting a Term with `^`
@@ -189,7 +187,6 @@ This will make documents with the term jakarta appear more relevant. You can als
 
 By default, the boost factor is 1. Although the boost factor must be positive, it can be less than 1 (for example, it could be 0.2).
 
-// OLD_CONFLUENCE_ID: TheStandardQueryParser-ConstantScorewith^=
 
 [[TheStandardQueryParser-ConstantScorewith_]]
 === Constant Score with `^=`
@@ -264,7 +261,6 @@ or
 
 `"jakarta apache" OR jakarta`
 
-// OLD_CONFLUENCE_ID: TheStandardQueryParser-TheBooleanOperator+
 
 [[TheStandardQueryParser-TheBooleanOperator_]]
 === The Boolean Operator `+`
@@ -282,7 +278,6 @@ This operator is supported by both the standard query parser and the DisMax quer
 
 ====
 
-// OLD_CONFLUENCE_ID: TheStandardQueryParser-TheBooleanOperatorAND(&&)
 
 [[TheStandardQueryParser-TheBooleanOperatorAND_]]
 === The Boolean Operator AND (`&&`)
@@ -295,7 +290,6 @@ To search for documents that contain "jakarta apache" and "Apache Lucene," use e
 
 `"jakarta apache" && "Apache Lucene"`
 
-// OLD_CONFLUENCE_ID: TheStandardQueryParser-TheBooleanOperatorNOT(!)
 
 [[TheStandardQueryParser-TheBooleanOperatorNOT_]]
 === The Boolean Operator NOT (`!`)

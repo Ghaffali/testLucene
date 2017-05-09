@@ -145,7 +145,6 @@ f.name.qf=last_name first_name
 
 Negative query boosts have been supported at the "Query" object level for a long time (resulting in negative scores for matching documents). Now the QueryParsers have been updated to handle this too.
 
-// OLD_CONFLUENCE_ID: TheExtendedDisMaxQueryParser-Using'slop'
 
 [[TheExtendedDisMaxQueryParser-Using_slop_]]
 == Using 'slop'
@@ -205,7 +204,6 @@ A document that contains "Hans Anderson" will match, but a document that contain
 
 Finally, in addition to the phrase fields (`pf`) parameter, `edismax` also supports the `pf2` and `pf3` parameters, for fields over which to create bigram and trigram phrase queries. The phrase slop for these parameters' queries can be specified using the `ps2` and `ps3` parameters, respectively. If you use `pf2`/`pf3` but `ps2`/`ps3`, then the phrase slop for these parameters' queries will be taken from the `ps` parameter, if any.
 
-// OLD_CONFLUENCE_ID: TheExtendedDisMaxQueryParser-Usingthe'magicfields'_val_and_query_
 
 [[TheExtendedDisMaxQueryParser-Usingthe_magicfields__val_and_query_]]
 == Using the 'magic fields' `\_val_` and `\_query_`

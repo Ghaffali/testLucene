@@ -124,7 +124,6 @@ The CDCR replication logic requires modification to the maintenance logic of the
 
 If the communication with one of the target data center is slow, the Updates Log on the source data center can grow to a substantial size. In such a scenario, it is necessary for the Updates Log to be able to efficiently find a given update operation given its identifier. Given that its identifier is an incremental number, it is possible to implement an efficient search strategy. Each transaction log file contains as part of its filename the version number of the first element. This is used to quickly traverse all the transaction log files and find the transaction log file containing one specific version number.
 
-// OLD_CONFLUENCE_ID: CrossDataCenterReplication(CDCR)-Monitoring
 
 [[CrossDataCenterReplication_CDCR_-Monitoring]]
 === Monitoring
@@ -140,7 +139,6 @@ Information about the lifecycle and statistics will be provided on a per-shard b
 
 The CDC Replicator is a background thread that is responsible for replicating updates from a Source data center to one or more target data centers. It is responsible in providing monitoring information on a per-shard basis. As there can be a large number of collections and shards in a cluster, we will use a fixed-size pool of CDC Replicator threads that will be shared across shards.
 
-// OLD_CONFLUENCE_ID: CrossDataCenterReplication(CDCR)-Limitations
 
 [[CrossDataCenterReplication_CDCR_-Limitations]]
 === Limitations
@@ -151,14 +149,12 @@ The current design of CDCR has some limitations. CDCR will continue to evolve ov
 * CDCR is currently only active-passive; data is pushed from the Source cluster to the target cluster. There is active work being done in this area in the 6x code line to remove this limitation.
 * CDCR works most robustly with the same number of shards in the Source and target collection. The shards in the two collections may have different numbers of replicas.
 
-// OLD_CONFLUENCE_ID: CrossDataCenterReplication(CDCR)-Configuration
 
 [[CrossDataCenterReplication_CDCR_-Configuration]]
 == Configuration
 
 The source and target configurations differ in the case of the data centers being in separate clusters. "Cluster" here means separate ZooKeeper ensembles controlling disjoint Solr instances. Whether these data centers are physically separated or not is immaterial for this discussion.
 
-// OLD_CONFLUENCE_ID: CrossDataCenterReplication(CDCR)-SourceConfiguration
 
 [[CrossDataCenterReplication_CDCR_-SourceConfiguration]]
 === Source Configuration
@@ -195,7 +191,6 @@ Here is a sample of a source configuration file, a section in `solrconfig.xml`. 
 </updateHandler>
 ----
 
-// OLD_CONFLUENCE_ID: CrossDataCenterReplication(CDCR)-TargetConfiguration
 
 [[CrossDataCenterReplication_CDCR_-TargetConfiguration]]
 === Target Configuration
@@ -503,7 +498,6 @@ http://host:8983/solr/<collection_name>/cdcr?action=START
 }
 ----
 
-// OLD_CONFLUENCE_ID: CrossDataCenterReplication(CDCR)-Monitoringcommands
 
 [[CrossDataCenterReplication_CDCR_-Monitoringcommands]]
 === Monitoring commands

@@ -38,14 +38,12 @@ You should now be ready to upgrade your cluster. Please verify this process in a
 
 The approach we recommend is to perform the upgrade of each Solr node, one-by-one. In other words, you will need to stop a node, upgrade it to the new version of Solr, and restart it before moving on to the next node. This means that for a short period of time, there will be a mix of "Old Solr" and "New Solr" nodes running in your cluster. We also assume that you will point the new Solr node to your existing Solr home directory where the Lucene index files are managed for each collection on the node. This means that you won't need to move any index files around to perform the upgrade.
 
-// OLD_CONFLUENCE_ID: UpgradingaSolrCluster-Step1:StopSolr
 
 [[UpgradingaSolrCluster-Step1_StopSolr]]
 === Step 1: Stop Solr
 
 Begin by stopping the Solr node you want to upgrade. After stopping the node, if using a replication, (ie: collections with replicationFactor > 1) verify that all leaders hosted on the downed node have successfully migrated to other replicas; you can do this by visiting the <<cloud-screens.adoc#cloud-screens,Cloud panel in the Solr Admin UI>>. If not using replication, then any collections with shards hosted on the downed node will be temporarily off-line.
 
-// OLD_CONFLUENCE_ID: UpgradingaSolrCluster-Step2:InstallSolrasaService
 
 [[UpgradingaSolrCluster-Step2_InstallSolrasaService]]
 === Step 2: Install Solr as a Service
@@ -59,7 +57,6 @@ If you have a `/var/solr/solr.in.sh` file for your existing Solr install, runnin
 
 ====
 
-// OLD_CONFLUENCE_ID: UpgradingaSolrCluster-Step3:SetEnvironmentVariableOverrides
 
 [[UpgradingaSolrCluster-Step3_SetEnvironmentVariableOverrides]]
 === Step 3: Set Environment Variable Overrides
@@ -70,14 +67,12 @@ Open `/etc/default/solr.in.sh` with a text editor and verify that the following 
 
 Make sure the user you plan to own the Solr process is the owner of the `SOLR_HOME` directory. For instance, if you plan to run Solr as the "solr" user and `SOLR_HOME` is `/var/solr/data`, then you would do: `sudo chown -R solr: /var/solr/data`
 
-// OLD_CONFLUENCE_ID: UpgradingaSolrCluster-Step4:StartSolr
 
 [[UpgradingaSolrCluster-Step4_StartSolr]]
 === Step 4: Start Solr
 
 You are now ready to start the upgraded Solr node by doing: `sudo service solr start`. The upgraded instance will join the existing cluster because you're using the same `SOLR_HOME`, `SOLR_PORT`, and `SOLR_HOST` settings used by the old Solr node; thus, the new server will look like the old node to the running cluster. Be sure to look in `/var/solr/logs/solr.log` for errors during startup.
 
-// OLD_CONFLUENCE_ID: UpgradingaSolrCluster-Step5:RunHealthcheck
 
 [[UpgradingaSolrCluster-Step5_RunHealthcheck]]
 === Step 5: Run Healthcheck

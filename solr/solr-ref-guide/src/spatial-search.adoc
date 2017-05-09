@@ -120,7 +120,6 @@ Here's an example:
 
 LatLonType (deprecated) does *not* support rectangles that cross the dateline. For RPT and BBoxField, if you are non-geospatial coordinates (`geo="false"`) then you must quote the points due to the space, e.g. `"x y"`.
 
-// OLD_CONFLUENCE_ID: SpatialSearch-Optimizing:CacheorNot
 
 [[SpatialSearch-Optimizing_CacheorNot]]
 === Optimizing: Cache or Not
@@ -133,7 +132,6 @@ If you know the filter query (be it spatial or not) is fairly unique and not lik
 
 LLPSF does not support Solr's "PostFilter".
 
-// OLD_CONFLUENCE_ID: SpatialSearch-DistanceSortingorBoosting(FunctionQueries)
 
 [[SpatialSearch-DistanceSortingorBoosting_FunctionQueries_]]
 == Distance Sorting or Boosting (Function Queries)

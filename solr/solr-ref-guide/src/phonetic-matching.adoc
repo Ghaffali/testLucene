@@ -6,7 +6,6 @@ Phonetic matching algorithms may be used to encode tokens so that two different 
 
 For overviews of and comparisons between algorithms, see http://en.wikipedia.org/wiki/Phonetic_algorithm and http://ntz-develop.blogspot.com/2011/03/phonetic-algorithms.html
 
-// OLD_CONFLUENCE_ID: PhoneticMatching-Beider-MorsePhoneticMatching(BMPM)
 
 [[PhoneticMatching-Beider-MorsePhoneticMatching_BMPM_]]
 == Beider-Morse Phonetic Matching (BMPM)

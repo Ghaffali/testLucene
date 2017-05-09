@@ -1651,7 +1651,6 @@ In this example, two replicas in the "alreadyLeaders" section already had the le
 
 Examining the clusterstate after issuing this call should show that every live node that has the "preferredLeader" property should also have the "leader" property set to _true_.
 
-// OLD_CONFLUENCE_ID: CollectionsAPI-FORCELEADER:ForceShardLeader
 
 [[CollectionsAPI-FORCELEADER_ForceShardLeader]]
 

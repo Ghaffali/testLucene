@@ -48,7 +48,6 @@ A condition can have one of the following operators to set the parameters for th
 * *less than (<)*: `tag:<x` means tag value less than ‘x’. x must be a number
 * *not equal (!)*: `tag:!x` means tag value MUST NOT be equal to ‘x’. The equals check is performed on String value
 
-// OLD_CONFLUENCE_ID: Rule-basedReplicaPlacement-FuzzyOperator(~)
 
 [[Rule-basedReplicaPlacement-FuzzyOperator_]]
 === Fuzzy Operator (~)
@@ -102,7 +101,6 @@ snitch=class:fqn.ClassName,key1:val1,key2:val2,key3:val3
 [[Rule-basedReplicaPlacement-Examples]]
 == Examples
 
-// OLD_CONFLUENCE_ID: Rule-basedReplicaPlacement-Keeplessthan2replicas(atmost1replica)ofthiscollectiononanynode
 
 [[Rule-basedReplicaPlacement-Keeplessthan2replicas_atmost1replica_ofthiscollectiononanynode]]
 === Keep less than 2 replicas (at most 1 replica) of this collection on any node
@@ -115,7 +113,6 @@ replica:<2,node:*
 // this is equivalent to replica:<2,node:*,shard:**. We can omit shard:** because ** is the default value of shard
 ----
 
-// OLD_CONFLUENCE_ID: Rule-basedReplicaPlacement-Foragivenshard,keeplessthan2replicasonanynode
 
 [[Rule-basedReplicaPlacement-Foragivenshard_keeplessthan2replicasonanynode]]
 === For a given shard, keep less than 2 replicas on any node

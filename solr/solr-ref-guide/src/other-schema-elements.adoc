@@ -20,7 +20,6 @@ Schema defaults and `copyFields` cannot be used to populate the `uniqueKey` fiel
 
 Further, the operation will fail if the `uniqueKey` field is used, but is multivalued (or inherits the multivalue-ness from the `fieldtype`). However, `uniqueKey` will continue to work, as long as the field is properly used.
 
-// OLD_CONFLUENCE_ID: OtherSchemaElements-DefaultSearchField&QueryOperator
 
 [[OtherSchemaElements-DefaultSearchField_QueryOperator]]
 == Default Search Field & Query Operator

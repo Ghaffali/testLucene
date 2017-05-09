@@ -40,7 +40,6 @@ It's a good idea to keep these files under version control.
 
 ====
 
-// OLD_CONFLUENCE_ID: UsingZooKeepertoManageConfigurationFiles-UploadingConfigurationFilesusingbin/solrorSolrJ
 
 [[UsingZooKeepertoManageConfigurationFiles-UploadingConfigurationFilesusingbin_solrorSolrJ]]
 == Uploading Configuration Files using `bin/solr` or SolrJ

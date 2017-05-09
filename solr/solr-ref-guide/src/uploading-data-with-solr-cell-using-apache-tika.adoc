@@ -256,7 +256,6 @@ The command below captures `<div>` tags separately, and then maps all the instan
 bin/post -c techproducts example/exampledocs/sample.html -params "literal.id=doc2&captureAttr=true&defaultField=_text_&fmap.div=foo_t&capture=div"
 ----
 
-// OLD_CONFLUENCE_ID: UploadingDatawithSolrCellusingApacheTika-Capture&Mapping
 
 [[UploadingDatawithSolrCellusingApacheTika-Capture_Mapping]]
 ==== Capture & Mapping

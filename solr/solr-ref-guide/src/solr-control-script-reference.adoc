@@ -421,7 +421,6 @@ NOTE: Solr should have been started at least once before issuing these commands 
 
 Use the `zk upconfig` command to upload one of the pre-configured configuration set or a customized configuration set to ZooKeeper.
 
-// OLD_CONFLUENCE_ID: SolrControlScriptReference-AvailableParameters(allparametersarerequired)
 
 [[SolrControlScriptReference-AvailableParameters_allparametersarerequired_]]
 ==== Available Parameters (all parameters are required)
@@ -467,7 +466,6 @@ This command does *not* automatically make changes effective! It simply uploads 
 
 Use the `zk downconfig` command to download a configuration set from ZooKeeper to the local filesystem.
 
-// OLD_CONFLUENCE_ID: SolrControlScriptReference-AvailableParameters(allparametersarerequired).1
 
 [[SolrControlScriptReference-AvailableParameters_allparametersarerequired_.1]]
 ==== Available Parameters (all parameters are required)
@@ -563,7 +561,6 @@ An example of this command with the parameters is:
 
 `bin/solr zk rm /configs/myconfigset/schema.xml`
 
-// OLD_CONFLUENCE_ID: SolrControlScriptReference-MoveOneZooKeeperznodetoAnother(Rename)
 
 [[SolrControlScriptReference-MoveOneZooKeeperznodetoAnother_Rename_]]
 === Move One ZooKeeper znode to Another (Rename)
@@ -587,7 +584,6 @@ An example of this command is:
 
 `bin/solr zk mv /configs/oldconfigset /configs/newconfigset`
 
-// OLD_CONFLUENCE_ID: SolrControlScriptReference-ListaZooKeeperznode'sChildren
 
 [[SolrControlScriptReference-ListaZooKeeperznode_sChildren]]
 === List a ZooKeeper znode's Children
@@ -613,7 +609,6 @@ An example of this command with the parameters is:
 
 `bin/solr zk ls /collections`
 
-// OLD_CONFLUENCE_ID: SolrControlScriptReference-Createaznode(supportschroot)
 
 [[SolrControlScriptReference-Createaznode_supportschroot_]]
 === Create a znode (supports chroot)

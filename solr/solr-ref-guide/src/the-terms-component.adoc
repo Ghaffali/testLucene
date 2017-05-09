@@ -182,7 +182,6 @@ Results:
 </response>
 ----
 
-// OLD_CONFLUENCE_ID: TheTermsComponent-GetFirst10TermsStartingwithLetter'a'
 
 [[TheTermsComponent-GetFirst10TermsStartingwithLetter_a_]]
 === Get First 10 Terms Starting with Letter 'a'

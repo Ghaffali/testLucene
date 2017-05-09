@@ -551,7 +551,6 @@ topic(checkpointCollection,
 
 Stream decorators wrap other stream functions or perform operations on the stream.
 
-// OLD_CONFLUENCE_ID: StreamingExpressions-cartesianProduct(6.6)
 
 === cartesianProduct
 //TODO

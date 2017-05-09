@@ -341,7 +341,6 @@ For more information, see the examples in the <<working-with-dates.adoc#working-
 
 ====
 
-// OLD_CONFLUENCE_ID: Faceting-Pivot(DecisionTree)Faceting
 
 [[Faceting-Pivot_DecisionTree_Faceting]]
 == Pivot (Decision Tree) Faceting

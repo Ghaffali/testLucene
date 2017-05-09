@@ -33,7 +33,6 @@ The sections below discuss exactly what these various transformers do.
 [[TransformingResultDocuments-AvailableTransformers]]
 == Available Transformers
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[value]-ValueAugmenterFactory
 
 [[TransformingResultDocuments-_value_-ValueAugmenterFactory]]
 === `[value]` - ValueAugmenterFactory
@@ -78,7 +77,6 @@ In addition to using these request parameters, you can configure additional name
 
 The "```value```" option forces an explicit value to always be used, while the "```defaultValue```" option provides a default that can still be overridden using the "```v```" and "```t```" local parameters.
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[explain]-ExplainAugmenterFactory
 
 [[TransformingResultDocuments-_explain_-ExplainAugmenterFactory]]
 === `[explain]` - ExplainAugmenterFactory
@@ -114,7 +112,6 @@ A default style can be configured by specifying an "args" parameter in your conf
 </transformer>
 ----
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[child]-ChildDocTransformerFactory
 
 [[TransformingResultDocuments-_child_-ChildDocTransformerFactory]]
 === `[child]` - ChildDocTransformerFactory
@@ -133,7 +130,6 @@ When using this transformer, the `parentFilter` parameter must be specified, and
 * `childFilter` - query to filter which child documents should be included, this can be particularly useful when you have multiple levels of hierarchical documents (default: all children)
 * `limit` - the maximum number of child documents to be returned per parent document (default: 10)
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[shard]-ShardAugmenterFactory
 
 [[TransformingResultDocuments-_shard_-ShardAugmenterFactory]]
 === `[shard]` - ShardAugmenterFactory
@@ -142,7 +138,6 @@ This transformer adds information about what shard each individual document came
 
 ShardAugmenterFactory does not support any request parameters, or configuration options.
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[docid]-DocIdAugmenterFactory
 
 [[TransformingResultDocuments-_docid_-DocIdAugmenterFactory]]
 === `[docid]` - DocIdAugmenterFactory
@@ -151,7 +146,6 @@ This transformer adds the internal Lucene document id to each document – this 
 
 DocIdAugmenterFactory does not support any request parameters, or configuration options.
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[elevated]and[excluded]
 
 [[TransformingResultDocuments-_elevated_and_excluded_]]
 === `[elevated]` and `[excluded]`
@@ -184,7 +178,6 @@ fl=id,[elevated],[excluded]&excludeIds=GB18030TEST&elevateIds=6H500F0&markExclud
 ...
 ----
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[json]/[xml]
 
 [[TransformingResultDocuments-_json_xml_]]
 === `[json]` / `[xml]`
@@ -196,7 +189,6 @@ These transformers replace field value containing a string representation of a v
 fl=id,source_s:[json]&wt=json
 ----
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[subquery]
 
 [[TransformingResultDocuments-_subquery_]]
 === `[subquery]`
@@ -301,7 +293,6 @@ If subquery collection has a different unique key field name (let's say `foo_id`
 
 ====
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[geo]-Geospatialformatter
 
 [[TransformingResultDocuments-_geo_-Geospatialformatter]]
 === `[geo]` - Geospatial formatter
@@ -312,7 +303,6 @@ Normally you'll simply be consistent in choosing the format type you want by set
 
 In addition, this feature is very useful with the `RptWithGeometrySpatialField` to avoid double-storage of the potentially large vector geometry. This transformer will detect that field type and fetch the geometry from an internal compact binary representation on disk (in docValues), and then format it as desired. As such, you needn't mark the field as stored, which would be redundant. In a sense this double-storage between docValues and stored-value storage isn't unique to spatial but with polygonal geometry it can be a lot of data, and furthermore you'd like to avoid storing it in a verbose format (like GeoJSON or WKT).
 
-// OLD_CONFLUENCE_ID: TransformingResultDocuments-[features]-LTRFeatureLoggerTransformerFactory
 
 [[TransformingResultDocuments-_features_-LTRFeatureLoggerTransformerFactory]]
 === `[features]` - LTRFeatureLoggerTransformerFactory
