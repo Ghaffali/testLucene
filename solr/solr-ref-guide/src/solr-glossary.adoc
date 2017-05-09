@@ -3,31 +3,32 @@
 :page-permalink: solr-glossary.html
 :page-toc: false
 
-Where possible, terms are linked to relevant parts of the Solr Reference Guide for more information.
+These are common terms used with Solr.
 
-'''''
+== Solr Terms
+
+Where possible, terms are linked to relevant parts of the Solr Reference Guide for more information.
 
 *Jump to a letter:*
 
 <<SolrGlossary-A,A>> <<SolrGlossary-B,B>> <<SolrGlossary-C,C>> <<SolrGlossary-D,D>> <<SolrGlossary-E,E>> <<SolrGlossary-F,F>> G H <<SolrGlossary-I,I>> J K <<SolrGlossary-L,L>> <<SolrGlossary-M,M>> <<SolrGlossary-N,N>> <<SolrGlossary-O,O>> P <<SolrGlossary-Q,Q>> <<SolrGlossary-R,R>> <<SolrGlossary-S,S>> <<SolrGlossary-T,T>> U V <<SolrGlossary-W,W>> X Y <<SolrGlossary-Z,Z>>
 
-[glossary]
 
 [[SolrGlossary-A]]
-== A
+=== A
 
 [[atomicupdates]]<<updating-parts-of-documents.adoc#UpdatingPartsofDocuments-AtomicUpdates,Atomic updates>>::
 An approach to updating only one or more fields of a document, instead of reindexing the entire document.
 
 
 [[SolrGlossary-B]]
-== B
+=== B
 
 [[booleanoperators]]Boolean operators::
 These control the inclusion or exclusion of keywords in a query by using operators such as AND, OR, and NOT.
 
 [[SolrGlossary-C]]
-== C
+=== C
 
 [[cluster]]Cluster::
 In Solr, a cluster is a set of Solr nodes operating in coordination with each other via <<zookeeper,ZooKeeper>>, and managed as a unit. A cluster may contain many collections. See also <<solrclouddef,SolrCloud>>.
@@ -47,7 +48,7 @@ An individual Solr instance (represents a logical index). Multiple cores can run
 To re-initialize a Solr core after changes to `schema.xml`, `solrconfig.xml` or other configuration files.
 
 [[SolrGlossary-D]]
-== D
+=== D
 
 [[distributedsearch]]Distributed search::
 Distributed search is one where queries are processed across more than one <<shard,Shard>>.
@@ -56,13 +57,13 @@ Distributed search is one where queries are processed across more than one <<sha
 A group of <<field,fields>> and their values. Documents are the basic unit of data in a <<collection,collection>>. Documents are assigned to <<shard,shards>> using standard hashing, or by specifically assigning a shard within the document ID. Documents are versioned after each write operation.
 
 [[SolrGlossary-E]]
-== E
+=== E
 
 [[ensemble]]Ensemble::
 A <<zookeeper,ZooKeeper>> term to indicate multiple ZooKeeper instances running simultaneously and in coordination with each other for fault tolerance.
 
 [[SolrGlossary-F]]
-== F
+=== F
 
 [[facet]]Facet::
 The arrangement of search results into categories based on indexed terms.
@@ -71,7 +72,7 @@ The arrangement of search results into categories based on indexed terms.
 The content to be indexed/searched along with metadata defining how the content should be processed by Solr.
 
 [[SolrGlossary-I]]
-== I
+=== I
 
 [[idf]]Inverse document frequency (IDF)::
 A measure of the general importance of a term. It is calculated as the number of total Documents divided by the number of Documents that a particular word occurs in the collection. See http://en.wikipedia.org/wiki/Tf-idf and {lucene-javadocs}/core/org/apache/lucene/search/similarities/TFIDFSimilarity.html[the Lucene TFIDFSimilarity javadocs] for more info on TF-IDF based scoring and Lucene scoring in particular. See also <<termfrequency,Term frequency>>.
@@ -80,19 +81,19 @@ A measure of the general importance of a term. It is calculated as the number of
 A way of creating a searchable index that lists every word and the documents that contain those words, similar to an index in the back of a book which lists words and the pages on which they can be found. When performing keyword searches, this method is considered more efficient than the alternative, which would be to create a list of documents paired with every word used in each document. Since users search using terms they expect to be in documents, finding the term before the document saves processing resources and time.
 
 [[SolrGlossary-L]]
-== L
+=== L
 
 [[leader]]Leader::
 A single <<replica,Replica>> for each <<shard,Shard>> that takes charge of coordinating index updates (document additions or deletions) to other replicas in the same shard. This is a transient responsibility assigned to a node via an election, if the current Shard Leader goes down, a new node will automatically be elected to take its place. See also <<solrclouddef,SolrCloud>>.
 
 [[SolrGlossary-M]]
-== M
+=== M
 
 [[metadata]]Metadata::
 Literally, _data about data_. Metadata is information about a document, such as its title, author, or location.
 
 [[SolrGlossary-N]]
-== N
+=== N
 
 [[naturallanguagequery]]Natural language query::
 A search that is entered as a user would normally speak or write, as in, "What is aspirin?"
@@ -101,7 +102,7 @@ A search that is entered as a user would normally speak or write, as in, "What i
 A JVM instance running Solr. Also known as a Solr server.
 
 [[SolrGlossary-O]]
-== O
+=== O
 
 [[optimisticconcurrency]]<<updating-parts-of-documents.adoc#UpdatingPartsofDocuments-OptimisticConcurrency,Optimistic concurrency>>::
 Also known as "optimistic locking", this is an approach that allows for updates to documents currently in the index while retaining locking or version control.
@@ -110,13 +111,13 @@ Also known as "optimistic locking", this is an approach that allows for updates 
 A single node in <<solrclouddef,SolrCloud>> that is responsible for processing and coordinating actions involving the entire cluster. It keeps track of the state of existing nodes, collections, shards, and replicas, and assigns new replicas to nodes. This is a transient responsibility assigned to a node via an election, if the current Overseer goes down, a new node will be automatically elected to take its place. See also <<solrclouddef,SolrCloud>>.
 
 [[SolrGlossary-Q]]
-== Q
+=== Q
 
 [[query-parser]]Query parser::
 A query parser processes the terms entered by a user.
 
 [[SolrGlossary-R]]
-== R
+=== R
 
 [[recall]]Recall::
 The ability of a search engine to retrieve _all_ of the possible matches to a user's query.
@@ -135,7 +136,7 @@ A method of copying a master index from one server to one or more "slave" or "ch
 Logic and configuration parameters that tell Solr how to handle incoming "requests", whether the requests are to return search results, to index documents, or to handle other custom situations.
 
 [[SolrGlossary-S]]
-== S
+=== S
 
 [[searchcomponent]]<<requesthandlers-and-searchcomponents-in-solrconfig.adoc#requesthandlers-and-searchcomponents-in-solrconfig,SearchComponent>>::
 Logic and configuration parameters used by request handlers to process query requests. Examples of search components include faceting, highlighting, and "more like this" functionality.
@@ -166,7 +167,7 @@ Functionality in Solr that provides the ability to suggest possible query terms 
 Synonyms generally are terms which are near to each other in meaning and may substitute for one another. In a search engine implementation, synonyms may be abbreviations as well as words, or terms that are not consistently hyphenated. Examples of synonyms in this context would be "Inc." and "Incorporated" or "iPod" and "i-pod".
 
 [[SolrGlossary-T]]
-== T
+=== T
 
 [[termfrequency]]Term frequency::
 The number of times a word occurs in a given document. See http://en.wikipedia.org/wiki/Tf-idf and {lucene-javadocs}/core/org/apache/lucene/search/similarities/TFIDFSimilarity.html[the Lucene TFIDFSimilarity javadocs] for more info on TF-IDF based scoring and Lucene scoring in particular. See also <<idf,Inverse document frequency (IDF)>>.
@@ -175,13 +176,13 @@ The number of times a word occurs in a given document. See http://en.wikipedia.o
 An append-only log of write operations maintained by each <<replica,Replica>>. This log is required with SolrCloud implementations and is created and managed automatically by Solr.
 
 [[SolrGlossary-W]]
-== W
+=== W
 
 [[wildcard]]Wildcard::
 A wildcard allows a substitution of one or more letters of a word to account for possible variations in spelling or tenses.
 
 [[SolrGlossary-Z]]
-== Z
+=== Z
 
 [[zookeeper]]ZooKeeper::
 Also known as http://zookeeper.apache.org/[Apache ZooKeeper]. The system used by SolrCloud to keep track of configuration files and node names for a cluster. A ZooKeeper cluster is used as the central configuration store for the cluster, a coordinator for operations requiring distributed synchronization, and the system of record for cluster topology. See also <<solrclouddef,SolrCloud>>.

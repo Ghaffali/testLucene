@@ -13,22 +13,16 @@ font:
       bold: Inconsolata/Inconsolata-Bold.ttf
       italic: Inconsolata/Inconsolata-Regular.ttf
       bold_italic: Inconsolata/Inconsolata-Bold.ttf
-    # M+ 1mn is only used for callout numbers in code examples
-    M+ 1mn:
+    # M+1mn is from the asciidoctor-pdf project
+    # Provides the glyphs for callout numbers (see conum section below)
+    # This is a fallback font, and will only be used when it can fill in missing glyphs from other fonts
+    M+1mn Fallback:
       normal: mplus1mn/mplus1mn-regular-ascii-conums.ttf
       bold: mplus1mn/mplus1mn-bold-ascii.ttf
       italic: mplus1mn/mplus1mn-italic-ascii.ttf
       bold_italic: mplus1mn/mplus1mn-bold_italic-ascii.ttf
-    # M+ 1p supports Latin, Latin-1 Supplement, Latin Extended, Greek, Cyrillic, Vietnamese, Japanese & an assortment of symbols
-    # It also provides arrows for ->, <-, => and <= replacements in case these glyphs are missing from font
-    # This is a fallback font, and will only be used when it can fill in missing glyphs from other fonts
-    M+ 1p Fallback:
-      normal: mplus1p-regular-fallback.ttf
-      bold: mplus1p-regular-fallback.ttf
-      italic: mplus1p-regular-fallback.ttf
-      bold_italic: mplus1p-regular-fallback.ttf
   fallbacks:
-    - M+ 1p Fallback
+    - M+1mn Fallback
 # page-level settings apply to the entire page
 page:
   background_color: '#ffffff'
@@ -163,9 +157,9 @@ blockquote:
   cite_font_color: '#999999'
 #conums are used for inline callouts
 conum:
-  font_family: M+ 1mn
+  font_family: M+1mn Fallback
   font_color: $literal_font_color
-  font_size: $base_font_size
+  font_size: $base_font_size_large
   line_height: 4 / 3
 example:
   border_color: $base_border_color
