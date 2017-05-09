@@ -42,6 +42,8 @@ import org.jsoup.select.NodeVisitor;
  * files/anchors actaully exist.
  * </p>
  * 
+ * TODO: build a list of all known external links so that some other tool could (optionally) ping them all for 200 status?
+ *
  * @see https://github.com/asciidoctor/asciidoctor/issues/1865
  * @see https://github.com/asciidoctor/asciidoctor/issues/1866
  */
@@ -81,7 +83,7 @@ public class CheckLinksAndAnchors {
       
       final String fileContents = readFile(file.getPath());
       final Document doc = Jsoup.parse(fileContents);
-      final Element mainContent = doc.select("#main-content").first();
+      final Element mainContent = doc.select(".main-content").first();
       if (mainContent == null) {
         throw new RuntimeException(file.getName() + " has no main-content div");
       }
@@ -94,7 +96,7 @@ public class CheckLinksAndAnchors {
         assert 0 != id.length();
 
         // special case ids that we ignore
-        if (id.equals("preamble") || id.equals("main-content")) {
+        if (id.equals("preamble")) {
           continue;
         }
         
@@ -106,25 +108,6 @@ public class CheckLinksAndAnchors {
         idsToFiles.get(id).add(file);
       }
 
-      {
-        // special case: implicitly assume each file contains an id matching it's filename
-        // since that's the convention used in linking - for the HTML links these ID's don't
-        // exist but we don't care since #frags pointed at non-existend IDs are ignored br browsers.
-        // in the PDF these *will* exist and we need to ensure there won't be any dups / misdirected links
-        // in that case.
-        final String id = file.getName().substring(0, file.getName().lastIndexOf("."));
-        if (0 == mainContent.select("[id=\""+id+"\"]").size()) {
-          if (idsToFiles.containsKey(id)) {
-            idsInMultiFiles.add(id);
-          } else {
-            idsToFiles.put(id, new ArrayList<File>(1));
-          }
-          idsToFiles.get(id).add(file);
-        }
-      }
-          
-      
-      
       // check for (relative) links that don't include a fragment
       final Elements links = mainContent.select("a[href]");
       for (Element link : links) {

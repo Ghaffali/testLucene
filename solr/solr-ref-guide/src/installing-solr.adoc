@@ -20,6 +20,7 @@ Java HotSpot(TM) 64-Bit Server VM (build 25.60-b23, mixed mode)
 
 The exact output will vary, but you need to make sure you meet the minimum version requirement. We also recommend choosing a version that is not end-of-life from its vendor. If you don't have the required version, or if the java command is not found, download and install the latest version from Oracle at http://www.oracle.com/technetwork/java/javase/downloads/index.html.
 
+[[install-command]]
 == Installing Solr
 
 Solr is available from the Solr website at http://lucene.apache.org/solr/.
