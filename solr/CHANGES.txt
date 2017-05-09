@@ -238,6 +238,13 @@ New Features
 
 * SOLR-10626: Add covariance Stream Evaluator (Joel Bernstein)
 
+* SOLR-10625: Add convolution Stream Evaluator (Joel Bernstein)
+
+* SOLR-10638: Add normalize Stream Evaluator (Joel Bernstein)
+
+* SOLR-8440: Support for enabling basic authentication using bin/solr|bin/solr.cmd. (Ishan Chattopadhyaya, janhoy,
+  Noble Paul, Hrishikesh Gadre)
+
 Optimizations
 ----------------------
 
@@ -254,7 +261,9 @@ Optimizations
 * SOLR-10548: JSON Facet API now uses hyper-log-log++ for determining the number of buckets
   when merging requests from a multi-shard distributed request. (yonik)
 
-* SOLR-10524: Explore in-memory partitioning for processing Overseer queue messages (Cao Manh Dat, Noble Paul, shalin, Scott Blum)
+* SOLR-10524: Better ZkStateWriter batching (Cao Manh Dat, Noble Paul, shalin, Scott Blum)
+
+* SOLR-10619: Optimize using cache for DistributedQueue in case of single-consumer (Cao Manh Dat, Scott Blum)
 
 Bug Fixes
 ----------------------
@@ -384,6 +393,10 @@ Other Changes
 
 * SOLR-10614: Static fields have turned to instance's field in SimplePostTool. 
   Enabled TestSolrCLIRunExample.testTechproductsExample(). (Andrey Kudryavtsev, Mikhail Khludnev)
+  
+* SOLR-10522: Revert SpellCheckComponent response format change from SOLR-9972 (rel. 6.5.0).  While this
+  was an improvement for the json "arrntv" format, it caused problems for the default json format.
+  (James Dyer, reported by Nikita Pchelintsev)
 
 ==================  6.5.1 ==================
 
