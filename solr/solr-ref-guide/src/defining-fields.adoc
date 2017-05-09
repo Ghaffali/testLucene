@@ -32,6 +32,8 @@ The following example defines a field named `price` with a type named `float` an
 
 Fields can have many of the same properties as field types. Properties from the table below which are specified on an individual field will override any explicit value for that property specified on the the `fieldType` of the field, or any implicit default property value provided by the underlying `fieldType` implementation. The table below is reproduced from <<field-type-definitions-and-properties.adoc#field-type-definitions-and-properties,Field Type Definitions and Properties>>, which has more details:
 
+// TODO: SOLR-10655 BEGIN: refactor this into a 'field-default-properties.include.adoc' file for reuse
+
 // TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
 [cols="20,40,20,20",options="header"]
@@ -50,3 +52,6 @@ Fields can have many of the same properties as field types. Properties from the 
 |useDocValuesAsStored |If the field has `<<docvalues.adoc#docvalues,docValues>>` enabled, setting this to true would allow the field to be returned as if it were a stored field (even if it has `stored=false`) when matching "`*`" in an <<common-query-parameters.adoc#CommonQueryParameters-Thefl_FieldList_Parameter,fl parameter>>. |true or false |true
 |large |Large fields are always lazy loaded and will only take up space in the document cache if the actual value is < 512KB. This option requires `stored="true"` and `multiValued="false"`. It's intended for fields that might have very large values so that they don't get cached in memory. |true or false |false
 |===
+
+// TODO: SOLR-10655 END
+

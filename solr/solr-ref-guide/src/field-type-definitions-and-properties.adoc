@@ -84,6 +84,8 @@ These are properties that can be specified either on the field types, or on indi
 
 The default values for each property depend on the underlying `FieldType` class, which in turn may depend on the `version` attribute of the `<schema/>`. The table below includes the default value for most `FieldType` implementations provided by Solr, assuming a `schema.xml` that declares `version="1.6"`.
 
+// TODO: SOLR-10655 BEGIN: refactor this into a 'field-default-properties.include.adoc' file for reuse
+
 // TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
 [cols="20,40,20,20",options="header"]
@@ -102,6 +104,8 @@ The default values for each property depend on the underlying `FieldType` class,
 |useDocValuesAsStored |If the field has <<docvalues.adoc#docvalues,docValues>> enabled, setting this to true would allow the field to be returned as if it were a stored field (even if it has `stored=false`) when matching "`*`" in an <<common-query-parameters.adoc#CommonQueryParameters-Thefl_FieldList_Parameter,fl parameter>>. |true or false |true
 |large |Large fields are always lazy loaded and will only take up space in the document cache if the actual value is < 512KB. This option requires `stored="true"` and `multiValued="false"`. It's intended for fields that might have very large values so that they don't get cached in memory. |true or false |false
 |===
+
+// TODO: SOLR-10655 END
 
 [[FieldTypeDefinitionsandProperties-FieldTypeSimilarity]]
 == Field Type Similarity
