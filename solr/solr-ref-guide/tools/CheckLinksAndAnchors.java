@@ -83,13 +83,17 @@ public class CheckLinksAndAnchors {
       
       final String fileContents = readFile(file.getPath());
       final Document doc = Jsoup.parse(fileContents);
+      // we only care about class='main-content' -- we don't want to worry
+      // about ids/links duplicated in the header/footer of every page,
       final Element mainContent = doc.select(".main-content").first();
       if (mainContent == null) {
         throw new RuntimeException(file.getName() + " has no main-content div");
       }
 
-      // Add all of the IDs in this doc to idsToFiles (and idsInMultiFiles if needed)
+      // Add all of the IDs in (the main-content of) this doc to idsToFiles (and idsInMultiFiles if needed)
       final Elements nodesWithIds = mainContent.select("[id]");
+      // NOTE: add <body> to the nodesWithIds so we check the main section anchor as well
+      nodesWithIds.addAll(doc.select("body[id]"));
       for (Element node : nodesWithIds) {
         final String id = node.id();
         assert null != id;
