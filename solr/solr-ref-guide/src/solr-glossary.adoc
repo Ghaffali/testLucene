@@ -112,7 +112,7 @@ A single node in <<solrclouddef,SolrCloud>> that is responsible for processing a
 [[SolrGlossary-Q]]
 == Q
 
-[[query parser]]Query parser::
+[[query-parser]]Query parser::
 A query parser processes the terms entered by a user.
 
 [[SolrGlossary-R]]
@@ -121,7 +121,7 @@ A query parser processes the terms entered by a user.
 [[recall]]Recall::
 The ability of a search engine to retrieve _all_ of the possible matches to a user's query.
 
-[[relevance]]Relevance::
+[[relevancedef]]Relevance::
 The appropriateness of a document to the search conducted by the user.
 
 [[replica]]Replica::
@@ -159,7 +159,7 @@ The ability to suggest alternative spellings of search terms to a user, as a che
 [[stopwords]]Stopwords::
 Generally, words that have little meaning to a user's search but which may have been entered as part of a <<Naturallanguagequery,natural language>> query. Stopwords are generally very small pronouns, conjunctions and prepositions (such as, "the", "with", or "and")
 
-[[suggester]]<<suggester.adoc#suggester,Suggester>>::
+[[suggesterdef]]<<suggester.adoc#suggester,Suggester>>::
 Functionality in Solr that provides the ability to suggest possible query terms to users as they type.
 
 [[synonyms]]Synonyms::
