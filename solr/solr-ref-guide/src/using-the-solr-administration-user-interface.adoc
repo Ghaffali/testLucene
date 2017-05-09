@@ -5,12 +5,6 @@
 
 This section discusses the Solr Administration User Interface ("Admin UI").
 
-// TODO: areThis page is nothing but a giant TOC ...  we keeping this page?
-// TODO: should we just slurp overview-of-the-solr-admin-ui.adoc in here?
-// TODO: can we programatically build this from the data files?
-
-// TODO: if we do keep this page, all the cwiki links need replaced with relative paths to the new pages
-
 
 The <<overview-of-the-solr-admin-ui.adoc#overview-of-the-solr-admin-ui,Overview of the Solr Admin UI>> explains the basic features of the user interface, what's on the initial Admin UI page, and how to configure the interface. In addition, there are pages describing each screen of the Admin UI:
 
@@ -22,15 +16,15 @@ The <<overview-of-the-solr-admin-ui.adoc#overview-of-the-solr-admin-ui,Overview 
 * *<<thread-dump.adoc#thread-dump,Thread Dump>>* lets you see detailed information about each thread, along with state information.
 
 * *<<collection-specific-tools.adoc#collection-specific-tools,Collection-Specific Tools>>* is a section explaining additional screens available for each collection.
-** https://cwiki.apache.org/confluence/display/solr/Analysis+Screen[Analysis] - lets you analyze the data found in specific fields.
-** https://cwiki.apache.org/confluence/display/solr/Dataimport+Screen[Dataimport] - shows you information about the current status of the Data Import Handler.
-** https://cwiki.apache.org/confluence/display/solr/Documents+Screen[Documents] - provides a simple form allowing you to execute various Solr indexing commands directly from the browser.
-** https://cwiki.apache.org/confluence/display/solr/Files+Screen[Files] - shows the current core configuration files such as `solrconfig.xml`.
-** https://cwiki.apache.org/confluence/display/solr/Query+Screen[Query] - lets you submit a structured query about various elements of a core.
-** https://cwiki.apache.org/confluence/display/solr/Stream+Screen[Stream] - allows you to submit streaming expressions and see results and parsing explanations.
-** https://cwiki.apache.org/confluence/display/solr/Schema+Browser+Screen[Schema Browser] - displays schema data in a browser window.
+** <<analysis-screen.adoc#analysis-screen,Analysis>> - lets you analyze the data found in specific fields.
+** <<dataimport-screen.adoc#dataimport-screen,Dataimport>> - shows you information about the current status of the Data Import Handler.
+** <<documents-screen.adoc#documents-screen,Documents>> - provides a simple form allowing you to execute various Solr indexing commands directly from the browser.
+** <<files-screen.adoc#files-screen,Files>> - shows the current core configuration files such as `solrconfig.xml`.
+** <<query-screen.adoc#query-screen,Query>> - lets you submit a structured query about various elements of a core.
+** <<stream-screen.adoc#stream-screen,Stream>> - allows you to submit streaming expressions and see results and parsing explanations.
+** <<schema-browser-screen.adoc#schema-browser-screen,Schema Browser>> - displays schema data in a browser window.
 * *<<core-specific-tools.adoc#core-specific-tools,Core-Specific Tools>>* is a section explaining additional screens available for each named core.
-** https://cwiki.apache.org/confluence/display/solr/Ping[Ping] - lets you ping a named core and determine whether the core is active.
-** https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=32604180[Plugins/Stats] - shows statistics for plugins and other installed components.
-** https://cwiki.apache.org/confluence/display/solr/Replication+Screen[Replication] - shows you the current replication status for the core, and lets you enable/disable replication.
-** https://cwiki.apache.org/confluence/display/solr/Segments+Info[Segments Info] - Provides a visualization of the underlying Lucene index segments.
+** <<ping.adoc#ping,Ping>> - lets you ping a named core and determine whether the core is active.
+** <<plugins-stats-screen#plugins-stats-screen,Plugins/Stats>> - shows statistics for plugins and other installed components.
+** <<replication-screen.adoc#replication-screen,Replication>> - shows you the current replication status for the core, and lets you enable/disable replication.
+** <<segments-info.adoc#segments-info,Segments Info>> - Provides a visualization of the underlying Lucene index segments.
