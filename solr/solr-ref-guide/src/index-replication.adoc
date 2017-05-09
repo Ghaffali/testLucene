@@ -35,7 +35,9 @@ When using SolrCloud, the `ReplicationHandler` must be available via the `/repli
 
 The table below defines the key terms associated with Solr replication.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Term |Definition
 |Index |A Lucene index is a directory of files. These files make up the searchable and returnable data of a Solr Core.
@@ -62,7 +64,9 @@ In addition to `ReplicationHandler` configuration options specific to the master
 
 Before running a replication, you should set the following parameters on initialization of the handler:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Name |Description
 |replicateAfter |String specifying action after which replication should occur. Valid values are commit, optimize, or startup. There can be multiple values for this parameter. If you use "startup", you need to have a "commit" and/or "optimize" entry also if you want to trigger replication on future commits or optimizes.
@@ -183,7 +187,9 @@ Here is an example of a ReplicationHandler configuration for a repeater:
 
 When a commit or optimize operation is performed on the master, the RequestHandler reads the list of file names which are associated with each commit point. This relies on the `replicateAfter` parameter in the configuration to decide which types of events should trigger replication.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Setting on the Master |Description
 |commit |Triggers replication whenever a commit is performed on the master index.
@@ -239,8 +245,6 @@ To correct this problem, the slave then copies all the index files from master t
 == HTTP API Commands for the ReplicationHandler
 
 You can use the HTTP commands below to control the ReplicationHandler's operations.
-
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
 
 [width="100%",options="header",]
 |===

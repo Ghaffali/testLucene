@@ -6,7 +6,9 @@ The Solr Wiki contains a list of client APIs at http://wiki.apache.org/solr/Inte
 
 Here is the list of client APIs, current at this writing (November 2011):
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,20,60",options="header"]
 |===
 |Name |Environment |URL
 |SolRuby |Ruby |https://github.com/rsolr/rsolr

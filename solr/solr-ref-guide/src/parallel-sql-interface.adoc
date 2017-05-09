@@ -214,8 +214,6 @@ WHERE (fieldA = 'term1') AND NOT (fieldB = 'term2')
 
 The parallel SQL interface supports and pushes down most common SQL operators, specifically:
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
-
 [width="100%",options="header",]
 |===
 |Operator |Description |Example |Solr Query

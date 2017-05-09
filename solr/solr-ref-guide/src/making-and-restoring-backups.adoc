@@ -37,7 +37,9 @@ Only one backup call can be made against a core at any point in time. While an o
 
 The backup request can also take the following additional parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |location |The path where the backup will be created. If the path is not absolute then the backup path will be relative to Solr's instance directory.
@@ -87,7 +89,9 @@ This will restore the named index snapshot into the current core. Searches will 
 
 The restore request can also take these additional parameters:
 
-[cols=",",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |location |The location of the backup snapshot file. If not specified, it looks for backups in Solr's data directory.
@@ -140,7 +144,9 @@ http://localhost:8983/solr/admin/cores?action=CREATESNAPSHOT&core=techproducts&c
 
 The list snapshot request parameters are:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |commitName |Specify the commit name to store the snapshot as
@@ -162,7 +168,9 @@ http://localhost:8983/solr/admin/cores?action=LISTSNAPSHOTS&core=techproducts&co
 
 The list snapshot request parameters are:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Parameter |Description
 |core |name of the core to whose snapshots we want to list

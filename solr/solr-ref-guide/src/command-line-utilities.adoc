@@ -21,7 +21,9 @@ Many of the functions provided by the zkCli.sh script are also provided by the <
 
 Both `zkcli.sh` (for Unix environments) and `zkcli.bat` (for Windows environments) support the following command line options:
 
-[width="100%",options="header"]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="10,30,60",options="header"]
 |===
 |Short |Parameter Usage |Meaning
 | |`-cmd <arg>` |CLI Command to be executed: `bootstrap`, `upconfig`, `downconfig`, `linkconfig`, `makepath`, `get`, `getfile`, `put`, `putfile`, `list`, `clear` or `clusterprop`. This parameter is **mandatory**.

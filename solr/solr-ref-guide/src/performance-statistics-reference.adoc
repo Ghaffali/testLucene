@@ -20,11 +20,13 @@ The update request handler is an endpoint to send data to Solr. We can see how m
 
 Can be useful to measure and track number of search queries , response times etc. If you are not using the “select” handler then the path needs to be changed appropriately. Similarly if you are using the “sql” handler or “export” handler , the realtime handler “get”, or any other handler similar statistics can be found for that as well.
 
-**Path**: `/solr/<core>/select`
+*Path*: `/solr/<core>/select`
 
 Both Update Request Handler and Search Request Handler along with handlers like “sql”, “export” and realtime “get” handler will provide the following attributes in their statistics.
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
 |15minRateReqsPerSecond |Requests per second received over the past 15 minutes.
@@ -50,8 +52,9 @@ Both Update Request Handler and Search Request Handler along with handlers like 
 *Update Handler:* This section has information on the total number of adds, how many commits have been fired against a solr core.
 
 *Path:* `/solr/<core>/updateHandler/DirectUpdateHandler2`
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
 |adds |Total number of “add” requests since last commit.
@@ -94,7 +97,9 @@ This cache is used for filters for unordered sets of all documents that match a 
 
 *Path:* `/solr/<cache>/filterCache`
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="30,70",options="header"]
 |===
 |Attribute |Description
 |cumulative_evictions |Number of cache evictions across all caches since this node has been running.

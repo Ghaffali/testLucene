@@ -236,7 +236,9 @@ The configuration details, defaults and options are as follows:
 
 CDCR can be configured to forward update requests to one or more replicas. A replica is defined with a “replica” list as follows:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,10,15,55",options="header"]
 |===
 |Parameter |Required |Default |Description
 |zkHost |Yes |none |The host address for ZooKeeper of the target SolrCloud. Usually this is a comma-separated list of addresses to each node in the target ZooKeeper ensemble.
@@ -250,7 +252,9 @@ The CDC Replicator is the component in charge of forwarding updates to the repli
 
 The replicator uses a fixed thread pool to forward updates to multiple replicas in parallel. If more than one replica is configured, one thread will forward a batch of updates from one replica at a time in a round-robin fashion. The replicator can be configured with a “replicator” list as follows:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,10,15,55",options="header"]
 |===
 |Parameter |Required |Default |Description
 |threadPoolSize |No |2 |The number of threads to use for forwarding updates. One thread per replica is recommended.
@@ -262,7 +266,9 @@ The replicator uses a fixed thread pool to forward updates to multiple replicas 
 
 Expert: Non-leader nodes need to synchronize their update logs with their leader node from time to time in order to clean deprecated transaction log files. By default, such a synchronization process is performed every minute. The schedule of the synchronization can be modified with a “updateLogSynchronizer” list as follows:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,10,15,55",options="header"]
 |===
 |Parameter |Required |Default |Description
 |schedule |No |60000 |The delay in milliseconds for synchronizing the updates log.
@@ -272,7 +278,9 @@ Expert: Non-leader nodes need to synchronize their update logs with their leader
 
 CDCR is configured by default to buffer any new incoming updates. When buffering updates, the updates log will store all the updates indefinitely. Replicas do not need to buffer updates, and it is recommended to disable buffer on the target SolrCloud. The buffer can be disabled at startup with a “buffer” list and the parameter “defaultState” as follows:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,10,15,55",options="header"]
 |===
 |Parameter |Required |Default |Description
 |defaultState |No |enabled |The state of the buffer at startup.
@@ -685,7 +693,7 @@ As usual, it is good to start small. Sync a single cloud and monitor for a perio
 +
 For example, if there are 2 shards on collection1 with 2 replicas for each shard, copy the corresponding index directories from
 +
-[width="100%"]
+[width="75%",cols="45,10,45"]
 |===
 |shard1replica1Source |to |shard1replica1Target
 |shard1replica2Source |to |shard1replica2Target

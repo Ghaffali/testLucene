@@ -4,7 +4,9 @@
 
 == Cluster Parameters
 
-[width="100%"]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,20,60"]
 |===
 |`numShards` |Defaults to 1 |The number of shards to hash documents to. There must be one leader per shard and each leader can have N replicas.
 |===
@@ -13,7 +15,9 @@
 
 These are set in `solr.xml`, but by default the `host` and `hostContext` parameters are set up to also work with system properties.
 
-[width="100%",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,20,60"]
 |===
 |`host` |Defaults to the first local host address found |If the wrong host address is found automatically, you can override the host address with this parameter.
 |`hostPort` |Defaults to the port specified via `bin/solr -p <port>`, or `8983` if not specified. |The port that Solr is running on. This value is only used when `-DzkRun` is specified without a value (see below), to calculate the default port on which embedded ZooKeeper will run. **I**n the `solr.xml` shipped with Solr, the `hostPort` system property is not referenced, and so is ignored. If you want to run Solr on a non-default port, use `bin/solr -p <port>` rather than specifying `-DhostPort`.
@@ -22,7 +26,9 @@ These are set in `solr.xml`, but by default the `host` and `hostContext` paramet
 
 == SolrCloud Instance ZooKeeper Parameters
 
-[width="100%",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,20,60"]
 |===
 |`zkRun` |Defaults to `localhost:<hostPort+1000>` |Causes Solr to run an embedded version of ZooKeeper. Set to the address of ZooKeeper on this node; this allows us to know who you are in the list of addresses in the `zkHost` connect string. Use `-DzkRun` (with no value) to get the default value.
 |`zkHost` |No default |The host address for ZooKeeper. Usually this is a comma-separated list of addresses to each node in your ZooKeeper ensemble.
@@ -33,7 +39,9 @@ These are set in `solr.xml`, but by default the `host` and `hostContext` paramet
 
 == SolrCloud Core Parameters
 
-[width="100%",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,20,60"]
 |===
 |`shard` |Defaults to being automatically assigned based on numShards |Specifies which shard this core acts as a replica of.
 |===

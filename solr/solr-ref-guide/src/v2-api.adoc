@@ -46,20 +46,20 @@ Following are some v2 API URL paths and path prefixes, along with some of the op
 
 Append `/_introspect` to any valid v2 API path and the API specification will be returned in JSON format.
 
-`http://localhost:8983/v2/c/_introspect`
+`\http://localhost:8983/v2/c/_introspect`
 
 To limit the introspect output to include just one particular HTTP method, add request param `method` with value `GET`, `POST`, or `DELETE`.
 
-`http://localhost:8983/v2/c/_introspect?method=POST`
+`\http://localhost:8983/v2/c/_introspect?method=POST`
 
 Most endpoints support commands provided in a body sent via POST. To limit the introspect output to only one command, add request param `command=__command-name__` .
 
-`http://localhost:8983/v2/c/gettingstarted/_introspect?method=POST&command=modify`
+`\http://localhost:8983/v2/c/gettingstarted/_introspect?method=POST&command=modify`
 
 [[v2API-InterpretingtheIntrospectOutput]]
 === Interpreting the Introspect Output
 
-Example : `http://localhost:8983/v2/c/gettingstarted/get/_introspect`
+Example : `\http://localhost:8983/v2/c/gettingstarted/get/_introspect`
 
 [source,json]
 ----
@@ -93,7 +93,7 @@ Description of some of the keys in the above example:
 * `**spec/url/params**` : List of supported URL request params
 * `**availableSubPaths**` : List of valid URL subpaths and the HTTP method(s) each supports
 
-Example of introspect for a POST API: `http://localhost:8983/v2/c/gettingstarted/_introspect?method=POST&command=modify`
+Example of introspect for a POST API: `\http://localhost:8983/v2/c/gettingstarted/_introspect?method=POST&command=modify`
 
 [source,json]
 ----

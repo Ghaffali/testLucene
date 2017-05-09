@@ -25,9 +25,11 @@ For most SolrCloud or standalone Solr setups, the `HadoopAuthPlugin` should suff
 [[HadoopAuthenticationPlugin-PluginConfiguration]]
 == Plugin Configuration
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,65",options="header"]
 |===
-|Parameter name |Required |Description
+|Parameter Name |Required |Description
 |class |Yes |Should be either `solr.HadoopAuthPlugin` or `solr.ConfigurableInternodeAuthHadoopPlugin`.
 |type |Yes |The type of authentication scheme to be configured. See https://hadoop.apache.org/docs/stable/hadoop-auth/Configuration.html[configuration] options.
 |sysPropPrefix |Yes |The prefix to be used to define the Java system property for configuring the authentication mechanism. The name of the Java system property is defined by appending the configuration parameter name to this prefix value. For example, if the prefix is 'solr' then the Java system property 'solr.kerberos.principal' defines the value of configuration parameter 'kerberos.principal'.

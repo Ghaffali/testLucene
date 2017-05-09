@@ -29,7 +29,9 @@ Create a ConfigSet, based on an existing ConfigSet.
 [[ConfigSetsAPI-Input]]
 === Input
 
-[cols=",,,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,15,40",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |name |String |Yes | |ConfigSet to be created
@@ -82,7 +84,9 @@ Delete a ConfigSet
 
 *Query Parameters*
 
-[cols=",,,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,15,40",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |name |String |Yes | |ConfigSet to be deleted

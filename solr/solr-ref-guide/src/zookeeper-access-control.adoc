@@ -33,9 +33,9 @@ But this content is also available to "the outside" via the ZooKeeper API. Outsi
 
 We want to be able to:
 
-1.  Control the credentials Solr uses for its ZooKeeper connections. The credentials are used to get permission to perform operations in ZooKeeper.
-2.  Control which ACLs Solr will add to znodes (ZooKeeper files/folders) it creates in ZooKeeper.
-3.  Control it "from the outside", so that you do not have to modify and/or recompile Solr code to turn this on.
+. Control the credentials Solr uses for its ZooKeeper connections. The credentials are used to get permission to perform operations in ZooKeeper.
+. Control which ACLs Solr will add to znodes (ZooKeeper files/folders) it creates in ZooKeeper.
+. Control it "from the outside", so that you do not have to modify and/or recompile Solr code to turn this on.
 
 Solr nodes, clients and tools (e.g. ZkCLI) always use a java class called {solr-javadocs}/solr-solrj/org/apache/solr/common/cloud/SolrZkClient.html[`SolrZkClient`] to deal with their ZooKeeper stuff. The implementation of the solution described here is all about changing `SolrZkClient`. If you use `SolrZkClient` in your application, the descriptions below will be true for your application too.
 
@@ -83,12 +83,15 @@ You can give the readonly credentials to "clients" of your SolrCloud cluster - e
 
 
 [[ZooKeeperAccessControl-bin_solr_solr.cmd_server_scripts_cloud-scripts_zkcli.sh_zkcli.bat]]
-=== `bin/solr` & `solr.cmd`, `server/scripts/cloud-scripts/zkcli.sh` & `zkcli.bat`
+=== ZooKeeper ACLs in Solr Scripts
+
+There are two scripts that impact ZooKeeper ACLs:
+* For *nix systems: `bin/solr` & `server/scripts/cloud-scripts/zkcli.sh`
+* For Windows systems: `bin/solr.cmd` & `server/scripts/cloud-scripts/zkcli.bat`
 
 These Solr scripts can enable use of ZK ACLs by setting the appropriate system properties: uncomment the following and replace the passwords with ones you choose to enable the above-described VM parameters ACL and credentials providers in the following files:
 
-*solr.in.sh*
-
+.solr.in.sh
 [source,bash]
 ----
 # Settings for ZK ACL
@@ -99,8 +102,7 @@ These Solr scripts can enable use of ZK ACLs by setting the appropriate system p
 #SOLR_OPTS="$SOLR_OPTS $SOLR_ZK_CREDS_AND_ACLS"
 ----
 
-*solr.in.cmd*
-
+.solr.in.cmd
 [source,powershell]
 ----
 REM Settings for ZK ACL
@@ -111,8 +113,7 @@ REM  -DzkDigestReadonlyUsername=readonly-user -DzkDigestReadonlyPassword=CHANGEM
 REM set SOLR_OPTS=%SOLR_OPTS% %SOLR_ZK_CREDS_AND_ACLS%
 ----
 
-*zkcli.sh*
-
+.zkcli.sh
 [source,bash]
 ----
 # Settings for ZK ACL
@@ -122,8 +123,7 @@ REM set SOLR_OPTS=%SOLR_OPTS% %SOLR_ZK_CREDS_AND_ACLS%
 #  -DzkDigestReadonlyUsername=readonly-user -DzkDigestReadonlyPassword=CHANGEME-READONLY-PASSWORD"
 ----
 
-*zkcli.bat*
-
+.zkcli.bat
 [source,powershell]
 ----
 REM Settings for ZK ACL

@@ -116,9 +116,9 @@ Permissions need to be created if they are not on the list of pre-defined permis
 
 Several properties can be used to define your custom permission.
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="30,70",options="header"]
 |===
 |Property |Description
 |name |The name of the permission. This is required only if it is a predefined permission.

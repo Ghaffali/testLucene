@@ -6,7 +6,9 @@ The MBean Request Handler offers programmatic access to the information provided
 
 The MBean Request Handler accepts the following parameters:
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="10,20,10,60",options="header"]
 |===
 |Parameter |Type |Default |Description
 |key |multivalued |all |Restricts results by object key.

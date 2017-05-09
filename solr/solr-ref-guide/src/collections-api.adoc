@@ -14,13 +14,21 @@ The Collections API is used to enable you to create, remove, or reload collectio
 
 *Query Parameters*
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,15,10,15,40",options="header"]
 |===
 |Key |Type |Required |Default |Description
 |name |string |Yes | |The name of the collection to be created.
-|router.name |string |No |compositeId |The router name that will be used. The router defines how documents will be distributed among the shards. Possible values are *implicit* or *compositeId*. The 'implicit' router does not automatically route documents to different shards. Whichever shard you indicate on the indexing request (or within each document) will be used as the destination for those documents. The 'compositeId' router hashes the value in the uniqueKey field and looks up that hash in the collection's clusterstate to determine which shard will receive the document, with the additional ability to manually direct the routing. When using the 'implicit' router, the `shards` parameter is required. When using the 'compositeId' router, the `numShards` parameter is required. For more information, see also the section <<shards-and-indexing-data-in-solrcloud.adoc#ShardsandIndexingDatainSolrCloud-DocumentRouting,Document Routing>>.
+|router.name |string |No |compositeId |The router name that will be used. The router defines how documents will be distributed among the shards. Possible values are *implicit* or *compositeId*.
+
+The 'implicit' router does not automatically route documents to different shards. Whichever shard you indicate on the indexing request (or within each document) will be used as the destination for those documents.
+
+The 'compositeId' router hashes the value in the uniqueKey field and looks up that hash in the collection's clusterstate to determine which shard will receive the document, with the additional ability to manually direct the routing.
+
+When using the 'implicit' router, the `shards` parameter is required. When using the 'compositeId' router, the `numShards` parameter is required.
+
+For more information, see also the section <<shards-and-indexing-data-in-solrcloud.adoc#ShardsandIndexingDatainSolrCloud-DocumentRouting,Document Routing>>.
 |numShards |integer |No |empty |The number of shards to be created as part of the collection. This is a required parameter when using the 'compositeId' router.
 |shards |string |No |empty |A comma separated list of shard names, e.g., shard-x,shard-y,shard-z. This is a required parameter when using the 'implicit' router.
 |replicationFactor |integer |No |1 |The number of replicas to be created for each shard.
@@ -92,9 +100,9 @@ It's possible to edit multiple attributes at a time. Changing these values only 
 
 *Query Parameters*
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection to be modified.
@@ -126,7 +134,10 @@ The RELOAD action is used when you have changed a configuration in ZooKeeper.
 
 *Query Parameters*
 
-[cols=",,,",options="header",]
+
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The name of the collection to reload.
@@ -196,7 +207,9 @@ Shard splitting can be a long running process. In order to avoid timeouts, you s
 
 *Query Parameters*
 
-[cols=",,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection that includes the shard to be split.
@@ -298,7 +311,9 @@ Shards can only created with this API for collections that use the 'implicit' ro
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection that includes the shard that will be splitted.
@@ -409,7 +424,9 @@ The `CREATEALIAS` action will create a new alias pointing to one or more collect
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The alias name to be created.
@@ -456,7 +473,9 @@ http://localhost:8983/solr/admin/collections?action=CREATEALIAS&name=testalias&c
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The name of the alias to delete.
@@ -502,7 +521,9 @@ http://localhost:8983/solr/admin/collections?action=DELETEALIAS&name=testalias
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The name of the collection to delete.
@@ -564,7 +585,9 @@ Delete a named replica from the specified collection and shard. If the correspon
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection.
@@ -612,9 +635,9 @@ Add a replica to a shard in a collection. The node name can be specified if the 
 
 *Query Parameters*
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection.
@@ -678,7 +701,9 @@ Add, edit or delete a cluster-wide property.
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |name |string |Yes |The name of the property. The supported properties names are `urlScheme` and `autoAddReplicas and location`. Other names are rejected with an error.
@@ -732,7 +757,9 @@ Please note that the migrate API does not perform any de-duplication on the docu
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the source collection from which documents will be split.
@@ -916,7 +943,9 @@ Assign a role to a given node in the cluster. The only supported role as of 4.7 
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |role |string |Yes |The name of the role. The only supported role as of now is _overseer_.
@@ -962,7 +991,9 @@ Remove an assigned role. This API is used to undo the roles assigned using ADDRO
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |role |string |Yes |The name of the role. The only supported role as of now is _overseer_.
@@ -1083,7 +1114,9 @@ Fetch the cluster status including collections, shards, replicas, configuration 
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |No |The collection name for which information is requested. If omitted, information on all collections in the cluster will be returned.
@@ -1187,7 +1220,9 @@ Request the status and response of an already submitted <<CollectionsAPI-async,A
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |requestid |string |Yes |The user defined request-id for the request. This can be used to track the status of the submitted asynchronous task.
@@ -1254,7 +1289,9 @@ Delete the stored response of an already failed or completed <<CollectionsAPI-as
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |requestid |string |No |The request-id of the async call we need to clear the stored response for.
@@ -1366,9 +1403,9 @@ Assign an arbitrary property to a particular replica and give it the value speci
 
 *Query Parameters*
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection this replica belongs to.
@@ -1451,9 +1488,9 @@ Deletes an arbitrary property from a particular replica.
 
 *Query Parameters*
 
-// TODO: This table has cells that won't work with PDF: https://github.com/ctargett/refguide-asciidoc-poc/issues/13
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
 
-[width="100%",options="header",]
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection this replica belongs to
@@ -1511,7 +1548,9 @@ Insures that a particular property is distributed evenly amongst the physical no
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection to balance the property in.
@@ -1567,7 +1606,9 @@ Assigns leaders in a collection according to the preferredLeader property on act
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection to rebalance preferredLeaders on.
@@ -1666,7 +1707,9 @@ In the unlikely event of a shard losing its leader, this command can be invoked 
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection
@@ -1685,7 +1728,9 @@ A expert level utility API to move a collection from shared `clusterstate.json` 
 
 `/admin/collections?action=MIGRATESTATEFORMAT&collection=<collection_name>`
 
-[cols=",,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection to be migrated from `clusterstate.json` to its own `state.json` zookeeper node
@@ -1708,7 +1753,9 @@ The backup command will backup Solr indexes and configurations for a specified c
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The name of the collection that needs to be backed up
@@ -1735,7 +1782,9 @@ You can use the collection <<CollectionsAPI-createalias,alias>> API to make sure
 
 *Query Parameters*
 
-[cols=",,,",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection |string |Yes |The collection where the indexes will be restored into.
@@ -1748,7 +1797,9 @@ Additionally, there are several parameters that can be overridden:
 
 *Override Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |collection.configName |String |No |Defines the name of the configurations to use for this collection. These must already be stored in ZooKeeper. If not provided, Solr will default to the collection name as the configuration name.
@@ -1770,7 +1821,9 @@ Deletes all replicas of all collections in that node. Please note that the node 
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |node |string |Yes |The node to be cleaned up
@@ -1789,7 +1842,9 @@ This command recreates replicas in the source node to the target node. After eac
 
 *Query Parameters*
 
-[width="100%",options="header",]
+// TODO: Change column width to %autowidth.spread when https://github.com/asciidoctor/asciidoctor-pdf/issues/599 is fixed
+
+[cols="20,15,10,55",options="header"]
 |===
 |Key |Type |Required |Description
 |source |string |Yes |The source node from which the replicas need to be copied from
