@@ -179,10 +179,6 @@ public class CheckLinksAndAnchors {
             problems++;
             System.err.println("Relative link points at id that doesn't exist in dest: " + link);
             System.err.println(" ... source: " + source.toURI().toString());
-            try {
-              System.err.println(" ... nocommit: " + idsToFiles.get(frag).get(0).getName());
-              System.err.println(" ... nocommit: " + path);
-            } catch (NullPointerException ignored) { /* nocommit: Noop */ }
           }
         }
       }
