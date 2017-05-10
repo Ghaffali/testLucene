@@ -32,9 +32,9 @@
 }
 
 .apaste_menu {
-	float: right;
-	margin-right: 10px;
-	width: 80px;
+        float: right;
+        margin-right: 10px;
+        width: 80px;
 }
 
 .apaste_comment {
@@ -46,10 +46,10 @@
   font-weight: normal;
   padding-left: 20px;
   padding-right: 20px;
-	padding-bottom: 16px;
-	padding-top: 5px;
-	margin: 15px;
-	font-size: 13px
+  padding-bottom: 16px;
+  padding-top: 5px;
+  margin: 15px;
+  font-size: 13px
 }
 .comment_header {
     color: #000000;
@@ -117,31 +117,31 @@
 .apaste_comment_verified {background: #FAFBFA;}
 
 .apaste_comment_invalid {
-	color: #999;
-	background: #F8F8F8;
+  color: #999;
+  background: #F8F8F8;
 }
 
 
 .apaste_comment textarea {
-	width: 480px;
-	height: 180px;
+  width: 480px;
+  height: 180px;
 }
 
 #apaste {
-	margin: 5px;
-	font-weight: normal;
-	font-size: 14px;
-	color: #024;
+  margin: 5px;
+  font-weight: normal;
+  font-size: 14px;
+  color: #024;
 
 }
 #apaste .section {
-	padding: 20px;
-	padding-left: 80px;
+  padding: 20px;
+  padding-left: 80px;
 }
 
 .notapproved {
-	background-color: #FEE;
-	padding: 5px;
+  background-color: #FEE;
+  padding: 5px;
 }
 
 #comments_thread textarea{
@@ -154,7 +154,7 @@
 }
 
 .apaste_honeypot {
-	display: none;
+  display: none;
 }
 
 //* Remove external link icons when they appear in comments *//

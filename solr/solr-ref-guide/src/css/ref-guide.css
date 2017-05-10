@@ -84,7 +84,7 @@ a
 a:focus
 {
     outline: thin dotted;
-	 outline-offset: -2px;
+   outline-offset: -2px;
 }
 
 a:active,
@@ -194,7 +194,7 @@ q
 small
 {
     font-size: 80%;
-	 line-height: inherit;
+   line-height: inherit;
 }
 
 sub,
@@ -546,12 +546,12 @@ h6
     font-weight: 300;
     font-style: normal;
     font-family: 'Noto Sans', sans-serif;
-	 margin: 40px 0 0 0;
-	 padding: 0;
-	 direction: ltr;
-	 word-spacing: -.05em;
-	 line-height: 1.2;
-	 letter-spacing: -.01em;
+   margin: 40px 0 0 0;
+   padding: 0;
+   direction: ltr;
+   word-spacing: -.05em;
+   line-height: 1.2;
+   letter-spacing: -.01em;
     page-break-after: avoid;
 }
 
@@ -572,7 +572,7 @@ h6 small
 /* Pad the page title and sidebar header */
 h1.post-title-main,
 li.sidebarTitle {
-	padding-top: 20px;
+  padding-top: 20px;
 }
 
 h1
@@ -887,7 +887,7 @@ pre > code
     font-weight: 400;
     font-family: 'Inconsolata', monospace;
     line-height: 1.45;
-	 white-space: pre-wrap;
+   white-space: pre-wrap;
 }
 
 .keyseq
@@ -1001,7 +1001,7 @@ span.projectTitle
 {
     font-weight: bold;
     font-family: 'Noto Sans', sans-serif;
-	 font-size: 14pt;
+    font-size: 14pt;
 }
 
 #header > h1:first-child
