@@ -28,7 +28,7 @@
     <dependency org="org.apache.pdfbox" name="pdfbox" rev="${/org.apache.pdfbox/pdfbox}" conf="compile"/>
     <dependency org="org.slf4j" name="jcl-over-slf4j" rev="${/org.slf4j/jcl-over-slf4j}" conf="compile"/>
     <dependency org="org.slf4j" name="slf4j-api" rev="${/org.slf4j/slf4j-api}" conf="compile"/>
-    <dependency org="org.slf4j" name="slf4j-simple" rev="${/org.slf4j/slf4j-log4j12}" conf="compile"/>
+    <dependency org="org.slf4j" name="slf4j-simple" rev="${/org.slf4j/slf4j-simple}" conf="compile"/>
     <dependency org="log4j" name="log4j" rev="${/log4j/log4j}" conf="compile"/>
   </dependencies>
 </ivy-module>
