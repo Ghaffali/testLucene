@@ -17,16 +17,16 @@ When you try SolrCloud for the first time using the `bin/solr -e cloud`, the rel
 
 The below command would start SolrCloud with the default collection name (gettingstarted) and default configset (data_driven_schema_configs) uploaded and linked to it.
 
-[source,java]
+[source,bash]
 ----
-$ bin/solr -e cloud -noprompt
+bin/solr -e cloud -noprompt
 ----
 
 You can also explicitly upload a configuration directory when creating a collection using the `bin/solr` script with the `-d` option, such as:
 
-[source,java]
+[source,bash]
 ----
-$ bin/solr create -c mycollection -d data_driven_schema_configs
+bin/solr create -c mycollection -d data_driven_schema_configs
 ----
 
 The create command will upload a copy of the `data_driven_schema_configs` configuration directory to ZooKeeper under `/configs/mycollection`. Refer to the <<solr-control-script-reference.adoc#solr-control-script-reference,Solr Control Script Reference>> page for more details about the create command for creating collections.
@@ -48,9 +48,9 @@ In production situations, <<config-sets.adoc#config-sets,Config Sets>> can also 
 
 The below command can be used to upload a new configset using the bin/solr script.
 
-[source,text]
+[source,bash]
 ----
-$ bin/solr zk upconfig -n <name for configset> -d <path to directory with configset>
+bin/solr zk upconfig -n <name for configset> -d <path to directory with configset>
 ----
 
 It is strongly recommended that the configurations be kept in a version control system, Git, SVN or similar.
@@ -75,7 +75,7 @@ There are certain configuration files containing cluster wide configuration. Sin
 
 If you for example would like to keep your `solr.xml` in ZooKeeper to avoid having to copy it to every node's `solr_home` directory, you can push it to ZooKeeper with the bin/solr utility (Unix example):
 
-[source,text]
+[source,bash]
 ----
 bin/solr cp file:local/file/path/to/solr.xml zk:/solr.xml -z localhost:2181
 ----

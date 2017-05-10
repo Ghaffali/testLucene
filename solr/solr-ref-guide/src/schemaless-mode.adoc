@@ -15,7 +15,7 @@ These Solr features, all controlled via `solrconfig.xml`, are:
 
 The three features of schemaless mode are pre-configured in the `data_driven_schema_configs` <<config-sets.adoc#config-sets,config set>> in the Solr distribution. To start an example instance of Solr using these configs, run the following command:
 
-[source,plain]
+[source,bash]
 ----
 bin/solr start -e schemaless
 ----
@@ -196,7 +196,7 @@ Output indicating success:
 
 The fields now in the schema (output from `curl \http://localhost:8983/solr/gettingstarted/schema/fields` ):
 
-[source,text]
+[source,json]
 ----
 {
   "responseHeader":{

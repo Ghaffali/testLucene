@@ -47,7 +47,7 @@ Creating the instance is a simple matter of extracting the files into a specific
 === Configure the instance
 The next step is to configure your ZooKeeper instance. To do that, create the following file: `<ZOOKEEPER_HOME>/conf/zoo.cfg`. To this file, add the following information:
 
-[source,plain]
+[source,bash]
 ----
 tickTime=2000
 dataDir=/var/lib/zookeeper
@@ -78,16 +78,16 @@ Pointing Solr at the ZooKeeper instance you've created is a simple matter of usi
 
 Starting `cloud` example with Zookeeper already running at port 2181 (with all other defaults):
 
-[source,plain]
+[source,bash]
 ----
- bin/solr start -e cloud -z localhost:2181 -noprompt
+bin/solr start -e cloud -z localhost:2181 -noprompt
 ----
 
 Add a node pointing to an existing ZooKeeper at port 2181:
 
-[source,plain]
+[source,bash]
 ----
- bin/solr start -cloud -s <path to solr home for new node> -p 8987 -z localhost:2181
+bin/solr start -cloud -s <path to solr home for new node> -p 8987 -z localhost:2181
 ----
 
 NOTE: When you are not using an example to start solr, make sure you upload the configuration set to ZooKeeper before creating the collection.
@@ -104,7 +104,7 @@ With an external ZooKeeper ensemble, you need to set things up just a little mor
 
 The difference is that rather than simply starting up the servers, you need to configure them to know about and talk to each other first. So your original `zoo.cfg` file might look like this:
 
-[source,text]
+[source,bash]
 ----
 dataDir=/var/lib/zookeeperdata/1
 clientPort=2181
@@ -127,7 +127,7 @@ Now, whereas with Solr you need to create entirely new directories to run multip
 
 The `<ZOOKEEPER_HOME>/conf/zoo2.cfg` file should have the content:
 
-[source,text]
+[source,bash]
 ----
 tickTime=2000
 dataDir=c:/sw/zookeeperdata/2
@@ -141,7 +141,7 @@ server.3=localhost:2890:3890
 
 You'll also need to create `<ZOOKEEPER_HOME>/conf/zoo3.cfg`:
 
-[source,text]
+[source,bash]
 ----
 tickTime=2000
 dataDir=c:/sw/zookeeperdata/3
@@ -169,7 +169,7 @@ Once these servers are running, you can reference them from Solr just as you did
 
 [source,bash]
 ----
- bin/solr start -e cloud -z localhost:2181,localhost:2182,localhost:2183 -noprompt
+bin/solr start -e cloud -z localhost:2181,localhost:2182,localhost:2183 -noprompt
 ----
 
 [[SettingUpanExternalZooKeeperEnsemble-SecuringtheZooKeeperconnection]]

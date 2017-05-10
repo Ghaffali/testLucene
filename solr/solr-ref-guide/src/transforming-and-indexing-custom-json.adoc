@@ -300,7 +300,7 @@ curl 'http://localhost:8983/solr/my_collection/update/json/docs?split=/|/orgs'\
 
 With this example, the documents indexed would be, as follows:
 
-[source,bash]
+[source,json]
 ----
 {
   "name":"Joe Smith",

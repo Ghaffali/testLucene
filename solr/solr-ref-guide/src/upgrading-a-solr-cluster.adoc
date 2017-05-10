@@ -79,9 +79,9 @@ You are now ready to start the upgraded Solr node by doing: `sudo service solr s
 
 You should run the Solr *healthcheck* command for all collections that are hosted on the upgraded node before proceeding to upgrade the next node in your cluster. For instance, if the newly upgraded node hosts a replica for the *MyDocuments* collection, then you can run the following command (replace ZK_HOST with the ZooKeeper connection string):
 
-[source,java]
+[source,bash]
 ----
-$ /opt/solr/bin/solr healthcheck -c MyDocuments -z ZK_HOST
+/opt/solr/bin/solr healthcheck -c MyDocuments -z ZK_HOST
 ----
 
 Look for any problems reported about any of the replicas for the collection.

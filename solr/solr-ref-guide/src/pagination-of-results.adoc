@@ -14,7 +14,7 @@ In Solr, this basic paginated searching is supported using the `start` and `rows
 
 The easiest way to think about simple pagination, is to simply multiply the page number you want (treating the "first" page number as "0") by the number of rows per page; such as in the following pseudo-code:
 
-[source,java]
+[source,plain]
 ----
 function fetch_solr_page($page_number, $rows_per_page) {
   $start = $page_number * $rows_per_page
@@ -234,7 +234,7 @@ Another common example is when you have uniqueKey values that always increase as
 
 The pseudo-code for tailing a cursor is only a slight modification from our early example for processing all docs matching a query:
 
-[source,java]
+[source,plain]
 ----
 while (true) {
   $doneForNow = false

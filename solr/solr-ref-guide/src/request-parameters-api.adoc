@@ -138,14 +138,14 @@ When making a request, the `useParams` parameter applies the request parameters 
 
 For example (using the names we set up in the earlier examples, please replace with your own name):
 
-[source,bash]
+[source,text]
 ----
 http://localhost/solr/techproducts/select?useParams=myQueries
 ----
 
 It is possible to pass more than one parameter set in the same request. For example:
 
-[source,bash]
+[source,text]
 ----
 http://localhost/solr/techproducts/select?useParams=myFacets,myQueries
 ----

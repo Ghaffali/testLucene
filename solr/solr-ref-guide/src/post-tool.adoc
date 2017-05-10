@@ -8,7 +8,7 @@ The tool is `bin/post`. The bin/post tool is a Unix shell script; for Windows (n
 
 To run it, open a window and enter:
 
-[source,plain]
+[source,bash]
 ----
 bin/post -c gettingstarted example/films/films.json
 ----
@@ -66,39 +66,39 @@ There are several ways to use `bin/post`. This section presents several examples
 
 Add all documents with file extension `.xml` to collection or core named `gettingstarted`.
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted *.xml
+bin/post -c gettingstarted *.xml
 ----
 
 Add all documents with file extension `.xml` to the `gettingstarted` collection/core on Solr running on port `8984`.
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted -p 8984 *.xml
+bin/post -c gettingstarted -p 8984 *.xml
 ----
 
 Send XML arguments to delete a document from `gettingstarted`.
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted -d '<delete><id>42</id></delete>'
+bin/post -c gettingstarted -d '<delete><id>42</id></delete>'
 ----
 
 === Indexing CSV
 
 Index all CSV files into `gettingstarted`:
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted *.csv
+bin/post -c gettingstarted *.csv
 ----
 
 Index a tab-separated file into `gettingstarted`:
 
-[source,plain]
+[source,bash]
 ----
- bin/post -c signals -params "separator=%09" -type text/csv data.tsv
+bin/post -c signals -params "separator=%09" -type text/csv data.tsv
 ----
 
 The content type (`-type`) parameter is required to treat the file as the proper type, otherwise it will be ignored and a WARNING logged as it does not know what type of content a .tsv file is. The <<uploading-data-with-index-handlers.adoc#UploadingDatawithIndexHandlers-CSVFormattedIndexUpdates,CSV handler>> supports the `separator` parameter, and is passed through using the `-params` setting.
@@ -107,41 +107,41 @@ The content type (`-type`) parameter is required to treat the file as the proper
 
 Index all JSON files into `gettingstarted`.
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted *.json
+bin/post -c gettingstarted *.json
 ----
 
 === Indexing Rich Documents (PDF, Word, HTML, etc)
 
 Index a PDF file into `gettingstarted`.
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted a.pdf
+bin/post -c gettingstarted a.pdf
 ----
 
 Automatically detect content types in a folder, and recursively scan it for documents for indexing into `gettingstarted`.
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted afolder/
+bin/post -c gettingstarted afolder/
 ----
 
 Automatically detect content types in a folder, but limit it to PPT and HTML files and index into `gettingstarted`.
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -c gettingstarted -filetypes ppt,html afolder/
+bin/post -c gettingstarted -filetypes ppt,html afolder/
 ----
 
 === Indexing to a Password Protected Solr (Basic Auth)
 
 Index a pdf as the user solr with password `SolrRocks`:
 
-[source,plain]
+[source,bash]
 ----
-  bin/post -u solr:SolrRocks -c gettingstarted a.pdf
+bin/post -u solr:SolrRocks -c gettingstarted a.pdf
 ----
 
 [[PostTool-WindowsSupport]]

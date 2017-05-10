@@ -47,7 +47,7 @@ image::images/solr-jdbc-apache-zeppelin/zeppelin_solrjdbc_6.png[image,width=481,
 
 The below code block assumes that the Apache Solr driver is setup as the default JDBC interpreter driver. If that is not the case, instructions for using a different prefix is available https://zeppelin.apache.org/docs/latest/interpreter/jdbc.html#how-to-use[here].
 
-[source,sql]
+[source,text]
 ----
 %jdbc
 select fielda, fieldb, from test limit 10

@@ -302,7 +302,7 @@ curl 'http://localhost:8983/solr/techproducts/update?commit=true' --data-binary 
 
 In general, the JSON update syntax supports all of the update commands that the XML update handler supports, through a straightforward mapping. Multiple commands, adding and deleting documents, may be contained in one message:
 
-[source,text]
+[source,bash]
 ----
 curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_collection/update' --data-binary '
 {

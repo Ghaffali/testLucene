@@ -25,7 +25,7 @@ Enabling/disabling JMX and securing access to MBeanServers is left up to the use
 
 The command:
 
-[source,java]
+[source,xml]
 ----
 <jmx />
 ----
@@ -37,7 +37,7 @@ enables JMX support in Solr if and only if an existing MBeanServer is found. Use
 
 The command:
 
-[source,java]
+[source,xml]
 ----
 <jmx agentId="myMBeanServer" />
 ----
@@ -49,7 +49,7 @@ enables JMX support in Solr if and only if an existing MBeanServer is found matc
 
 The command:
 
-[source,java]
+[source,xml]
 ----
 <jmx serviceUrl="service:jmx:rmi:///jndi/rmi://localhost:9999/solrjmx" />
 ----
@@ -63,7 +63,7 @@ Solr's `sample_techproducts_configs` config set uses the simple `<jmx />` config
 
 1.  Launch the `techproducts` example with JMX enabled:
 +
-[source,java]
+[source,bash]
 ----
 bin/solr -e techproducts -Dcom.sun.management.jmxremote
 ----
@@ -76,7 +76,7 @@ bin/solr -e techproducts -Dcom.sun.management.jmxremote
 
 If you need to attach a JMX-enabled Java profiling tool, such as JConsole or VisualVM, to a remote Solr server, then you need to enable remote JMX access when starting the Solr server. Simply change the `ENABLE_REMOTE_JMX_OPTS` property in the include file to true. You’ll also need to choose a port for the JMX RMI connector to bind to, such as 18983. For example, if your Solr include script sets:
 
-[source,plain]
+[source,bash]
 ----
 ENABLE_REMOTE_JMX_OPTS=true
 RMI_PORT=18983

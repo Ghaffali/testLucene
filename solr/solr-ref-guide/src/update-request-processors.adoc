@@ -338,7 +338,7 @@ This can be used directly in a request without any configuration. To enable this
 
 For example:
 
-[source,plain]
+[source,bash]
 ----
 processor=Template&Template.field=fullName:Mr. ${firstName} ${lastName}
 ----

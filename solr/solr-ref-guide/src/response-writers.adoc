@@ -288,7 +288,7 @@ These parameters specify how multi-valued fields are encoded. Per-field override
 
 `\http://localhost:8983/solr/techproducts/select?q=ipod&fl=id,cat,name,popularity,price,score&wt=csv` returns:
 
-[source,text]
+[source,csv]
 ----
 id,cat,name,popularity,price,score
 IW-02,"electronics,connector",iPod & iPod Mini USB 2.0 Cable,1,11.5,0.98867977
@@ -315,7 +315,7 @@ Use this to get the response as a spreadsheet in the .xlsx (Microsoft Excel) for
 
 This response writer has been added as part of the extraction library, and will only work if the extraction contrib is present in the server classpath. Defining the classpath with the `lib` directive is not sufficient. Instead, you will need to copy the necessary .jars to the Solr webapp's `lib` directory manually. You can run these commands from your `$SOLR_INSTALL` directory:
 
-[source,text]
+[source,bash]
 ----
 cp contrib/extraction/lib/*.jar server/solr-webapp/webapp/WEB-INF/lib/
 cp dist/solr-cell-6.3.0.jar server/solr-webapp/webapp/WEB-INF/lib/

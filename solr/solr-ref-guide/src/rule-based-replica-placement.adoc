@@ -85,7 +85,7 @@ Tag values come from a plugin called Snitch. If there is a tag named ‘rack’ 
 
 It is possible to use one or more snitches for a set of rules. If the rules only need tags from default snitch it need not be explicitly configured. For example:
 
-[source,bash]
+[source,text]
 ----
 snitch=class:fqn.ClassName,key1:val1,key2:val2,key3:val3
 ----
@@ -119,7 +119,7 @@ replica:<2,node:*
 
 For this rule, we use the `shard` condition to define any shard , the `replica` condition with operators for "less than 2", and finally a pre-defined tag named `node` to define nodes with any name.
 
-[source,bash]
+[source,text]
 ----
 shard:*,replica:<2,node:*
 ----
@@ -129,14 +129,14 @@ shard:*,replica:<2,node:*
 
 This rule limits the `shard` condition to 'shard1', but any number of replicas. We're also referencing a custom tag named `rack`. Before defining this rule, we will need to configure a custom Snitch which provides values for the tag `rack`.
 
-[source,bash]
+[source,text]
 ----
 shard:shard1,replica:*,rack:730
 ----
 
 In this case, the default value of `replica` is * (or, all replicas). So, it can be omitted and the rule can be reduced to:
 
-[source,bash]
+[source,text]
 ----
 shard:shard1,rack:730
 ----
@@ -146,14 +146,14 @@ shard:shard1,rack:730
 
 This rule uses the `replica` condition to define any number of replicas, but adds a pre-defined tag named `core` and uses operators for "less than 5".
 
-[source,bash]
+[source,text]
 ----
 replica:*,cores:<5
 ----
 
 Again, we can simplify this to use the default value for `replica`, like so:
 
-[source,bash]
+[source,text]
 ----
 cores:<5
 ----
@@ -163,7 +163,7 @@ cores:<5
 
 This rule uses only the pre-defined tag `host` to define an IP address where replicas should not be placed.
 
-[source,bash]
+[source,text]
 ----
 host:!192.45.67.3
 ----
@@ -173,7 +173,7 @@ host:!192.45.67.3
 
 Rules are specified per collection during collection creation as request parameters. It is possible to specify multiple ‘rule’ and ‘snitch’ params as in this example:
 
-[source,bash]
+[source,text]
 ----
 snitch=class:EC2Snitch&rule=shard:*,replica:1,dc:dc1&rule=shard:*,replica:<2,dc:dc3
 ----

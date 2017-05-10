@@ -9,9 +9,9 @@ This section describes how to run Solr with an example schema, how to add docume
 
 If you didn't start Solr after installing it, you can start it by running `bin/solr` from the Solr directory.
 
-[source,plain]
+[source,bash]
 ----
-$ bin/solr start
+bin/solr start
 ----
 
 If you are running Windows, you can start Solr by running `bin\solr.cmd` instead.
@@ -37,16 +37,16 @@ The `bin/solr` script has several options.
 
 To see how to use the `bin/solr` script, execute:
 
-[source,plain]
+[source,bash]
 ----
-$ bin/solr -help
+bin/solr -help
 ----
 
 For specific usage instructions for the *start* command, do:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr start -help
+bin/solr start -help
 ----
 
 [[RunningSolr-StartSolrintheForeground]]
@@ -54,16 +54,16 @@ For specific usage instructions for the *start* command, do:
 
 Since Solr is a server, it is more common to run it in the background, especially on Unix/Linux. However, to start Solr in the foreground, simply do:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr start -f
+bin/solr start -f
 ----
 
 If you are running Windows, you can run:
 
 [source,plain]
 ----
-   bin\solr.cmd start -f
+bin\solr.cmd start -f
 ----
 
 [[RunningSolr-StartSolrwithaDifferentPort]]
@@ -71,9 +71,9 @@ If you are running Windows, you can run:
 
 To change the port Solr listens on, you can use the `-p` parameter when starting, such as:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr start -p 8984
+bin/solr start -p 8984
 ----
 
 [[RunningSolr-StopSolr]]
@@ -81,9 +81,9 @@ To change the port Solr listens on, you can use the `-p` parameter when starting
 
 When running Solr in the foreground (using -f), then you can stop it using `Ctrl-c`. However, when running in the background, you should use the *stop* command, such as:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr stop -p 8983
+bin/solr stop -p 8983
 ----
 
 The stop command requires you to specify the port Solr is listening on or you can use the `-all` parameter to stop all running Solr instances.
@@ -93,9 +93,9 @@ The stop command requires you to specify the port Solr is listening on or you ca
 
 Solr also provides a number of useful examples to help you learn about key features. You can launch the examples using the `-e` flag. For instance, to launch the "techproducts" example, you would do:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr -e techproducts
+bin/solr -e techproducts
 ----
 
 Currently, the available examples you can run are: techproducts, dih, schemaless, and cloud. See the section <<solr-control-script-reference.adoc#SolrControlScriptReference-RunningwithExampleConfigurations,Running with Example Configurations>> for details on each example.
@@ -111,9 +111,9 @@ Running the `cloud` example starts Solr in <<solrcloud.adoc#solrcloud,SolrCloud>
 
 If you're not sure if Solr is running locally, you can use the status command:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr status
+bin/solr status
 ----
 
 This will search for running Solr instances on your computer and then gather basic information about them, such as the version and memory usage.
@@ -132,18 +132,18 @@ If Solr is not running, your browser will complain that it cannot connect to the
 
 If you did not start Solr with an example configuration, you would need to create a core in order to be able to index and search. You can do so by running:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr create -c <name>
+bin/solr create -c <name>
 ----
 
 This will create a core that uses a data-driven schema which tries to guess the correct field type when you add documents to the index.
 
 To see all available options for creating a new core, execute:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr create -help
+bin/solr create -help
 ----
 
 [[RunningSolr-AddDocuments]]
