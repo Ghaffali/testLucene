@@ -58,7 +58,8 @@ OPTIONS
 ...
 ----
 
-== [[bin_post_examples]]Examples
+[[bin_post_examples]]
+== Examples
 
 There are several ways to use `bin/post`. This section presents several examples.
 
