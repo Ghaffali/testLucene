@@ -6,27 +6,24 @@ layout: default
    <h1 class="post-title-main">{{ page.title }}</h1>
 </div>
 
+<!-- This adds a workflow map, to a page
+     See http://idratherbewriting.com/documentation-theme-jekyll/mydoc_workflow_maps.html
+     Leaving it here commented out in case we want to implement this in the future
 {% if page.simple_map == true %}
-
 <script>
     $(document).ready ( function(){
         $('.box{{page.box_number}}').addClass('active');
     });
 </script>
-
 {% include custom/{{page.map_name}}.html %}
-
 {% elsif page.complex_map == true %}
-
 <script>
     $(document).ready ( function(){
         $('.modalButton{{page.box_number}}').addClass('active');
     });
 </script>
-
 {% include custom/{{page.map_name}}.html %}
-
-{% endif %}
+{% endif %} -->
 
 <div class="post-content">
 
