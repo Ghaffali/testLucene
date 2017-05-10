@@ -302,7 +302,7 @@ curl 'http://localhost:8983/solr/techproducts/update?commit=true' --data-binary 
 
 In general, the JSON update syntax supports all of the update commands that the XML update handler supports, through a straightforward mapping. Multiple commands, adding and deleting documents, may be contained in one message:
 
-[source,bash]
+[source,bash,subs="verbatim,callouts"]
 ----
 curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_collection/update' --data-binary '
 {
@@ -310,14 +310,14 @@ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_
     "doc": {
       "id": "DOC1",
       "my_field": 2.3,
-      "my_multivalued_field": [ "aaa", "bbb" ]   /* Can use an array for a multi-valued field */
+      "my_multivalued_field": [ "aaa", "bbb" ]   --<1>
     }
   },
   "add": {
-    "commitWithin": 5000,          /* commit this document within 5 seconds */
-    "overwrite": false,            /* don\'t check for existing documents with the same uniqueKey */
+    "commitWithin": 5000, --<2>
+    "overwrite": false,  --<3>
     "doc": {
-      "f1": "v1",                  /* Can use repeated keys for a multi-valued field */
+      "f1": "v1", --<4>
       "f1": "v2"
     }
   },
@@ -325,19 +325,17 @@ curl -X POST -H 'Content-Type: application/json' 'http://localhost:8983/solr/my_
   "commit": {},
   "optimize": { "waitSearcher":false },
 
-  "delete": { "id":"ID" },         /* delete by ID */
-  "delete": { "query":"QUERY" }    /* delete by query */
+  "delete": { "id":"ID" },  --<5>
+  "delete": { "query":"QUERY" } --<6>
 }'
 ----
 
-[IMPORTANT]
-====
-
-Comments are not allowed in JSON, but duplicate names are.
-
-The comments in the above example are for illustrative purposes only, and can not be included in actual commands sent to Solr.
-
-====
+<1> Can use an array for a multi-valued field
+<2> Commit this document within 5 seconds
+<3> Don't check for existing documents with the same uniqueKey
+<4> Can use repeated keys for a multi-valued field
+<5> Delete by ID (uniqueKey field)
+<6> Delete by Query
 
 As with other update handlers, parameters such as `commit`, `commitWithin`, `optimize`, and `overwrite` may be specified in the URL instead of in the body of the message.
 
