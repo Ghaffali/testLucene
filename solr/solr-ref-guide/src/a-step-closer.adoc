@@ -9,7 +9,7 @@ When Solr runs in an application server, it needs access to a home directory. Th
 The crucial parts of the Solr home directory are shown in these examples:
 
 .Standalone Mode
-[source,bash]
+[source,plain]
 ----
 <solr-home-directory>/
    solr.xml
@@ -28,7 +28,7 @@ The crucial parts of the Solr home directory are shown in these examples:
 ----
 
 .SolrCloud Mode
-[source,bash]
+[source,plain]
 ----
 <solr-home-directory>/
    solr.xml

@@ -85,7 +85,7 @@ If the configuration directory for a Solr core contains a file named `solrcore.p
 
 For example, the following `solrcore.properties` file could be created in the `conf/` directory of a collection using one of the example configurations, to override the lockType used.
 
-[source,java]
+[source,bash]
 ----
 #conf/solrcore.properties
 solr.lock.type=none
@@ -113,7 +113,7 @@ http://localhost:8983/solr/admin/collections?action=CREATE&name=gettingstarted&n
 
 That would create a `core.properties` file that has at least the following properties (others omitted for brevity):
 
-[source,java]
+[source,bash]
 ----
 #core.properties
 name=gettingstarted

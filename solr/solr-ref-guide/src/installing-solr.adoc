@@ -31,10 +31,10 @@ When getting started, all you need to do is extract the Solr distribution archiv
 
 To keep things simple for now, extract the Solr distribution archive to your local home directory, for instance on Linux, do:
 
-[source,plain]
+[source,bash]
 ----
-$ cd ~/
-$ tar zxf solr-x.y.z.tgz
+cd ~/
+tar zxf solr-x.y.z.tgz
 ----
 
 Once extracted, you are now ready to run Solr using the instructions provided in the <<running-solr.adoc#running-solr,Running Solr>> section.

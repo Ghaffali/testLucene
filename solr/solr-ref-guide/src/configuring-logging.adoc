@@ -102,7 +102,7 @@ On the other hand, if you're only concerned about warnings and error messages re
 
 Solr provides a way to set your log verbosity threshold to WARN and be able to set a latency threshold above which a request is considered "slow" and log that request at the WARN level to help you identify slow queries in your application. To enable this behavior, configure the `<slowQueryThresholdMillis>` element in the *query* section of solrconfig.xml:
 
-[source,text]
+[source,xml]
 ----
 <slowQueryThresholdMillis>1000</slowQueryThresholdMillis>
 ----

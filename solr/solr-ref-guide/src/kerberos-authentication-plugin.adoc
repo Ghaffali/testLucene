@@ -144,7 +144,7 @@ Server {
 
 Finally, add the following lines to the ZooKeeper configuration file `zoo.cfg`:
 
-[source,plain]
+[source,bash]
 ----
 authProvider.1=org.apache.zookeeper.server.auth.SASLAuthenticationProvider
 jaasLoginRenew=3600000
@@ -166,7 +166,7 @@ In SolrCloud mode, you can set up Solr to use the Kerberos plugin by uploading t
 
 [source,bash]
 ----
-> server/scripts/cloud-scripts/zkcli.sh -zkhost localhost:2181 -cmd put /security.json '{"authentication":{"class": "org.apache.solr.security.KerberosPlugin"}}'
+server/scripts/cloud-scripts/zkcli.sh -zkhost localhost:2181 -cmd put /security.json '{"authentication":{"class": "org.apache.solr.security.KerberosPlugin"}}'
 ----
 
 If you are using Solr in standalone mode, you need to create the `security.json` file and put it in your `$SOLR_HOME` directory.
@@ -312,7 +312,7 @@ You need to specify a Kerberos service principal for the client and a correspond
 
 Here’s an example:
 
-[source,java]
+[source,plain]
 ----
 SolrJClient {
   com.sun.security.auth.module.Krb5LoginModule required

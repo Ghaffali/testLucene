@@ -25,9 +25,9 @@ This tutorial assumes that you're already familiar with the basics of using Solr
 
 The `bin/solr` script makes it easy to get started with SolrCloud as it walks you through the process of launching Solr nodes in cloud mode and adding a collection. To get started, simply do:
 
-[source, bash]
+[source,bash]
 ----
-$ bin/solr -e cloud
+bin/solr -e cloud
 ----
 
 This starts an interactive session to walk you through the steps of setting up a simple SolrCloud cluster with embedded ZooKeeper.
@@ -53,7 +53,7 @@ Next, the script will prompt you for the port to bind each of the Solr nodes to,
 
 Choose any available port for each node; the default for the first node is 8983 and 7574 for the second node. The script will start each node in order and show you the command it uses to start the server, such as:
 
-[source,plain]
+[source,bash]
 ----
 solr start -cloud -s example/cloud/node1/solr -p 8983
 ----
@@ -77,18 +77,18 @@ Lastly, the script will prompt you for the name of a configuration directory for
 
 At this point, you should have a new collection created in your local SolrCloud cluster. To verify this, you can run the status command:
 
-[source,plain]
+[source,bash]
 ----
-  $ bin/solr status
+bin/solr status
 ----
 
 If you encounter any errors during this process, check the Solr log files in `example/cloud/node1/logs` and `example/cloud/node2/logs`.
 
 You can see how your collection is deployed across the cluster by visiting the cloud panel in the Solr Admin UI: http://localhost:8983/solr/#/~cloud. Solr also provides a way to perform basic diagnostics for a collection using the healthcheck command:
 
-[source,plain]
+[source,bash]
 ----
-  $ bin/solr healthcheck -c gettingstarted
+bin/solr healthcheck -c gettingstarted
 ----
 
 The healthcheck command gathers basic information about each replica in a collection, such as number of docs, current status (active, down, etc), and address (where the replica lives in the cluster).
@@ -97,9 +97,9 @@ Documents can now be added to SolrCloud using the <<post-tool.adoc#post-tool,Pos
 
 To stop Solr in SolrCloud mode, you would use the `bin/solr` script and issue the `stop` command, as in:
 
-[source,plain]
+[source,bash]
 ----
-  $ bin/solr stop -all
+bin/solr stop -all
 ----
 
 [[GettingStartedwithSolrCloud-Startingwith-noprompt]]
@@ -107,9 +107,9 @@ To stop Solr in SolrCloud mode, you would use the `bin/solr` script and issue th
 
 You can also get SolrCloud started with all the defaults instead of the interactive session using the following command:
 
-[source,plain]
+[source,bash]
 ----
-  $ bin/solr -e cloud -noprompt
+bin/solr -e cloud -noprompt
 ----
 
 [[GettingStartedwithSolrCloud-RestartingNodes]]
@@ -117,16 +117,16 @@ You can also get SolrCloud started with all the defaults instead of the interact
 
 You can restart your SolrCloud nodes using the `bin/solr` script. For instance, to restart node1 running on port 8983 (with an embedded ZooKeeper server), you would do:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr restart -c -p 8983 -s example/cloud/node1/solr
+bin/solr restart -c -p 8983 -s example/cloud/node1/solr
 ----
 
 To restart node2 running on port 7574, you can do:
 
-[source,plain]
+[source,bash]
 ----
- $ bin/solr restart -c -p 7574 -z localhost:9983 -s example/cloud/node2/solr
+bin/solr restart -c -p 7574 -z localhost:9983 -s example/cloud/node2/solr
 ----
 
 Notice that you need to specify the ZooKeeper address (`-z localhost:9983`) when starting node2 so that it can join the cluster with node1.
@@ -136,22 +136,22 @@ Notice that you need to specify the ZooKeeper address (`-z localhost:9983`) when
 
 Adding a node to an existing cluster is a bit advanced and involves a little more understanding of Solr. Once you startup a SolrCloud cluster using the startup scripts, you can add a new node to it by:
 
-[source,plain]
+[source,bash]
 ----
- $ mkdir <solr.home for new solr node>
- $ cp <existing solr.xml path> <new solr.home>
- $ bin/solr start -cloud -s solr.home/solr -p <port num> -z <zk hosts string>
+mkdir <solr.home for new solr node>
+cp <existing solr.xml path> <new solr.home>
+bin/solr start -cloud -s solr.home/solr -p <port num> -z <zk hosts string>
 ----
 
 Notice that the above requires you to create a Solr home directory. You either need to copy `solr.xml` to the `solr_home` directory, or keep in centrally in ZooKeeper `/solr.xml`.
 
 Example (with directory structure) that adds a node to an example started with "bin/solr -e cloud":
 
-[source,plain]
+[source,bash]
 ----
- $ mkdir -p example/cloud/node3/solr
- $ cp server/solr/solr.xml example/cloud/node3/solr
- $ bin/solr start -cloud -s example/cloud/node3/solr -p 8987 -z localhost:9983
+mkdir -p example/cloud/node3/solr
+cp server/solr/solr.xml example/cloud/node3/solr
+bin/solr start -cloud -s example/cloud/node3/solr -p 8987 -z localhost:9983
 ----
 
 The previous command will start another Solr node on port 8987 with Solr home set to `example/cloud/node3/solr`. The new node will write its log files to `example/cloud/node3/logs`.

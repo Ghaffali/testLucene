@@ -17,7 +17,7 @@ The following section describes how to enable plugins with `security.json` and p
 All of the information required to initialize either type of security plugin is stored in a `security.json` file. This file contains 2 sections, one each for authentication and authorization.
 
 .Sample security.json
-[source,java]
+[source,json]
 ----
 {
   "authentication" : {
@@ -99,7 +99,7 @@ An authentication plugin consists of two parts:
 
 * Specify the authentication plugin in `/security.json` as in this example:
 +
-[source,java]
+[source,json]
 ----
 {
   "authentication": {
@@ -130,7 +130,7 @@ An authorization plugin can be written for Solr by extending the {solr-javadocs}
 * Make sure that the plugin implementation is in the classpath.
 * The plugin can then be initialized by specifying the same in `security.json` in the following manner:
 
-[source,java]
+[source,json]
 ----
 {
   "authorization": {

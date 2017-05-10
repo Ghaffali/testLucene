@@ -8,7 +8,7 @@ The `core.properties` file is a simple Java Properties file where each line is j
 
 A minimal `core.properties` file looks like the example below. However, it can also be empty, see information on placement of `core.properties` below.
 
-[source,text]
+[source,bash]
 ----
 name=my_core_name
 ----

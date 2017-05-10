@@ -183,7 +183,7 @@ To view the model you just uploaded please open the following URL in a browser:
 `\http://localhost:8983/solr/techproducts/schema/model-store`
 
 .Example: /path/myModel.json
-[source,java]
+[source,json]
 ----
 {
   "class" : "org.apache.solr.ltr.model.LinearModel",

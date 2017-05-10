@@ -293,7 +293,7 @@ A simple highlighter looks like this in `solrconfig.xml` (example has been trunc
 
 The same highlighter with the Config API:
 
-[source,xml]
+[source,json]
 ----
 {
     "add-searchcomponent": {

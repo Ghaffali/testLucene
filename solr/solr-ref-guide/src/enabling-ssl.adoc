@@ -65,7 +65,7 @@ The Solr Control Script is already setup to pass SSL-related Java system propert
 NOTE: If you setup Solr as a service on Linux using the steps outlined in <<taking-solr-to-production.adoc#taking-solr-to-production,Taking Solr to Production>>, then make these changes in `/var/solr/solr.in.sh` instead.
 
 .bin/solr.in.sh example SOLR_SSL_* configuration
-[source,text]
+[source,bash]
 ----
 SOLR_SSL_KEY_STORE=etc/solr-ssl.keystore.jks
 SOLR_SSL_KEY_STORE_PASSWORD=secret
@@ -106,7 +106,7 @@ set SOLR_SSL_WANT_CLIENT_AUTH=false
 Start Solr using the command shown below; by default clients will not be required to authenticate:
 
 .*nix command
-[source,text]
+[source,bash]
 ----
 bin/solr -p 8984
 ----
@@ -242,7 +242,7 @@ NOTE: If your operating system does not include cURL, you can download binaries 
 Create a 2-shard, replicationFactor=1 collection named mycollection using the default configset (data_driven_schema_configs):
 
 .*nix command
-[source,text]
+[source,bash]
 ----
 bin/solr create -c mycollection -shards 2
 ----
