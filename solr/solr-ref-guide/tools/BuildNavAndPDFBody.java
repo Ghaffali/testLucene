@@ -146,7 +146,8 @@ public class BuildNavAndPDFBody {
         }
         scrollnav.put(p.shortname, current);
       }
-      scrollnav.write(w);
+      // HACK: jekyll doesn't like escaped forward slashes in it's JSON?
+      w.write(scrollnav.toString(2).replaceAll("\\\\/","/"));
     }
     
     // Build up the sidebar file for jekyll
@@ -167,26 +168,34 @@ public class BuildNavAndPDFBody {
             System.err.println("sidebar.html template can not support pages this deep");
             System.exit(-1);
           }
-          
-          final JSONObject current = new JSONObject()
-            .put("title",page.title)
-            .put("url", page.permalink)
-            .put("depth", depth)
-            .put("kids", new JSONArray());
-          
-          if (0 < depth) {
-            JSONObject parent = stack.peek();
-            ((JSONArray)parent.get("kids")).put(current);
+          try {
+            final JSONObject current = new JSONObject()
+              .put("title",page.title)
+              .put("url", page.permalink)
+              .put("depth", depth)
+              .put("kids", new JSONArray());
+            
+            if (0 < depth) {
+              JSONObject parent = stack.peek();
+              ((JSONArray)parent.get("kids")).put(current);
+            }
+            
+            stack.push(current);
+          } catch (JSONException e) {
+            throw new RuntimeException(e);
           }
-          
-          stack.push(current);
           return true;
         }
         public void postKids(Page page) {
           final JSONObject current = stack.pop();
           if (0 == stack.size()) {
             assert page == mainPage;
-            current.write(w);
+            try {
+              // HACK: jekyll doesn't like escaped forward slashes in it's JSON?
+              w.write(current.toString(2).replaceAll("\\\\/","/"));
+            } catch (IOException | JSONException e) {
+              throw new RuntimeException(e);
+            }
           }
         }
       });
