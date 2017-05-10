@@ -136,6 +136,8 @@ Other Changes
 
 * SOLR-10572: Removed three "no longer supported in solrconfig.xml" asserts. (Christine Poerschke)
 
+* SOLR-10647: Move the V1 <-> V2 API mapping to SolrJ (noble)
+
 ==================  6.6.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
@@ -333,6 +335,10 @@ Bug Fixes
 * SOLR-10630: HttpSolrCall.getAuthCtx().new AuthorizationContext() {...}.getParams()
   sometimes throws java.lang.NullPointerException (hu xiaodong via shalin)
 
+* SOLR-9527: Improve distribution of replicas when restoring a collection
+  (Hrishikesh Gadre, Stephen Lewis, Rohit, Varun Thacker)
+
+
 Other Changes
 ----------------------
 
@@ -355,6 +361,7 @@ Other Changes
 
 * SOLR-10357: Enable edismax and standard query parsers to handle the option combination 
   sow=false / autoGeneratePhraseQueries="true" by setting QueryBuilder.autoGenerateMultiTermSynonymsQuery.
+  (Steve Rowe)
 
 * SOLR-10147: Admin UI -> Cloud -> Graph: Impossible to see shard state (Amrit Sarkar, janhoy)
 
