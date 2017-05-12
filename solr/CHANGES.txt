@@ -141,8 +141,6 @@ Other Changes
 * SOLR-10310: By default, stop splitting on whitespace prior to analysis
   in edismax and standard/"lucene" query parsers. (Steve Rowe)
 
-* SOLR-10572: Removed three "no longer supported in solrconfig.xml" asserts. (Christine Poerschke)
-
 * SOLR-10647: Move the V1 <-> V2 API mapping to SolrJ (noble)
 
 ==================  6.7.0 ==================
@@ -158,9 +156,14 @@ Apache UIMA 2.3.1
 Apache ZooKeeper 3.4.10
 Jetty 9.3.14.v20161028
 
+Detailed Change List
+----------------------
 
-(No Changes)
+Other Changes
+----------------------
 
+* SOLR-10617: JDBCStream accepts columns of type TIME, DATE & TIMESTAMP as well as CLOBs and decimal
+  numeric types (James Dyer)
 
 ==================  6.6.0 ==================
 
