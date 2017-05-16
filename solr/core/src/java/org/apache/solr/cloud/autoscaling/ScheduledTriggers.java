@@ -126,17 +126,17 @@ public class ScheduledTriggers implements Closeable {
         // XXX not sure what to return here...
         return true;
       }
-      AutoScaling.Trigger source = scheduledSource.trigger;
-      if (source.isClosed()) {
-        log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + source + " has already been closed");
-        // we do not want to lose this event just because the trigger were closed, perhaps a replacement will need it
-        return false;
-      }
       boolean replaying = event.getProperty(TriggerEventBase.REPLAYING) != null ? (Boolean)event.getProperty(TriggerEventBase.REPLAYING) : false;
       boolean enqueued = false;
       try {
         if (!replaying) {
           enqueued = scheduledTrigger.enqueue(event);
+        }
+        AutoScaling.Trigger source = scheduledSource.trigger;
+        if (source.isClosed()) {
+          log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + source + " has already been closed");
+          // we do not want to lose this event just because the trigger were closed, perhaps a replacement will need it
+          return false;
         }
         if (hasPendingActions.compareAndSet(false, true)) {
           List<TriggerAction> actions = source.getActions();
