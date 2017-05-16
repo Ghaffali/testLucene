@@ -202,7 +202,7 @@ public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.No
           AutoScaling.TriggerListener<NodeAddedEvent> listener = listenerRef.get();
           if (listener != null) {
             log.info("NodeAddedTrigger {} firing registered listener for node: {} added at {} nanotime, now: {} nanotime", name, nodeName, timeAdded, now);
-            if (listener.triggerFired(new NodeAddedEvent(this, timeAdded, nodeName))) {
+            if (listener.triggerFired(new NodeAddedEvent(getEventType(), getName(), timeAdded, nodeName))) {
               // remove from tracking set only if the fire was accepted
               trackingKeySet.remove(nodeName);
             }
@@ -225,45 +225,11 @@ public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.No
     }
   }
 
-  public static class NodeAddedEvent implements AutoScaling.TriggerEvent<NodeAddedTrigger> {
-    private final NodeAddedTrigger source;
-    private final long nodeAddedNanoTime;
-    private final String nodeName;
+  public static class NodeAddedEvent extends TriggerEventBase {
+    public static final String NODE_NAME = "nodeName";
 
-    private Map<String, Object> context;
-
-    public NodeAddedEvent(NodeAddedTrigger source, long nodeAddedNanoTime, String nodeAdded) {
-      this.source = source;
-      this.nodeAddedNanoTime = nodeAddedNanoTime;
-      this.nodeName = nodeAdded;
-    }
-
-    @Override
-    public NodeAddedTrigger getSource() {
-      return source;
-    }
-
-    @Override
-    public long getEventNanoTime() {
-      return nodeAddedNanoTime;
-    }
-
-    public String getNodeName() {
-      return nodeName;
-    }
-
-    public AutoScaling.EventType getType() {
-      return source.getEventType();
-    }
-
-    @Override
-    public void setContext(Map<String, Object> context) {
-      this.context = context;
-    }
-
-    @Override
-    public Map<String, Object> getContext() {
-      return context;
+    public NodeAddedEvent(AutoScaling.EventType eventType, String source, long nodeAddedNanoTime, String nodeAdded) {
+      super(eventType, source, nodeAddedNanoTime, Collections.singletonMap(NODE_NAME, nodeAdded));
     }
   }
 }

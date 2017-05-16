@@ -202,16 +202,16 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         if (lastActionExecutedAt.get() != 0)  {
           log.info("last action at " + lastActionExecutedAt.get() + " nano time = " + System.nanoTime());
           if (System.nanoTime() - lastActionExecutedAt.get() < TimeUnit.NANOSECONDS.convert(ScheduledTriggers.DEFAULT_MIN_MS_BETWEEN_ACTIONS - DELTA_MS, TimeUnit.MILLISECONDS)) {
-            log.info("action executed again before minimum wait time from {}", event.getSource().getName());
+            log.info("action executed again before minimum wait time from {}", event.getSource());
             fail("TriggerListener was fired before the throttling period");
           }
         }
         if (onlyOnce.compareAndSet(false, true)) {
-          log.info("action executed from {}", event.getSource().getName());
+          log.info("action executed from {}", event.getSource());
           lastActionExecutedAt.set(System.nanoTime());
           triggerFiredLatch.countDown();
         } else  {
-          log.info("action executed more than once from {}", event.getSource().getName());
+          log.info("action executed more than once from {}", event.getSource());
           fail("Trigger should not have fired more than once!");
         }
       } finally {
@@ -287,7 +287,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     NodeLostTrigger.NodeLostEvent nodeLostEvent = (NodeLostTrigger.NodeLostEvent) eventRef.get();
     assertNotNull(nodeLostEvent);
     assertEquals("The node added trigger was fired but for a different node",
-        nodeName, nodeLostEvent.getNodeName());
+        nodeName, nodeLostEvent.getProperty(NodeLostTrigger.NodeLostEvent.NODE_NAME));
   }
 
   @Test
@@ -345,7 +345,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = (NodeAddedTrigger.NodeAddedEvent) eventRef.get();
     assertNotNull(nodeAddedEvent);
     assertEquals("The node added trigger was fired but for a different node",
-        newNode.getNodeName(), nodeAddedEvent.getNodeName());
+        newNode.getNodeName(), nodeAddedEvent.getProperty(NodeAddedTrigger.NodeAddedEvent.NODE_NAME));
   }
 
   @Test
@@ -374,7 +374,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = (NodeAddedTrigger.NodeAddedEvent) eventRef.get();
     assertNotNull(nodeAddedEvent);
     assertEquals("The node added trigger was fired but for a different node",
-        newNode.getNodeName(), nodeAddedEvent.getNodeName());
+        newNode.getNodeName(), nodeAddedEvent.getProperty(NodeAddedTrigger.NodeAddedEvent.NODE_NAME));
   }
 
   @Test
@@ -413,7 +413,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     NodeLostTrigger.NodeLostEvent nodeLostEvent = (NodeLostTrigger.NodeLostEvent) eventRef.get();
     assertNotNull(nodeLostEvent);
     assertEquals("The node lost trigger was fired but for a different node",
-        lostNodeName, nodeLostEvent.getNodeName());
+        lostNodeName, nodeLostEvent.getProperty(NodeLostTrigger.NodeLostEvent.NODE_NAME));
   }
 
   public static class TestTriggerAction implements TriggerAction {

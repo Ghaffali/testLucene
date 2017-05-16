@@ -85,7 +85,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
 
       NodeLostTrigger.NodeLostEvent nodeLostEvent = eventRef.get();
       assertNotNull(nodeLostEvent);
-      assertEquals("", lostNodeName, nodeLostEvent.getNodeName());
+      assertEquals("", lostNodeName, nodeLostEvent.getProperty(NodeLostTrigger.NodeLostEvent.NODE_NAME));
 
     }
 
@@ -235,7 +235,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
 
       NodeLostTrigger.NodeLostEvent nodeLostEvent = eventRef.get();
       assertNotNull(nodeLostEvent);
-      assertEquals("", lostNodeName, nodeLostEvent.getNodeName());
+      assertEquals("", lostNodeName, nodeLostEvent.getProperty(NodeLostTrigger.NodeLostEvent.NODE_NAME));
     }
   }
 

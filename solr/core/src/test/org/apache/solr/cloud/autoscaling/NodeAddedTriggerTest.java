@@ -84,7 +84,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
 
       NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = eventRef.get();
       assertNotNull(nodeAddedEvent);
-      assertEquals("", newNode.getNodeName(), nodeAddedEvent.getNodeName());
+      assertEquals("", newNode.getNodeName(), nodeAddedEvent.getProperty(NodeAddedTrigger.NodeAddedEvent.NODE_NAME));
     }
 
     // add a new node but remove it before the waitFor period expires
@@ -210,7 +210,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
       assertTrue(fired.get());
       NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = eventRef.get();
       assertNotNull(nodeAddedEvent);
-      assertEquals("", newNode.getNodeName(), nodeAddedEvent.getNodeName());
+      assertEquals("", newNode.getNodeName(), nodeAddedEvent.getProperty(NodeAddedTrigger.NodeAddedEvent.NODE_NAME));
     }
   }
 

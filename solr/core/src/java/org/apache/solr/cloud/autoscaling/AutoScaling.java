@@ -19,6 +19,7 @@ package org.apache.solr.cloud.autoscaling;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,24 +48,28 @@ public class AutoScaling {
     AFTER_ACTION
   }
 
-  public static interface TriggerEvent<T extends Trigger> {
-    public T getSource();
+  public interface TriggerEvent {
+    EventType getEventType();
 
-    public long getEventNanoTime();
+    String getSource();
 
-    public void setContext(Map<String, Object> context);
+    long getEventNanoTime();
 
-    public Map<String, Object> getContext();
+    void setProperties(Map<String, Object> properties);
+
+    Map<String, Object> getProperties();
+
+    Object getProperty(String name);
   }
 
-  public static interface TriggerListener<E extends TriggerEvent<? extends Trigger>> {
+  public interface TriggerListener<E extends TriggerEvent> {
     /**
      * This method is executed when a trigger is ready to fire.
      *
      * @param event a subclass of {@link TriggerEvent}
      * @return true if the listener was ready to perform actions on the event, false otherwise.
      */
-    public boolean triggerFired(E event);
+    boolean triggerFired(E event);
   }
 
   public static class HttpCallbackListener implements TriggerListener {
@@ -94,26 +99,26 @@ public class AutoScaling {
    *
    * @param <E> the {@link TriggerEvent} which is handled by this Trigger
    */
-  public static interface Trigger<E extends TriggerEvent<? extends Trigger>> extends Closeable, Runnable {
-    public String getName();
+  public interface Trigger<E extends TriggerEvent> extends Closeable, Runnable {
+    String getName();
 
-    public EventType getEventType();
+    EventType getEventType();
 
-    public boolean isEnabled();
+    boolean isEnabled();
 
-    public Map<String, Object> getProperties();
+    Map<String, Object> getProperties();
 
-    public int getWaitForSecond();
+    int getWaitForSecond();
 
-    public List<TriggerAction> getActions();
+    List<TriggerAction> getActions();
 
-    public void setListener(TriggerListener<E> listener);
+    void setListener(TriggerListener<E> listener);
 
-    public TriggerListener<E> getListener();
+    TriggerListener<E> getListener();
 
-    public boolean isClosed();
+    boolean isClosed();
 
-    public void restoreState(Trigger<E> old);
+    void restoreState(Trigger<E> old);
   }
 
   public static class TriggerFactory implements Closeable {

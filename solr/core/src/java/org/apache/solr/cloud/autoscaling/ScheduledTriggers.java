@@ -26,6 +26,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
@@ -35,6 +36,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.cloud.ActionThrottle;
+import org.apache.solr.cloud.DistributedQueue;
+import org.apache.solr.cloud.Overseer;
+import org.apache.solr.common.cloud.SolrZkClient;
+import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.util.DefaultSolrThreadFactory;
@@ -50,7 +55,7 @@ public class ScheduledTriggers implements Closeable {
   static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS = 1;
   static final int DEFAULT_MIN_MS_BETWEEN_ACTIONS = 5000;
 
-  private final Map<String, ScheduledTrigger> scheduledTriggers = new HashMap<>();
+  private final Map<String, ScheduledTrigger> scheduledTriggers = new ConcurrentHashMap<>();
 
   /**
    * Thread pool for scheduling the triggers
@@ -70,7 +75,11 @@ public class ScheduledTriggers implements Closeable {
 
   private final ActionThrottle actionThrottle;
 
-  public ScheduledTriggers() {
+  private final SolrZkClient zkClient;
+
+  private final Overseer.Stats queueStats;
+
+  public ScheduledTriggers(SolrZkClient zkClient) {
     // todo make the core pool size configurable
     // it is important to use more than one because a time taking trigger can starve other scheduled triggers
     // ideally we should have as many core threads as the number of triggers but firstly, we don't know beforehand
@@ -83,6 +92,8 @@ public class ScheduledTriggers implements Closeable {
     actionExecutor = ExecutorUtil.newMDCAwareSingleThreadExecutor(new DefaultSolrThreadFactory("AutoscalingActionExecutor"));
     // todo make the wait time configurable
     actionThrottle = new ActionThrottle("action", DEFAULT_MIN_MS_BETWEEN_ACTIONS);
+    this.zkClient = zkClient;
+    queueStats = new Overseer.Stats();
   }
 
   /**
@@ -97,7 +108,7 @@ public class ScheduledTriggers implements Closeable {
     if (isClosed) {
       throw new AlreadyClosedException("ScheduledTriggers has been closed and cannot be used anymore");
     }
-    ScheduledTrigger scheduledTrigger = new ScheduledTrigger(newTrigger);
+    ScheduledTrigger scheduledTrigger = new ScheduledTrigger(newTrigger, zkClient, queueStats);
     ScheduledTrigger old = scheduledTriggers.putIfAbsent(newTrigger.getName(), scheduledTrigger);
     if (old != null) {
       if (old.trigger.equals(newTrigger)) {
@@ -109,38 +120,55 @@ public class ScheduledTriggers implements Closeable {
       scheduledTriggers.replace(newTrigger.getName(), scheduledTrigger);
     }
     newTrigger.setListener(event -> {
-      AutoScaling.Trigger source = event.getSource();
+      ScheduledTrigger scheduledSource = scheduledTriggers.get(event.getSource());
+      if (scheduledSource == null) {
+        log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + event.getSource() + " doesn't exist.");
+        // XXX not sure what to return here...
+        return true;
+      }
+      AutoScaling.Trigger source = scheduledSource.trigger;
       if (source.isClosed()) {
-        log.warn("Ignoring autoscaling event because the source trigger: " + source + " has already been closed");
+        log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + source + " has already been closed");
         // we do not want to lose this event just because the trigger were closed, perhaps a replacement will need it
         return false;
       }
-      if (hasPendingActions.compareAndSet(false, true)) {
-        List<TriggerAction> actions = source.getActions();
-        if (actions != null) {
-          actionExecutor.submit(() -> {
-            assert hasPendingActions.get();
-            try {
-              // let the action executor thread wait instead of the trigger thread so we use the throttle here
-              actionThrottle.minimumWaitBetweenActions();
-              actionThrottle.markAttemptingAction();
-              for (TriggerAction action : actions) {
-                try {
-                  action.process(event);
-                } catch (Exception e) {
-                  log.error("Error executing action: " + action.getName() + " for trigger event: " + event, e);
-                  throw e;
-                }
-              }
-            } finally {
-              hasPendingActions.set(false);
-            }
-          });
+      boolean replaying = event.getProperty(TriggerEventBase.REPLAYING) != null ? (Boolean)event.getProperty(TriggerEventBase.REPLAYING) : false;
+      boolean enqueued = false;
+      try {
+        if (!replaying) {
+          enqueued = scheduledTrigger.enqueue(event);
         }
-        return true;
-      } else {
-        // there is an action in the queue and we don't want to enqueue another until it is complete
-        return false;
+        if (hasPendingActions.compareAndSet(false, true)) {
+          List<TriggerAction> actions = source.getActions();
+          if (actions != null) {
+            actionExecutor.submit(() -> {
+              assert hasPendingActions.get();
+              try {
+                // let the action executor thread wait instead of the trigger thread so we use the throttle here
+                actionThrottle.minimumWaitBetweenActions();
+                actionThrottle.markAttemptingAction();
+                for (TriggerAction action : actions) {
+                  try {
+                    action.process(event);
+                  } catch (Exception e) {
+                    log.error("Error executing action: " + action.getName() + " for trigger event: " + event, e);
+                    throw e;
+                  }
+                }
+              } finally {
+                hasPendingActions.set(false);
+              }
+            });
+          }
+          return true;
+        } else {
+          // there is an action in the queue and we don't want to enqueue another until it is complete
+          return false;
+        }
+      } finally {
+        if (enqueued) {
+          scheduledTrigger.dequeue();
+        }
       }
     });
     scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(scheduledTrigger, 0, DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS, TimeUnit.SECONDS);
@@ -150,12 +178,8 @@ public class ScheduledTriggers implements Closeable {
    * Removes and stops the trigger with the given name
    *
    * @param triggerName the name of the trigger to be removed
-   * @throws AlreadyClosedException if this class has already been closed
    */
   public synchronized void remove(String triggerName) {
-    if (isClosed) {
-      throw new AlreadyClosedException("ScheduledTriggers has been closed and cannot be used any more");
-    }
     ScheduledTrigger removed = scheduledTriggers.remove(triggerName);
     IOUtils.closeQuietly(removed);
   }
@@ -184,13 +208,28 @@ public class ScheduledTriggers implements Closeable {
   private class ScheduledTrigger implements Runnable, Closeable {
     AutoScaling.Trigger trigger;
     ScheduledFuture<?> scheduledFuture;
+    TriggerEventQueue queue;
 
-    ScheduledTrigger(AutoScaling.Trigger trigger) {
+    ScheduledTrigger(AutoScaling.Trigger trigger, SolrZkClient zkClient, Overseer.Stats stats) {
       this.trigger = trigger;
+      this.queue = new TriggerEventQueue(zkClient, trigger.getName(), stats);
+    }
+
+    public boolean enqueue(AutoScaling.TriggerEvent event) {
+      return queue.offerEvent(event);
+    }
+
+    public AutoScaling.TriggerEvent dequeue() {
+      return queue.pollEvent();
     }
 
     @Override
     public void run() {
+      // replay accumulated events first, if any
+      AutoScaling.TriggerEvent event;
+      while ((event = queue.pollEvent()) != null) {
+        trigger.getListener().triggerFired(event);
+      }
       // fire a trigger only if an action is not pending
       // note this is not fool proof e.g. it does not prevent an action being executed while a trigger
       // is still executing. There is additional protection against that scenario in the event listener.

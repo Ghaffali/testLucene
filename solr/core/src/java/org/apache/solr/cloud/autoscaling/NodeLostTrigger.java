@@ -197,7 +197,7 @@ public class NodeLostTrigger implements AutoScaling.Trigger<NodeLostTrigger.Node
           AutoScaling.TriggerListener<NodeLostEvent> listener = listenerRef.get();
           if (listener != null) {
             log.info("NodeLostTrigger firing registered listener");
-            if (listener.triggerFired(new NodeLostEvent(this, timeRemoved, nodeName)))  {
+            if (listener.triggerFired(new NodeLostEvent(getEventType(), getName(), timeRemoved, nodeName)))  {
               trackingKeySet.remove(nodeName);
             }
           } else  {
@@ -219,45 +219,11 @@ public class NodeLostTrigger implements AutoScaling.Trigger<NodeLostTrigger.Node
     }
   }
 
-  public static class NodeLostEvent implements AutoScaling.TriggerEvent<NodeLostTrigger> {
-    private final NodeLostTrigger source;
-    private final long nodeLostNanoTime;
-    private final String nodeName;
+  public static class NodeLostEvent extends TriggerEventBase {
+    public static final String NODE_NAME = "nodeName";
 
-    private Map<String, Object> context;
-
-    public NodeLostEvent(NodeLostTrigger source, long nodeLostNanoTime, String nodeRemoved) {
-      this.source = source;
-      this.nodeLostNanoTime = nodeLostNanoTime;
-      this.nodeName = nodeRemoved;
-    }
-
-    @Override
-    public NodeLostTrigger getSource() {
-      return source;
-    }
-
-    @Override
-    public long getEventNanoTime() {
-      return nodeLostNanoTime;
-    }
-
-    public String getNodeName() {
-      return nodeName;
-    }
-
-    public AutoScaling.EventType getType() {
-      return source.getEventType();
-    }
-
-    @Override
-    public void setContext(Map<String, Object> context) {
-      this.context = context;
-    }
-
-    @Override
-    public Map<String, Object> getContext() {
-      return context;
+    public NodeLostEvent(AutoScaling.EventType eventType, String source, long nodeLostNanoTime, String nodeRemoved) {
+      super(eventType, source, nodeLostNanoTime, Collections.singletonMap(NODE_NAME, nodeRemoved));
     }
   }
 }
