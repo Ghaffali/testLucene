@@ -16,14 +16,18 @@
  */
 package org.apache.solr.cloud.autoscaling;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+
+import org.apache.solr.common.MapWriter;
 
 /**
  * Base class for event implementations.
  */
 public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
   public static final String REPLAYING = "replaying";
+  public static final String NODE_NAME = "nodeName";
 
   protected final String source;
   protected final long eventNanoTime;
@@ -71,6 +75,14 @@ public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
     if (context != null) {
       this.properties.putAll(context);
     }
+  }
+
+  @Override
+  public void writeMap(EntryWriter ew) throws IOException {
+    ew.put("source", source);
+    ew.put("eventNanoTime", eventNanoTime);
+    ew.put("eventType", eventType.toString());
+    ew.put("properties", properties);
   }
 
   @Override

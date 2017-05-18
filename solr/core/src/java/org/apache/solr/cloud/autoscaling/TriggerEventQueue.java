@@ -36,13 +36,7 @@ public class TriggerEventQueue extends DistributedQueue {
 
   public boolean offerEvent(AutoScaling.TriggerEvent event) {
     try {
-      // yuck, serializing simple beans should be supported by Utils...
-      Map<String, Object> map = new HashMap<>();
-      map.put("eventType", event.getEventType().toString());
-      map.put("source", event.getSource());
-      map.put("eventNanoTime", event.getEventNanoTime());
-      map.put("properties", event.getProperties());
-      byte[] data = Utils.toJSON(map);
+      byte[] data = Utils.toJSON(event);
       offer(data);
       return true;
     } catch (KeeperException | InterruptedException e) {

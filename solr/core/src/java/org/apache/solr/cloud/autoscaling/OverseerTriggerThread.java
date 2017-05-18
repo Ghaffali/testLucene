@@ -98,7 +98,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
     SolrZkClient zkClient = zkStateReader.getZkClient();
     createWatcher(zkClient);
 
-    while (true) {
+    while (!isClosed) {
       Map<String, AutoScaling.Trigger> copy = null;
       try {
         // this can throw InterruptedException and we don't want to unlock if it did, so we keep this outside

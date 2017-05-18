@@ -225,6 +225,7 @@ public class ScheduledTriggers implements Closeable {
 
     @Override
     public void run() {
+      log.info("--running " + trigger.getName());
       // replay accumulated events first, if any
       AutoScaling.TriggerEvent event;
       while ((event = queue.pollEvent()) != null) {

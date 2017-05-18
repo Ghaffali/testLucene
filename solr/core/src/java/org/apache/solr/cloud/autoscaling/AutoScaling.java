@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.solr.common.MapWriter;
 import org.apache.solr.core.CoreContainer;
 
 public class AutoScaling {
@@ -48,7 +49,7 @@ public class AutoScaling {
     AFTER_ACTION
   }
 
-  public interface TriggerEvent {
+  public interface TriggerEvent extends MapWriter {
     EventType getEventType();
 
     String getSource();

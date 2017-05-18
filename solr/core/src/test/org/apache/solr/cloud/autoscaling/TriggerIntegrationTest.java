@@ -21,7 +21,9 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -60,6 +62,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   private static CountDownLatch actionCreated;
   private static CountDownLatch triggerFiredLatch;
   private static int waitForSeconds = 1;
+  private static CyclicBarrier actionStarted;
   private static AtomicBoolean triggerFired;
   private static AtomicReference<AutoScaling.TriggerEvent> eventRef;
 
@@ -78,6 +81,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     actionCreated = new CountDownLatch(1);
     triggerFiredLatch = new CountDownLatch(1);
     triggerFired = new AtomicBoolean(false);
+    actionStarted = new CyclicBarrier(2);
     eventRef = new AtomicReference<>();
     // clear any persisted auto scaling configuration
     Stat stat = zkClient().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(new ZkNodeProps()), true);
@@ -103,7 +107,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "'event' : 'nodeAdded'," +
         "'waitFor' : '0s'," +
         "'enabled' : true," +
-        "'actions' : [{'name':'test','class':'" + ThrottingTesterAction.class.getName() + "'}]" +
+        "'actions' : [{'name':'test','class':'" + ThrottlingTesterAction.class.getName() + "'}]" +
         "}}";
     SolrRequest req = new AutoScalingHandlerTest.AutoScalingRequest(SolrRequest.METHOD.POST, path, setTriggerCommand);
     NamedList<Object> response = solrClient.request(req);
@@ -116,7 +120,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "'event' : 'nodeAdded'," +
         "'waitFor' : '0s'," +
         "'enabled' : true," +
-        "'actions' : [{'name':'test','class':'" + ThrottingTesterAction.class.getName() + "'}]" +
+        "'actions' : [{'name':'test','class':'" + ThrottlingTesterAction.class.getName() + "'}]" +
         "}}";
     req = new AutoScalingHandlerTest.AutoScalingRequest(SolrRequest.METHOD.POST, path, setTriggerCommand);
     response = solrClient.request(req);
@@ -144,7 +148,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "'event' : 'nodeLost'," +
         "'waitFor' : '0s'," +
         "'enabled' : true," +
-        "'actions' : [{'name':'test','class':'" + ThrottingTesterAction.class.getName() + "'}]" +
+        "'actions' : [{'name':'test','class':'" + ThrottlingTesterAction.class.getName() + "'}]" +
         "}}";
     req = new AutoScalingHandlerTest.AutoScalingRequest(SolrRequest.METHOD.POST, path, setTriggerCommand);
     response = solrClient.request(req);
@@ -156,7 +160,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "'event' : 'nodeLost'," +
         "'waitFor' : '0s'," +
         "'enabled' : true," +
-        "'actions' : [{'name':'test','class':'" + ThrottingTesterAction.class.getName() + "'}]" +
+        "'actions' : [{'name':'test','class':'" + ThrottlingTesterAction.class.getName() + "'}]" +
         "}}";
     req = new AutoScalingHandlerTest.AutoScalingRequest(SolrRequest.METHOD.POST, path, setTriggerCommand);
     response = solrClient.request(req);
@@ -184,7 +188,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
   static AtomicLong lastActionExecutedAt = new AtomicLong(0);
   static ReentrantLock lock = new ReentrantLock();
-  public static class ThrottingTesterAction extends TestTriggerAction {
+  public static class ThrottlingTesterAction extends TestTriggerAction {
     // nanos are very precise so we need a delta for comparison with ms
     private static final long DELTA_MS = 2;
 
@@ -455,5 +459,98 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     public void init(Map<String, String> args) {
 
     }
+  }
+
+  public static class TestEventQueueAction implements TriggerAction {
+
+    public TestEventQueueAction() {
+      log.info("TestEventQueueAction instantiated");
+      actionCreated.countDown();
+    }
+
+    @Override
+    public String getName() {
+      return this.getClass().getSimpleName();
+    }
+
+    @Override
+    public String getClassName() {
+      return this.getClass().getName();
+    }
+
+    @Override
+    public void process(AutoScaling.TriggerEvent event) {
+      eventRef.set(event);
+      try {
+        actionStarted.await();
+      } catch (InterruptedException | BrokenBarrierException e) {
+        throw new RuntimeException("broken barrier", e);
+      }
+      try {
+        Thread.sleep(5000);
+        triggerFired.compareAndSet(false, true);
+      } catch (InterruptedException e) {
+        return;
+      }
+    }
+
+    @Override
+    public void close() throws IOException {
+
+    }
+
+    @Override
+    public void init(Map<String, String> args) {
+
+    }
+  }
+
+  @Test
+  public void testEventQueue() throws Exception {
+    CloudSolrClient solrClient = cluster.getSolrClient();
+    String setTriggerCommand = "{" +
+        "'set-trigger' : {" +
+        "'name' : 'node_added_trigger1'," +
+        "'event' : 'nodeAdded'," +
+        "'waitFor' : '" + waitForSeconds + "s'," +
+        "'enabled' : true," +
+        "'actions' : [{'name':'test','class':'" + TestEventQueueAction.class.getName() + "'}]" +
+        "}}";
+    NamedList<Object> overSeerStatus = cluster.getSolrClient().request(CollectionAdminRequest.getOverseerStatus());
+    String overseerLeader = (String) overSeerStatus.get("leader");
+    int overseerLeaderIndex = 0;
+    for (int i = 0; i < cluster.getJettySolrRunners().size(); i++) {
+      JettySolrRunner jetty = cluster.getJettySolrRunner(i);
+      if (jetty.getNodeName().equals(overseerLeader)) {
+        overseerLeaderIndex = i;
+        break;
+      }
+    }
+    SolrRequest req = new AutoScalingHandlerTest.AutoScalingRequest(SolrRequest.METHOD.POST, path, setTriggerCommand);
+    NamedList<Object> response = solrClient.request(req);
+    assertEquals(response.get("result").toString(), "success");
+
+    if (!actionCreated.await(3, TimeUnit.SECONDS))  {
+      fail("The TriggerAction should have been created by now");
+    }
+
+    // add node to generate the event
+    JettySolrRunner newNode = cluster.startJettySolrRunner();
+    int await = actionStarted.await(60, TimeUnit.SECONDS);
+    assertEquals("The trigger did not fire at all", 1, await);
+    // event should be there
+    NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = (NodeAddedTrigger.NodeAddedEvent) eventRef.get();
+    assertNotNull(nodeAddedEvent);
+    // but action did not complete yet so the event is still enqueued
+    assertFalse(triggerFired.get());
+    actionStarted.reset();
+    // kill overseer leader
+    cluster.stopJettySolrRunner(overseerLeaderIndex);
+    Thread.sleep(5000);
+    // new overseer leader should be elected and run triggers
+    newNode = cluster.startJettySolrRunner();
+    // it should fire again but not complete yet
+    await = actionStarted.await(600, TimeUnit.SECONDS);
+    AutoScaling.TriggerEvent replayedEvent = eventRef.get();
   }
 }
