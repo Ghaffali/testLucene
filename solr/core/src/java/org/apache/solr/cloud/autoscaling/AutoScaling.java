@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.google.common.base.Preconditions;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.core.CoreContainer;
@@ -129,6 +130,7 @@ public class AutoScaling {
     private boolean isClosed = false;
 
     public TriggerFactory(CoreContainer coreContainer) {
+      Preconditions.checkNotNull(coreContainer);
       this.coreContainer = coreContainer;
     }
 
