@@ -17,7 +17,9 @@
 package org.apache.solr.cloud.autoscaling;
 
 import java.lang.invoke.MethodHandles;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -63,9 +65,10 @@ public abstract class TriggerBase<E extends AutoScaling.TriggerEvent> implements
   @Override
   public void saveState() {
     Map<String,Object> state = getState();
-    byte[] data = Utils.toJSON(state);
+    TreeMap<String, Object> map = new TreeMap<>(state);
+    byte[] data = Utils.toJSON(map);
     // skip saving if identical
-    if (lastState != null && lastState.equals(data)) {
+    if (lastState != null && Arrays.equals(lastState, data)) {
       LOG.debug("--skip saving " + getName());
       return;
     }
@@ -89,7 +92,6 @@ public abstract class TriggerBase<E extends AutoScaling.TriggerEvent> implements
   public void restoreState() {
     byte[] data = null;
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
-    LOG.info("--restore state: " + path);
     try {
       if (zkClient.exists(path, true)) {
         data = zkClient.getData(path, null, new Stat(), true);
@@ -99,7 +101,7 @@ public abstract class TriggerBase<E extends AutoScaling.TriggerEvent> implements
     }
     if (data != null) {
       Map<String, Object> state = (Map<String, Object>) Utils.fromJSON(data);
-      LOG.info("  -- state: " + state);
+      LOG.info("-- restored state of " + path + ": " + state);
       setState(state);
       lastState = data;
     }

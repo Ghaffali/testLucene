@@ -189,7 +189,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
       }
     }
 
-    if (!triggerFiredLatch.await(10, TimeUnit.SECONDS)) {
+    if (!triggerFiredLatch.await(20, TimeUnit.SECONDS)) {
       fail("Both triggers should have fired by now");
     }
   }
@@ -465,7 +465,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     // stop the overseer, somebody else will take over as the overseer
     cluster.stopJettySolrRunner(index);
-
+    Thread.sleep(10000);
     JettySolrRunner newNode = cluster.startJettySolrRunner();
     boolean await = triggerFiredLatch.await(20, TimeUnit.SECONDS);
     assertTrue("The trigger did not fire at all", await);
@@ -495,14 +495,19 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     @Override
     public void process(AutoScaling.TriggerEvent event) {
-      if (triggerFired.compareAndSet(false, true))  {
-        eventRef.set(event);
-        if (System.nanoTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
-          fail("NodeAddedListener was fired before the configured waitFor period");
+      try {
+        if (triggerFired.compareAndSet(false, true))  {
+          eventRef.set(event);
+          if (System.nanoTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
+            fail("NodeAddedListener was fired before the configured waitFor period");
+          }
+          triggerFiredLatch.countDown();
+        } else  {
+          fail("NodeAddedTrigger was fired more than once!");
         }
-        triggerFiredLatch.countDown();
-      } else  {
-        fail("NodeAddedTrigger was fired more than once!");
+      } catch (Throwable t) {
+        log.info("--throwable", t);
+        throw t;
       }
     }
 

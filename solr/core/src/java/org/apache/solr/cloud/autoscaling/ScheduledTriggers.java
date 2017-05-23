@@ -123,23 +123,22 @@ public class ScheduledTriggers implements Closeable {
       ScheduledTrigger scheduledSource = scheduledTriggers.get(event.getSource());
       if (scheduledSource == null) {
         log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + event.getSource() + " doesn't exist.");
-        // XXX not sure what to return here...
-        return true;
+        return false;
       }
       boolean replaying = event.getProperty(TriggerEventBase.REPLAYING) != null ? (Boolean)event.getProperty(TriggerEventBase.REPLAYING) : false;
-      final boolean enqueued;
-      if (replaying) {
-        enqueued = false;
-      } else {
-        enqueued = scheduledTrigger.enqueue(event);
-      }
       AutoScaling.Trigger source = scheduledSource.trigger;
       if (source.isClosed()) {
         log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + source + " has already been closed");
-        // we do not want to lose this event just because the trigger were closed, perhaps a replacement will need it
+        // we do not want to lose this event just because the trigger was closed, perhaps a replacement will need it
         return false;
       }
       if (hasPendingActions.compareAndSet(false, true)) {
+        final boolean enqueued;
+        if (replaying) {
+          enqueued = false;
+        } else {
+          enqueued = scheduledTrigger.enqueue(event);
+        }
         List<TriggerAction> actions = source.getActions();
         if (actions != null) {
           actionExecutor.submit(() -> {
@@ -165,6 +164,12 @@ public class ScheduledTriggers implements Closeable {
               hasPendingActions.set(false);
             }
           });
+        } else {
+          if (enqueued) {
+            AutoScaling.TriggerEvent ev = scheduledTrigger.dequeue();
+            assert ev.getId().equals(event.getId());
+          }
+          hasPendingActions.set(false);
         }
         return true;
       } else {
@@ -244,10 +249,10 @@ public class ScheduledTriggers implements Closeable {
       if (isClosed) {
         throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
       }
-      log.debug("-- run scheduled trigger " + trigger.getName());
+      log.debug("--scheduled trigger " + trigger.getName());
       // replay accumulated events on first run, if any
       if (replay) {
-        log.debug("--replaying...");
+        log.debug(" --replaying...");
         AutoScaling.TriggerEvent event;
         // peek first without removing - we may crash before calling the listener
         while ((event = queue.peekEvent()) != null) {
@@ -256,17 +261,23 @@ public class ScheduledTriggers implements Closeable {
           if (! trigger.getListener().triggerFired(event)) {
             log.error("Failed to re-play event, discarding: " + event);
           }
-          log.debug("--replayed event: " + event);
+          log.debug("  --replayed event: " + event);
           queue.pollEvent(); // always remove it from queue
         }
         // now restore saved state to possibly generate new events from old state on the first run
-        trigger.restoreState();
+        try {
+          trigger.restoreState();
+        } catch (Exception e) {
+          // log but don't throw - see below
+          log.error("Error restoring trigger state " + trigger.getName(), e);
+        }
         replay = false;
       }
       // fire a trigger only if an action is not pending
       // note this is not fool proof e.g. it does not prevent an action being executed while a trigger
       // is still executing. There is additional protection against that scenario in the event listener.
       if (!hasPendingActions.get())  {
+        log.debug(" --run " + trigger.getName());
         try {
           trigger.run();
         } catch (Exception e) {
@@ -277,6 +288,8 @@ public class ScheduledTriggers implements Closeable {
           // checkpoint after each run
           trigger.saveState();
         }
+      } else {
+        log.debug(" --hasPendingActions - skipping " + trigger.getName());
       }
     }
 

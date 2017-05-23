@@ -29,6 +29,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -58,7 +60,7 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
 
   private Set<String> lastLiveNodes;
 
-  private Map<String, Long> nodeNameVsTimeAdded = new HashMap<>();
+  private Map<String, Long> nodeNameVsTimeAdded = new TreeMap<>();
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           CoreContainer container) {
@@ -78,7 +80,7 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
     } else {
       actions = Collections.emptyList();
     }
-    lastLiveNodes = container.getZkController().getZkStateReader().getClusterState().getLiveNodes();
+    lastLiveNodes = new TreeSet<>(container.getZkController().getZkStateReader().getClusterState().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     this.enabled = (boolean) properties.getOrDefault("enabled", true);
     this.waitForSecond = ((Long) properties.getOrDefault("waitFor", -1L)).intValue();
@@ -155,8 +157,8 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
     if (old instanceof NodeAddedTrigger) {
       NodeAddedTrigger that = (NodeAddedTrigger) old;
       assert this.name.equals(that.name);
-      this.lastLiveNodes = new HashSet<>(that.lastLiveNodes);
-      this.nodeNameVsTimeAdded = new HashMap<>(that.nodeNameVsTimeAdded);
+      this.lastLiveNodes = new TreeSet<>(that.lastLiveNodes);
+      this.nodeNameVsTimeAdded = new TreeMap<>(that.nodeNameVsTimeAdded);
     } else  {
       throw new SolrException(SolrException.ErrorCode.INVALID_STATE,
           "Unable to restore state from an unknown type of trigger");
@@ -199,10 +201,6 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
       ZkStateReader reader = container.getZkController().getZkStateReader();
       Set<String> newLiveNodes = reader.getClusterState().getLiveNodes();
       log.debug("Found livenodes: {}", newLiveNodes);
-      if (lastLiveNodes == null) {
-        lastLiveNodes = newLiveNodes;
-        return;
-      }
 
       // have any nodes that we were tracking been removed from the cluster?
       // if so, remove them from the tracking map
@@ -238,7 +236,7 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
         }
       }
 
-      lastLiveNodes = newLiveNodes;
+      lastLiveNodes = new TreeSet(newLiveNodes);
     } catch (RuntimeException e) {
       log.error("Unexpected exception in NodeAddedTrigger", e);
     }

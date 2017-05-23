@@ -86,7 +86,8 @@ public class AutoScaling {
      * This method is executed when a trigger is ready to fire.
      *
      * @param event a subclass of {@link TriggerEvent}
-     * @return true if the listener was ready to perform actions on the event, false otherwise.
+     * @return true if the listener was ready to perform actions on the event, false
+     * otherwise. If false was returned then callers should assume the event was discarded.
      */
     boolean triggerFired(E event);
   }

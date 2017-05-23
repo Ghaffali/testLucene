@@ -29,6 +29,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -58,7 +60,7 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
 
   private Set<String> lastLiveNodes;
 
-  private Map<String, Long> nodeNameVsTimeRemoved = new HashMap<>();
+  private Map<String, Long> nodeNameVsTimeRemoved = new TreeMap<>();
 
   public NodeLostTrigger(String name, Map<String, Object> properties,
                          CoreContainer container) {
@@ -78,7 +80,7 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
     } else {
       actions = Collections.emptyList();
     }
-    lastLiveNodes = container.getZkController().getZkStateReader().getClusterState().getLiveNodes();
+    lastLiveNodes = new TreeSet<>(container.getZkController().getZkStateReader().getClusterState().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     this.enabled = (boolean) properties.getOrDefault("enabled", true);
     this.waitForSecond = ((Long) properties.getOrDefault("waitFor", -1L)).intValue();
@@ -154,8 +156,8 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
     if (old instanceof NodeLostTrigger) {
       NodeLostTrigger that = (NodeLostTrigger) old;
       assert this.name.equals(that.name);
-      this.lastLiveNodes = new HashSet<>(that.lastLiveNodes);
-      this.nodeNameVsTimeRemoved = new HashMap<>(that.nodeNameVsTimeRemoved);
+      this.lastLiveNodes = new TreeSet<>(that.lastLiveNodes);
+      this.nodeNameVsTimeRemoved = new TreeMap<>(that.nodeNameVsTimeRemoved);
     } else  {
       throw new SolrException(SolrException.ErrorCode.INVALID_STATE,
           "Unable to restore state from an unknown type of trigger");
@@ -230,7 +232,7 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
         }
       }
 
-      lastLiveNodes = newLiveNodes;
+      lastLiveNodes = new TreeSet<>(newLiveNodes);
     } catch (RuntimeException e) {
       log.error("Unexpected exception in NodeLostTrigger", e);
     }
