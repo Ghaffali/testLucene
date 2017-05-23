@@ -34,6 +34,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.cloud.autoscaling.Clause.Violation;
 import org.apache.solr.common.IteratorWriter;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.params.CollectionParams.CollectionAction;
@@ -99,6 +100,10 @@ public class Policy implements MapWriter {
     return clusterPolicy;
   }
 
+  public List<Preference> getClusterPreferences() {
+    return clusterPreferences;
+  }
+
   @Override
   public void writeMap(EntryWriter ew) throws IOException {
     if (!policies.isEmpty()) {
@@ -122,6 +127,7 @@ public class Policy implements MapWriter {
     final List<Row> matrix;
     Set<String> collections = new HashSet<>();
     List<Clause> expandedClauses;
+    List<Violation> violations = new ArrayList<>();
     private List<String> paramsOfInterest;
 
     private Session(List<String> nodes, ClusterDataProvider dataProvider,
@@ -199,16 +205,13 @@ public class Policy implements MapWriter {
       }
 
       for (Clause clause : expandedClauses) {
-          for (Row row : matrix) {
-            clause.test(row);
-          }
-        }
+        List<Violation> errs = clause.test(matrix);
+        violations.addAll(errs);
+      }
     }
 
-    public Map<String, List<Clause>> getViolations() {
-      return matrix.stream()
-          .filter(row -> !row.violations.isEmpty())
-          .collect(Collectors.toMap(r -> r.node, r -> r.violations));
+    public List<Violation> getViolations() {
+      return violations;
     }
 
     public Suggester getSuggester(CollectionAction action) {
@@ -242,7 +245,7 @@ public class Policy implements MapWriter {
   }
 
   enum SortParam {
-    freedisk, cores, heap, cpu;
+    freedisk, cores, heapUsage, sysLoadAvg;
 
     static SortParam get(String m) {
       for (SortParam p : values()) if (p.name().equals(m)) return p;
@@ -302,6 +305,7 @@ public class Policy implements MapWriter {
     protected final EnumMap<Hint, Object> hints = new EnumMap<>(Hint.class);
     Policy.Session session;
     SolrRequest operation;
+    protected List<Violation> originalViolations = new ArrayList<>();
     private boolean isInitialized = false;
 
     private void _init(Session session) {
@@ -318,6 +322,8 @@ public class Policy implements MapWriter {
 
     public SolrRequest getOperation() {
       if (!isInitialized) {
+        session.applyRules();
+        originalViolations.addAll(session.getViolations());
         this.operation = init();
         isInitialized = true;
       }
@@ -332,6 +338,13 @@ public class Policy implements MapWriter {
       return session.matrix;
 
     }
+    boolean containsNewErrors(List<Clause.Violation> errs){
+      for (Clause.Violation err : errs) {
+        if(!originalViolations.contains(err)) return true;
+      }
+      return false;
+    }
+
 
     List<Pair<ReplicaInfo, Row>> getValidReplicas(boolean sortDesc, boolean isSource, int until) {
       List<Pair<Policy.ReplicaInfo, Row>> allPossibleReplicas = new ArrayList<>();
@@ -355,6 +368,24 @@ public class Policy implements MapWriter {
           replicaList.add(new Pair<>(shard.getValue().get(0), r));
         }
       }
+    }
+    protected List<Violation> testChangedRow(boolean strict,List<Row> rows) {
+      List<Violation> errors = new ArrayList<>();
+      for (Clause clause : session.expandedClauses) {
+        if (strict || clause.strict) {
+          List<Violation> errs = clause.test(rows);
+          if (!errs.isEmpty()) {
+            errors.addAll(errs);
+          }
+        }
+      }
+      return errors;
+    }
+
+    ArrayList<Row> getModifiedMatrix(List<Row> matrix ,Row tmpRow, int i) {
+      ArrayList<Row> copy = new ArrayList<>(matrix);
+      copy.set(i, tmpRow);
+      return copy;
     }
 
     protected boolean isAllowed(Object v, Hint hint) {
