@@ -31,7 +31,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
@@ -42,7 +41,6 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.LogLevel;
 import org.apache.solr.util.TimeOut;
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -64,6 +62,8 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   private static CountDownLatch triggerFiredLatch;
   private static int waitForSeconds = 1;
   private static CyclicBarrier actionStarted;
+  private static CyclicBarrier actionInterrupted;
+  private static CyclicBarrier actionCompleted;
   private static AtomicBoolean triggerFired;
   private static AtomicReference<AutoScaling.TriggerEvent> eventRef;
 
@@ -83,6 +83,8 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     triggerFiredLatch = new CountDownLatch(1);
     triggerFired = new AtomicBoolean(false);
     actionStarted = new CyclicBarrier(2);
+    actionInterrupted = new CyclicBarrier(2);
+    actionCompleted = new CyclicBarrier(2);
     eventRef = new AtomicReference<>();
     // clear any persisted auto scaling configuration
     Stat stat = zkClient().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(new ZkNodeProps()), true);
@@ -495,7 +497,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     public void process(AutoScaling.TriggerEvent event) {
       if (triggerFired.compareAndSet(false, true))  {
         eventRef.set(event);
-        if (System.nanoTime() - event.getEventNanoTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
+        if (System.nanoTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
           fail("NodeAddedListener was fired before the configured waitFor period");
         }
         triggerFiredLatch.countDown();
@@ -543,7 +545,17 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
       try {
         Thread.sleep(5000);
         triggerFired.compareAndSet(false, true);
+        try {
+          actionCompleted.await();
+        } catch (InterruptedException | BrokenBarrierException e) {
+          throw new RuntimeException("broken barrier", e);
+        }
       } catch (InterruptedException e) {
+        try {
+          actionInterrupted.await();
+        } catch (InterruptedException | BrokenBarrierException e1) {
+          throw new RuntimeException("broken barrier", e1);
+        }
         return;
       }
     }
@@ -590,8 +602,9 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     // add node to generate the event
     JettySolrRunner newNode = cluster.startJettySolrRunner();
+    // we are the first party so we expect index 1
     int await = actionStarted.await(60, TimeUnit.SECONDS);
-    assertEquals("The trigger did not fire at all", 1, await);
+    assertEquals("action started too early", 1, await);
     // event should be there
     NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = (NodeAddedTrigger.NodeAddedEvent) eventRef.get();
     assertNotNull(nodeAddedEvent);
@@ -601,10 +614,16 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     // kill overseer leader
     cluster.stopJettySolrRunner(overseerLeaderIndex);
     Thread.sleep(5000);
+    // we are the last party, so we expect index 0
+    await = actionInterrupted.await(3, TimeUnit.SECONDS);
+    assertEquals("action wasn't interrupted", 0, await);
     // new overseer leader should be elected and run triggers
     newNode = cluster.startJettySolrRunner();
     // it should fire again but not complete yet
-    await = actionStarted.await(600, TimeUnit.SECONDS);
+    await = actionStarted.await(60, TimeUnit.SECONDS);
     AutoScaling.TriggerEvent replayedEvent = eventRef.get();
+    assertTrue(replayedEvent instanceof TriggerEventQueue.QueuedEvent);
+    await = actionCompleted.await(10, TimeUnit.SECONDS);
+    assertTrue(triggerFired.get());
   }
 }

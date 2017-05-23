@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -229,6 +230,15 @@ public class OverseerTriggerThread implements Runnable, Closeable {
           activeTriggers.put(triggerName, trigger);
         } else {
           activeTriggers.remove(triggerName);
+        }
+      }
+      // remove state for all triggers that are not present in the current conf
+      if (zkClient.exists(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, true)) {
+        List<String> states = zkClient.getChildren(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, null, true);
+        for (String state : states) {
+          if (!triggerMap.containsKey(state)) {
+            zkClient.delete(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + state, -1, true);
+          }
         }
       }
       updated.signalAll();

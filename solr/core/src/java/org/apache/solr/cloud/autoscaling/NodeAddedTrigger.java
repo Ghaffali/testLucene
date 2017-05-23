@@ -20,6 +20,7 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Trigger for the {@link org.apache.solr.cloud.autoscaling.AutoScaling.EventType#NODEADDED} event
  */
-public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.NodeAddedEvent> {
+public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEvent> {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final String name;
@@ -61,6 +62,7 @@ public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.No
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           CoreContainer container) {
+    super(container.getZkController().getZkClient());
     this.name = name;
     this.properties = properties;
     this.container = container;
@@ -76,6 +78,8 @@ public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.No
     } else {
       actions = Collections.emptyList();
     }
+    lastLiveNodes = container.getZkController().getZkStateReader().getClusterState().getLiveNodes();
+    log.debug("Initial livenodes: {}", lastLiveNodes);
     this.enabled = (boolean) properties.getOrDefault("enabled", true);
     this.waitForSecond = ((Long) properties.getOrDefault("waitFor", -1L)).intValue();
     this.eventType = AutoScaling.EventType.valueOf(properties.get("event").toString().toUpperCase(Locale.ROOT));
@@ -160,6 +164,28 @@ public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.No
   }
 
   @Override
+  protected Map<String, Object> getState() {
+    Map<String,Object> state = new HashMap<>();
+    state.put("lastLiveNodes", lastLiveNodes);
+    state.put("nodeNameVsTimeAdded", nodeNameVsTimeAdded);
+    return state;
+  }
+
+  @Override
+  protected void setState(Map<String, Object> state) {
+    this.lastLiveNodes.clear();
+    this.nodeNameVsTimeAdded.clear();
+    Collection<String> lastLiveNodes = (Collection<String>)state.get("lastLiveNodes");
+    if (lastLiveNodes != null) {
+      this.lastLiveNodes.addAll(lastLiveNodes);
+    }
+    Map<String,Long> nodeNameVsTimeAdded = (Map<String,Long>)state.get("nodeNameVsTimeAdded");
+    if (nodeNameVsTimeAdded != null) {
+      this.nodeNameVsTimeAdded.putAll(nodeNameVsTimeAdded);
+    }
+  }
+
+  @Override
   public void run() {
     try {
       synchronized (this) {
@@ -187,21 +213,21 @@ public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.No
       Set<String> copyOfNew = new HashSet<>(newLiveNodes);
       copyOfNew.removeAll(lastLiveNodes);
       copyOfNew.forEach(n -> {
-        long nanoTime = System.nanoTime();
-        nodeNameVsTimeAdded.put(n, nanoTime);
-        log.info("Tracking new node: {} at {} nanotime", n, nanoTime);
+        long eventTime = System.currentTimeMillis();
+        nodeNameVsTimeAdded.put(n, eventTime);
+        log.debug("Tracking new node: {} at time {}", n, eventTime);
       });
 
       // has enough time expired to trigger events for a node?
       for (Map.Entry<String, Long> entry : nodeNameVsTimeAdded.entrySet()) {
         String nodeName = entry.getKey();
         Long timeAdded = entry.getValue();
-        long now = System.nanoTime();
-        if (TimeUnit.SECONDS.convert(now - timeAdded, TimeUnit.NANOSECONDS) >= getWaitForSecond()) {
+        long now = System.currentTimeMillis();
+        if (TimeUnit.SECONDS.convert(now - timeAdded, TimeUnit.MILLISECONDS) >= getWaitForSecond()) {
           // fire!
           AutoScaling.TriggerListener<NodeAddedEvent> listener = listenerRef.get();
           if (listener != null) {
-            log.info("NodeAddedTrigger {} firing registered listener for node: {} added at {} nanotime, now: {} nanotime", name, nodeName, timeAdded, now);
+            log.debug("NodeAddedTrigger {} firing registered listener for node: {} added at time {} , now: {}", name, nodeName, timeAdded, now);
             if (listener.triggerFired(new NodeAddedEvent(getEventType(), getName(), timeAdded, nodeName))) {
               // remove from tracking set only if the fire was accepted
               trackingKeySet.remove(nodeName);
@@ -227,8 +253,8 @@ public class NodeAddedTrigger implements AutoScaling.Trigger<NodeAddedTrigger.No
 
   public static class NodeAddedEvent extends TriggerEventBase {
 
-    public NodeAddedEvent(AutoScaling.EventType eventType, String source, long nodeAddedNanoTime, String nodeAdded) {
-      super(eventType, source, nodeAddedNanoTime, Collections.singletonMap(NODE_NAME, nodeAdded));
+    public NodeAddedEvent(AutoScaling.EventType eventType, String source, long nodeAddedTime, String nodeAdded) {
+      super(eventType, source, nodeAddedTime, Collections.singletonMap(NODE_NAME, nodeAdded));
     }
   }
 }

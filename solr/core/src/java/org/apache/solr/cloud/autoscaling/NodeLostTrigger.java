@@ -20,6 +20,7 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,7 +42,7 @@ import org.slf4j.LoggerFactory;
 /**
  * Trigger for the {@link AutoScaling.EventType#NODELOST} event
  */
-public class NodeLostTrigger implements AutoScaling.Trigger<NodeLostTrigger.NodeLostEvent> {
+public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final String name;
@@ -61,6 +62,7 @@ public class NodeLostTrigger implements AutoScaling.Trigger<NodeLostTrigger.Node
 
   public NodeLostTrigger(String name, Map<String, Object> properties,
                          CoreContainer container) {
+    super(container.getZkController().getZkClient());
     this.name = name;
     this.properties = properties;
     this.container = container;
@@ -161,6 +163,28 @@ public class NodeLostTrigger implements AutoScaling.Trigger<NodeLostTrigger.Node
   }
 
   @Override
+  protected Map<String, Object> getState() {
+    Map<String,Object> state = new HashMap<>();
+    state.put("lastLiveNodes", lastLiveNodes);
+    state.put("nodeNameVsTimeRemoved", nodeNameVsTimeRemoved);
+    return state;
+  }
+
+  @Override
+  protected void setState(Map<String, Object> state) {
+    this.lastLiveNodes.clear();
+    this.nodeNameVsTimeRemoved.clear();
+    Collection<String> lastLiveNodes = (Collection<String>)state.get("lastLiveNodes");
+    if (lastLiveNodes != null) {
+      this.lastLiveNodes.addAll(lastLiveNodes);
+    }
+    Map<String,Long> nodeNameVsTimeRemoved = (Map<String,Long>)state.get("nodeNameVsTimeRemoved");
+    if (nodeNameVsTimeRemoved != null) {
+      this.nodeNameVsTimeRemoved.putAll(nodeNameVsTimeRemoved);
+    }
+  }
+
+  @Override
   public void run() {
     try {
       synchronized (this) {
@@ -184,19 +208,19 @@ public class NodeLostTrigger implements AutoScaling.Trigger<NodeLostTrigger.Node
       Set<String> copyOfLastLiveNodes = new HashSet<>(lastLiveNodes);
       copyOfLastLiveNodes.removeAll(newLiveNodes);
       copyOfLastLiveNodes.forEach(n -> {
-        log.info("Tracking lost node: {}", n);
-        nodeNameVsTimeRemoved.put(n, System.nanoTime());
+        log.debug("Tracking lost node: {}", n);
+        nodeNameVsTimeRemoved.put(n, System.currentTimeMillis());
       });
 
       // has enough time expired to trigger events for a node?
       for (Map.Entry<String, Long> entry : nodeNameVsTimeRemoved.entrySet()) {
         String nodeName = entry.getKey();
         Long timeRemoved = entry.getValue();
-        if (TimeUnit.SECONDS.convert(System.nanoTime() - timeRemoved, TimeUnit.NANOSECONDS) >= getWaitForSecond()) {
+        if (TimeUnit.SECONDS.convert(System.currentTimeMillis() - timeRemoved, TimeUnit.MILLISECONDS) >= getWaitForSecond()) {
           // fire!
           AutoScaling.TriggerListener<NodeLostEvent> listener = listenerRef.get();
           if (listener != null) {
-            log.info("NodeLostTrigger firing registered listener");
+            log.debug("NodeLostTrigger firing registered listener");
             if (listener.triggerFired(new NodeLostEvent(getEventType(), getName(), timeRemoved, nodeName)))  {
               trackingKeySet.remove(nodeName);
             }
@@ -221,8 +245,8 @@ public class NodeLostTrigger implements AutoScaling.Trigger<NodeLostTrigger.Node
 
   public static class NodeLostEvent extends TriggerEventBase {
 
-    public NodeLostEvent(AutoScaling.EventType eventType, String source, long nodeLostNanoTime, String nodeRemoved) {
-      super(eventType, source, nodeLostNanoTime, Collections.singletonMap(NODE_NAME, nodeRemoved));
+    public NodeLostEvent(AutoScaling.EventType eventType, String source, long nodeLostTime, String nodeRemoved) {
+      super(eventType, source, nodeLostTime, Collections.singletonMap(NODE_NAME, nodeRemoved));
     }
   }
 }

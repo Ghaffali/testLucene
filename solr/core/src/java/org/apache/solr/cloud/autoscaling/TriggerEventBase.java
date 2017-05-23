@@ -20,7 +20,7 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.apache.solr.common.MapWriter;
+import org.apache.solr.util.IdUtils;
 
 /**
  * Base class for event implementations.
@@ -29,19 +29,31 @@ public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
   public static final String REPLAYING = "replaying";
   public static final String NODE_NAME = "nodeName";
 
+  protected final String id;
   protected final String source;
-  protected final long eventNanoTime;
+  protected final long eventTime;
   protected final AutoScaling.EventType eventType;
   protected final Map<String, Object> properties = new HashMap<>();
 
-  protected TriggerEventBase(AutoScaling.EventType eventType, String source, long eventNanoTime,
+  protected TriggerEventBase(AutoScaling.EventType eventType, String source, long eventTime,
                              Map<String, Object> properties) {
+    this(IdUtils.timeRandomId(eventTime), eventType, source, eventTime, properties);
+  }
+
+  protected TriggerEventBase(String id, AutoScaling.EventType eventType, String source, long eventTime,
+                             Map<String, Object> properties) {
+    this.id = id;
     this.eventType = eventType;
     this.source = source;
-    this.eventNanoTime = eventNanoTime;
+    this.eventTime = eventTime;
     if (properties != null) {
       this.properties.putAll(properties);
     }
+  }
+
+  @Override
+  public String getId() {
+    return id;
   }
 
   @Override
@@ -50,8 +62,8 @@ public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
   }
 
   @Override
-  public long getEventNanoTime() {
-    return eventNanoTime;
+  public long getEventTime() {
+    return eventTime;
   }
 
   @Override
@@ -79,17 +91,43 @@ public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
 
   @Override
   public void writeMap(EntryWriter ew) throws IOException {
+    ew.put("id", id);
     ew.put("source", source);
-    ew.put("eventNanoTime", eventNanoTime);
+    ew.put("eventTime", eventTime);
     ew.put("eventType", eventType.toString());
     ew.put("properties", properties);
   }
 
   @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+
+    TriggerEventBase that = (TriggerEventBase) o;
+
+    if (eventTime != that.eventTime) return false;
+    if (!id.equals(that.id)) return false;
+    if (!source.equals(that.source)) return false;
+    if (eventType != that.eventType) return false;
+    return properties.equals(that.properties);
+  }
+
+  @Override
+  public int hashCode() {
+    int result = id.hashCode();
+    result = 31 * result + source.hashCode();
+    result = 31 * result + (int) (eventTime ^ (eventTime >>> 32));
+    result = 31 * result + eventType.hashCode();
+    result = 31 * result + properties.hashCode();
+    return result;
+  }
+
+  @Override
   public String toString() {
     return this.getClass().getSimpleName() + "{" +
-        "source='" + source + '\'' +
-        ", eventNanoTime=" + eventNanoTime +
+        "id='" + id + '\'' +
+        ", source='" + source + '\'' +
+        ", eventTime=" + eventTime +
         ", properties=" + properties +
         '}';
   }

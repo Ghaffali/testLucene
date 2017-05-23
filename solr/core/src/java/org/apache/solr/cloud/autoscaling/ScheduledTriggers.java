@@ -127,48 +127,49 @@ public class ScheduledTriggers implements Closeable {
         return true;
       }
       boolean replaying = event.getProperty(TriggerEventBase.REPLAYING) != null ? (Boolean)event.getProperty(TriggerEventBase.REPLAYING) : false;
-      boolean enqueued = false;
-      try {
-        if (!replaying) {
-          enqueued = scheduledTrigger.enqueue(event);
-        }
-        AutoScaling.Trigger source = scheduledSource.trigger;
-        if (source.isClosed()) {
-          log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + source + " has already been closed");
-          // we do not want to lose this event just because the trigger were closed, perhaps a replacement will need it
-          return false;
-        }
-        if (hasPendingActions.compareAndSet(false, true)) {
-          List<TriggerAction> actions = source.getActions();
-          if (actions != null) {
-            actionExecutor.submit(() -> {
-              assert hasPendingActions.get();
-              try {
-                // let the action executor thread wait instead of the trigger thread so we use the throttle here
-                actionThrottle.minimumWaitBetweenActions();
-                actionThrottle.markAttemptingAction();
-                for (TriggerAction action : actions) {
-                  try {
-                    action.process(event);
-                  } catch (Exception e) {
-                    log.error("Error executing action: " + action.getName() + " for trigger event: " + event, e);
-                    throw e;
-                  }
+      final boolean enqueued;
+      if (replaying) {
+        enqueued = false;
+      } else {
+        enqueued = scheduledTrigger.enqueue(event);
+      }
+      AutoScaling.Trigger source = scheduledSource.trigger;
+      if (source.isClosed()) {
+        log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + source + " has already been closed");
+        // we do not want to lose this event just because the trigger were closed, perhaps a replacement will need it
+        return false;
+      }
+      if (hasPendingActions.compareAndSet(false, true)) {
+        List<TriggerAction> actions = source.getActions();
+        if (actions != null) {
+          actionExecutor.submit(() -> {
+            assert hasPendingActions.get();
+            log.debug("-- processing actions for " + event);
+            try {
+              // let the action executor thread wait instead of the trigger thread so we use the throttle here
+              actionThrottle.minimumWaitBetweenActions();
+              actionThrottle.markAttemptingAction();
+              for (TriggerAction action : actions) {
+                try {
+                  action.process(event);
+                } catch (Exception e) {
+                  log.error("Error executing action: " + action.getName() + " for trigger event: " + event, e);
+                  throw e;
                 }
-              } finally {
-                hasPendingActions.set(false);
               }
-            });
-          }
-          return true;
-        } else {
-          // there is an action in the queue and we don't want to enqueue another until it is complete
-          return false;
+              if (enqueued) {
+                AutoScaling.TriggerEvent ev = scheduledTrigger.dequeue();
+                assert ev.getId().equals(event.getId());
+              }
+            } finally {
+              hasPendingActions.set(false);
+            }
+          });
         }
-      } finally {
-        if (enqueued) {
-          scheduledTrigger.dequeue();
-        }
+        return true;
+      } else {
+        // there is an action in the queue and we don't want to enqueue another until it is complete
+        return false;
       }
     });
     scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(scheduledTrigger, 0, DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS, TimeUnit.SECONDS);
@@ -201,35 +202,66 @@ public class ScheduledTriggers implements Closeable {
       }
       scheduledTriggers.clear();
     }
-    ExecutorUtil.shutdownAndAwaitTermination(scheduledThreadPoolExecutor);
-    ExecutorUtil.shutdownAndAwaitTermination(actionExecutor);
+    // shutdown and interrupt all running tasks because there's no longer any
+    // guarantee about cluster state
+    scheduledThreadPoolExecutor.shutdownNow();
+    actionExecutor.shutdownNow();
   }
 
   private class ScheduledTrigger implements Runnable, Closeable {
     AutoScaling.Trigger trigger;
     ScheduledFuture<?> scheduledFuture;
     TriggerEventQueue queue;
+    boolean replay;
+    boolean isClosed;
 
     ScheduledTrigger(AutoScaling.Trigger trigger, SolrZkClient zkClient, Overseer.Stats stats) {
       this.trigger = trigger;
       this.queue = new TriggerEventQueue(zkClient, trigger.getName(), stats);
+      this.replay = true;
+      this.isClosed = false;
     }
 
     public boolean enqueue(AutoScaling.TriggerEvent event) {
+      if (isClosed) {
+        throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
+      }
+      log.debug("--Enqueue " + event);
       return queue.offerEvent(event);
     }
 
     public AutoScaling.TriggerEvent dequeue() {
-      return queue.pollEvent();
+      if (isClosed) {
+        throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
+      }
+      AutoScaling.TriggerEvent event = queue.pollEvent();
+      log.debug("--Dequeue " + event);
+      return event;
     }
 
     @Override
     public void run() {
-      log.info("--running " + trigger.getName());
-      // replay accumulated events first, if any
-      AutoScaling.TriggerEvent event;
-      while ((event = queue.pollEvent()) != null) {
-        trigger.getListener().triggerFired(event);
+      if (isClosed) {
+        throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
+      }
+      log.debug("-- run scheduled trigger " + trigger.getName());
+      // replay accumulated events on first run, if any
+      if (replay) {
+        log.debug("--replaying...");
+        AutoScaling.TriggerEvent event;
+        // peek first without removing - we may crash before calling the listener
+        while ((event = queue.peekEvent()) != null) {
+          // override REPLAYING=true
+          event.getProperties().put(TriggerEventBase.REPLAYING, true);
+          if (! trigger.getListener().triggerFired(event)) {
+            log.error("Failed to re-play event, discarding: " + event);
+          }
+          log.debug("--replayed event: " + event);
+          queue.pollEvent(); // always remove it from queue
+        }
+        // now restore saved state to possibly generate new events from old state on the first run
+        trigger.restoreState();
+        replay = false;
       }
       // fire a trigger only if an action is not pending
       // note this is not fool proof e.g. it does not prevent an action being executed while a trigger
@@ -241,12 +273,16 @@ public class ScheduledTriggers implements Closeable {
           // log but do not propagate exception because an exception thrown from a scheduled operation
           // will suppress future executions
           log.error("Unexpected execution from trigger: " + trigger.getName(), e);
+        } finally {
+          // checkpoint after each run
+          trigger.saveState();
         }
       }
     }
 
     @Override
     public void close() throws IOException {
+      isClosed = true;
       if (scheduledFuture != null) {
         scheduledFuture.cancel(true);
       }

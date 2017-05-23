@@ -1,7 +1,6 @@
 package org.apache.solr.cloud.autoscaling;
 
 import java.lang.invoke.MethodHandles;
-import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.solr.cloud.DistributedQueue;
@@ -19,11 +18,10 @@ import org.slf4j.LoggerFactory;
 public class TriggerEventQueue extends DistributedQueue {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public static class ReplayingEvent extends TriggerEventBase {
+  public static class QueuedEvent extends TriggerEventBase {
 
-    public ReplayingEvent(AutoScaling.EventType eventType, String source, long eventNanoTime, Map<String, Object> properties) {
-      super(eventType, source, eventNanoTime, properties);
-      this.properties.put(REPLAYING, true);
+    public QueuedEvent(String id, AutoScaling.EventType eventType, String source, long eventTime, Map<String, Object> properties) {
+      super(id, eventType, source, eventTime, properties);
     }
   }
 
@@ -45,6 +43,28 @@ public class TriggerEventQueue extends DistributedQueue {
     }
   }
 
+  public AutoScaling.TriggerEvent peekEvent() {
+    byte[] data;
+    try {
+      while ((data = peek()) != null) {
+        if (data.length == 0) {
+          LOG.warn("ignoring empty data...");
+          continue;
+        }
+        try {
+          Map<String, Object> map = (Map<String, Object>) Utils.fromJSON(data);
+          return fromMap(map);
+        } catch (Exception e) {
+          LOG.warn("Invalid event data, ignoring: " + new String(data));
+          continue;
+        }
+      }
+    } catch (KeeperException | InterruptedException e) {
+      LOG.warn("Exception peeking queue of trigger " + triggerName, e);
+    }
+    return null;
+  }
+
   public AutoScaling.TriggerEvent pollEvent() {
     byte[] data;
     try {
@@ -55,11 +75,7 @@ public class TriggerEventQueue extends DistributedQueue {
         }
         try {
           Map<String, Object> map = (Map<String, Object>) Utils.fromJSON(data);
-          String source = (String)map.get("source");
-          long eventNanoTime = ((Number)map.get("eventNanoTime")).longValue();
-          AutoScaling.EventType eventType = AutoScaling.EventType.valueOf((String)map.get("eventType"));
-          Map<String, Object> properties = (Map<String, Object>)map.get("properties");
-          return new ReplayingEvent(eventType, source, eventNanoTime, properties);
+          return fromMap(map);
         } catch (Exception e) {
           LOG.warn("Invalid event data, ignoring: " + new String(data));
           continue;
@@ -71,4 +87,12 @@ public class TriggerEventQueue extends DistributedQueue {
     return null;
   }
 
+  private static QueuedEvent fromMap(Map<String, Object> map) {
+    String id = (String)map.get("id");
+    String source = (String)map.get("source");
+    long eventTime = ((Number)map.get("eventTime")).longValue();
+    AutoScaling.EventType eventType = AutoScaling.EventType.valueOf((String)map.get("eventType"));
+    Map<String, Object> properties = (Map<String, Object>)map.get("properties");
+    return new QueuedEvent(id, eventType, source, eventTime, properties);
+  }
 }
