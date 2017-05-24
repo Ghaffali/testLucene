@@ -21,7 +21,6 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -36,10 +35,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.cloud.ActionThrottle;
-import org.apache.solr.cloud.DistributedQueue;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.common.cloud.SolrZkClient;
-import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.util.DefaultSolrThreadFactory;
@@ -125,7 +122,7 @@ public class ScheduledTriggers implements Closeable {
         log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + event.getSource() + " doesn't exist.");
         return false;
       }
-      boolean replaying = event.getProperty(TriggerEventBase.REPLAYING) != null ? (Boolean)event.getProperty(TriggerEventBase.REPLAYING) : false;
+      boolean replaying = event.getProperty(TriggerEvent.REPLAYING) != null ? (Boolean)event.getProperty(TriggerEvent.REPLAYING) : false;
       AutoScaling.Trigger source = scheduledSource.trigger;
       if (source.isClosed()) {
         log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + source + " has already been closed");
@@ -157,7 +154,7 @@ public class ScheduledTriggers implements Closeable {
                 }
               }
               if (enqueued) {
-                AutoScaling.TriggerEvent ev = scheduledTrigger.dequeue();
+                TriggerEvent ev = scheduledTrigger.dequeue();
                 assert ev.getId().equals(event.getId());
               }
             } finally {
@@ -166,7 +163,7 @@ public class ScheduledTriggers implements Closeable {
           });
         } else {
           if (enqueued) {
-            AutoScaling.TriggerEvent ev = scheduledTrigger.dequeue();
+            TriggerEvent ev = scheduledTrigger.dequeue();
             assert ev.getId().equals(event.getId());
           }
           hasPendingActions.set(false);
@@ -227,7 +224,7 @@ public class ScheduledTriggers implements Closeable {
       this.isClosed = false;
     }
 
-    public boolean enqueue(AutoScaling.TriggerEvent event) {
+    public boolean enqueue(TriggerEvent event) {
       if (isClosed) {
         throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
       }
@@ -235,11 +232,11 @@ public class ScheduledTriggers implements Closeable {
       return queue.offerEvent(event);
     }
 
-    public AutoScaling.TriggerEvent dequeue() {
+    public TriggerEvent dequeue() {
       if (isClosed) {
         throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
       }
-      AutoScaling.TriggerEvent event = queue.pollEvent();
+      TriggerEvent event = queue.pollEvent();
       log.debug("--Dequeue " + event);
       return event;
     }
@@ -253,11 +250,11 @@ public class ScheduledTriggers implements Closeable {
       // replay accumulated events on first run, if any
       if (replay) {
         log.debug(" --replaying...");
-        AutoScaling.TriggerEvent event;
+        TriggerEvent event;
         // peek first without removing - we may crash before calling the listener
         while ((event = queue.peekEvent()) != null) {
           // override REPLAYING=true
-          event.getProperties().put(TriggerEventBase.REPLAYING, true);
+          event.getProperties().put(TriggerEvent.REPLAYING, true);
           if (! trigger.getListener().triggerFired(event)) {
             log.error("Failed to re-play event, discarding: " + event);
           }

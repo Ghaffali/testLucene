@@ -65,7 +65,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   private static CyclicBarrier actionInterrupted;
   private static CyclicBarrier actionCompleted;
   private static AtomicBoolean triggerFired;
-  private static AtomicReference<AutoScaling.TriggerEvent> eventRef;
+  private static AtomicReference<TriggerEvent> eventRef;
 
   private String path;
 
@@ -204,7 +204,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     private final AtomicBoolean onlyOnce = new AtomicBoolean(false);
 
     @Override
-    public void process(AutoScaling.TriggerEvent event) {
+    public void process(TriggerEvent event) {
       boolean locked = lock.tryLock();
       if (!locked)  {
         log.info("We should never have a tryLock fail because actions are never supposed to be executed concurrently");
@@ -473,7 +473,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = (NodeAddedTrigger.NodeAddedEvent) eventRef.get();
     assertNotNull(nodeAddedEvent);
     assertEquals("The node added trigger was fired but for a different node",
-        newNode.getNodeName(), nodeAddedEvent.getProperty(TriggerEventBase.NODE_NAME));
+        newNode.getNodeName(), nodeAddedEvent.getProperty(TriggerEvent.NODE_NAME));
   }
 
   public static class TestTriggerAction implements TriggerAction {
@@ -494,7 +494,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     }
 
     @Override
-    public void process(AutoScaling.TriggerEvent event) {
+    public void process(TriggerEvent event) {
       try {
         if (triggerFired.compareAndSet(false, true))  {
           eventRef.set(event);
@@ -540,7 +540,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     }
 
     @Override
-    public void process(AutoScaling.TriggerEvent event) {
+    public void process(TriggerEvent event) {
       eventRef.set(event);
       try {
         actionStarted.await();
@@ -626,8 +626,9 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     newNode = cluster.startJettySolrRunner();
     // it should fire again but not complete yet
     await = actionStarted.await(60, TimeUnit.SECONDS);
-    AutoScaling.TriggerEvent replayedEvent = eventRef.get();
-    assertTrue(replayedEvent instanceof TriggerEventQueue.QueuedEvent);
+    TriggerEvent replayedEvent = eventRef.get();
+    assertTrue(replayedEvent.getProperty(TriggerEventQueue.ENQUEUE_TIME) != null);
+    assertTrue(replayedEvent.getProperty(TriggerEventQueue.DEQUEUE_TIME) != null);
     await = actionCompleted.await(10, TimeUnit.SECONDS);
     assertTrue(triggerFired.get());
   }

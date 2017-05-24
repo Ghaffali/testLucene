@@ -18,12 +18,8 @@ import org.slf4j.LoggerFactory;
 public class TriggerEventQueue extends DistributedQueue {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public static class QueuedEvent extends TriggerEventBase {
-
-    public QueuedEvent(String id, AutoScaling.EventType eventType, String source, long eventTime, Map<String, Object> properties) {
-      super(id, eventType, source, eventTime, properties);
-    }
-  }
+  public static final String ENQUEUE_TIME = "_enqueue_time_";
+  public static final String DEQUEUE_TIME = "_dequeue_time_";
 
   private final String triggerName;
 
@@ -32,7 +28,8 @@ public class TriggerEventQueue extends DistributedQueue {
     this.triggerName = triggerName;
   }
 
-  public boolean offerEvent(AutoScaling.TriggerEvent event) {
+  public boolean offerEvent(TriggerEvent event) {
+    event.getProperties().put(ENQUEUE_TIME, System.currentTimeMillis());
     try {
       byte[] data = Utils.toJSON(event);
       offer(data);
@@ -43,7 +40,7 @@ public class TriggerEventQueue extends DistributedQueue {
     }
   }
 
-  public AutoScaling.TriggerEvent peekEvent() {
+  public TriggerEvent peekEvent() {
     byte[] data;
     try {
       while ((data = peek()) != null) {
@@ -65,7 +62,7 @@ public class TriggerEventQueue extends DistributedQueue {
     return null;
   }
 
-  public AutoScaling.TriggerEvent pollEvent() {
+  public TriggerEvent pollEvent() {
     byte[] data;
     try {
       while ((data = poll()) != null) {
@@ -87,12 +84,14 @@ public class TriggerEventQueue extends DistributedQueue {
     return null;
   }
 
-  private static QueuedEvent fromMap(Map<String, Object> map) {
+  private static TriggerEvent fromMap(Map<String, Object> map) {
     String id = (String)map.get("id");
     String source = (String)map.get("source");
     long eventTime = ((Number)map.get("eventTime")).longValue();
     AutoScaling.EventType eventType = AutoScaling.EventType.valueOf((String)map.get("eventType"));
     Map<String, Object> properties = (Map<String, Object>)map.get("properties");
-    return new QueuedEvent(id, eventType, source, eventTime, properties);
+    TriggerEvent res = new TriggerEvent(id, eventType, source, eventTime, properties);
+    res.getProperties().put(DEQUEUE_TIME, System.currentTimeMillis());
+    return res;
   }
 }

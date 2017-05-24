@@ -44,14 +44,14 @@ import org.slf4j.LoggerFactory;
 /**
  * Trigger for the {@link org.apache.solr.cloud.autoscaling.AutoScaling.EventType#NODEADDED} event
  */
-public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEvent> {
+public class NodeAddedTrigger extends TriggerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final String name;
   private final Map<String, Object> properties;
   private final CoreContainer container;
   private final List<TriggerAction> actions;
-  private final AtomicReference<AutoScaling.TriggerListener<NodeAddedEvent>> listenerRef;
+  private final AtomicReference<AutoScaling.TriggerListener> listenerRef;
   private final boolean enabled;
   private final int waitForSecond;
   private final AutoScaling.EventType eventType;
@@ -89,12 +89,12 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
   }
 
   @Override
-  public void setListener(AutoScaling.TriggerListener<NodeAddedEvent> listener) {
+  public void setListener(AutoScaling.TriggerListener listener) {
     listenerRef.set(listener);
   }
 
   @Override
-  public AutoScaling.TriggerListener<NodeAddedEvent> getListener() {
+  public AutoScaling.TriggerListener getListener() {
     return listenerRef.get();
   }
 
@@ -152,7 +152,7 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
   }
 
   @Override
-  public void restoreState(AutoScaling.Trigger<NodeAddedEvent> old) {
+  public void restoreState(AutoScaling.Trigger old) {
     assert old.isClosed();
     if (old instanceof NodeAddedTrigger) {
       NodeAddedTrigger that = (NodeAddedTrigger) old;
@@ -223,7 +223,7 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
         long now = System.currentTimeMillis();
         if (TimeUnit.SECONDS.convert(now - timeAdded, TimeUnit.MILLISECONDS) >= getWaitForSecond()) {
           // fire!
-          AutoScaling.TriggerListener<NodeAddedEvent> listener = listenerRef.get();
+          AutoScaling.TriggerListener listener = listenerRef.get();
           if (listener != null) {
             log.debug("NodeAddedTrigger {} firing registered listener for node: {} added at time {} , now: {}", name, nodeName, timeAdded, now);
             if (listener.triggerFired(new NodeAddedEvent(getEventType(), getName(), timeAdded, nodeName))) {
@@ -249,7 +249,7 @@ public class NodeAddedTrigger extends TriggerBase<NodeAddedTrigger.NodeAddedEven
     }
   }
 
-  public static class NodeAddedEvent extends TriggerEventBase {
+  public static class NodeAddedEvent extends TriggerEvent {
 
     public NodeAddedEvent(AutoScaling.EventType eventType, String source, long nodeAddedTime, String nodeAdded) {
       super(eventType, source, nodeAddedTime, Collections.singletonMap(NODE_NAME, nodeAdded));

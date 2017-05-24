@@ -20,12 +20,13 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.solr.common.MapWriter;
 import org.apache.solr.util.IdUtils;
 
 /**
- * Base class for event implementations.
+ * Trigger event.
  */
-public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
+public class TriggerEvent implements MapWriter {
   public static final String REPLAYING = "replaying";
   public static final String NODE_NAME = "nodeName";
 
@@ -35,13 +36,13 @@ public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
   protected final AutoScaling.EventType eventType;
   protected final Map<String, Object> properties = new HashMap<>();
 
-  protected TriggerEventBase(AutoScaling.EventType eventType, String source, long eventTime,
-                             Map<String, Object> properties) {
+  public TriggerEvent(AutoScaling.EventType eventType, String source, long eventTime,
+                      Map<String, Object> properties) {
     this(IdUtils.timeRandomId(eventTime), eventType, source, eventTime, properties);
   }
 
-  protected TriggerEventBase(String id, AutoScaling.EventType eventType, String source, long eventTime,
-                             Map<String, Object> properties) {
+  public TriggerEvent(String id, AutoScaling.EventType eventType, String source, long eventTime,
+                      Map<String, Object> properties) {
     this.id = id;
     this.eventType = eventType;
     this.source = source;
@@ -51,41 +52,59 @@ public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
     }
   }
 
-  @Override
+  /**
+   * Unique event id.
+   */
   public String getId() {
     return id;
   }
 
-  @Override
+  /**
+   * Name of the trigger that fired the event.
+   */
   public String getSource() {
     return source;
   }
 
-  @Override
+  /**
+   * Timestamp of the actual event.
+   * NOTE: this is NOT the timestamp when the event was fired - events may be fired
+   * much later than the actual condition that generated the event, due to the "waitFor" limit.
+   */
   public long getEventTime() {
     return eventTime;
   }
 
-  @Override
+  /**
+   * Get event properties (modifiable).
+   */
   public Map<String, Object> getProperties() {
     return properties;
   }
 
-  @Override
+  /**
+   * Get a named event property or null if missing.
+   */
   public Object getProperty(String name) {
     return properties.get(name);
   }
 
-  @Override
+  /**
+   * Event type.
+   */
   public AutoScaling.EventType getEventType() {
     return eventType;
   }
 
-  @Override
-  public void setProperties(Map<String, Object> context) {
+  /**
+   * Set event properties.
+   *
+   * @param properties may be null. A shallow copy of this parameter is used.
+   */
+  public void setProperties(Map<String, Object> properties) {
     this.properties.clear();
-    if (context != null) {
-      this.properties.putAll(context);
+    if (properties != null) {
+      this.properties.putAll(properties);
     }
   }
 
@@ -103,7 +122,7 @@ public abstract class TriggerEventBase implements AutoScaling.TriggerEvent {
     if (this == o) return true;
     if (o == null || getClass() != o.getClass()) return false;
 
-    TriggerEventBase that = (TriggerEventBase) o;
+    TriggerEvent that = (TriggerEvent) o;
 
     if (eventTime != that.eventTime) return false;
     if (!id.equals(that.id)) return false;

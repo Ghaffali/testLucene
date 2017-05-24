@@ -19,13 +19,11 @@ package org.apache.solr.cloud.autoscaling;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.solr.common.MapWriter;
 import org.apache.solr.core.CoreContainer;
 
 public class AutoScaling {
@@ -50,38 +48,7 @@ public class AutoScaling {
     AFTER_ACTION
   }
 
-  public interface TriggerEvent extends MapWriter {
-    /** Unique event id. */
-    String getId();
-
-    /** Event type. */
-    EventType getEventType();
-
-    /** Name of the trigger that fired the event. */
-    String getSource();
-
-    /** Timestamp of the actual event.
-     * NOTE: this is NOT the timestamp when the event was fired - events may be fired
-     * much later than the actual condition that generated the event, due to the "waitFor" limit.
-     */
-    long getEventTime();
-
-    /**
-     * Set event properties.
-     * @param properties may be null. A shallow copy of this parameter is used.
-     */
-    void setProperties(Map<String, Object> properties);
-
-    /**
-     * Get event properties (modifiable).
-     */
-    Map<String, Object> getProperties();
-
-    /** Get a named event property or null if missing. */
-    Object getProperty(String name);
-  }
-
-  public interface TriggerListener<E extends TriggerEvent> {
+  public interface TriggerListener {
     /**
      * This method is executed when a trigger is ready to fire.
      *
@@ -89,7 +56,7 @@ public class AutoScaling {
      * @return true if the listener was ready to perform actions on the event, false
      * otherwise. If false was returned then callers should assume the event was discarded.
      */
-    boolean triggerFired(E event);
+    boolean triggerFired(TriggerEvent event);
   }
 
   public static class HttpCallbackListener implements TriggerListener {
@@ -102,7 +69,7 @@ public class AutoScaling {
   /**
    * Interface for a Solr trigger. Each trigger implements Runnable and Closeable interface. A trigger
    * is scheduled using a {@link java.util.concurrent.ScheduledExecutorService} so it is executed as
-   * per a configured schedule to check whether the trigger is ready to fire. The {@link #setListener(TriggerListener)}
+   * per a configured schedule to check whether the trigger is ready to fire. The {@link Trigger#setListener(TriggerListener)}
    * method should be used to set a callback listener which is fired by implementation of this class whenever
    * ready.
    * <p>
@@ -116,10 +83,8 @@ public class AutoScaling {
    * with the proper trigger event object. If that method returns false then it should be interpreted to mean
    * that Solr is not ready to process this trigger event and therefore we should retain the state and fire
    * at the next invocation of the run() method.
-   *
-   * @param <E> the {@link TriggerEvent} which is handled by this Trigger
    */
-  public interface Trigger<E extends TriggerEvent> extends Closeable, Runnable {
+  public interface Trigger extends Closeable, Runnable {
     /**
      * Trigger name.
      */
@@ -143,16 +108,16 @@ public class AutoScaling {
     List<TriggerAction> getActions();
 
     /** Set event listener to call when event is fired. */
-    void setListener(TriggerListener<E> listener);
+    void setListener(TriggerListener listener);
 
     /** Get event listener. */
-    TriggerListener<E> getListener();
+    TriggerListener getListener();
 
     /** Return true when this trigger is closed and cannot be used. */
     boolean isClosed();
 
     /** Set internal state of this trigger from another instance. */
-    void restoreState(Trigger<E> old);
+    void restoreState(Trigger old);
 
     /** Save internal state of this trigger in ZooKeeper. */
     void saveState();

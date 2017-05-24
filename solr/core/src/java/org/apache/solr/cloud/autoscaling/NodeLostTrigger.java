@@ -44,14 +44,14 @@ import org.slf4j.LoggerFactory;
 /**
  * Trigger for the {@link AutoScaling.EventType#NODELOST} event
  */
-public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> {
+public class NodeLostTrigger extends TriggerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final String name;
   private final Map<String, Object> properties;
   private final CoreContainer container;
   private final List<TriggerAction> actions;
-  private final AtomicReference<AutoScaling.TriggerListener<NodeLostEvent>> listenerRef;
+  private final AtomicReference<AutoScaling.TriggerListener> listenerRef;
   private final boolean enabled;
   private final int waitForSecond;
   private final AutoScaling.EventType eventType;
@@ -88,12 +88,12 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
   }
 
   @Override
-  public void setListener(AutoScaling.TriggerListener<NodeLostEvent> listener) {
+  public void setListener(AutoScaling.TriggerListener listener) {
     listenerRef.set(listener);
   }
 
   @Override
-  public AutoScaling.TriggerListener<NodeLostEvent> getListener() {
+  public AutoScaling.TriggerListener getListener() {
     return listenerRef.get();
   }
 
@@ -151,7 +151,7 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
   }
 
   @Override
-  public void restoreState(AutoScaling.Trigger<NodeLostEvent> old) {
+  public void restoreState(AutoScaling.Trigger old) {
     assert old.isClosed();
     if (old instanceof NodeLostTrigger) {
       NodeLostTrigger that = (NodeLostTrigger) old;
@@ -220,7 +220,7 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
         Long timeRemoved = entry.getValue();
         if (TimeUnit.SECONDS.convert(System.currentTimeMillis() - timeRemoved, TimeUnit.MILLISECONDS) >= getWaitForSecond()) {
           // fire!
-          AutoScaling.TriggerListener<NodeLostEvent> listener = listenerRef.get();
+          AutoScaling.TriggerListener listener = listenerRef.get();
           if (listener != null) {
             log.debug("NodeLostTrigger firing registered listener");
             if (listener.triggerFired(new NodeLostEvent(getEventType(), getName(), timeRemoved, nodeName)))  {
@@ -245,7 +245,7 @@ public class NodeLostTrigger extends TriggerBase<NodeLostTrigger.NodeLostEvent> 
     }
   }
 
-  public static class NodeLostEvent extends TriggerEventBase {
+  public static class NodeLostEvent extends TriggerEvent {
 
     public NodeLostEvent(AutoScaling.EventType eventType, String source, long nodeLostTime, String nodeRemoved) {
       super(eventType, source, nodeLostTime, Collections.singletonMap(NODE_NAME, nodeRemoved));

@@ -37,7 +37,7 @@ import org.junit.Test;
  */
 public class NodeAddedTriggerTest extends SolrCloudTestCase {
 
-  private AutoScaling.TriggerListener<NodeAddedTrigger.NodeAddedEvent> noFirstRunListener = event -> {
+  private AutoScaling.TriggerListener noFirstRunListener = event -> {
     fail("Did not expect the listener to fire on first run!");
     return true;
   };
@@ -61,7 +61,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
 
       JettySolrRunner newNode = cluster.startJettySolrRunner();
       AtomicBoolean fired = new AtomicBoolean(false);
-      AtomicReference<NodeAddedTrigger.NodeAddedEvent> eventRef = new AtomicReference<>();
+      AtomicReference<TriggerEvent> eventRef = new AtomicReference<>();
       trigger.setListener(event -> {
         if (fired.compareAndSet(false, true)) {
           eventRef.set(event);
@@ -82,7 +82,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
         }
       } while (!fired.get());
 
-      NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = eventRef.get();
+      TriggerEvent nodeAddedEvent = eventRef.get();
       assertNotNull(nodeAddedEvent);
       assertEquals("", newNode.getNodeName(), nodeAddedEvent.getProperty(NodeAddedTrigger.NodeAddedEvent.NODE_NAME));
     }
@@ -184,7 +184,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
 
     try (NodeAddedTrigger newTrigger = new NodeAddedTrigger("node_added_trigger", props, container))  {
       AtomicBoolean fired = new AtomicBoolean(false);
-      AtomicReference<NodeAddedTrigger.NodeAddedEvent> eventRef = new AtomicReference<>();
+      AtomicReference<TriggerEvent> eventRef = new AtomicReference<>();
       newTrigger.setListener(event -> {
         if (fired.compareAndSet(false, true)) {
           eventRef.set(event);
@@ -208,7 +208,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
 
       // ensure the event was fired
       assertTrue(fired.get());
-      NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = eventRef.get();
+      TriggerEvent nodeAddedEvent = eventRef.get();
       assertNotNull(nodeAddedEvent);
       assertEquals("", newNode.getNodeName(), nodeAddedEvent.getProperty(NodeAddedTrigger.NodeAddedEvent.NODE_NAME));
     }

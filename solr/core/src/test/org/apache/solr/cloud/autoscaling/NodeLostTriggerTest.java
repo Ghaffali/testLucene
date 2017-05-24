@@ -37,7 +37,7 @@ import org.junit.Test;
  */
 public class NodeLostTriggerTest extends SolrCloudTestCase {
 
-  private AutoScaling.TriggerListener<NodeLostTrigger.NodeLostEvent> noFirstRunListener = event -> {
+  private AutoScaling.TriggerListener noFirstRunListener = event -> {
     fail("Did not expect the listener to fire on first run!");
     return true;
   };
@@ -62,7 +62,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
       cluster.stopJettySolrRunner(1);
 
       AtomicBoolean fired = new AtomicBoolean(false);
-      AtomicReference<NodeLostTrigger.NodeLostEvent> eventRef = new AtomicReference<>();
+      AtomicReference<TriggerEvent> eventRef = new AtomicReference<>();
       trigger.setListener(event -> {
         if (fired.compareAndSet(false, true)) {
           eventRef.set(event);
@@ -83,7 +83,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
         }
       } while (!fired.get());
 
-      NodeLostTrigger.NodeLostEvent nodeLostEvent = eventRef.get();
+      TriggerEvent nodeLostEvent = eventRef.get();
       assertNotNull(nodeLostEvent);
       assertEquals("", lostNodeName, nodeLostEvent.getProperty(NodeLostTrigger.NodeLostEvent.NODE_NAME));
 
@@ -211,7 +211,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
 
     try (NodeLostTrigger newTrigger = new NodeLostTrigger("node_lost_trigger", props, container)) {
       AtomicBoolean fired = new AtomicBoolean(false);
-      AtomicReference<NodeLostTrigger.NodeLostEvent> eventRef = new AtomicReference<>();
+      AtomicReference<TriggerEvent> eventRef = new AtomicReference<>();
       newTrigger.setListener(event -> {
         if (fired.compareAndSet(false, true)) {
           eventRef.set(event);
@@ -233,7 +233,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
         }
       } while (!fired.get());
 
-      NodeLostTrigger.NodeLostEvent nodeLostEvent = eventRef.get();
+      TriggerEvent nodeLostEvent = eventRef.get();
       assertNotNull(nodeLostEvent);
       assertEquals("", lostNodeName, nodeLostEvent.getProperty(NodeLostTrigger.NodeLostEvent.NODE_NAME));
     }
