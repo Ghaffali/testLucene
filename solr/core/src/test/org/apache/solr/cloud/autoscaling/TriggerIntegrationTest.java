@@ -375,7 +375,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     NamedList<Object> response = solrClient.request(req);
     assertEquals(response.get("result").toString(), "success");
 
-    if (!actionCreated.await(3, TimeUnit.SECONDS))  {
+    if (!actionCreated.await(10, TimeUnit.SECONDS))  {
       fail("The TriggerAction should have been created by now");
     }
 
