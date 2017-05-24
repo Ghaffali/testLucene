@@ -46,16 +46,25 @@ import static java.util.Collections.emptyList;
 import static java.util.Collections.emptyMap;
 import static java.util.stream.Collectors.toList;
 
+/*The class that reads, parses and applies policies specified in
+ * autoscaling.json
+ *
+ * Create one instance of this class per unique autoscaling.json.
+ * This is immutable and is thread-safe
+ *
+ * Create a fresh new session for each use
+ *
+ */
 public class Policy implements MapWriter {
   public static final String EACH = "#EACH";
   public static final String ANY = "#ANY";
   public static final String CLUSTER_POLICY = "cluster-policy";
   public static final String CLUSTER_PREFERENCE = "cluster-preferences";
   public static final Set<String> GLOBAL_ONLY_TAGS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("cores")));
-  Map<String, List<Clause>> policies = new HashMap<>();
-  List<Clause> clusterPolicy;
-  List<Preference> clusterPreferences;
-  List<String> params = new ArrayList<>();
+  final Map<String, List<Clause>> policies = new HashMap<>();
+  final List<Clause> clusterPolicy;
+  final List<Preference> clusterPreferences;
+  final List<String> params = new ArrayList<>();
 
 
   public Policy(Map<String, Object> jsonMap) {
@@ -121,6 +130,10 @@ public class Policy implements MapWriter {
 
   }
 
+  /*This stores the logical state of the system, given a policy and
+   * a cluster state.
+   *
+   */
   public class Session implements MapWriter {
     final List<String> nodes;
     final ClusterDataProvider dataProvider;
@@ -152,13 +165,7 @@ public class Policy implements MapWriter {
           .collect(Collectors.toList());
 
       for (String c : collections) {
-        String p = dataProvider.getPolicy(c);
-        if (p != null) {
-          List<Clause> perCollPolicy = policies.get(p);
-          if (perCollPolicy == null)
-            throw new RuntimeException(StrUtils.formatString("Policy for collection {0} is {1} . It does not exist", c, p));
-        }
-        expandedClauses.addAll(mergePolicies(c, policies.getOrDefault(p, emptyList()), clusterPolicy));
+        addClausesForCollection(dataProvider, c);
       }
 
       Collections.sort(expandedClauses);
@@ -168,6 +175,16 @@ public class Policy implements MapWriter {
       matrix = new ArrayList<>(nodes.size());
       for (String node : nodes) matrix.add(new Row(node, paramsOfInterest, dataProvider));
       applyRules();
+    }
+
+    private void addClausesForCollection(ClusterDataProvider dataProvider, String c) {
+      String p = dataProvider.getPolicy(c);
+      if (p != null) {
+        List<Clause> perCollPolicy = policies.get(p);
+        if (perCollPolicy == null)
+          throw new RuntimeException(StrUtils.formatString("Policy for collection {0} is {1} . It does not exist", c, p));
+      }
+      expandedClauses.addAll(mergePolicies(c, policies.getOrDefault(p, emptyList()), clusterPolicy));
     }
 
     Session copy() {
@@ -301,6 +318,14 @@ public class Policy implements MapWriter {
   }
 
 
+  /* A suggester is capable of suggesting a collection operation
+   * given a particular session. Before it suggests a new operation,
+   * it ensures that ,
+   *  a) the node that it lightens load on the 'most loaded node' and/or 'lightens load'
+   *     on the least loaded node
+   *  b) it causes no new violations
+   *
+   */
   public static abstract class Suggester {
     protected final EnumMap<Hint, Object> hints = new EnumMap<>(Hint.class);
     Policy.Session session;
@@ -322,6 +347,16 @@ public class Policy implements MapWriter {
 
     public SolrRequest getOperation() {
       if (!isInitialized) {
+        String coll = (String) hints.get(Hint.COLL);
+        if(coll != null){
+          // if this is not a known collection from the existing clusterstate,
+          // then add it
+          if(session.matrix.stream().noneMatch(row -> row.replicaInfo.containsKey(coll))){
+            session.matrix.get(0).replicaInfo.put(coll, new HashMap<>());
+            session.addClausesForCollection(session.dataProvider, coll);
+            Collections.sort(session.expandedClauses);
+          }
+        }
         session.applyRules();
         originalViolations.addAll(session.getViolations());
         this.operation = init();
