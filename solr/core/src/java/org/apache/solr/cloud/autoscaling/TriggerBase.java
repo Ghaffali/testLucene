@@ -69,11 +69,9 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     byte[] data = Utils.toJSON(map);
     // skip saving if identical
     if (lastState != null && Arrays.equals(lastState, data)) {
-      LOG.debug("--skip saving " + getName());
       return;
     }
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
-    LOG.info("--save state: " + path + ": " + state);
     try {
       if (zkClient.exists(path, true)) {
         // update
@@ -101,7 +99,6 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     }
     if (data != null) {
       Map<String, Object> state = (Map<String, Object>) Utils.fromJSON(data);
-      LOG.info("-- restored state of " + path + ": " + state);
       setState(state);
       lastState = data;
     }

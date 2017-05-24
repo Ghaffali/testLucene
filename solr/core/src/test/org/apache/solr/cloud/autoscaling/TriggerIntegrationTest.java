@@ -23,7 +23,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -61,9 +60,9 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   private static CountDownLatch actionCreated;
   private static CountDownLatch triggerFiredLatch;
   private static int waitForSeconds = 1;
-  private static CyclicBarrier actionStarted;
-  private static CyclicBarrier actionInterrupted;
-  private static CyclicBarrier actionCompleted;
+  private static CountDownLatch actionStarted;
+  private static CountDownLatch actionInterrupted;
+  private static CountDownLatch actionCompleted;
   private static AtomicBoolean triggerFired;
   private static AtomicReference<TriggerEvent> eventRef;
 
@@ -76,15 +75,35 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         .configure();
   }
 
+  private static CountDownLatch getActionCreated() {
+    return actionCreated;
+  }
+
+  private static CountDownLatch getTriggerFiredLatch() {
+    return triggerFiredLatch;
+  }
+
+  private static CountDownLatch getActionStarted() {
+    return actionStarted;
+  }
+
+  private static CountDownLatch getActionInterrupted() {
+    return actionInterrupted;
+  }
+
+  private static CountDownLatch getActionCompleted() {
+    return actionCompleted;
+  }
+
   @Before
   public void setupTest() throws Exception {
     waitForSeconds = 1 + random().nextInt(3);
     actionCreated = new CountDownLatch(1);
     triggerFiredLatch = new CountDownLatch(1);
     triggerFired = new AtomicBoolean(false);
-    actionStarted = new CyclicBarrier(2);
-    actionInterrupted = new CyclicBarrier(2);
-    actionCompleted = new CyclicBarrier(2);
+    actionStarted = new CountDownLatch(1);
+    actionInterrupted = new CountDownLatch(1);
+    actionCompleted = new CountDownLatch(1);
     eventRef = new AtomicReference<>();
     // clear any persisted auto scaling configuration
     Stat stat = zkClient().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(new ZkNodeProps()), true);
@@ -102,7 +121,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   @Test
   public void testTriggerThrottling() throws Exception  {
     // for this test we want to create two triggers so we must assert that the actions were created twice
-    TriggerIntegrationTest.actionCreated = new CountDownLatch(2);
+    actionCreated = new CountDownLatch(2);
     // similarly we want both triggers to fire
     triggerFiredLatch = new CountDownLatch(2);
 
@@ -141,13 +160,13 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     JettySolrRunner newNode = cluster.startJettySolrRunner();
 
-    if (!triggerFiredLatch.await(10, TimeUnit.SECONDS)) {
+    if (!triggerFiredLatch.await(20, TimeUnit.SECONDS)) {
       fail("Both triggers should have fired by now");
     }
 
     // reset shared state
     lastActionExecutedAt.set(0);
-    TriggerIntegrationTest.actionCreated = new CountDownLatch(2);
+    actionCreated = new CountDownLatch(2);
     triggerFiredLatch = new CountDownLatch(2);
 
     setTriggerCommand = "{" +
@@ -212,16 +231,16 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
       }
       try {
         if (lastActionExecutedAt.get() != 0)  {
-          log.info("last action at " + lastActionExecutedAt.get() + " nano time = " + System.nanoTime());
-          if (System.nanoTime() - lastActionExecutedAt.get() < TimeUnit.NANOSECONDS.convert(ScheduledTriggers.DEFAULT_MIN_MS_BETWEEN_ACTIONS - DELTA_MS, TimeUnit.MILLISECONDS)) {
+          log.info("last action at " + lastActionExecutedAt.get() + " time = " + System.currentTimeMillis());
+          if (System.currentTimeMillis() - lastActionExecutedAt.get() < ScheduledTriggers.DEFAULT_MIN_MS_BETWEEN_ACTIONS - DELTA_MS) {
             log.info("action executed again before minimum wait time from {}", event.getSource());
             fail("TriggerListener was fired before the throttling period");
           }
         }
         if (onlyOnce.compareAndSet(false, true)) {
           log.info("action executed from {}", event.getSource());
-          lastActionExecutedAt.set(System.nanoTime());
-          triggerFiredLatch.countDown();
+          lastActionExecutedAt.set(System.currentTimeMillis());
+          getTriggerFiredLatch().countDown();
         } else  {
           log.info("action executed more than once from {}", event.getSource());
           fail("Trigger should not have fired more than once!");
@@ -237,7 +256,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   @Test
   public void testNodeLostTriggerRestoreState() throws Exception {
     // for this test we want to update the trigger so we must assert that the actions were created twice
-    TriggerIntegrationTest.actionCreated = new CountDownLatch(2);
+    actionCreated = new CountDownLatch(2);
 
     // start a new node
     JettySolrRunner newNode = cluster.startJettySolrRunner();
@@ -305,7 +324,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   @Test
   public void testNodeAddedTriggerRestoreState() throws Exception {
     // for this test we want to update the trigger so we must assert that the actions were created twice
-    TriggerIntegrationTest.actionCreated = new CountDownLatch(2);
+    actionCreated = new CountDownLatch(2);
 
     CloudSolrClient solrClient = cluster.getSolrClient();
     waitForSeconds = 5;
@@ -497,10 +516,10 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
       try {
         if (triggerFired.compareAndSet(false, true))  {
           eventRef.set(event);
-          if (System.nanoTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
+          if (System.currentTimeMillis() - event.getEventTime() <= TimeUnit.MILLISECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
             fail("NodeAddedListener was fired before the configured waitFor period");
           }
-          triggerFiredLatch.countDown();
+          getTriggerFiredLatch().countDown();
         } else  {
           fail("NodeAddedTrigger was fired more than once!");
         }
@@ -517,7 +536,8 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     @Override
     public void init(Map<String, String> args) {
-
+      log.info("TestTriggerAction init");
+      actionCreated.countDown();
     }
   }
 
@@ -525,7 +545,6 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     public TestEventQueueAction() {
       log.info("TestEventQueueAction instantiated");
-      actionCreated.countDown();
     }
 
     @Override
@@ -541,25 +560,13 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     @Override
     public void process(TriggerEvent event) {
       eventRef.set(event);
-      try {
-        actionStarted.await();
-      } catch (InterruptedException | BrokenBarrierException e) {
-        throw new RuntimeException("broken barrier", e);
-      }
+      getActionStarted().countDown();
       try {
         Thread.sleep(5000);
         triggerFired.compareAndSet(false, true);
-        try {
-          actionCompleted.await();
-        } catch (InterruptedException | BrokenBarrierException e) {
-          throw new RuntimeException("broken barrier", e);
-        }
+        getActionCompleted().countDown();
       } catch (InterruptedException e) {
-        try {
-          actionInterrupted.await();
-        } catch (InterruptedException | BrokenBarrierException e1) {
-          throw new RuntimeException("broken barrier", e1);
-        }
+        getActionInterrupted().countDown();
         return;
       }
     }
@@ -572,7 +579,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     @Override
     public void init(Map<String, String> args) {
       log.info("TestTriggerAction init");
-      actionCreated.countDown();
+      getActionCreated().countDown();
     }
   }
 
@@ -607,21 +614,19 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     // add node to generate the event
     JettySolrRunner newNode = cluster.startJettySolrRunner();
-    // we are the first party so we expect index 1
-    int await = actionStarted.await(60, TimeUnit.SECONDS);
-    assertEquals("action started too early", 1, await);
+    boolean await = actionStarted.await(60, TimeUnit.SECONDS);
+    assertTrue("action did not start", await);
     // event should be there
     NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = (NodeAddedTrigger.NodeAddedEvent) eventRef.get();
     assertNotNull(nodeAddedEvent);
     // but action did not complete yet so the event is still enqueued
     assertFalse(triggerFired.get());
-    actionStarted.reset();
+    actionStarted = new CountDownLatch(1);
     // kill overseer leader
     cluster.stopJettySolrRunner(overseerLeaderIndex);
     Thread.sleep(5000);
-    // we are the last party, so we expect index 0
     await = actionInterrupted.await(3, TimeUnit.SECONDS);
-    assertEquals("action wasn't interrupted", 0, await);
+    assertTrue("action wasn't interrupted", await);
     // new overseer leader should be elected and run triggers
     newNode = cluster.startJettySolrRunner();
     // it should fire again but not complete yet
@@ -630,6 +635,57 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     assertTrue(replayedEvent.getProperty(TriggerEventQueue.ENQUEUE_TIME) != null);
     assertTrue(replayedEvent.getProperty(TriggerEventQueue.DEQUEUE_TIME) != null);
     await = actionCompleted.await(10, TimeUnit.SECONDS);
+    assertTrue(triggerFired.get());
+  }
+
+  @Test
+  public void testEventFromRestoredState() throws Exception {
+    CloudSolrClient solrClient = cluster.getSolrClient();
+    String setTriggerCommand = "{" +
+        "'set-trigger' : {" +
+        "'name' : 'node_added_trigger'," +
+        "'event' : 'nodeAdded'," +
+        "'waitFor' : '10s'," +
+        "'enabled' : true," +
+        "'actions' : [{'name':'test','class':'" + TestTriggerAction.class.getName() + "'}]" +
+        "}}";
+    SolrRequest req = new AutoScalingHandlerTest.AutoScalingRequest(SolrRequest.METHOD.POST, path, setTriggerCommand);
+    NamedList<Object> response = solrClient.request(req);
+    assertEquals(response.get("result").toString(), "success");
+
+    if (!actionCreated.await(10, TimeUnit.SECONDS))  {
+      fail("The TriggerAction should have been created by now");
+    }
+
+    NamedList<Object> overSeerStatus = cluster.getSolrClient().request(CollectionAdminRequest.getOverseerStatus());
+    String overseerLeader = (String) overSeerStatus.get("leader");
+    int overseerLeaderIndex = 0;
+    for (int i = 0; i < cluster.getJettySolrRunners().size(); i++) {
+      JettySolrRunner jetty = cluster.getJettySolrRunner(i);
+      if (jetty.getNodeName().equals(overseerLeader)) {
+        overseerLeaderIndex = i;
+        break;
+      }
+    }
+
+    JettySolrRunner newNode = cluster.startJettySolrRunner();
+    boolean await = triggerFiredLatch.await(20, TimeUnit.SECONDS);
+    assertTrue("The trigger did not fire at all", await);
+    assertTrue(triggerFired.get());
+    // reset
+    triggerFired.set(false);
+    triggerFiredLatch = new CountDownLatch(1);
+    NodeAddedTrigger.NodeAddedEvent nodeAddedEvent = (NodeAddedTrigger.NodeAddedEvent) eventRef.get();
+    assertNotNull(nodeAddedEvent);
+    assertEquals("The node added trigger was fired but for a different node",
+        newNode.getNodeName(), nodeAddedEvent.getProperty(NodeAddedTrigger.NodeAddedEvent.NODE_NAME));
+    // add a second node - state of the trigger will change but it won't fire for waitFor sec.
+    JettySolrRunner newNode2 = cluster.startJettySolrRunner();
+    Thread.sleep(10000);
+    // kill overseer leader
+    cluster.stopJettySolrRunner(overseerLeaderIndex);
+    await = triggerFiredLatch.await(20, TimeUnit.SECONDS);
+    assertTrue("The trigger did not fire at all", await);
     assertTrue(triggerFired.get());
   }
 }
