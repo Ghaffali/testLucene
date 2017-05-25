@@ -116,7 +116,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
       log.error("Unexpected exception", e);
     }
 
-    while (!isClosed) {
+    while (true) {
       Map<String, AutoScaling.Trigger> copy = null;
       try {
         // this can throw InterruptedException and we don't want to unlock if it did, so we keep this outside
@@ -230,15 +230,6 @@ public class OverseerTriggerThread implements Runnable, Closeable {
           activeTriggers.put(triggerName, trigger);
         } else {
           activeTriggers.remove(triggerName);
-        }
-      }
-      // remove state for all triggers that are not present in the current conf
-      if (zkClient.exists(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, true)) {
-        List<String> states = zkClient.getChildren(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, null, true);
-        for (String state : states) {
-          if (!triggerMap.containsKey(state)) {
-            zkClient.delete(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + state, -1, true);
-          }
         }
       }
       updated.signalAll();

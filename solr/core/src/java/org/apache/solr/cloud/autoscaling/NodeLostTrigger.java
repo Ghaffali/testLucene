@@ -38,6 +38,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.util.TimeSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +56,7 @@ public class NodeLostTrigger extends TriggerBase {
   private final boolean enabled;
   private final int waitForSecond;
   private final AutoScaling.EventType eventType;
+  private final TimeSource timeSource;
 
   private boolean isClosed = false;
 
@@ -68,6 +70,7 @@ public class NodeLostTrigger extends TriggerBase {
     this.name = name;
     this.properties = properties;
     this.container = container;
+    this.timeSource = TimeSource.CURRENT_TIME;
     this.listenerRef = new AtomicReference<>();
     List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
     if (o != null && !o.isEmpty()) {
@@ -221,14 +224,14 @@ public class NodeLostTrigger extends TriggerBase {
       copyOfLastLiveNodes.removeAll(newLiveNodes);
       copyOfLastLiveNodes.forEach(n -> {
         log.debug("Tracking lost node: {}", n);
-        nodeNameVsTimeRemoved.put(n, System.currentTimeMillis());
+        nodeNameVsTimeRemoved.put(n, timeSource.getTime());
       });
 
       // has enough time expired to trigger events for a node?
       for (Map.Entry<String, Long> entry : nodeNameVsTimeRemoved.entrySet()) {
         String nodeName = entry.getKey();
         Long timeRemoved = entry.getValue();
-        if (TimeUnit.SECONDS.convert(System.currentTimeMillis() - timeRemoved, TimeUnit.MILLISECONDS) >= getWaitForSecond()) {
+        if (TimeUnit.SECONDS.convert(timeSource.getTime() - timeRemoved, TimeUnit.NANOSECONDS) >= getWaitForSecond()) {
           // fire!
           AutoScaling.TriggerListener listener = listenerRef.get();
           if (listener != null) {

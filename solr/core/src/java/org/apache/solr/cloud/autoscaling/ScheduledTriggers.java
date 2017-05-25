@@ -37,9 +37,11 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.cloud.ActionThrottle;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.common.cloud.SolrZkClient;
+import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.util.DefaultSolrThreadFactory;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -114,6 +116,7 @@ public class ScheduledTriggers implements Closeable {
       }
       IOUtils.closeQuietly(old);
       newTrigger.restoreState(old.trigger);
+      scheduledTrigger.setReplay(false);
       scheduledTriggers.replace(newTrigger.getName(), scheduledTrigger);
     }
     newTrigger.setListener(event -> {
@@ -164,7 +167,10 @@ public class ScheduledTriggers implements Closeable {
         } else {
           if (enqueued) {
             TriggerEvent ev = scheduledTrigger.dequeue();
-            assert ev.getId().equals(event.getId());
+            if (!ev.getId().equals(event.getId())) {
+              throw new RuntimeException("Wrong event dequeued, queue of " + scheduledTrigger.trigger.getName()
+              + " is broken! Expected event=" + event + " but got " + ev);
+            }
           }
           hasPendingActions.set(false);
         }
@@ -179,14 +185,36 @@ public class ScheduledTriggers implements Closeable {
   }
 
   /**
-   * Removes and stops the trigger with the given name
+   * Removes and stops the trigger with the given name. Also cleans up any leftover
+   * state / events in ZK.
    *
    * @param triggerName the name of the trigger to be removed
    */
   public synchronized void remove(String triggerName) {
     ScheduledTrigger removed = scheduledTriggers.remove(triggerName);
     IOUtils.closeQuietly(removed);
+    removeTriggerZKData(triggerName);
   }
+
+  private void removeTriggerZKData(String triggerName) {
+    String statePath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + triggerName;
+    String eventsPath = ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName;
+    try {
+      if (zkClient.exists(statePath, true)) {
+        zkClient.delete(statePath, -1, true);
+      }
+    } catch (KeeperException | InterruptedException e) {
+      log.warn("Failed to remove state for removed trigger " + statePath, e);
+    }
+    try {
+      if (zkClient.exists(eventsPath, true)) {
+        zkClient.delete(eventsPath, -1, true);
+      }
+    } catch (KeeperException | InterruptedException e) {
+      log.warn("Failed to remove events for removed trigger " + eventsPath, e);
+    }
+  }
+
 
   /**
    * @return an unmodifiable set of names of all triggers being managed by this class
@@ -216,7 +244,7 @@ public class ScheduledTriggers implements Closeable {
     ScheduledFuture<?> scheduledFuture;
     TriggerEventQueue queue;
     boolean replay;
-    boolean isClosed;
+    volatile boolean isClosed;
 
     ScheduledTrigger(AutoScaling.Trigger trigger, SolrZkClient zkClient, Overseer.Stats stats) {
       this.trigger = trigger;
@@ -225,11 +253,14 @@ public class ScheduledTriggers implements Closeable {
       this.isClosed = false;
     }
 
+    public void setReplay(boolean replay) {
+      this.replay = replay;
+    }
+
     public boolean enqueue(TriggerEvent event) {
       if (isClosed) {
         throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
       }
-      log.debug("--Enqueue " + event);
       return queue.offerEvent(event);
     }
 
@@ -238,7 +269,6 @@ public class ScheduledTriggers implements Closeable {
         throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
       }
       TriggerEvent event = queue.pollEvent();
-      log.debug("--Dequeue " + event);
       return event;
     }
 
@@ -247,35 +277,31 @@ public class ScheduledTriggers implements Closeable {
       if (isClosed) {
         throw new AlreadyClosedException("ScheduledTrigger " + trigger.getName() + " has been closed.");
       }
-      log.debug("--scheduled trigger " + trigger.getName());
-      // replay accumulated events on first run, if any
-      if (replay) {
-        log.debug(" --replaying...");
-        TriggerEvent event;
-        // peek first without removing - we may crash before calling the listener
-        while ((event = queue.peekEvent()) != null) {
-          // override REPLAYING=true
-          event.getProperties().put(TriggerEvent.REPLAYING, true);
-          if (! trigger.getListener().triggerFired(event)) {
-            log.error("Failed to re-play event, discarding: " + event);
-          }
-          log.debug("  --replayed event: " + event);
-          queue.pollEvent(); // always remove it from queue
-        }
-        // now restore saved state to possibly generate new events from old state on the first run
-        try {
-          trigger.restoreState();
-        } catch (Exception e) {
-          // log but don't throw - see below
-          log.error("Error restoring trigger state " + trigger.getName(), e);
-        }
-        replay = false;
-      }
       // fire a trigger only if an action is not pending
       // note this is not fool proof e.g. it does not prevent an action being executed while a trigger
       // is still executing. There is additional protection against that scenario in the event listener.
       if (!hasPendingActions.get())  {
-        log.debug(" --run " + trigger.getName());
+        // replay accumulated events on first run, if any
+        if (replay) {
+          TriggerEvent event;
+          // peek first without removing - we may crash before calling the listener
+          while ((event = queue.peekEvent()) != null) {
+            // override REPLAYING=true
+            event.getProperties().put(TriggerEvent.REPLAYING, true);
+            if (! trigger.getListener().triggerFired(event)) {
+              log.error("Failed to re-play event, discarding: " + event);
+            }
+            queue.pollEvent(); // always remove it from queue
+          }
+          // now restore saved state to possibly generate new events from old state on the first run
+          try {
+            trigger.restoreState();
+          } catch (Exception e) {
+            // log but don't throw - see below
+            log.error("Error restoring trigger state " + trigger.getName(), e);
+          }
+          replay = false;
+        }
         try {
           trigger.run();
         } catch (Exception e) {
@@ -286,8 +312,6 @@ public class ScheduledTriggers implements Closeable {
           // checkpoint after each run
           trigger.saveState();
         }
-      } else {
-        log.debug(" --hasPendingActions - skipping " + trigger.getName());
       }
     }
 

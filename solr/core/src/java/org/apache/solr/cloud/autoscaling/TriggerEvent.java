@@ -67,7 +67,7 @@ public class TriggerEvent implements MapWriter {
   }
 
   /**
-   * Timestamp of the actual event.
+   * Timestamp of the actual event, in nanoseconds.
    * NOTE: this is NOT the timestamp when the event was fired - events may be fired
    * much later than the actual condition that generated the event, due to the "waitFor" limit.
    */

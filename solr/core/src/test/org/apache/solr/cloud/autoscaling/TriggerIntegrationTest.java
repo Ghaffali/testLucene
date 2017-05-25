@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -40,6 +39,7 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.LogLevel;
 import org.apache.solr.util.TimeOut;
+import org.apache.solr.util.TimeSource;
 import org.apache.zookeeper.data.Stat;
 import org.junit.Before;
 import org.junit.BeforeClass;
@@ -67,6 +67,9 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   private static AtomicReference<TriggerEvent> eventRef;
 
   private String path;
+
+  // use the same time source as triggers use
+  private static final TimeSource timeSource = TimeSource.CURRENT_TIME;
 
   @BeforeClass
   public static void setupCluster() throws Exception {
@@ -231,15 +234,15 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
       }
       try {
         if (lastActionExecutedAt.get() != 0)  {
-          log.info("last action at " + lastActionExecutedAt.get() + " time = " + System.currentTimeMillis());
-          if (System.currentTimeMillis() - lastActionExecutedAt.get() < ScheduledTriggers.DEFAULT_MIN_MS_BETWEEN_ACTIONS - DELTA_MS) {
+          log.info("last action at " + lastActionExecutedAt.get() + " time = " + timeSource.getTime());
+          if (TimeUnit.MILLISECONDS.convert(timeSource.getTime() - lastActionExecutedAt.get(), TimeUnit.NANOSECONDS) < ScheduledTriggers.DEFAULT_MIN_MS_BETWEEN_ACTIONS - DELTA_MS) {
             log.info("action executed again before minimum wait time from {}", event.getSource());
             fail("TriggerListener was fired before the throttling period");
           }
         }
         if (onlyOnce.compareAndSet(false, true)) {
           log.info("action executed from {}", event.getSource());
-          lastActionExecutedAt.set(System.currentTimeMillis());
+          lastActionExecutedAt.set(timeSource.getTime());
           getTriggerFiredLatch().countDown();
         } else  {
           log.info("action executed more than once from {}", event.getSource());
@@ -516,7 +519,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
       try {
         if (triggerFired.compareAndSet(false, true))  {
           eventRef.set(event);
-          if (System.currentTimeMillis() - event.getEventTime() <= TimeUnit.MILLISECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
+          if (TimeUnit.MILLISECONDS.convert(timeSource.getTime() - event.getEventTime(), TimeUnit.NANOSECONDS) <= TimeUnit.MILLISECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
             fail("NodeAddedListener was fired before the configured waitFor period");
           }
           getTriggerFiredLatch().countDown();
@@ -524,7 +527,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
           fail("NodeAddedTrigger was fired more than once!");
         }
       } catch (Throwable t) {
-        log.info("--throwable", t);
+        log.debug("--throwable", t);
         throw t;
       }
     }
@@ -578,7 +581,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
     @Override
     public void init(Map<String, String> args) {
-      log.info("TestTriggerAction init");
+      log.debug("TestTriggerAction init");
       getActionCreated().countDown();
     }
   }

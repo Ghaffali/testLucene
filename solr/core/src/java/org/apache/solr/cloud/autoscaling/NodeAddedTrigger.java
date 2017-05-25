@@ -38,6 +38,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.util.TimeSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,6 +56,7 @@ public class NodeAddedTrigger extends TriggerBase {
   private final boolean enabled;
   private final int waitForSecond;
   private final AutoScaling.EventType eventType;
+  private final TimeSource timeSource;
 
   private boolean isClosed = false;
 
@@ -68,6 +70,7 @@ public class NodeAddedTrigger extends TriggerBase {
     this.name = name;
     this.properties = properties;
     this.container = container;
+    this.timeSource = TimeSource.CURRENT_TIME;
     this.listenerRef = new AtomicReference<>();
     List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
     if (o != null && !o.isEmpty()) {
@@ -221,7 +224,7 @@ public class NodeAddedTrigger extends TriggerBase {
       Set<String> copyOfNew = new HashSet<>(newLiveNodes);
       copyOfNew.removeAll(lastLiveNodes);
       copyOfNew.forEach(n -> {
-        long eventTime = System.currentTimeMillis();
+        long eventTime = timeSource.getTime();
         nodeNameVsTimeAdded.put(n, eventTime);
         log.debug("Tracking new node: {} at time {}", n, eventTime);
       });
@@ -230,8 +233,8 @@ public class NodeAddedTrigger extends TriggerBase {
       for (Map.Entry<String, Long> entry : nodeNameVsTimeAdded.entrySet()) {
         String nodeName = entry.getKey();
         Long timeAdded = entry.getValue();
-        long now = System.currentTimeMillis();
-        if (TimeUnit.SECONDS.convert(now - timeAdded, TimeUnit.MILLISECONDS) >= getWaitForSecond()) {
+        long now = timeSource.getTime();
+        if (TimeUnit.SECONDS.convert(now - timeAdded, TimeUnit.NANOSECONDS) >= getWaitForSecond()) {
           // fire!
           AutoScaling.TriggerListener listener = listenerRef.get();
           if (listener != null) {

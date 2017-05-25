@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.util.TimeSource;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -41,6 +42,9 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
     fail("Did not expect the listener to fire on first run!");
     return true;
   };
+
+  // use the same time source as the trigger
+  private final TimeSource timeSource = TimeSource.CURRENT_TIME;
 
   @BeforeClass
   public static void setupCluster() throws Exception {
@@ -66,7 +70,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
       trigger.setListener(event -> {
         if (fired.compareAndSet(false, true)) {
           eventRef.set(event);
-          if (System.nanoTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
+          if (timeSource.getTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
             fail("NodeLostListener was fired before the configured waitFor period");
           }
         } else {
@@ -102,7 +106,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
       AtomicBoolean fired = new AtomicBoolean(false);
       trigger.setListener(event -> {
         if (fired.compareAndSet(false, true)) {
-          if (System.nanoTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitTime, TimeUnit.SECONDS)) {
+          if (timeSource.getTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitTime, TimeUnit.SECONDS)) {
             fail("NodeLostListener was fired before the configured waitFor period");
           }
         } else {
@@ -225,7 +229,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
       newTrigger.setListener(event -> {
         if (fired.compareAndSet(false, true)) {
           eventRef.set(event);
-          if (System.nanoTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
+          if (timeSource.getTime() - event.getEventTime() <= TimeUnit.NANOSECONDS.convert(waitForSeconds, TimeUnit.SECONDS)) {
             fail("NodeLostListener was fired before the configured waitFor period");
           }
         } else {

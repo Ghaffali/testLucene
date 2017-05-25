@@ -1,9 +1,11 @@
 package org.apache.solr.util;
 
+import java.util.concurrent.TimeUnit;
+
 import org.apache.lucene.util.StringHelper;
 
 /**
- *
+ * Helper class for generating unique ID-s.
  */
 public class IdUtils {
 
@@ -17,10 +19,10 @@ public class IdUtils {
   /**
    * Generate a random id with a timestamp, in the format:
    * <code>hex(timestamp) + 'T' + randomId</code>. This method
-   * uses {@link System#currentTimeMillis()} as a timestamp.
+   * uses {@link TimeSource#CURRENT_TIME} for timestamp values.
    */
   public static final String timeRandomId() {
-    return timeRandomId(System.currentTimeMillis());
+    return timeRandomId(TimeUnit.MILLISECONDS.convert(TimeSource.CURRENT_TIME.getTime(), TimeUnit.NANOSECONDS));
   }
 
   /**

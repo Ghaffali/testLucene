@@ -8,6 +8,7 @@ import org.apache.solr.cloud.Overseer;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Utils;
+import org.apache.solr.util.TimeSource;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,14 +23,16 @@ public class TriggerEventQueue extends DistributedQueue {
   public static final String DEQUEUE_TIME = "_dequeue_time_";
 
   private final String triggerName;
+  private final TimeSource timeSource;
 
   public TriggerEventQueue(SolrZkClient zookeeper, String triggerName, Overseer.Stats stats) {
     super(zookeeper, ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName, stats);
     this.triggerName = triggerName;
+    this.timeSource = TimeSource.CURRENT_TIME;
   }
 
   public boolean offerEvent(TriggerEvent event) {
-    event.getProperties().put(ENQUEUE_TIME, System.currentTimeMillis());
+    event.getProperties().put(ENQUEUE_TIME, timeSource.getTime());
     try {
       byte[] data = Utils.toJSON(event);
       offer(data);
@@ -84,14 +87,14 @@ public class TriggerEventQueue extends DistributedQueue {
     return null;
   }
 
-  private static TriggerEvent fromMap(Map<String, Object> map) {
+  private TriggerEvent fromMap(Map<String, Object> map) {
     String id = (String)map.get("id");
     String source = (String)map.get("source");
     long eventTime = ((Number)map.get("eventTime")).longValue();
     AutoScaling.EventType eventType = AutoScaling.EventType.valueOf((String)map.get("eventType"));
     Map<String, Object> properties = (Map<String, Object>)map.get("properties");
     TriggerEvent res = new TriggerEvent(id, eventType, source, eventTime, properties);
-    res.getProperties().put(DEQUEUE_TIME, System.currentTimeMillis());
+    res.getProperties().put(DEQUEUE_TIME, timeSource.getTime());
     return res;
   }
 }
