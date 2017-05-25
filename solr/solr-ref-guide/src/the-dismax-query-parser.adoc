@@ -1,6 +1,22 @@
 = The DisMax Query Parser
 :page-shortname: the-dismax-query-parser
 :page-permalink: the-dismax-query-parser.html
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
 
 The DisMax query parser is designed to process simple phrases (without complex syntax) entered by users and to search for individual terms across several fields using different weighting (boosts) based on the significance of each field. Additional options enable users to influence the score based on rules specific to each use case (independent of user input).
 
@@ -30,7 +46,7 @@ In addition to the common request parameter, highlighting parameters, and simple
 |<<TheDisMaxQueryParser-TheqParameter,q>> |Defines the raw input strings for the query.
 |<<TheDisMaxQueryParser-Theq.altParameter,q.alt>> |Calls the standard query parser and defines query input strings, when the q parameter is not used.
 |<<TheDisMaxQueryParser-Theqf_QueryFields_Parameter,qf>> |Query Fields: specifies the fields in the index on which to perform the query. If absent, defaults to `df`.
-|<<TheDisMaxQueryParser-Themm_MinimumShouldMatch_Parameter,mm>> |Minimum "Should" Match: specifies a minimum number of clauses that must match in a query. If no 'mm' parameter is specified in the query, or as a default in `solrconfig.xml`, the effective value of the `q.op` parameter (either in the query, as a default in `solrconfig.xml`, or from the `defaultOperator` option in the Schema) is used to influence the behavior. If `q.op` is effectively AND'ed, then mm=100%; if `q.op` is OR'ed, then mm=1. Users who want to force the legacy behavior should set a default value for the 'mm' parameter in their `solrconfig.xml` file. Users should add this as a configured default for their request handlers. This parameter tolerates miscellaneous white spaces in expressions (e.g., `" 3 < -25% 10 < -3\n", " \n-25%\n ", " \n3\n "`).
+|<<TheDisMaxQueryParser-Themm_MinimumShouldMatch_Parameter,mm>> |Minimum "Should" Match: specifies a minimum number of clauses that must match in a query. If no 'mm' parameter is specified in the query, or as a default in `solrconfig.xml`, the effective value of the `q.op` parameter (either in the query or as a default in `solrconfig.xml`) is used to influence the behavior. If `q.op` is effectively AND'ed, then mm=100%; if `q.op` is OR'ed, then mm=1. Users who want to force the legacy behavior should set a default value for the 'mm' parameter in their `solrconfig.xml` file. Users should add this as a configured default for their request handlers. This parameter tolerates miscellaneous white spaces in expressions (e.g., `" 3 < -25% 10 < -3\n", " \n-25%\n ", " \n3\n "`).
 |<<TheDisMaxQueryParser-Thepf_PhraseFields_Parameter,pf>> |Phrase Fields: boosts the score of documents in cases where all of the terms in the q parameter appear in close proximity.
 |<<TheDisMaxQueryParser-Theps_PhraseSlop_Parameter,ps>> |Phrase Slop: specifies the number of positions two terms can be apart in order to match the specified phrase.
 |<<TheDisMaxQueryParser-Theqs_QueryPhraseSlop_Parameter,qs>> |Query Phrase Slop: specifies the number of positions two terms can be apart in order to match the specified phrase. Used specifically with the `qf` parameter.

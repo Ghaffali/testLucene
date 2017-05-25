@@ -70,14 +70,17 @@ Upgrading from Solr 6.x
   query text will not be split on whitespace before analysis. See
   https://lucidworks.com/2017/04/18/multi-word-synonyms-solr-adds-query-time-support/ .
 
+* Setting <solrQueryParser defaultOperator="..."/> in schema is no longer allowed and will cause an exception.
+  Please use "q.op" parameter on the request instead. For more details, see SOLR-10584.
+
+* Setting <defaultSearchField> in schema is no longer allowed and will cause an exception.
+  Please use "df" parameter on the request instead. For more details, see SOLR-10585.
+
 New Features
 ----------------------
 * SOLR-9857, SOLR-9858: Collect aggregated metrics from nodes and shard leaders in overseer. (ab)
 
 * SOLR-9835: Create another replication mode for SolrCloud
-
-* SOLR-10292: Adds CartesianProductStream which turns a single tuple with a multi-valued field into N 
-  tuples, one for each value in the multi-valued field. (Dennis Gove)
 
 * SOLR-10356: Adds basic math Streaming Evaluators (Dennis Gove)
 
@@ -102,8 +105,17 @@ Bug Fixes
 
 * SOLR-10408: v2 API introspect should return useful message for non-existent command (Cao Manh Dat)
 
-* SOLR-10411: v2 Collection API "modify" command specification's replicationFactor property is incorrectly typed as string, 
+* SOLR-10411: v2 Collection API "modify" command specification's replicationFactor property is incorrectly typed as string,
   should be integer (Cao Manh Dat)
+
+* SOLR-10405: v2 API introspect response contains multiple copies of the experimental format WARNING (Cao Manh Dat)
+
+* SOLR-10412: v2 API: many API command specification properties are typed "number" but should instead be typed "integer"
+  (Steve Rowe, Cao Manh Dat)
+
+* SOLR-10413: v2 API: parsed JSON type should be coerced to expected type (Cao Manh Dat, Noble Paul)
+
+* SOLR-10223: Allow running examples as root on Linux with -force option (janhoy)
 
 Optimizations
 ----------------------
@@ -123,6 +135,7 @@ Optimizations
   (yonik)
 
 Other Changes
+----------------------
 * SOLR-10236: Removed FieldType.getNumericType(). Use getNumberType() instead. (Tomás Fernández Löbbe)
 
 * SOLR-10347: Removed index level boost support from "documents" section of the admin UI (Amrit Sarkar via
@@ -143,6 +156,18 @@ Other Changes
 
 * SOLR-10647: Move the V1 <-> V2 API mapping to SolrJ (noble)
 
+* SOLR-10584: We'll now always throw an exception if defaultOperator is found in schema. This config has
+  been deprecated since 3.6, and enforced for new configs since 6.6 (janhoy)
+
+* SOLR-10585: We'll now always throw an exception if defaultSearchField is found in schema. This config has
+  been deprecated since 3.6, and enforced for new configs since 6.6 (janhoy, David Smiley)
+
+* SOLR-10414: RecoveryStrategy is now a Runnable instead of a Thread. (Tomás Fernández Löbbe)
+
+* SOLR-10042: Delete old deprecated Admin UI, leaving the AngularJS UI the only one supported (janhoy)
+
+* SOLR-10378: Clicking Solr logo on AdminUI shows blank page (Takumi Yoshida via janhoy)
+
 ==================  6.7.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
@@ -159,11 +184,25 @@ Jetty 9.3.14.v20161028
 Detailed Change List
 ----------------------
 
+New Features
+----------------------
+
+* SOLR-10307: Allow Passing SSL passwords through environment variables. (Mano Kovacs via Mark Miller)
+
+Bug Fixes
+----------------------
+* SOLR-10723 JSON Facet API: resize() implemented incorrectly for CountSlotAcc, HllAgg.NumericAcc
+  resulting in exceptions when using a hashing faceting method and sorting by hll(numeric_field).
+  (yonik)
+
 Other Changes
 ----------------------
 
 * SOLR-10617: JDBCStream accepts columns of type TIME, DATE & TIMESTAMP as well as CLOBs and decimal
   numeric types (James Dyer)
+
+* SOLR-10400: Replace (instanceof TrieFooField || instanceof FooPointField) constructs with
+  FieldType.getNumberType() or SchemaField.getSortField() where appropriate. (hossman, Steve Rowe)
 
 ==================  6.6.0 ==================
 
@@ -276,6 +315,9 @@ New Features
 * SOLR-8440: Support for enabling basic authentication using bin/solr|bin/solr.cmd. (Ishan Chattopadhyaya, janhoy,
   Noble Paul, Hrishikesh Gadre)
 
+* SOLR-10292: Adds CartesianProductStream which turns a single tuple with a multi-valued field into N
+  tuples, one for each value in the multi-valued field. (Dennis Gove)
+
 Optimizations
 ----------------------
 
@@ -353,9 +395,9 @@ Bug Fixes
 
 * SOLR-10549: The new 'large' attribute had been forgotten in /schema/fieldtypes?showDefaults=true (David Smiley)
 
-* SOLR-10615: requests are suspended until SolrDispatchFilter initialization is completed. 
-  After core container shutdown or severe initialization problem Solr responds with 
-  http stauts 404 Not Found instead of 500 as it was before (Mikhail Khludnev) 
+* SOLR-10615: requests are suspended until SolrDispatchFilter initialization is completed.
+  After core container shutdown or severe initialization problem Solr responds with
+  http stauts 404 Not Found instead of 500 as it was before (Mikhail Khludnev)
 
 * SOLR-8149: Admin UI - Plugins / Stats - active item is now highlighted (Labuzov Dmitriy via janhoy)
 
@@ -365,6 +407,9 @@ Bug Fixes
 * SOLR-9527: Improve distribution of replicas when restoring a collection
   (Hrishikesh Gadre, Stephen Lewis, Rohit, Varun Thacker)
 
+* LUCENE-7821: The classic and flexible query parsers, as well as Solr's
+ "lucene"/standard query parser, should require " TO " in range queries,
+  and accept "TO" as endpoints in range queries. (hossman, Steve Rowe)
 
 Other Changes
 ----------------------
@@ -427,9 +472,9 @@ Other Changes
 
 * SOLR-10601: StreamExpressionParser should handle white space around = in named parameters (Joel Bernstein)
 
-* SOLR-10614: Static fields have turned to instance's field in SimplePostTool. 
+* SOLR-10614: Static fields have turned to instance's field in SimplePostTool.
   Enabled TestSolrCLIRunExample.testTechproductsExample(). (Andrey Kudryavtsev, Mikhail Khludnev)
-  
+
 * SOLR-10522: Revert SpellCheckComponent response format change from SOLR-9972 (rel. 6.5.0).  While this
   was an improvement for the json "arrntv" format, it caused problems for the default json format.
   (James Dyer, reported by Nikita Pchelintsev)
