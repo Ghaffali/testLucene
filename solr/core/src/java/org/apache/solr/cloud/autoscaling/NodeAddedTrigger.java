@@ -29,8 +29,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -62,7 +60,7 @@ public class NodeAddedTrigger extends TriggerBase {
 
   private Set<String> lastLiveNodes;
 
-  private Map<String, Long> nodeNameVsTimeAdded = new TreeMap<>();
+  private Map<String, Long> nodeNameVsTimeAdded = new HashMap<>();
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           CoreContainer container) {
@@ -82,7 +80,7 @@ public class NodeAddedTrigger extends TriggerBase {
     } else {
       actions = Collections.emptyList();
     }
-    lastLiveNodes = new TreeSet<>(container.getZkController().getZkStateReader().getClusterState().getLiveNodes());
+    lastLiveNodes = new HashSet<>(container.getZkController().getZkStateReader().getClusterState().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     this.enabled = (boolean) properties.getOrDefault("enabled", true);
     this.waitForSecond = ((Long) properties.getOrDefault("waitFor", -1L)).intValue();
@@ -170,8 +168,8 @@ public class NodeAddedTrigger extends TriggerBase {
     if (old instanceof NodeAddedTrigger) {
       NodeAddedTrigger that = (NodeAddedTrigger) old;
       assert this.name.equals(that.name);
-      this.lastLiveNodes = new TreeSet<>(that.lastLiveNodes);
-      this.nodeNameVsTimeAdded = new TreeMap<>(that.nodeNameVsTimeAdded);
+      this.lastLiveNodes = new HashSet<>(that.lastLiveNodes);
+      this.nodeNameVsTimeAdded = new HashMap<>(that.nodeNameVsTimeAdded);
     } else  {
       throw new SolrException(SolrException.ErrorCode.INVALID_STATE,
           "Unable to restore state from an unknown type of trigger");
@@ -249,7 +247,7 @@ public class NodeAddedTrigger extends TriggerBase {
         }
       }
 
-      lastLiveNodes = new TreeSet(newLiveNodes);
+      lastLiveNodes = new HashSet(newLiveNodes);
     } catch (RuntimeException e) {
       log.error("Unexpected exception in NodeAddedTrigger", e);
     }

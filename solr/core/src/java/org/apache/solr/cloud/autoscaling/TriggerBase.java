@@ -38,7 +38,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   protected SolrZkClient zkClient;
-  protected byte[] lastState;
+  protected Map<String,Object> lastState;
 
 
   protected TriggerBase(SolrZkClient zkClient) {
@@ -64,13 +64,12 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
 
   @Override
   public void saveState() {
-    Map<String,Object> state = getState();
-    TreeMap<String, Object> map = new TreeMap<>(state);
-    byte[] data = Utils.toJSON(map);
-    // skip saving if identical
-    if (lastState != null && Arrays.equals(lastState, data)) {
+    Map<String,Object> state = Utils.getDeepCopy(getState(), 10, false, true);
+    if (lastState != null && lastState.equals(state)) {
+      // skip saving if identical
       return;
     }
+    byte[] data = Utils.toJSON(state);
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
       if (zkClient.exists(path, true)) {
@@ -80,7 +79,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
         // create
         zkClient.create(path, data, CreateMode.PERSISTENT, true);
       }
-      lastState = data;
+      lastState = state;
     } catch (KeeperException | InterruptedException e) {
       LOG.warn("Exception updating trigger state '" + path + "'", e);
     }
@@ -98,9 +97,11 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
       LOG.warn("Exception getting trigger state '" + path + "'", e);
     }
     if (data != null) {
-      Map<String, Object> state = (Map<String, Object>) Utils.fromJSON(data);
+      Map<String, Object> state = (Map<String, Object>)Utils.fromJSON(data);
+      // make sure lastState is sorted
+      state = Utils.getDeepCopy(state, 10, false, true);;
       setState(state);
-      lastState = data;
+      lastState = state;
     }
   }
 }
