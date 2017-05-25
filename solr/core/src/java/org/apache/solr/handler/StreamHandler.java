@@ -121,6 +121,7 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
       .withFunctionName("topic", TopicStream.class)
       .withFunctionName("commit", CommitStream.class)
       .withFunctionName("random", RandomStream.class)
+      .withFunctionName("knn", KnnStream.class)
       
       // decorator streams
       .withFunctionName("merge", MergeStream.class)
@@ -184,6 +185,8 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
       .withFunctionName("percentile", PercentileEvaluator.class)
       .withFunctionName("empiricalDistribution", EmpiricalDistributionEvaluator.class)
       .withFunctionName("describe", DescribeEvaluator.class)
+      .withFunctionName("finddelay", FindDelayEvaluator.class)
+      .withFunctionName("sequence", SequenceEvaluator.class)
 
       // metrics
          .withFunctionName("min", MinMetric.class)

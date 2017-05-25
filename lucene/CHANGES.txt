@@ -53,6 +53,10 @@ API Changes
 * LUCENE-7741: DoubleValuesSource now has an explain() method (Alan Woodward,
   Adrien Grand)
 
+* LUCENE-7815: Removed the PostingsHighlighter; you should use the UnifiedHighlighter
+  instead, which derived from the UH.  WholeBreakIterator and
+  CustomSeparatorBreakIterator were moved to UH's package. (David Smiley)
+
 Bug Fixes
 
 * LUCENE-7626: IndexWriter will no longer accept broken token offsets
@@ -95,13 +99,19 @@ Other
 * LUCENE-7753: Make fields static when possible.
   (Daniel Jelinski via Adrien Grand)
 
+* LUCENE-7540: Upgrade ICU to 59.1 (Mike McCandless, Jim Ferenczi)
+
 ======================= Lucene 6.7.0 =======================
 
 Other
 
 * LUCENE-7800: Remove code that potentially rethrows checked exceptions 
   from methods that don't declare them ("sneaky throw" hack). (Robert Muir,
-  Uwe Schindler, Dawid Weiss)  
+  Uwe Schindler, Dawid Weiss)
+
+Improvements
+
+* LUCENE-7841: Normalize ґ to г in Ukrainian analyzer. (Andriy Rysin via Dawid Weiss)
 
 ======================= Lucene 6.6.0 =======================
 
@@ -149,6 +159,12 @@ Bug Fixes
 
 * LUCENE-7833: ToParentBlockJoinQuery computed the min score instead of the max
   score with ScoreMode.MAX. (Adrien Grand)
+
+* LUCENE-7847: Fixed all-docs-match optimization of range queries on range
+  fields. (Adrien Grand)
+
+* LUCENE-7810: Fix equals() and hashCode() methods of several join queries.
+  (Hossman, Adrien Grand, Martijn van Groningen)
 
 Improvements
 
