@@ -124,24 +124,15 @@ public class SolrIndexConfig implements MapSerializable {
     assertWarnOrFail("The <mergeScheduler>myclass</mergeScheduler> syntax is no longer supported in solrconfig.xml. Please use syntax <mergeScheduler class=\"myclass\"/> instead.",
         !((solrConfig.getNode(prefix + "/mergeScheduler", false) != null) && (solrConfig.get(prefix + "/mergeScheduler/@class", null) == null)),
         true);
+    assertWarnOrFail("Beginning with Solr 7.0, <mergePolicy>myclass</mergePolicy> is no longer supported, use <mergePolicyFactory> instead.",
+        !((solrConfig.getNode(prefix + "/mergePolicy", false) != null) && (solrConfig.get(prefix + "/mergePolicy/@class", null) == null)),
+        true);
     assertWarnOrFail("The <luceneAutoCommit>true|false</luceneAutoCommit> parameter is no longer valid in solrconfig.xml.",
         solrConfig.get(prefix + "/luceneAutoCommit", null) == null,
         true);
 
     effectiveUseCompoundFileSetting = solrConfig.getBool(prefix+"/useCompoundFile", def.getUseCompoundFile());
     maxBufferedDocs=solrConfig.getInt(prefix+"/maxBufferedDocs",def.maxBufferedDocs);
-    {
-      final int maxMergeDocs = solrConfig.getInt(prefix+"/maxMergeDocs");
-      if (maxMergeDocs != 0) {
-        throw new IllegalArgumentException("Beginning with Solr 7.0, <maxMergeDocs> is no longer supported, configure it on the relevant <mergePolicyFactory> instead.");
-      }
-    }
-    {
-      final int mergeFactor = solrConfig.getInt(prefix+"/mergeFactor");
-      if (mergeFactor != 0) {
-        throw new IllegalArgumentException("Beginning with Solr 7.0, <mergeFactor> is no longer supported, configure it on the relevant <mergePolicyFactory> instead.");
-      }
-    }
     ramBufferSizeMB = solrConfig.getDouble(prefix+"/ramBufferSizeMB", def.ramBufferSizeMB);
 
     writeLockTimeout=solrConfig.getInt(prefix+"/writeLockTimeout", def.writeLockTimeout);
@@ -154,13 +145,17 @@ public class SolrIndexConfig implements MapSerializable {
       metricsInfo = infos.get(0);
     }
     mergeSchedulerInfo = getPluginInfo(prefix + "/mergeScheduler", solrConfig, def.mergeSchedulerInfo);
-    {
-      final PluginInfo mergePolicyInfo = getPluginInfo(prefix + "/mergePolicy", solrConfig, null);
-      if (mergePolicyInfo != null) {
-        throw new IllegalArgumentException("Beginning with Solr 7.0, <mergePolicy> is no longer supported, use <mergePolicyFactory> instead.");
-      }
-    }
     mergePolicyFactoryInfo = getPluginInfo(prefix + "/mergePolicyFactory", solrConfig, def.mergePolicyFactoryInfo);
+
+    assertWarnOrFail("Beginning with Solr 7.0, <mergePolicy> is no longer supported, use <mergePolicyFactory> instead.",
+        getPluginInfo(prefix + "/mergePolicy", solrConfig, null) != null,
+        true);
+    assertWarnOrFail("Beginning with Solr 7.0, <maxMergeDocs> is no longer supported, configure it on the relevant <mergePolicyFactory> instead.",
+        solrConfig.getInt(prefix+"/maxMergeDocs") != 0,
+        true);
+    assertWarnOrFail("Beginning with Solr 7.0, <mergeFactor> is no longer supported, configure it on the relevant <mergePolicyFactory> instead.",
+        solrConfig.getInt(prefix+"/mergeFactor") != 0,
+        true);
 
     String val = solrConfig.get(prefix + "/termIndexInterval", null);
     if (val != null) {
