@@ -64,10 +64,10 @@ public class TestPolicy extends SolrTestCaseJ4 {
     Row row = new Row("nodex", new Cell[]{new Cell(0, "node", "nodex")}, false, new HashMap<>(), new ArrayList<>());
     Row r1 = row.addReplica("c1", "s1");
     Row r2 = r1.addReplica("c1", "s1");
-    assertEquals(1, r1.replicaInfo.get("c1").get("s1").size());
-    assertEquals(2, r2.replicaInfo.get("c1").get("s1").size());
-    assertTrue(r2.replicaInfo.get("c1").get("s1").get(0) instanceof Policy.ReplicaInfo);
-    assertTrue(r2.replicaInfo.get("c1").get("s1").get(1) instanceof Policy.ReplicaInfo);
+    assertEquals(1, r1.collectionVsShardVsReplicas.get("c1").get("s1").size());
+    assertEquals(2, r2.collectionVsShardVsReplicas.get("c1").get("s1").size());
+    assertTrue(r2.collectionVsShardVsReplicas.get("c1").get("s1").get(0) instanceof Policy.ReplicaInfo);
+    assertTrue(r2.collectionVsShardVsReplicas.get("c1").get("s1").get(1) instanceof Policy.ReplicaInfo);
   }
 
   public void testMerge() {
@@ -221,7 +221,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "      'cluster-policy':[" +
         "      {'cores':'<10','node':'#ANY'}," +
         "      {'replica':'<3','shard':'#EACH','node':'#ANY'}," +
-        "      { 'replica': 2, 'sysprop.fs': 'ssd', 'shard': '#EACH'}," +
+        "      { 'replica': 2, 'sysprop.fs': 'ssd', 'shard': '#EACH'}," +//greedy condition
         "      {'nodeRole':'overseer','replica':'0'}]," +
         "      'cluster-preferences':[" +
         "      {'minimize':'cores', 'precision':3}," +
@@ -252,7 +252,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
-      public String getPolicy(String coll) {
+      public String getPolicyNameByCollection(String coll) {
         return null;
       }
     };
@@ -264,12 +264,23 @@ public class TestPolicy extends SolrTestCaseJ4 {
         .getOperation();
     assertNotNull(op);
     assertEquals("node3", op.getParams().get("node"));
-    op = suggester
+    suggester = suggester
+        .getSession()
+        .getSuggester(ADDREPLICA)
         .hint(Hint.COLL, "newColl")
-        .hint(Hint.SHARD, "shard1")
-        .getOperation();
+        .hint(Hint.SHARD, "shard1");
+    op = suggester.getOperation();
     assertNotNull(op);
     assertEquals("node3", op.getParams().get("node"));
+
+    suggester = suggester
+        .getSession()
+        .getSuggester(ADDREPLICA)
+        .hint(Hint.COLL, "newColl")
+        .hint(Hint.SHARD, "shard1");
+    op = suggester.getOperation();
+    assertNotNull(op);
+    assertEquals("node2", op.getParams().get("node"));
   }
 
   public void testMoveReplica() {
@@ -319,7 +330,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
-      public String getPolicy(String coll) {
+      public String getPolicyNameByCollection(String coll) {
         return null;
       }
     });
@@ -381,7 +392,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
-      public String getPolicy(String coll) {
+      public String getPolicyNameByCollection(String coll) {
         return "p1";
       }
     };
@@ -411,7 +422,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
-      public String getPolicy(String coll) {
+      public String getPolicyNameByCollection(String coll) {
         return null;
       }
 
@@ -465,7 +476,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
-      public String getPolicy(String coll) {
+      public String getPolicyNameByCollection(String coll) {
         return null;
       }
 
