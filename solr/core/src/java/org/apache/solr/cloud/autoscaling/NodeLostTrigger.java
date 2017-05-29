@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -37,6 +38,7 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.util.TimeSource;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +62,7 @@ public class NodeLostTrigger extends TriggerBase {
 
   private Set<String> lastLiveNodes;
 
-  private Map<String, Long> nodeNameVsTimeRemoved = new HashMap<>();
+  private Map<String, Long> nodeNameVsTimeRemoved = new ConcurrentHashMap<>();
 
   public NodeLostTrigger(String name, Map<String, Object> properties,
                          CoreContainer container) {
@@ -224,6 +226,22 @@ public class NodeLostTrigger extends TriggerBase {
         log.debug("Tracking lost node: {}", n);
         nodeNameVsTimeRemoved.put(n, timeSource.getTime());
       });
+
+      // pick up lost nodes for which marker paths were created
+      try {
+        List<String> lost = container.getZkController().getZkClient().getChildren(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH, null, true);
+        lost.forEach(n -> {
+          log.debug("Adding lost node from marker path: {}", n);
+          nodeNameVsTimeRemoved.put(n, timeSource.getTime());
+          try {
+            container.getZkController().getZkClient().delete(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + n, -1, true);
+          } catch (KeeperException | InterruptedException e) {
+            log.warn("Exception removing nodeLost marker " + n, e);
+          }
+        });
+      } catch (KeeperException | InterruptedException e) {
+        log.warn("Exception retrieving nodeLost markers", e);
+      }
 
       // has enough time expired to trigger events for a node?
       for (Map.Entry<String, Long> entry : nodeNameVsTimeRemoved.entrySet()) {

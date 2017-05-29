@@ -53,25 +53,7 @@ import org.apache.solr.cloud.overseer.OverseerAction;
 import org.apache.solr.cloud.overseer.SliceMutator;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
-import org.apache.solr.common.cloud.BeforeReconnect;
-import org.apache.solr.common.cloud.ClusterState;
-import org.apache.solr.common.cloud.ClusterStateUtil;
-import org.apache.solr.common.cloud.DefaultConnectionStrategy;
-import org.apache.solr.common.cloud.DefaultZkACLProvider;
-import org.apache.solr.common.cloud.DefaultZkCredentialsProvider;
-import org.apache.solr.common.cloud.DocCollection;
-import org.apache.solr.common.cloud.OnReconnect;
-import org.apache.solr.common.cloud.Replica;
-import org.apache.solr.common.cloud.Slice;
-import org.apache.solr.common.cloud.SolrZkClient;
-import org.apache.solr.common.cloud.ZkACLProvider;
-import org.apache.solr.common.cloud.ZkCmdExecutor;
-import org.apache.solr.common.cloud.ZkConfigManager;
-import org.apache.solr.common.cloud.ZkCoreNodeProps;
-import org.apache.solr.common.cloud.ZkCredentialsProvider;
-import org.apache.solr.common.cloud.ZkNodeProps;
-import org.apache.solr.common.cloud.ZkStateReader;
-import org.apache.solr.common.cloud.ZooKeeperException;
+import org.apache.solr.common.cloud.*;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
@@ -339,7 +321,7 @@ public class ZkController {
               registerAllCoresAsDown(registerOnReconnect, false);
 
               // we have to register as live first to pick up docs in the buffer
-              createEphemeralLiveNode();
+              createLiveEphemeralNode();
 
               List<CoreDescriptor> descriptors = registerOnReconnect.getCurrentDescriptors();
               // re register all descriptors
@@ -666,6 +648,8 @@ public class ZkController {
     cmdExecutor.ensureExists(ZkStateReader.ALIASES, zkClient);
     cmdExecutor.ensureExists(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH, zkClient);
     cmdExecutor.ensureExists(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, zkClient);
+    cmdExecutor.ensureExists(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH, zkClient);
+    cmdExecutor.ensureExists(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH, zkClient);
     byte[] emptyJson = "{}".getBytes(StandardCharsets.UTF_8);
     cmdExecutor.ensureExists(ZkStateReader.CLUSTER_STATE, emptyJson, CreateMode.PERSISTENT, zkClient);
     cmdExecutor.ensureExists(ZkStateReader.SOLR_SECURITY_CONF_PATH, emptyJson, CreateMode.PERSISTENT, zkClient);
@@ -680,6 +664,7 @@ public class ZkController {
       this.baseURL = zkStateReader.getBaseUrlForNodeName(this.nodeName);
 
       checkForExistingEphemeralNode();
+      registerLiveNodesListener();
 
       // start the overseer first as following code may need it's processing
       if (!zkRunOnly) {
@@ -698,7 +683,7 @@ public class ZkController {
       }
 
       // Do this last to signal we're up.
-      createEphemeralLiveNode();
+      createLiveEphemeralNode();
     } catch (IOException e) {
       log.error("", e);
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
@@ -748,6 +733,49 @@ public class ZkController {
       throw new SolrException(ErrorCode.SERVER_ERROR, "A previous ephemeral live node still exists. " +
           "Solr cannot continue. Please ensure that no other Solr process using the same port is running already.");
     }
+  }
+
+  private void registerLiveNodesListener() {
+    // this listener is used for generating nodeLost events, so we check only if
+    // some nodes went missing compared to last state
+    LiveNodesListener listener = (oldNodes, newNodes) -> {
+      oldNodes.removeAll(newNodes);
+      if (oldNodes.isEmpty()) { // only added nodes
+        log.debug("-- skip, only new nodes: " + newNodes);
+        return;
+      }
+      if (isClosed) {
+        log.debug("-- skip, closed: old=" + oldNodes + ", new=" + newNodes);
+        return;
+      }
+      // if this node is in the top three then attempt to create nodeLost message
+      int i = 0;
+      for (String n : newNodes) {
+        if (n.equals(getNodeName())) {
+          break;
+        }
+        if (i > 2) {
+          log.debug("-- skip, " + getNodeName() + " not in the top 3 of " + newNodes);
+          return; // this node is not in the top three
+        }
+        i++;
+      }
+      for (String n : oldNodes) {
+        String path = ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + n;
+        try {
+          // nocommit decide between EPHEMERAL vs. PERSISTENT, the latter needs
+          // explicit cleanup on cluster restart if there are no nodeLost triggers
+          zkClient.create(path, null, CreateMode.PERSISTENT, true);
+          log.debug("-- created " + path);
+        } catch (KeeperException.NodeExistsException e) {
+          // someone else already created this node - ignore
+          log.debug("-- skip, already exists " + path);
+        } catch (KeeperException | InterruptedException e1) {
+          log.warn("Unable to register nodeLost path for " + n, e1);
+        }
+      }
+    };
+    zkStateReader.registerLiveNodesListener(listener);
   }
 
   public void publishAndWaitForDownStates() throws KeeperException,
@@ -817,15 +845,23 @@ public class ZkController {
     return zkClient.isConnected();
   }
 
-  private void createEphemeralLiveNode() throws KeeperException,
+  private void createLiveEphemeralNode() throws KeeperException,
       InterruptedException {
     if (zkRunOnly) {
       return;
     }
     String nodeName = getNodeName();
     String nodePath = ZkStateReader.LIVE_NODES_ZKNODE + "/" + nodeName;
+    String nodeAddedPath = ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + nodeName;
     log.info("Register node as live in ZooKeeper:" + nodePath);
-    zkClient.makePath(nodePath, CreateMode.EPHEMERAL, true);
+    List<Op> ops = new ArrayList<>(2);
+    ops.add(Op.create(nodePath, null, zkClient.getZkACLProvider().getACLsToAdd(nodePath), CreateMode.EPHEMERAL));
+    if (!zkClient.exists(nodeAddedPath, true)) {
+      // nocommit use EPHEMERAL or PERSISTENT?
+      // EPHEMERAL will disappear if this node shuts down, PERSISTENT will need an explicit cleanup
+      ops.add(Op.create(nodeAddedPath, null, zkClient.getZkACLProvider().getACLsToAdd(nodeAddedPath), CreateMode.EPHEMERAL));
+    }
+    zkClient.multi(ops, true);
   }
 
   public String getNodeName() {

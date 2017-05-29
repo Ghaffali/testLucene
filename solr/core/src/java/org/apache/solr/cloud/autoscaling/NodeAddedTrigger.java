@@ -29,6 +29,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -37,6 +38,7 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.util.TimeSource;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,7 +62,7 @@ public class NodeAddedTrigger extends TriggerBase {
 
   private Set<String> lastLiveNodes;
 
-  private Map<String, Long> nodeNameVsTimeAdded = new HashMap<>();
+  private Map<String, Long> nodeNameVsTimeAdded = new ConcurrentHashMap<>();
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           CoreContainer container) {
@@ -226,6 +228,22 @@ public class NodeAddedTrigger extends TriggerBase {
         nodeNameVsTimeAdded.put(n, eventTime);
         log.debug("Tracking new node: {} at time {}", n, eventTime);
       });
+
+      // pick up added nodes for which marker paths were created
+      try {
+        List<String> lost = container.getZkController().getZkClient().getChildren(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH, null, true);
+        lost.forEach(n -> {
+          log.debug("Adding node from marker path: {}", n);
+          nodeNameVsTimeAdded.put(n, timeSource.getTime());
+          try {
+            container.getZkController().getZkClient().delete(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + n, -1, true);
+          } catch (KeeperException | InterruptedException e) {
+            log.debug("Exception removing nodeAdded marker " + n, e);
+          }
+        });
+      } catch (KeeperException | InterruptedException e) {
+        log.warn("Exception retrieving nodeLost markers", e);
+      }
 
       // has enough time expired to trigger events for a node?
       for (Map.Entry<String, Long> entry : nodeNameVsTimeAdded.entrySet()) {
