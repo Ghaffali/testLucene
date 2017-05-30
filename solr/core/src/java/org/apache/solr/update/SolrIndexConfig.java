@@ -238,8 +238,6 @@ public class SolrIndexConfig implements MapSerializable {
       iwc.setIndexSort(indexSort);
     }
 
-    // do this after buildMergePolicy since the backcompat logic 
-    // there may modify the effective useCompoundFile
     iwc.setUseCompoundFile(useCompoundFile);
 
     if (mergedSegmentWarmerInfo != null) {
