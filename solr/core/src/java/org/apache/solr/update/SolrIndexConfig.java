@@ -64,7 +64,7 @@ public class SolrIndexConfig implements MapSerializable {
   public static final String DEFAULT_MERGE_SCHEDULER_CLASSNAME = ConcurrentMergeScheduler.class.getName();
   public final Version luceneVersion;
 
-  private boolean effectiveUseCompoundFileSetting;
+  public final boolean useCompoundFile;
 
   public final int maxBufferedDocs;
 
@@ -85,7 +85,7 @@ public class SolrIndexConfig implements MapSerializable {
    */
   private SolrIndexConfig(SolrConfig solrConfig) {
     luceneVersion = solrConfig.luceneMatchVersion;
-    effectiveUseCompoundFileSetting = false;
+    useCompoundFile = false;
     maxBufferedDocs = -1;
     ramBufferSizeMB = 100;
     writeLockTimeout = -1;
@@ -131,7 +131,7 @@ public class SolrIndexConfig implements MapSerializable {
         solrConfig.get(prefix + "/luceneAutoCommit", null) == null,
         true);
 
-    effectiveUseCompoundFileSetting = solrConfig.getBool(prefix+"/useCompoundFile", def.getUseCompoundFile());
+    useCompoundFile = solrConfig.getBool(prefix+"/useCompoundFile", def.useCompoundFile);
     maxBufferedDocs=solrConfig.getInt(prefix+"/maxBufferedDocs",def.maxBufferedDocs);
     ramBufferSizeMB = solrConfig.getDouble(prefix+"/ramBufferSizeMB", def.ramBufferSizeMB);
 
@@ -181,7 +181,7 @@ public class SolrIndexConfig implements MapSerializable {
 
   @Override
   public Map<String, Object> toMap(Map<String, Object> map) {
-    Map<String, Object> m = Utils.makeMap("useCompoundFile", effectiveUseCompoundFileSetting,
+    Map<String, Object> m = Utils.makeMap("useCompoundFile", useCompoundFile,
         "maxBufferedDocs", maxBufferedDocs,
         "ramBufferSizeMB", ramBufferSizeMB,
         "writeLockTimeout", writeLockTimeout,
@@ -240,7 +240,7 @@ public class SolrIndexConfig implements MapSerializable {
 
     // do this after buildMergePolicy since the backcompat logic 
     // there may modify the effective useCompoundFile
-    iwc.setUseCompoundFile(getUseCompoundFile());
+    iwc.setUseCompoundFile(useCompoundFile);
 
     if (mergedSegmentWarmerInfo != null) {
       // TODO: add infostream -> normal logging system (there is an issue somewhere)
@@ -308,10 +308,6 @@ public class SolrIndexConfig implements MapSerializable {
     }
 
     return scheduler;
-  }
-
-  public boolean getUseCompoundFile() {
-    return effectiveUseCompoundFileSetting;
   }
 
 }

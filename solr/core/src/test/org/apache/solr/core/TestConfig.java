@@ -148,7 +148,7 @@ public class TestConfig extends SolrTestCaseJ4 {
     SolrConfig sc = new SolrConfig(new SolrResourceLoader(TEST_PATH().resolve("collection1")), "solrconfig-defaults.xml", null);
     SolrIndexConfig sic = sc.indexConfig;
 
-    ++numDefaultsTested; assertEquals("default useCompoundFile", false, sic.getUseCompoundFile());
+    ++numDefaultsTested; assertEquals("default useCompoundFile", false, sic.useCompoundFile);
 
     ++numDefaultsTested; assertEquals("default maxBufferedDocs", -1, sic.maxBufferedDocs);
 
@@ -192,7 +192,7 @@ public class TestConfig extends SolrTestCaseJ4 {
                  Double.parseDouble(System.getProperty("solr.tests.ramBufferSizeMB")), 
                                     sic.ramBufferSizeMB, 0.0D);
     assertEquals("useCompoundFile sysprop", 
-                 Boolean.parseBoolean(System.getProperty("useCompoundFile")), sic.getUseCompoundFile());
+                 Boolean.parseBoolean(System.getProperty("useCompoundFile")), sic.useCompoundFile);
   }
 
 }
