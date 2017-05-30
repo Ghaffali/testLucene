@@ -190,6 +190,9 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
       .withFunctionName("describe", DescribeEvaluator.class)
       .withFunctionName("finddelay", FindDelayEvaluator.class)
       .withFunctionName("sequence", SequenceEvaluator.class)
+      .withFunctionName("array", ArrayEvaluator.class)
+      .withFunctionName("hist", HistogramEvaluator.class)
+      .withFunctionName("anova", AnovaEvaluator.class)
 
       // metrics
          .withFunctionName("min", MinMetric.class)
@@ -304,7 +307,7 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
       StreamExpression streamExpression = StreamExpressionParser.parse(params.get("expr"));
       if(this.streamFactory.isEvaluator(streamExpression)) {
         StreamExpression tupleExpression = new StreamExpression("tuple");
-        tupleExpression.addParameter(new StreamExpressionNamedParameter("out", streamExpression));
+        tupleExpression.addParameter(new StreamExpressionNamedParameter("return-value", streamExpression));
         tupleStream = this.streamFactory.constructStream(tupleExpression);
       } else {
         tupleStream = this.streamFactory.constructStream(streamExpression);

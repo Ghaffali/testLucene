@@ -196,6 +196,8 @@ Other Changes
 
 * SOLR-10710: Fix LTR failing tests. (Diego Ceccarelli via Tomás Fernández Löbbe)
 
+* SOLR-10755: delete/refactor many solrj deprecations (hossman)
+
 ==================  6.7.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
@@ -239,6 +241,9 @@ Bug Fixes
 * SOLR-10723 JSON Facet API: resize() implemented incorrectly for CountSlotAcc, HllAgg.NumericAcc
   resulting in exceptions when using a hashing faceting method and sorting by hll(numeric_field).
   (yonik)
+  
+* SOLR-10719: Creating a core.properties fails if the parent of core.properties is a symlinked dierctory
+  (Erick Erickson)
 
 Optimizations
 ----------------------
@@ -246,7 +251,6 @@ Optimizations
   and there are no nested facets, aggregations are computed in the first collection phase
   so that the second phase which would normally involve calculating the domain for the bucket
   can be skipped entirely, leading to large performance improvements. (yonik)
-
 
 Other Changes
 ----------------------
@@ -259,9 +263,15 @@ Other Changes
   
 * SOLR-10438: Assign explicit useDocValuesAsStored values to all points field types in 
   schema-point.xml/TestPointFields. (hossman, Steve Rowe)
+  
+* LUCENE-7705: Allow CharTokenizer-derived tokenizers and KeywordTokenizer to configure the max token length.
+  (Amrit Sarkar via Erick Erickson)
 
 * SOLR-10659: Remove ResponseBuilder.getSortSpec use in SearchGroupShardResponseProcessor.
   (Judith Silverman via Christine Poerschke)
+
+* SOLR-10741: Factor out createSliceShardsStr method from HttpShardHandler.prepDistributed.
+  (Domenico Fabio Marino via Christine Poerschke)
 
 ==================  6.6.0 ==================
 
@@ -469,6 +479,14 @@ Bug Fixes
 * LUCENE-7821: The classic and flexible query parsers, as well as Solr's
  "lucene"/standard query parser, should require " TO " in range queries,
   and accept "TO" as endpoints in range queries. (hossman, Steve Rowe)
+
+* SOLR-10735: Windows script (solr.cmd) didn't work properly with directory containing spaces. Adding quotations
+  to fix (Uwe Schindler, janhoy, Tomas Fernandez-Lobbe, Ishan Chattopadhyaya) 
+
+Ref Guide
+----------------------
+
+* SOLR-10758: Modernize the Solr ref guide's Chinese language analysis coverage. (Steve Rowe)
 
 Other Changes
 ----------------------

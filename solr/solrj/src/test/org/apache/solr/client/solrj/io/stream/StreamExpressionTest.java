@@ -5220,12 +5220,59 @@ public class StreamExpressionTest extends SolrCloudTestCase {
     solrStream.setStreamContext(context);
     List<Tuple> tuples = getTuples(solrStream);
     assertTrue(tuples.size() == 1);
-    List<Number> sequence = (List<Number>)tuples.get(0).get("out");
+    List<Number> sequence = (List<Number>)tuples.get(0).get("return-value");
     assertTrue(sequence.size() == 20);
     for(int i=0; i<sequence.size(); i++) {
       assertTrue(sequence.get(i).intValue() == i);
     }
   }
+
+  @Test
+  public void testHist() throws Exception {
+    String expr = "hist(sequence(100, 0, 1), 10)";
+    ModifiableSolrParams paramsLoc = new ModifiableSolrParams();
+    paramsLoc.set("expr", expr);
+    paramsLoc.set("qt", "/stream");
+
+    String url = cluster.getJettySolrRunners().get(0).getBaseUrl().toString()+"/"+COLLECTIONORALIAS;
+    TupleStream solrStream = new SolrStream(url, paramsLoc);
+
+    StreamContext context = new StreamContext();
+    solrStream.setStreamContext(context);
+    List<Tuple> tuples = getTuples(solrStream);
+    assertTrue(tuples.size() == 1);
+    List<Map> hist = (List<Map>)tuples.get(0).get("return-value");
+    assertTrue(hist.size() == 10);
+    for(int i=0; i<hist.size(); i++) {
+      Map stats = hist.get(i);
+      assertTrue(((Number)stats.get("N")).intValue() == 10);
+      assertTrue(((Number)stats.get("min")).intValue() == 10*i);
+      assertTrue(((Number)stats.get("var")).doubleValue() == 9.166666666666666);
+      assertTrue(((Number)stats.get("stdev")).doubleValue() == 3.0276503540974917);
+    }
+
+    expr = "hist(sequence(100, 0, 1), 5)";
+    paramsLoc = new ModifiableSolrParams();
+    paramsLoc.set("expr", expr);
+    paramsLoc.set("qt", "/stream");
+
+    solrStream = new SolrStream(url, paramsLoc);
+    solrStream.setStreamContext(context);
+    tuples = getTuples(solrStream);
+    assertTrue(tuples.size() == 1);
+    hist = (List<Map>)tuples.get(0).get("return-value");
+    assertTrue(hist.size() == 5);
+    for(int i=0; i<hist.size(); i++) {
+      Map stats = hist.get(i);
+      assertTrue(((Number)stats.get("N")).intValue() == 20);
+      assertTrue(((Number)stats.get("min")).intValue() == 20*i);
+      assertTrue(((Number)stats.get("var")).doubleValue() == 35);
+      assertTrue(((Number)stats.get("stdev")).doubleValue() == 5.916079783099616);
+    }
+  }
+
+
+
 
 
 
@@ -5733,6 +5780,64 @@ public class StreamExpressionTest extends SolrCloudTestCase {
     assertTrue(ranked.get(2).doubleValue() == 2D);
     assertTrue(ranked.get(3).doubleValue() == 3D);
   }
+
+
+  @Test
+  public void testArray() throws Exception {
+    String cexpr = "array(1, 2, 3, 300, 2, 500)";
+    ModifiableSolrParams paramsLoc = new ModifiableSolrParams();
+    paramsLoc.set("expr", cexpr);
+    paramsLoc.set("qt", "/stream");
+    String url = cluster.getJettySolrRunners().get(0).getBaseUrl().toString()+"/"+COLLECTIONORALIAS;
+    TupleStream solrStream = new SolrStream(url, paramsLoc);
+    StreamContext context = new StreamContext();
+    solrStream.setStreamContext(context);
+    List<Tuple> tuples = getTuples(solrStream);
+    assertTrue(tuples.size() == 1);
+    List<Number> out = (List<Number>)tuples.get(0).get("return-value");
+    assertTrue(out.size() == 6);
+    assertTrue(out.get(0).intValue() == 1);
+    assertTrue(out.get(1).intValue() == 2);
+    assertTrue(out.get(2).intValue() == 3);
+    assertTrue(out.get(3).intValue() == 300);
+    assertTrue(out.get(4).intValue() == 2);
+    assertTrue(out.get(5).intValue() == 500);
+
+    cexpr = "array(1.122, 2.222, 3.333, 300.1, 2.13, 500.23)";
+    paramsLoc = new ModifiableSolrParams();
+    paramsLoc.set("expr", cexpr);
+    paramsLoc.set("qt", "/stream");
+    solrStream = new SolrStream(url, paramsLoc);
+    solrStream.setStreamContext(context);
+    tuples = getTuples(solrStream);
+    assertTrue(tuples.size() == 1);
+    out = (List<Number>)tuples.get(0).get("return-value");
+    assertTrue(out.size() == 6);
+    assertTrue(out.get(0).doubleValue() == 1.122D);
+    assertTrue(out.get(1).doubleValue() == 2.222D);
+    assertTrue(out.get(2).doubleValue() == 3.333D);
+    assertTrue(out.get(3).doubleValue() == 300.1D);
+    assertTrue(out.get(4).doubleValue() == 2.13D);
+    assertTrue(out.get(5).doubleValue() == 500.23D);
+  }
+
+  @Test
+  public void testAnova() throws Exception {
+    String cexpr = "anova(array(1,2,3,5,4,6), array(5,2,3,5,4,6), array(1,2,7,5,4,6))";
+    ModifiableSolrParams paramsLoc = new ModifiableSolrParams();
+    paramsLoc.set("expr", cexpr);
+    paramsLoc.set("qt", "/stream");
+    String url = cluster.getJettySolrRunners().get(0).getBaseUrl().toString()+"/"+COLLECTIONORALIAS;
+    TupleStream solrStream = new SolrStream(url, paramsLoc);
+    StreamContext context = new StreamContext();
+    solrStream.setStreamContext(context);
+    List<Tuple> tuples = getTuples(solrStream);
+    assertTrue(tuples.size() == 1);
+    Map out = (Map)tuples.get(0).get("return-value");
+    assertEquals((double)out.get("p-value"), 0.788298D, .0001);
+    assertEquals((double)out.get("f-ratio"), 0.24169D, .0001);
+  }
+
 
   @Test
   public void testScale() throws Exception {
