@@ -148,13 +148,13 @@ public class SolrIndexConfig implements MapSerializable {
     mergePolicyFactoryInfo = getPluginInfo(prefix + "/mergePolicyFactory", solrConfig, def.mergePolicyFactoryInfo);
 
     assertWarnOrFail("Beginning with Solr 7.0, <mergePolicy> is no longer supported, use <mergePolicyFactory> instead.",
-        getPluginInfo(prefix + "/mergePolicy", solrConfig, null) != null,
+        getPluginInfo(prefix + "/mergePolicy", solrConfig, null) == null,
         true);
     assertWarnOrFail("Beginning with Solr 7.0, <maxMergeDocs> is no longer supported, configure it on the relevant <mergePolicyFactory> instead.",
-        solrConfig.getInt(prefix+"/maxMergeDocs") != 0,
+        solrConfig.getInt(prefix+"/maxMergeDocs", 0) == 0,
         true);
     assertWarnOrFail("Beginning with Solr 7.0, <mergeFactor> is no longer supported, configure it on the relevant <mergePolicyFactory> instead.",
-        solrConfig.getInt(prefix+"/mergeFactor") != 0,
+        solrConfig.getInt(prefix+"/mergeFactor", 0) == 0,
         true);
 
     String val = solrConfig.get(prefix + "/termIndexInterval", null);
