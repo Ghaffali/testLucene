@@ -741,11 +741,9 @@ public class ZkController {
     LiveNodesListener listener = (oldNodes, newNodes) -> {
       oldNodes.removeAll(newNodes);
       if (oldNodes.isEmpty()) { // only added nodes
-        log.debug("-- skip, only new nodes: " + newNodes);
         return;
       }
       if (isClosed) {
-        log.debug("-- skip, closed: old=" + oldNodes + ", new=" + newNodes);
         return;
       }
       // if this node is in the top three then attempt to create nodeLost message
@@ -755,21 +753,17 @@ public class ZkController {
           break;
         }
         if (i > 2) {
-          log.debug("-- skip, " + getNodeName() + " not in the top 3 of " + newNodes);
           return; // this node is not in the top three
         }
         i++;
       }
+
       for (String n : oldNodes) {
         String path = ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + n;
         try {
-          // nocommit decide between EPHEMERAL vs. PERSISTENT, the latter needs
-          // explicit cleanup on cluster restart if there are no nodeLost triggers
           zkClient.create(path, null, CreateMode.PERSISTENT, true);
-          log.debug("-- created " + path);
         } catch (KeeperException.NodeExistsException e) {
           // someone else already created this node - ignore
-          log.debug("-- skip, already exists " + path);
         } catch (KeeperException | InterruptedException e1) {
           log.warn("Unable to register nodeLost path for " + n, e1);
         }
@@ -857,8 +851,8 @@ public class ZkController {
     List<Op> ops = new ArrayList<>(2);
     ops.add(Op.create(nodePath, null, zkClient.getZkACLProvider().getACLsToAdd(nodePath), CreateMode.EPHEMERAL));
     if (!zkClient.exists(nodeAddedPath, true)) {
-      // nocommit use EPHEMERAL or PERSISTENT?
-      // EPHEMERAL will disappear if this node shuts down, PERSISTENT will need an explicit cleanup
+      // use EPHEMERAL so that it disappears if this node goes down
+      // and no other action is taken
       ops.add(Op.create(nodeAddedPath, null, zkClient.getZkACLProvider().getACLsToAdd(nodeAddedPath), CreateMode.EPHEMERAL));
     }
     zkClient.multi(ops, true);
