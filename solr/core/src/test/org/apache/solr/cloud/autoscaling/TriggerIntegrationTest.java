@@ -877,9 +877,9 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     }
     assertEquals(1, listener.addedNodes.size());
     assertEquals(node.getNodeName(), listener.addedNodes.iterator().next());
-    // verify that a znode exists
+    // verify that a znode doesn't exist (no trigger)
     String pathAdded = ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + node.getNodeName();
-    assertTrue("Path " + pathAdded + " wasn't created", zkClient().exists(pathAdded, true));
+    assertFalse("Path " + pathAdded + " was created but there are no nodeAdded triggers", zkClient().exists(pathAdded, true));
     listener.reset();
     // stop overseer
     log.info("====== KILL OVERSEER 1");
@@ -898,17 +898,6 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     assertFalse("Path " + pathLost + " exists", zkClient().exists(pathLost, true));
 
     listener.reset();
-    // create another node
-    log.info("====== ADD NODE 1");
-    JettySolrRunner node1 = cluster.startJettySolrRunner();
-    if (!listener.onChangeLatch.await(10, TimeUnit.SECONDS)) {
-      fail("onChange listener didn't execute on cluster change");
-    }
-    assertEquals(1, listener.addedNodes.size());
-    assertEquals(node1.getNodeName(), listener.addedNodes.iterator().next());
-    // verify that a znode exists
-    pathAdded = ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + node1.getNodeName();
-    assertTrue("Path " + pathAdded + " wasn't created", zkClient().exists(pathAdded, true));
 
     // set up triggers
     CloudSolrClient solrClient = cluster.getSolrClient();
@@ -949,10 +938,20 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
       }
     }
 
+    // create another node
+    log.info("====== ADD NODE 1");
+    JettySolrRunner node1 = cluster.startJettySolrRunner();
+    if (!listener.onChangeLatch.await(10, TimeUnit.SECONDS)) {
+      fail("onChange listener didn't execute on cluster change");
+    }
+    assertEquals(1, listener.addedNodes.size());
+    assertEquals(node1.getNodeName(), listener.addedNodes.iterator().next());
+    // verify that a znode exists
+    pathAdded = ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + node1.getNodeName();
+    assertTrue("Path " + pathAdded + " wasn't created", zkClient().exists(pathAdded, true));
+
     Thread.sleep(5000);
-    // old nodeAdded markers should be consumed now by nodeAdded trigger
-    // but it doesn't result in new events because all nodes have been added
-    // before we configured the trigger
+    // nodeAdded marker should be consumed now by nodeAdded trigger
     assertFalse("Path " + pathAdded + " should have been deleted", zkClient().exists(pathAdded, true));
 
     listener.reset();

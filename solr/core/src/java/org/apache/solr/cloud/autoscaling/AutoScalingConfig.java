@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.solr.cloud.autoscaling;
 
 import java.util.Collections;
@@ -54,10 +70,17 @@ public class AutoScalingConfig {
     }
   }
 
+  /**
+   * Construct from a JSON map representation.
+   * @param jsonMap
+   */
   public AutoScalingConfig(Map<String, Object> jsonMap) {
     this.jsonMap = Utils.getDeepCopy(jsonMap, 10);
   }
 
+  /**
+   * Get {@link Policy} configuration.
+   */
   public Policy getPolicy() {
     if (policy == null) {
       policy = new Policy(jsonMap);
@@ -65,6 +88,9 @@ public class AutoScalingConfig {
     return policy;
   }
 
+  /**
+   * Get trigger configurations.
+   */
   public Map<String, TriggerConfig> getTriggerConfigs() {
     if (triggers == null) {
       Map<String, Object> trigMap = (Map<String, Object>)jsonMap.get("triggers");
@@ -80,6 +106,9 @@ public class AutoScalingConfig {
     return triggers;
   }
 
+  /**
+   * Get listener configurations.
+   */
   public Map<String, ListenerConfig> getListenerConfigs() {
     if (listeners == null) {
       Map<String, Object> map = (Map<String, Object>)jsonMap.get("listeners");
@@ -93,5 +122,25 @@ public class AutoScalingConfig {
       }
     }
     return listeners;
+  }
+
+  /**
+   * Check whether triggers for specific event type exist.
+   * @param types list of event types
+   * @return true if there's at least one trigger matching at least one event type,
+   * false otherwise,
+   */
+  public boolean hasTriggerForEvents(AutoScaling.EventType... types) {
+    if (types == null || types.length == 0) {
+      return false;
+    }
+    for (TriggerConfig config : getTriggerConfigs().values()) {
+      for (AutoScaling.EventType type : types) {
+        if (config.eventType.equals(type)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }

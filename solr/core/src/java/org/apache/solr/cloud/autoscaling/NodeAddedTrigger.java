@@ -103,8 +103,11 @@ public class NodeAddedTrigger extends TriggerBase {
     try {
       List<String> added = container.getZkController().getZkClient().getChildren(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH, null, true);
       added.forEach(n -> {
-        log.debug("Adding node from marker path: {}", n);
-        nodeNameVsTimeAdded.put(n, timeSource.getTime());
+        // don't add nodes that have since gone away
+        if (lastLiveNodes.contains(n)) {
+          log.debug("Adding node from marker path: {}", n);
+          nodeNameVsTimeAdded.put(n, timeSource.getTime());
+        }
         removeNodeAddedMarker(n);
       });
     } catch (KeeperException.NoNodeException e) {

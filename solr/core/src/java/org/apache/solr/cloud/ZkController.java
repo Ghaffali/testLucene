@@ -49,6 +49,8 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient.Builder;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.WaitForState;
+import org.apache.solr.cloud.autoscaling.AutoScaling;
+import org.apache.solr.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.cloud.overseer.OverseerAction;
 import org.apache.solr.cloud.overseer.SliceMutator;
 import org.apache.solr.common.SolrException;
@@ -558,6 +560,16 @@ public class ZkController {
   }
 
   /**
+   *
+   * @return current configuration from <code>autoscaling.json</code>. NOTE:
+   * this data is retrieved from ZK on each call.
+   */
+  public AutoScalingConfig getAutoScalingConfig() throws KeeperException, InterruptedException {
+    Map<String, Object> jsonMap = zkClient.getJson(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, true);
+    return new AutoScalingConfig(jsonMap);
+  }
+
+  /**
    * Returns config file data (in bytes)
    */
   public byte[] getConfigFileData(String zkConfigName, String fileName)
@@ -758,14 +770,24 @@ public class ZkController {
         i++;
       }
 
-      for (String n : oldNodes) {
-        String path = ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + n;
-        try {
-          zkClient.create(path, null, CreateMode.PERSISTENT, true);
-        } catch (KeeperException.NodeExistsException e) {
-          // someone else already created this node - ignore
-        } catch (KeeperException | InterruptedException e1) {
-          log.warn("Unable to register nodeLost path for " + n, e1);
+      // retrieve current trigger config - if there are no nodeLost triggers
+      // then don't create markers
+      boolean createNodes = false;
+      try {
+        createNodes = getAutoScalingConfig().hasTriggerForEvents(AutoScaling.EventType.NODELOST);
+      } catch (KeeperException | InterruptedException e1) {
+        log.warn("Unable to read autoscaling.json", e1);
+      }
+      if (createNodes) {
+        for (String n : oldNodes) {
+          String path = ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + n;
+          try {
+            zkClient.create(path, null, CreateMode.PERSISTENT, true);
+          } catch (KeeperException.NodeExistsException e) {
+            // someone else already created this node - ignore
+          } catch (KeeperException | InterruptedException e1) {
+            log.warn("Unable to register nodeLost path for " + n, e1);
+          }
         }
       }
     };
@@ -850,7 +872,9 @@ public class ZkController {
     log.info("Register node as live in ZooKeeper:" + nodePath);
     List<Op> ops = new ArrayList<>(2);
     ops.add(Op.create(nodePath, null, zkClient.getZkACLProvider().getACLsToAdd(nodePath), CreateMode.EPHEMERAL));
-    if (!zkClient.exists(nodeAddedPath, true)) {
+    // if there are nodeAdded triggers don't create nodeAdded markers
+    boolean createMarkerNode = getAutoScalingConfig().hasTriggerForEvents(AutoScaling.EventType.NODEADDED);
+    if (createMarkerNode && !zkClient.exists(nodeAddedPath, true)) {
       // use EPHEMERAL so that it disappears if this node goes down
       // and no other action is taken
       ops.add(Op.create(nodeAddedPath, null, zkClient.getZkACLProvider().getACLsToAdd(nodeAddedPath), CreateMode.EPHEMERAL));

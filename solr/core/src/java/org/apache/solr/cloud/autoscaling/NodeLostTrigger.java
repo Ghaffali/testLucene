@@ -102,8 +102,11 @@ public class NodeLostTrigger extends TriggerBase {
     try {
       List<String> lost = container.getZkController().getZkClient().getChildren(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH, null, true);
       lost.forEach(n -> {
-        log.debug("Adding lost node from marker path: {}", n);
-        nodeNameVsTimeRemoved.put(n, timeSource.getTime());
+        // don't add nodes that have since came back
+        if (!lastLiveNodes.contains(n)) {
+          log.debug("Adding lost node from marker path: {}", n);
+          nodeNameVsTimeRemoved.put(n, timeSource.getTime());
+        }
         removeNodeLostMarker(n);
       });
     } catch (KeeperException.NoNodeException e) {
