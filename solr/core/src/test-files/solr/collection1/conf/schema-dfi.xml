@@ -19,7 +19,7 @@
 <!-- Test schema file for DFISimilarityFactory -->
 
 <schema name="dfi" version="1.5">
-  <fieldType name="int" class="solr.TrieIntField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="int" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
 
   <!-- default parameters -->
   <fieldType name="text" class="solr.TextField">

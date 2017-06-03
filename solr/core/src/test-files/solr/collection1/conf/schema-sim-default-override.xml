@@ -60,7 +60,7 @@
   <dynamicField name="*_sim2" type="sim-used-as-default-override" indexed="true" stored="true"/>
   <dynamicField name="*_sim3" type="sim-none-get-default" indexed="true" stored="true"/>
 
-  <fieldType name="int" class="solr.TrieIntField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="int" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
   <uniqueKey>id</uniqueKey>
   
 </schema>

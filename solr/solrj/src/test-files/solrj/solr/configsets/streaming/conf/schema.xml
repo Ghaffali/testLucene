@@ -40,15 +40,15 @@
     -->
 
 
-    <fieldType name="int" docValues="true" class="solr.TrieIntField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
-    <fieldType name="float" docValues="true" class="solr.TrieFloatField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
-    <fieldType name="long" docValues="true" class="solr.TrieLongField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
-    <fieldType name="double" class="solr.TrieDoubleField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="int" docValues="true" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="float" docValues="true" class="${solr.tests.FloatClassName:solr.FloatPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="long" docValues="true" class="${solr.tests.LongClassName:solr.LongPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="double" class="${solr.tests.DoubleClassName:solr.DoublePointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
 
-    <fieldType name="tint" class="solr.TrieIntField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
-    <fieldType name="tfloat" class="solr.TrieFloatField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
-    <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
-    <fieldType name="tdouble" class="solr.TrieDoubleField" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="tint" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="tfloat" class="${solr.tests.FloatClassName:solr.FloatPointField}" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="tlong" class="${solr.tests.LongClassName:solr.LongPointField}" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
+    <fieldType name="tdouble" class="${solr.tests.DoubleClassName:solr.DoublePointField}" precisionStep="8" omitNorms="true" positionIncrementGap="0"/>
 
     <fieldType name="random" class="solr.RandomSortField" indexed="true" />
 
@@ -115,8 +115,8 @@
     <!-- format for date is 1995-12-31T23:59:59.999Z and only the fractional
          seconds part (.999) is optional.
       -->
-    <fieldtype name="date" class="solr.TrieDateField" precisionStep="0" docValues="true"/>
-    <fieldtype name="tdate" class="solr.TrieDateField" precisionStep="6" docValues="true"/>
+    <fieldtype name="date" class="${solr.tests.DateClassName:solr.DatePointField}" precisionStep="0" docValues="true"/>
+    <fieldtype name="tdate" class="${solr.tests.DateClassName:solr.DatePointField}" precisionStep="6" docValues="true"/>
 
 
     <!-- solr.TextField allows the specification of custom

@@ -149,7 +149,7 @@ public class TestCloudManagedSchemaConcurrent extends AbstractFullDistribZkTestB
   }
 
   private static void addFieldTypePut(RestTestHarness publisher, String typeName, int updateTimeoutSecs) throws Exception {
-    final String content = "{\"class\":\"solr.TrieIntField\"}";
+    final String content = "{\"class\":\"" +getIntClass() +"\"}";
     String request = "/schema/fieldtypes/" + typeName + "?wt=xml";
     if (updateTimeoutSecs > 0)
       request += "&updateTimeoutSecs="+updateTimeoutSecs;
@@ -158,7 +158,7 @@ public class TestCloudManagedSchemaConcurrent extends AbstractFullDistribZkTestB
   }
 
   private static void addFieldTypePost(RestTestHarness publisher, String typeName, int updateTimeoutSecs) throws Exception {
-    final String content = "[{\"name\":\""+typeName+"\",\"class\":\"solr.TrieIntField\"}]";
+    final String content = "[{\"name\":\""+typeName+"\",\"class\":\""+ getIntClass() + "\"}]";
     String request = "/schema/fieldtypes/?wt=xml";
     if (updateTimeoutSecs > 0)
       request += "&updateTimeoutSecs="+updateTimeoutSecs;

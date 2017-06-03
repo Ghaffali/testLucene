@@ -139,7 +139,7 @@ public class TestStressCloudBlindAtomicUpdates extends SolrCloudTestCase {
 
     // sanity check no one broke the assumptions we make about our schema
     checkExpectedSchemaType( map("name","long",
-                                 "class","solr.TrieLongField",
+                                 "class",getLongClass(),
                                  "multiValued",Boolean.FALSE,
                                  "indexed",Boolean.FALSE,
                                  "stored",Boolean.FALSE,

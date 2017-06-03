@@ -22,8 +22,8 @@
   <fieldType name="string" class="solr.StrField"/>
 
   <!-- BEGIN BAD STUFF -->
-  <fieldType name="ftAgain" class="solr.TrieIntField"/>
-  <fieldType name="ftAgain" class="solr.TrieIntField"/>
+  <fieldType name="ftAgain" class="${solr.tests.IntClassName:solr.IntPointField}"/>
+  <fieldType name="ftAgain" class="${solr.tests.IntClassName:solr.IntPointField}"/>
   <!-- END BAD STUFF -->
 
   <field name="id" type="string" indexed="true" stored="true" multiValued="false" required="false"/>

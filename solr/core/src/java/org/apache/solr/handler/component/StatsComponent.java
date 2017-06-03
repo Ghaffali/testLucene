@@ -46,9 +46,11 @@ public class StatsComponent extends SearchComponent {
       rb.doStats = true;
       rb._statsInfo = new StatsInfo(rb);
       for (StatsField statsField : rb._statsInfo.getStatsFields()) {
-        if (statsField.getSchemaField() != null && statsField.getSchemaField().getType().isPointField() && !statsField.getSchemaField().hasDocValues()) {
+        // nocommit: not sure if we should be encouraging this (uninversion of single valued points)...
+        // nocommit: if this change is in fact made, it should be in it's own jira
+        if (statsField.getSchemaField() != null && statsField.getSchemaField().getType().isPointField() && statsField.getSchemaField().multiValued() && !statsField.getSchemaField().hasDocValues()) {
           throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, 
-              "Can't calculate stats on a PointField without docValues");
+              "Can't calculate stats on a multivalued PointField without docValues");
         }
       }
     }

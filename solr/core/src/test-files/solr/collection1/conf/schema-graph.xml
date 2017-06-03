@@ -54,7 +54,7 @@
   <!-- Field types -->
   <fieldType name="string" class="solr.StrField"
     sortMissingLast="true" />
-  <fieldType name="long" class="solr.TrieLongField"
+  <fieldType name="long" class="${solr.tests.LongClassName:solr.LongPointField}"
     precisionStep="0" positionIncrementGap="0" />
   <fieldType name="text_general" class="solr.TextField"
     positionIncrementGap="100">

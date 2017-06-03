@@ -19,7 +19,7 @@
 <!-- Test schema file for SweetSpotSimilarityFactory -->
 
 <schema name="test" version="1.0">
-  <fieldType name="int" class="solr.TrieIntField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="int" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
 
   <!-- default parameters -->
   <fieldType name="text" class="solr.TextField"

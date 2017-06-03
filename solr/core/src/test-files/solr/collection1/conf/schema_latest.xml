@@ -360,10 +360,10 @@
     These fields support doc values, but they require the field to be
     single-valued and either be required or have a default value.
   -->
-  <fieldType name="int" class="solr.TrieIntField" precisionStep="0" positionIncrementGap="0"/>
-  <fieldType name="float" class="solr.TrieFloatField" precisionStep="0" positionIncrementGap="0"/>
-  <fieldType name="long" class="solr.TrieLongField" precisionStep="0" positionIncrementGap="0"/>
-  <fieldType name="double" class="solr.TrieDoubleField" precisionStep="0" positionIncrementGap="0"/>
+  <fieldType name="int" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="0" positionIncrementGap="0"/>
+  <fieldType name="float" class="${solr.tests.FloatClassName:solr.FloatPointField}" precisionStep="0" positionIncrementGap="0"/>
+  <fieldType name="long" class="${solr.tests.LongClassName:solr.LongPointField}" precisionStep="0" positionIncrementGap="0"/>
+  <fieldType name="double" class="${solr.tests.DoubleClassName:solr.DoublePointField}" precisionStep="0" positionIncrementGap="0"/>
 
   <!--
    Numeric field types that index each value at various levels of precision
@@ -375,10 +375,10 @@
    indexed per value, slightly larger index size, and faster range queries.
    A precisionStep of 0 disables indexing at different precision levels.
   -->
-  <fieldType name="tint" class="solr.TrieIntField" precisionStep="8" positionIncrementGap="0"/>
-  <fieldType name="tfloat" class="solr.TrieFloatField" precisionStep="8" positionIncrementGap="0"/>
-  <fieldType name="tlong" class="solr.TrieLongField" precisionStep="8" positionIncrementGap="0"/>
-  <fieldType name="tdouble" class="solr.TrieDoubleField" precisionStep="8" positionIncrementGap="0"/>
+  <fieldType name="tint" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="8" positionIncrementGap="0"/>
+  <fieldType name="tfloat" class="${solr.tests.FloatClassName:solr.FloatPointField}" precisionStep="8" positionIncrementGap="0"/>
+  <fieldType name="tlong" class="${solr.tests.LongClassName:solr.LongPointField}" precisionStep="8" positionIncrementGap="0"/>
+  <fieldType name="tdouble" class="${solr.tests.DoubleClassName:solr.DoublePointField}" precisionStep="8" positionIncrementGap="0"/>
   
   <!-- Point Fields -->
   <fieldType name="pint" class="solr.IntPointField" docValues="true"/>
@@ -410,10 +410,10 @@
 
        Note: For faster range queries, consider the tdate type
     -->
-  <fieldType name="date" class="solr.TrieDateField" precisionStep="0" positionIncrementGap="0"/>
+  <fieldType name="date" class="${solr.tests.DateClassName:solr.DatePointField}" precisionStep="0" positionIncrementGap="0"/>
 
   <!-- A Trie based date field for faster date range queries and date faceting. -->
-  <fieldType name="tdate" class="solr.TrieDateField" precisionStep="6" positionIncrementGap="0"/>
+  <fieldType name="tdate" class="${solr.tests.DateClassName:solr.DatePointField}" precisionStep="6" positionIncrementGap="0"/>
 
 
   <!--Binary data type. The data should be sent/retrieved in as Base64 encoded Strings -->

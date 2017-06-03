@@ -97,7 +97,7 @@ public class IndexSchemaTest extends SolrTestCaseJ4 {
     assertFalse(schema.getField("id").multiValued());
     
     // Test TrieDate fields. The following asserts are expecting a field type defined as:
-    String expectedDefinition = "<fieldtype name=\"tdatedv\" class=\"solr.TrieDateField\" " +
+    String expectedDefinition = "<fieldtype name=\"tdatedv\" class=\""+getDateClass()+"\" " +
         "precisionStep=\"6\" docValues=\"true\" multiValued=\"true\"/>";
     FieldType tdatedv = schema.getFieldType("foo_tdtdvs");
     assertTrue("Expecting a field type defined as " + expectedDefinition, 

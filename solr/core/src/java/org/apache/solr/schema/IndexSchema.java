@@ -534,8 +534,22 @@ public class IndexSchema {
           log.error(msg);
           throw new SolrException(ErrorCode.SERVER_ERROR, msg);
         }
+
         uniqueKeyFieldName=uniqueKeyField.getName();
         uniqueKeyFieldType=uniqueKeyField.getType();
+        
+        // nocommit: really basic stuff like deleteById don't work on points (but do work on trie numerics)
+        // nocommit: ...because point fields don't have any "Term" to use for the id.
+        // nocommit: other things like QEC also fail (on init!) if the uniqueKeyField is points based
+        // nocommit: unless we fix usages of uniqueKeyField to support points, this should be a new jira
+        if (uniqueKeyFieldType.isPointField()) {
+          // nocommit: better error?
+          String msg = "nocommit: " + UNIQUE_KEY + " field ("+uniqueKeyFieldName+
+            ") can not use a Point based field type => " + uniqueKeyFieldType.getClass();
+          log.error(msg);
+          throw new SolrException(ErrorCode.SERVER_ERROR, msg);
+        }
+        
 
         // Unless the uniqueKeyField is marked 'required=false' then make sure it exists
         if( Boolean.FALSE != explicitRequiredProp.get( uniqueKeyFieldName ) ) {

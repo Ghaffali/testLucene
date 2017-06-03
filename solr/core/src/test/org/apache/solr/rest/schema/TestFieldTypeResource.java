@@ -26,7 +26,7 @@ public class TestFieldTypeResource extends SolrRestletTestBase {
             "count(/response/lst[@name='fieldType']) = 1",
             "count(/response/lst[@name='fieldType']/*) = 17",
             "/response/lst[@name='fieldType']/str[@name='name'] = 'float'",
-            "/response/lst[@name='fieldType']/str[@name='class'] = 'solr.TrieFloatField'",
+            "/response/lst[@name='fieldType']/str[@name='class'] = '"+getFloatClass()+"'",
             "/response/lst[@name='fieldType']/str[@name='precisionStep'] ='0'",
             "/response/lst[@name='fieldType']/bool[@name='indexed'] = 'true'",
             "/response/lst[@name='fieldType']/bool[@name='stored'] = 'true'",
@@ -55,7 +55,7 @@ public class TestFieldTypeResource extends SolrRestletTestBase {
   public void testJsonGetFieldType() throws Exception {
     assertJQ("/schema/fieldtypes/float?indent=on&showDefaults=on",  // assertJQ will add "&wt=json"
              "/fieldType/name=='float'",
-             "/fieldType/class=='solr.TrieFloatField'",
+             "/fieldType/class=='"+getFloatClass()+"'",
              "/fieldType/precisionStep=='0'",
              "/fieldType/indexed==true",
              "/fieldType/stored==true",

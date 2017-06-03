@@ -16,7 +16,7 @@
   -->
 
 <schema name="test" version="1.0">
-  <fieldType name="int" class="solr.TrieIntField" precisionStep="4" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="int" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="4" omitNorms="true" positionIncrementGap="0"/>
   <!--  charfilter only at query-time -->
   <fieldType name="text" class="solr.TextField">
     <analyzer type="index">

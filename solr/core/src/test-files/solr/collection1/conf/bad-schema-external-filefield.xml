@@ -16,7 +16,7 @@
   -->
 
 <schema name="bad-schema-external-filefield" version="1.0">
-  <fieldType name="tint" class="solr.TrieIntField" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="tint" class="${solr.tests.IntClassName:solr.IntPointField}" omitNorms="true" positionIncrementGap="0"/>
 
   <fieldType name="eff_none" keyField="id" defVal="0"
              stored="false" indexed="true"

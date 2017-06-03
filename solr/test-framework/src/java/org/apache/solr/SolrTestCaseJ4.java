@@ -178,8 +178,33 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
    * PointFields will only be used if the schema used by the tests uses "${solr.tests.TYPEClass}" when defining fields. 
    * If this environment variable is not set, those tests will use PointFields 50% of the times and TrieFields the rest.
    */
-  public static final boolean PREFER_POINT_FIELDS = Boolean.getBoolean("solr.tests.preferPointFields");
+  public static final boolean PREFER_POINT_FIELDS = true;
+  // nocommit: temporarily, points are mandatory (so i don't have to worry about remembering to use sysprop)
+  // public static final boolean PREFER_POINT_FIELDS = Boolean.getBoolean("solr.tests.preferPointFields");
 
+  // nocommit: if these don't wind up being useful, don't add them to the surface area of the SolrTestCaseJ4 API
+  private static String INT_CLASS;
+  private static String FLOAT_CLASS;
+  private static String LONG_CLASS;
+  private static String DOUBLE_CLASS;
+  private static String DATE_CLASS;
+  protected static String getDateClass() {
+    return DATE_CLASS;
+  }
+  protected static String getDoubleClass() {
+    return DOUBLE_CLASS;
+  }
+  protected static String getLongClass() {
+    return LONG_CLASS;
+  }
+  protected static String getFloatClass() {
+    return FLOAT_CLASS;
+  }
+  protected static String getIntClass() {
+    return INT_CLASS;
+  }
+  
+  
   private static String coreName = DEFAULT_TEST_CORENAME;
 
   public static int DEFAULT_CONNECTION_TIMEOUT = 60000;  // default socket connection timeout in ms
@@ -313,7 +338,8 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
       System.clearProperty("solr.peerSync.useRangeVersions");
       System.clearProperty("solr.cloud.wait-for-updates-with-stale-state-pause");
       HttpClientUtil.resetHttpClientBuilder();
-
+      org.apache.solr.schema.PointField.TEST_HACK_IGNORE_USELESS_TRIEFIELD_ARGS = false;
+      
       // clean up static
       sslConfig = null;
       testSolrHome = null;
@@ -513,19 +539,43 @@ public abstract class SolrTestCaseJ4 extends LuceneTestCase {
     if (RandomizedContext.current().getTargetClass().isAnnotationPresent(SuppressPointFields.class)
         || (!PREFER_POINT_FIELDS && random().nextBoolean())) {
       log.info("Using TrieFields");
+      // nocommit: one or the other, but not both
+      
       System.setProperty("solr.tests.intClass", "int");
       System.setProperty("solr.tests.longClass", "long");
       System.setProperty("solr.tests.doubleClass", "double");
       System.setProperty("solr.tests.floatClass", "float");
       System.setProperty("solr.tests.dateClass", "date");
+      //
+      org.apache.solr.schema.PointField.TEST_HACK_IGNORE_USELESS_TRIEFIELD_ARGS = false;
+      INT_CLASS = "solr.TrieIntField";
+      FLOAT_CLASS = "solr.TrieFloatField";
+      LONG_CLASS = "solr.TrieLongField";
+      DOUBLE_CLASS = "solr.TrieDoubleField";
+      DATE_CLASS = "solr.TrieDateField";
+      
     } else {
       log.info("Using PointFields");
+      // nocommit: one or the other, but not both
+      
       System.setProperty("solr.tests.intClass", "pint");
       System.setProperty("solr.tests.longClass", "plong");
       System.setProperty("solr.tests.doubleClass", "pdouble");
       System.setProperty("solr.tests.floatClass", "pfloat");
       System.setProperty("solr.tests.dateClass", "pdate");
+      //
+      org.apache.solr.schema.PointField.TEST_HACK_IGNORE_USELESS_TRIEFIELD_ARGS = true;
+      INT_CLASS = "solr.IntPointField";
+      FLOAT_CLASS = "solr.FloatPointField";
+      LONG_CLASS = "solr.LongPointField";
+      DOUBLE_CLASS = "solr.DoublePointField";
+      DATE_CLASS = "solr.DatePointField";
     }
+    System.setProperty("solr.tests.IntClassName", INT_CLASS);
+    System.setProperty("solr.tests.LongClassName", LONG_CLASS);
+    System.setProperty("solr.tests.DoubleClassName", DOUBLE_CLASS);
+    System.setProperty("solr.tests.FloatClassName", FLOAT_CLASS);
+    System.setProperty("solr.tests.DateClassName", DATE_CLASS);
   }
 
   public static Throwable getWrappedException(Throwable e) {

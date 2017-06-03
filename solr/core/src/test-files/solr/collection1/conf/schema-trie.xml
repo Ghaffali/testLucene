@@ -68,24 +68,24 @@
        field first in an ascending sort and last in a descending sort.
   -->
 
-  <fieldType name="int" class="solr.TrieIntField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
-  <fieldType name="float" class="solr.TrieFloatField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
-  <fieldType name="long" class="solr.TrieLongField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
-  <fieldType name="double" class="solr.TrieDoubleField" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="int" class="${solr.tests.IntClassName:solr.IntPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="float" class="${solr.tests.FloatClassName:solr.FloatPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="long" class="${solr.tests.LongClassName:solr.LongPointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
+  <fieldType name="double" class="${solr.tests.DoubleClassName:solr.DoublePointField}" precisionStep="0" omitNorms="true" positionIncrementGap="0"/>
 
-  <fieldType name="tint" class="solr.TrieIntField" omitNorms="true" positionIncrementGap="0" indexed="true"
+  <fieldType name="tint" class="${solr.tests.IntClassName:solr.IntPointField}" omitNorms="true" positionIncrementGap="0" indexed="true"
              stored="false"/>
-  <fieldType name="tfloat" class="solr.TrieFloatField" omitNorms="true" positionIncrementGap="0" indexed="true"
+  <fieldType name="tfloat" class="${solr.tests.FloatClassName:solr.FloatPointField}" omitNorms="true" positionIncrementGap="0" indexed="true"
              stored="false"/>
-  <fieldType name="tlong" class="solr.TrieLongField" omitNorms="true" positionIncrementGap="0" indexed="true"
+  <fieldType name="tlong" class="${solr.tests.LongClassName:solr.LongPointField}" omitNorms="true" positionIncrementGap="0" indexed="true"
              stored="false"/>
-  <fieldType name="tdouble" class="solr.TrieDoubleField" omitNorms="true" positionIncrementGap="0" indexed="true"
+  <fieldType name="tdouble" class="${solr.tests.DoubleClassName:solr.DoublePointField}" omitNorms="true" positionIncrementGap="0" indexed="true"
              stored="false"/>
 
-  <fieldType name="tdouble4" class="solr.TrieDoubleField" type="double" precisionStep="4" omitNorms="true"
+  <fieldType name="tdouble4" class="${solr.tests.DoubleClassName:solr.DoublePointField}" type="double" precisionStep="4" omitNorms="true"
              positionIncrementGap="0" indexed="true" stored="false"/>
 
-  <fieldType name="tdate" class="solr.TrieDateField" omitNorms="true" positionIncrementGap="0" indexed="true"
+  <fieldType name="tdate" class="${solr.tests.DateClassName:solr.DatePointField}" omitNorms="true" positionIncrementGap="0" indexed="true"
              stored="false"/>
 
 
@@ -109,7 +109,7 @@
 
        Consult the TrieDateField javadocs for more information.
     -->
-  <fieldType name="date" class="solr.TrieDateField" sortMissingLast="true" omitNorms="true"/>
+  <fieldType name="date" class="${solr.tests.DateClassName:solr.DatePointField}" sortMissingLast="true" omitNorms="true"/>
 
 
   <!-- The "RandomSortField" is not used to store or search any

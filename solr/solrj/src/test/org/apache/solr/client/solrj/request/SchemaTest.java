@@ -636,7 +636,7 @@ public class SchemaTest extends RestTestBase {
   public void addFieldTypeShouldntBeCalledTwiceWithTheSameName() throws Exception {
     Map<String, Object> fieldTypeAttributes = new LinkedHashMap<>();
     fieldTypeAttributes.put("name", "failureInt");
-    fieldTypeAttributes.put("class", "solr.TrieIntField");
+    fieldTypeAttributes.put("class", getIntClass());
     fieldTypeAttributes.put("precisionStep", 0);
     fieldTypeAttributes.put("omitNorms", true);
     fieldTypeAttributes.put("positionIncrementGap", 0);
@@ -657,7 +657,7 @@ public class SchemaTest extends RestTestBase {
     Map<String, Object> fieldTypeAttributes = new LinkedHashMap<>();
     String fieldTypeName = "delInt";
     fieldTypeAttributes.put("name", fieldTypeName);
-    fieldTypeAttributes.put("class", "solr.TrieIntField");
+    fieldTypeAttributes.put("class", getIntClass());
     fieldTypeAttributes.put("precisionStep", 0);
     fieldTypeAttributes.put("omitNorms", true);
     fieldTypeAttributes.put("positionIncrementGap", 0);
@@ -703,7 +703,7 @@ public class SchemaTest extends RestTestBase {
     Map<String, Object> fieldTypeAttributes = new LinkedHashMap<>();
     String fieldTypeName = "replaceInt";
     fieldTypeAttributes.put("name", fieldTypeName);
-    fieldTypeAttributes.put("class", "solr.TrieIntField");
+    fieldTypeAttributes.put("class", getIntClass());
     fieldTypeAttributes.put("precisionStep", 0);
     fieldTypeAttributes.put("omitNorms", true);
     fieldTypeAttributes.put("positionIncrementGap", 0);
@@ -731,7 +731,7 @@ public class SchemaTest extends RestTestBase {
     FieldTypeRepresentation replacedFieldTypeRepresentation = newFieldTypeResponse.getFieldType();
     Map<String, Object> replacedFieldTypeAttributes = replacedFieldTypeRepresentation.getAttributes();
     assertThat(fieldTypeName, is(equalTo(replacedFieldTypeAttributes.get("name"))));
-    assertThat("solr.TrieIntField", is(equalTo(replacedFieldTypeAttributes.get("class"))));
+    assertThat(getIntClass(), is(equalTo(replacedFieldTypeAttributes.get("class"))));
     assertThat(false, is(equalTo(replacedFieldTypeAttributes.get("omitNorms"))));
     assertThat("1", is(equalTo(replacedFieldTypeAttributes.get("precisionStep"))));
     assertThat("0", is(equalTo(replacedFieldTypeAttributes.get("positionIncrementGap"))));

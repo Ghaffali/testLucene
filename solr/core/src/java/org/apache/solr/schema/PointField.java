@@ -23,6 +23,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.lucene.document.NumericDocValuesField;
 import org.apache.lucene.document.SortedNumericDocValuesField;
@@ -56,6 +57,35 @@ import org.slf4j.LoggerFactory;
 public abstract class PointField extends NumericFieldType {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+  /**
+   * HACK: The Test framework can set this global variable to instruct PointField that
+   * (on init) it should be tollerant of the <code>precisionStep</code> argument used by TrieFields.
+   * This allows for simple randomization of TrieFields and PointFields w/o extensive duplication
+   * of <code>&lt;fieldType/&gt;</code> declarations.
+   *
+   * <p>
+   * nocommit: Do not let this land on master w/o explicit consensus from at least one other person that it's  not completely insane.
+   * </p>
+   * 
+   * @lucene.internal
+   * @lucene.experimental
+   */
+  public static boolean TEST_HACK_IGNORE_USELESS_TRIEFIELD_ARGS = false;
+
+
+  /** 
+   * nocommit: method should be removed completely if 
+   * {@link TEST_HACK_IGNORE_USELESS_TRIEFIELD_ARGS} is removed 
+   */
+  @Override
+  protected void init(IndexSchema schema, Map<String, String> args) {
+    super.init(schema, args);
+    if (TEST_HACK_IGNORE_USELESS_TRIEFIELD_ARGS) {
+      args.remove("precisionStep");
+      args.remove("type");
+    }
+  }
 
   @Override
   public boolean isPointField() {

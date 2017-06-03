@@ -437,9 +437,11 @@ public class SimpleFacets {
     
     NamedList<Integer> counts;
     SchemaField sf = searcher.getSchema().getField(field);
-    if (sf.getType().isPointField() && !sf.hasDocValues()) {
+    // nocommit: not sure if we should be encouraging this (uninversion of single valued points)...
+    // nocommit: if this change is in fact made, it should be in it's own jira
+    if (sf.getType().isPointField() && sf.multiValued() && !sf.hasDocValues()) {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, 
-          "Can't facet on a PointField without docValues");
+          "Can't facet on a multivalued PointField without docValues");
     }
     FieldType ft = sf.getType();
 

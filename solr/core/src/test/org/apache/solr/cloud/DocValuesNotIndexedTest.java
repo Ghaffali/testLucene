@@ -132,11 +132,11 @@ public class DocValuesNotIndexedTest extends SolrCloudTestCase {
         fieldsToTestMulti.size() + fieldsToTestGroupSortFirst.size() + fieldsToTestGroupSortLast.size() +
         4);
 
-    updateList.add(getType("name", "float", "class", "solr.TrieFloatField", "precisionStep", "0"));
+    updateList.add(getType("name", "float", "class", getFloatClass(), "precisionStep", "0"));
 
-    updateList.add(getType("name", "double", "class", "solr.TrieDoubleField", "precisionStep", "0"));
+    updateList.add(getType("name", "double", "class", getDoubleClass(), "precisionStep", "0"));
 
-    updateList.add(getType("name", "date", "class", "solr.TrieDateField", "precisionStep", "0"));
+    updateList.add(getType("name", "date", "class", getDateClass(), "precisionStep", "0"));
 
     updateList.add(getType("name", "boolean", "class", "solr.BoolField"));
 
