@@ -55,7 +55,7 @@ public class BadIndexSchemaTest extends AbstractBadConfigTestBase {
 
   public void testBadExternalFileField() throws Exception {
     doTest("bad-schema-external-filefield.xml",
-           "Only float (TrieFloatField) is currently supported as external field type.");
+           "Only float based valType currently supported as external field type.");
   }
 
   public void testUniqueKeyRules() throws Exception {

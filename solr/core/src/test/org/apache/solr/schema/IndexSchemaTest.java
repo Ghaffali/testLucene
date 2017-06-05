@@ -100,14 +100,17 @@ public class IndexSchemaTest extends SolrTestCaseJ4 {
     String expectedDefinition = "<fieldtype name=\"tdatedv\" class=\""+getDateClass()+"\" " +
         "precisionStep=\"6\" docValues=\"true\" multiValued=\"true\"/>";
     FieldType tdatedv = schema.getFieldType("foo_tdtdvs");
+    assertEquals("Expecting a field type defined as " + expectedDefinition, 
+                 NumberType.DATE, tdatedv.getNumberType());
     assertTrue("Expecting a field type defined as " + expectedDefinition, 
-        tdatedv instanceof TrieDateField);
+               getDateClass().endsWith(tdatedv.getClass().getSimpleName()));
     assertTrue("Expecting a field type defined as " + expectedDefinition,
         tdatedv.hasProperty(FieldProperties.DOC_VALUES));
     assertTrue("Expecting a field type defined as " + expectedDefinition,
         tdatedv.isMultiValued());
-    assertEquals("Expecting a field type defined as " + expectedDefinition,
-        6, ((TrieDateField)tdatedv).getPrecisionStep());
+    // nocommit: keep or trash?
+    // assertEquals("Expecting a field type defined as " + expectedDefinition,
+    //     6, ((TrieDateField)tdatedv).getPrecisionStep());
   }
   
   

@@ -211,6 +211,10 @@ public class MiniSolrCloudCluster {
    MiniSolrCloudCluster(int numServers, Path baseDir, String solrXml, JettyConfig jettyConfig,
       ZkTestServer zkTestServer, Optional<String> securityJson) throws Exception {
 
+     // nocommit: simplest quick & dirty HACK to work around tests that use MSCC w/o using SolrTestCaseJ4...
+     org.apache.solr.schema.PointField.TEST_HACK_IGNORE_USELESS_TRIEFIELD_ARGS = true;
+     
+     
     Objects.requireNonNull(securityJson);
     this.baseDir = Objects.requireNonNull(baseDir);
     this.jettyConfig = Objects.requireNonNull(jettyConfig);

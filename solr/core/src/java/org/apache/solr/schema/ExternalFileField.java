@@ -69,15 +69,16 @@ public class ExternalFileField extends FieldType implements SchemaAware {
     // code (see getValueSource) gives you a FileFloatSource.
     String ftypeS = args.remove("valType");
 
-    // // nocommit: dead code. removing this should be in it's own jira
-    // 
-    // if (ftypeS != null) {
-    //   ftype = schema.getFieldTypes().get(ftypeS);
-    //   if (ftype != null && !(ftype instanceof TrieFloatField)) {
-    //     throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
-    //         "Only float (TrieFloatField) is currently supported as external field type.  Got " + ftypeS);
-    //   }
-    // }
+    // // nocommit: dead code. removing this (or replacuing with warning) should be in it's own jira
+    // // for now maintain spirit of original error check but for points fields
+    if (ftypeS != null) {
+      ftype = schema.getFieldTypes().get(ftypeS);
+      if (ftype != null && (org.apache.solr.schema.NumberType.FLOAT != ftype.getNumberType())) {
+        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
+            "Only float based valType currently supported as external field type.  Got " + ftypeS);
+      }
+    }
+    // nocommit
     
     keyFieldName = args.remove("keyField");
     String defValS = args.remove("defVal");
