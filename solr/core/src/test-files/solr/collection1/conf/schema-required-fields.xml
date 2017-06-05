@@ -316,7 +316,8 @@
   </fieldType>
 
 
-  <field name="id" type="int" multiValued="false" indexed="true"
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" multiValued="false" indexed="true"
          stored="true"/> <!-- the uniqueKey is required by default -->
   <field name="name" type="nametext" indexed="true" stored="true" required="true"/>
   <field name="text" type="text" indexed="true" stored="false"/>

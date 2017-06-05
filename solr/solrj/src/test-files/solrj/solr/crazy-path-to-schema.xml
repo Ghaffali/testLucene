@@ -38,11 +38,12 @@ that just finds leaf <fieldType> and <field> nodes and there's no reason to brea
         <filter class="solr.PorterStemFilterFactory"/>
       </analyzer>
     </fieldType>
+    <fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
  </types>
 
 
  <fields>  <!-- Intentionally left in. see comment above -->
-   <field name="id" type="int" indexed="true" stored="true" multiValued="false"/>
+   <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false"/>
    <field name="subject" type="text" indexed="true" stored="true"/>
  </fields>
 

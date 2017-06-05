@@ -39,7 +39,8 @@
   </fieldType>
 
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="false"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="false"/>
   <field name="text" type="text" indexed="true" stored="false"/>
   <field name="text_params" type="text_params" indexed="true" stored="false"/>
 

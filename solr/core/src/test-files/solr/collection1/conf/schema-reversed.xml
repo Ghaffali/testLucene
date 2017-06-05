@@ -66,7 +66,8 @@
   </fieldType>
 
 
-  <field name="id" type="integer" indexed="true" stored="true" multiValued="false" required="false"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="false"/>
   <field name="one" type="srev" indexed="true" stored="false"/>
   <field name="two" type="rev" indexed="true" stored="false"/>
   <field name="three" type="text" indexed="true" stored="false"/>

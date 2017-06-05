@@ -67,7 +67,8 @@
   <fieldType name="date" class="${solr.tests.DateClassName:solr.DatePointField}" sortMissingLast="true"/>
 
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="true"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="true"/>
   <field name="data" type="binary" stored="true"/>
 
 

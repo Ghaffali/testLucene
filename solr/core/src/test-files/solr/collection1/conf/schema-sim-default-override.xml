@@ -50,7 +50,8 @@
     </analyzer>
   </fieldType>
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="false"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="false"/>
   <field name="sim1text" type="sim-explicit" indexed="true" stored="true"/>
   <field name="sim2text" type="sim-used-as-default-override" indexed="true" stored="true"/>
   <field name="sim3text" type="sim-none-get-default" indexed="true" stored="true"/>

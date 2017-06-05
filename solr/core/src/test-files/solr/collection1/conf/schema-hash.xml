@@ -436,7 +436,8 @@
   -->
 
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="false"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="false"/>
   <field name="signatureField" type="string" indexed="true" stored="false"/>
   <field name="uuid" type="uuid" stored="true"/>
   <field name="name" type="nametext" indexed="true" stored="true"/>

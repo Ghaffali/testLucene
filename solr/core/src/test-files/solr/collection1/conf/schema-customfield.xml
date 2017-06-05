@@ -65,7 +65,8 @@
 
   <fieldType name="customtrieintfield" class="org.apache.solr.schema.TrieIntPrefixActsAsRangeQueryFieldType"/>
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="true"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="true"/>
   <field name="intfield" type="int" indexed="true" stored="true"/>
   <field name="swap_foo_bar_in_prefix_query" type="customfield" indexed="true" stored="true" multiValued="true"/>
   <field name="int_prefix_as_range" type="customtrieintfield" indexed="true" stored="true"/>

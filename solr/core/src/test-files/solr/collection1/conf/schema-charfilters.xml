@@ -38,7 +38,8 @@
     </analyzer>
   </fieldType>
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="true"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="true"/>
   <field name="content" type="text" indexed="true" stored="true"/>
   <field name="content2" type="text2" indexed="true" stored="true"/>
 

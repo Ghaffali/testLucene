@@ -37,7 +37,8 @@
   <fieldType name="sort_da_t" class="solr.CollationField" language="da" strength="primary"/>
   <fieldType name="sort_custom_t" class="solr.CollationField" custom="customrules.dat" strength="primary"/>
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="false"/>
+<fieldType name="nocommit_id_type" class="solr.TrieIntField" indexed="true" stored="true" multiValued="false" />
+  <field name="id" type="nocommit_id_type" indexed="true" stored="true" multiValued="false" required="false"/>
   <field name="text" type="text" indexed="true" stored="false"/>
   <field name="sort_ar" type="sort_ar_t" indexed="false" stored="false" multiValued="false" docValues="true"/>
   <field name="sort_de" type="sort_de_t" indexed="false" stored="false" multiValued="false" docValues="true"/>
