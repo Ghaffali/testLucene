@@ -24,6 +24,12 @@
   <fieldType name="tdouble" class="${solr.tests.DoubleClassName:solr.DoublePointField}" precisionStep="8"/>
   <fieldType name="tdoubleDV" class="${solr.tests.DoubleClassName:solr.DoublePointField}" precisionStep="8" docValues="true"/>
 
+  <!-- two special purpose, non-randomized, TrieDoubleField instances for use by deprecated classes
+       (see SOLR-10729)
+    -->
+  <fieldType name="nocommit_tdouble" class="solr.TrieDoubleField" precisionStep="8"/>
+  <fieldType name="nocommit_tdoubleDV" class="solr.TrieDoubleField" precisionStep="8" docValues="true"/>
+
   <fieldType name="boolean" class="solr.BoolField"/>
 
   <fieldType name="string" class="solr.StrField" sortMissingLast="true"/>
@@ -47,12 +53,12 @@
              geo="false" distCalculator="cartesian^2" worldBounds="ENVELOPE(0, 1000, 1000, 0)" distanceUnits="degrees"/>
 
   <fieldType name="pointvector" class="solr.SpatialPointVectorFieldType"
-             numberType="tdouble" distanceUnits="degrees"/>
+             numberType="nocommit_tdouble" distanceUnits="degrees"/>
 
   <fieldType name="srptgeom" class="solr.RptWithGeometrySpatialField"/>
 
   <fieldType name="bbox" class="solr.BBoxField"
-             numberType="tdoubleDV" distanceUnits="degrees" storeSubFields="false"/>
+             numberType="nocommit_tdoubleDV" distanceUnits="degrees" storeSubFields="false"/>
 
   <fieldType name="llp" class="solr.LatLonPointSpatialField" distanceUnits="degrees" multiValued="true" />
 
