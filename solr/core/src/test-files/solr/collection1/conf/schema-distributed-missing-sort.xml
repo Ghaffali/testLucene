@@ -45,7 +45,7 @@
   <fieldType name="string_ml" class="solr.StrField" sortMissingLast="true"/>
   <fieldType name="string_mf" class="solr.StrField" sortMissingFirst="true"/>
 
-  <field name="id" type="int" indexed="true" stored="true" multiValued="false" required="false"/>
+  <field name="id" type="string_ml" indexed="true" stored="true" multiValued="false" required="false"/>
   <field name="_version_" type="long" indexed="true" stored="true" multiValued="false"/>
   <field name="signatureField" type="string_ml" indexed="true" stored="false"/>
 
