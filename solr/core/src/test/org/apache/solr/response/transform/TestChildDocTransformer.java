@@ -64,23 +64,23 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
   private void testChildDoctransformerXML() {
     String test1[] = new String[] {
         "//*[@numFound='1']",
-        "/response/result/doc[1]/doc[1]/int[@name='id']='2'" ,
-        "/response/result/doc[1]/doc[2]/int[@name='id']='3'" ,
-        "/response/result/doc[1]/doc[3]/int[@name='id']='4'" ,
-        "/response/result/doc[1]/doc[4]/int[@name='id']='5'" ,
-        "/response/result/doc[1]/doc[5]/int[@name='id']='6'" ,
-        "/response/result/doc[1]/doc[6]/int[@name='id']='7'"};
+        "/response/result/doc[1]/doc[1]/str[@name='id']='2'" ,
+        "/response/result/doc[1]/doc[2]/str[@name='id']='3'" ,
+        "/response/result/doc[1]/doc[3]/str[@name='id']='4'" ,
+        "/response/result/doc[1]/doc[4]/str[@name='id']='5'" ,
+        "/response/result/doc[1]/doc[5]/str[@name='id']='6'" ,
+        "/response/result/doc[1]/doc[6]/str[@name='id']='7'"};
 
     String test2[] = new String[] {
         "//*[@numFound='1']",
-        "/response/result/doc[1]/doc[1]/int[@name='id']='2'" ,
-        "/response/result/doc[1]/doc[2]/int[@name='id']='4'" ,
-        "/response/result/doc[1]/doc[3]/int[@name='id']='6'" };
+        "/response/result/doc[1]/doc[1]/str[@name='id']='2'" ,
+        "/response/result/doc[1]/doc[2]/str[@name='id']='4'" ,
+        "/response/result/doc[1]/doc[3]/str[@name='id']='6'" };
 
     String test3[] = new String[] {
         "//*[@numFound='1']",
-        "/response/result/doc[1]/doc[1]/int[@name='id']='3'" ,
-        "/response/result/doc[1]/doc[2]/int[@name='id']='5'" };
+        "/response/result/doc[1]/doc[1]/str[@name='id']='3'" ,
+        "/response/result/doc[1]/doc[2]/str[@name='id']='5'" };
 
 
 
@@ -100,12 +100,12 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
     final String subqueryPath = "/result[@name='children'][@numFound='6']"; 
     test1 = new String[] {
         "//*[@numFound='1']",
-        "/response/result/doc[1]" + subqueryPath + "/doc[1]/int[@name='id']='2'" ,
-        "/response/result/doc[1]" + subqueryPath + "/doc[2]/int[@name='id']='3'" ,
-        "/response/result/doc[1]" + subqueryPath + "/doc[3]/int[@name='id']='4'" ,
-        "/response/result/doc[1]" + subqueryPath + "/doc[4]/int[@name='id']='5'" ,
-        "/response/result/doc[1]" + subqueryPath + "/doc[5]/int[@name='id']='6'" ,
-        "/response/result/doc[1]" + subqueryPath + "/doc[6]/int[@name='id']='7'"};
+        "/response/result/doc[1]" + subqueryPath + "/doc[1]/str[@name='id']='2'" ,
+        "/response/result/doc[1]" + subqueryPath + "/doc[2]/str[@name='id']='3'" ,
+        "/response/result/doc[1]" + subqueryPath + "/doc[3]/str[@name='id']='4'" ,
+        "/response/result/doc[1]" + subqueryPath + "/doc[4]/str[@name='id']='5'" ,
+        "/response/result/doc[1]" + subqueryPath + "/doc[5]/str[@name='id']='6'" ,
+        "/response/result/doc[1]" + subqueryPath + "/doc[6]/str[@name='id']='7'"};
     }
 
     assertQ(req("q", "*:*", "fq", "subject:\"parentDocument\" ",
@@ -116,9 +116,9 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
 
     String test2[] = new String[] {
         "//*[@numFound='1']",
-        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[1]/int[@name='id']='2'" ,
-        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[2]/int[@name='id']='4'" ,
-        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[3]/int[@name='id']='6'" };
+        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[1]/str[@name='id']='2'" ,
+        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[2]/str[@name='id']='4'" ,
+        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[3]/str[@name='id']='6'" };
     
     assertQ(req("q", "*:*", "fq", "subject:\"parentDocument\" ",
         "fl", "*,children:[subquery]",
@@ -130,8 +130,8 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
 
     String test3[] = new String[] {
         "//*[@numFound='1']",
-        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[1]/int[@name='id']='3'" ,
-        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[2]/int[@name='id']='5'" };
+        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[1]/str[@name='id']='3'" ,
+        "/response/result/doc[1]/result[@name='children'][@numFound='3']/doc[2]/str[@name='id']='5'" };
 
     
     assertQ(req("q", "*:*", "fq", "subject:\"parentDocument\" ",
@@ -346,12 +346,12 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
 
     String tests[] = new String[] {
         "//*[@numFound='2']",
-        "/response/result/doc[1]/int[@name='id']='1'" ,
-        "/response/result/doc[1]/doc[1]/int[@name='id']='2'" ,
+        "/response/result/doc[1]/str[@name='id']='1'" ,
+        "/response/result/doc[1]/doc[1]/str[@name='id']='2'" ,
         "/response/result/doc[1]/doc[1]/arr[@name='cat']/str[1]='childDocument'" ,
         "/response/result/doc[1]/doc[1]/arr[@name='title']/str[1]='" + titleVals[0] + "'" ,
-        "/response/result/doc[2]/int[@name='id']='4'" ,
-        "/response/result/doc[2]/doc[1]/int[@name='id']='5'",
+        "/response/result/doc[2]/str[@name='id']='4'" ,
+        "/response/result/doc[2]/doc[1]/str[@name='id']='5'",
         "/response/result/doc[2]/doc[1]/arr[@name='cat']/str[1]='childDocument'",
         "/response/result/doc[2]/doc[1]/arr[@name='title']/str[1]='" + titleVals[1] + "'"};
 
@@ -372,12 +372,12 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
 
     String tests[] = new String[] {
         "//*[@numFound='2']",
-        "/response/result/doc[1]/int[@name='id']='1'" ,
-        "/response/result/doc[1]/result[@name='children'][@numFound=1]/doc[1]/int[@name='id']='2'" ,
+        "/response/result/doc[1]/str[@name='id']='1'" ,
+        "/response/result/doc[1]/result[@name='children'][@numFound=1]/doc[1]/str[@name='id']='2'" ,
         "/response/result/doc[1]/result[@name='children'][@numFound=1]/doc[1]/arr[@name='cat']/str[1]='childDocument'" ,
         "/response/result/doc[1]/result[@name='children'][@numFound=1]/doc[1]/arr[@name='title']/str[1]='" + titleVals[0] + "'" ,
-        "/response/result/doc[2]/int[@name='id']='4'" ,
-        "/response/result/doc[2]/result[@name='children'][@numFound=1]/doc[1]/int[@name='id']='5'",
+        "/response/result/doc[2]/str[@name='id']='4'" ,
+        "/response/result/doc[2]/result[@name='children'][@numFound=1]/doc[1]/str[@name='id']='5'",
         "/response/result/doc[2]/result[@name='children'][@numFound=1]/doc[1]/arr[@name='cat']/str[1]='childDocument'",
         "/response/result/doc[2]/result[@name='children'][@numFound=1]/doc[1]/arr[@name='title']/str[1]='" + titleVals[1] + "'"};
 
