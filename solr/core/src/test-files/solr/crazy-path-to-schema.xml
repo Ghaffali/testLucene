@@ -23,7 +23,7 @@
 
 <schema name="test" version="1.0">
   <types>
-    <fieldType name="string" class="solr.StrField" precisionStep="0"/>
+    <fieldType name="string" class="solr.StrField" />
     <fieldType name="text" class="solr.TextField">
       <analyzer>
         <tokenizer class="solr.StandardTokenizerFactory"/>
