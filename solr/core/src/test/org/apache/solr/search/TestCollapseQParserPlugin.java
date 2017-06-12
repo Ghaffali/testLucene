@@ -73,8 +73,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "test_i asc, test_l desc, id desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='7.0']"
-            ,"//result/doc[2]/str[@name='id'][.='3.0']"
+            ,"//result/doc[1]/str[@name='id'][.='7']"
+            ,"//result/doc[2]/str[@name='id'][.='3']"
             );
     
     // group heads are selected using a complex sort, simpler sort used for final groups
@@ -84,8 +84,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='3.0']"
-            ,"//result/doc[2]/str[@name='id'][.='7.0']"
+            ,"//result/doc[1]/str[@name='id'][.='3']"
+            ,"//result/doc[2]/str[@name='id'][.='7']"
             );
 
     // diff up the sort directions, only first clause matters with our data
@@ -95,8 +95,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='8.0']"
-            ,"//result/doc[2]/str[@name='id'][.='4.0']"
+            ,"//result/doc[1]/str[@name='id'][.='8']"
+            ,"//result/doc[2]/str[@name='id'][.='4']"
             );
     
     // tie broken by index order
@@ -106,8 +106,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='6.0']"
-            ,"//result/doc[2]/str[@name='id'][.='2.0']"
+            ,"//result/doc[1]/str[@name='id'][.='6']"
+            ,"//result/doc[2]/str[@name='id'][.='2']"
             );
 
     // score, then tiebreakers; note top level sort by score ASCENDING (just for weirdness)
@@ -117,8 +117,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "score asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='2.0']"
-            ,"//result/doc[2]/str[@name='id'][.='5.0']"
+            ,"//result/doc[1]/str[@name='id'][.='2']"
+            ,"//result/doc[2]/str[@name='id'][.='5']"
             );
 
     // score, then tiebreakers; note no score in top level sort/fl to check needsScores logic
@@ -128,8 +128,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='5.0']"
-            ,"//result/doc[2]/str[@name='id'][.='2.0']"
+            ,"//result/doc[1]/str[@name='id'][.='5']"
+            ,"//result/doc[2]/str[@name='id'][.='2']"
             );
     
     // term_s desc -- term_s is missing from many docs, and uses sortMissingLast=true
@@ -139,8 +139,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='1.0']"
-            ,"//result/doc[2]/str[@name='id'][.='5.0']"
+            ,"//result/doc[1]/str[@name='id'][.='1']"
+            ,"//result/doc[2]/str[@name='id'][.='5']"
             );
 
     // term_s asc -- term_s is missing from many docs, and uses sortMissingLast=true
@@ -150,8 +150,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='1.0']"
-            ,"//result/doc[2]/str[@name='id'][.='7.0']"
+            ,"//result/doc[1]/str[@name='id'][.='1']"
+            ,"//result/doc[2]/str[@name='id'][.='7']"
             );
 
     // collapse on int field
@@ -161,8 +161,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
-            ,"//result/doc[1]/str[@name='id'][.='4.0']"
-            ,"//result/doc[2]/str[@name='id'][.='7.0']"
+            ,"//result/doc[1]/str[@name='id'][.='4']"
+            ,"//result/doc[2]/str[@name='id'][.='7']"
             );
     
     // collapse on term_s (very sparse) with nullPolicy=collapse
@@ -172,9 +172,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "test_l asc, id asc");
     assertQ(req(params)
             , "*[count(//doc)=3]"
-            ,"//result/doc[1]/str[@name='id'][.='5.0']"
-            ,"//result/doc[2]/str[@name='id'][.='2.0']"
-            ,"//result/doc[3]/str[@name='id'][.='7.0']"
+            ,"//result/doc[1]/str[@name='id'][.='5']"
+            ,"//result/doc[2]/str[@name='id'][.='2']"
+            ,"//result/doc[3]/str[@name='id'][.='7']"
             );
     
     // sort local param + elevation
@@ -187,8 +187,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("elevateIds", "4.0");
     assertQ(req(params),
             "*[count(//doc)=2]",
-            "//result/doc[1]/str[@name='id'][.='4.0']",
-            "//result/doc[2]/str[@name='id'][.='5.0']");
+            "//result/doc[1]/str[@name='id'][.='4']",
+            "//result/doc[2]/str[@name='id'][.='5']");
     //
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
@@ -199,8 +199,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("elevateIds", "7.0");
     assertQ(req(params),
             "*[count(//doc)=2]",
-            "//result/doc[1]/str[@name='id'][.='7.0']",
-            "//result/doc[2]/str[@name='id'][.='1.0']");
+            "//result/doc[1]/str[@name='id'][.='7']",
+            "//result/doc[2]/str[@name='id'][.='1']");
 
   }
 
@@ -250,13 +250,13 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("q", "*:*");
     params.add("fq", "{!collapse field=group_i min=test_f}");
     assertQ(req(params), "*[count(//doc)=1]",
-        "//result/doc[1]/str[@name='id'][.='6.0']");
+        "//result/doc[1]/str[@name='id'][.='6']");
 
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field=group_i max=test_f}");
     assertQ(req(params), "*[count(//doc)=1]",
-        "//result/doc[1]/str[@name='id'][.='2.0']");
+        "//result/doc[1]/str[@name='id'][.='2']");
 
   }
 
@@ -378,8 +378,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("defType", "edismax");
     params.add("bf", "field(test_i)");
     assertQ(req(params, "indent", "on"), "*[count(//doc)=2]",
-                       "//result/doc[1]/str[@name='id'][.='2.0']",
-                       "//result/doc[2]/str[@name='id'][.='6.0']"
+                       "//result/doc[1]/str[@name='id'][.='2']",
+                       "//result/doc[2]/str[@name='id'][.='6']"
         );
 
 
@@ -391,10 +391,10 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("bf", "field(test_i)");
     params.add("sort","");
     assertQ(req(params), "*[count(//doc)=4]",
-        "//result/doc[1]/str[@name='id'][.='3.0']",
-        "//result/doc[2]/str[@name='id'][.='4.0']",
-        "//result/doc[3]/str[@name='id'][.='2.0']",
-        "//result/doc[4]/str[@name='id'][.='6.0']"
+        "//result/doc[1]/str[@name='id'][.='3']",
+        "//result/doc[2]/str[@name='id'][.='4']",
+        "//result/doc[3]/str[@name='id'][.='2']",
+        "//result/doc[4]/str[@name='id'][.='6']"
     );
 
     // Test value source collapse criteria
@@ -403,9 +403,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("fq", "{!collapse field="+group+" nullPolicy=collapse min=field(test_i)"+hint+"}");
     params.add("sort", "test_i desc");
     assertQ(req(params), "*[count(//doc)=3]",
-        "//result/doc[1]/str[@name='id'][.='4.0']",
-        "//result/doc[2]/str[@name='id'][.='1.0']",
-        "//result/doc[3]/str[@name='id'][.='5.0']"
+        "//result/doc[1]/str[@name='id'][.='4']",
+        "//result/doc[2]/str[@name='id'][.='1']",
+        "//result/doc[3]/str[@name='id'][.='5']"
     );
 
     // Test value source collapse criteria with cscore function
@@ -415,9 +415,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("defType", "edismax");
     params.add("bf", "field(test_i)");
     assertQ(req(params), "*[count(//doc)=3]",
-        "//result/doc[1]/str[@name='id'][.='4.0']",
-        "//result/doc[2]/str[@name='id'][.='1.0']",
-        "//result/doc[3]/str[@name='id'][.='5.0']"
+        "//result/doc[1]/str[@name='id'][.='4']",
+        "//result/doc[2]/str[@name='id'][.='1']",
+        "//result/doc[3]/str[@name='id'][.='5']"
     );
     
     // Test value source collapse criteria with cscore function but no top level score sort
@@ -429,9 +429,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("fl", "id");
     params.add("sort", "id desc");
     assertQ(req(params), "*[count(//doc)=3]",
-        "//result/doc[1]/str[@name='id'][.='5.0']",
-        "//result/doc[2]/str[@name='id'][.='4.0']",
-        "//result/doc[3]/str[@name='id'][.='1.0']"
+        "//result/doc[1]/str[@name='id'][.='5']",
+        "//result/doc[2]/str[@name='id'][.='4']",
+        "//result/doc[3]/str[@name='id'][.='1']"
     );
 
     // Test value source collapse criteria with compound cscore function
@@ -441,9 +441,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("defType", "edismax");
     params.add("bf", "field(test_i)");
     assertQ(req(params), "*[count(//doc)=3]",
-        "//result/doc[1]/str[@name='id'][.='4.0']",
-        "//result/doc[2]/str[@name='id'][.='1.0']",
-        "//result/doc[3]/str[@name='id'][.='5.0']"
+        "//result/doc[1]/str[@name='id'][.='4']",
+        "//result/doc[2]/str[@name='id'][.='1']",
+        "//result/doc[3]/str[@name='id'][.='5']"
     );
 
     //Test collapse by score with elevation
@@ -456,10 +456,10 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("qf", "term_s");
     params.add("qt", "/elevate");
     assertQ(req(params), "*[count(//doc)=4]",
-                         "//result/doc[1]/str[@name='id'][.='1.0']",
-                         "//result/doc[2]/str[@name='id'][.='2.0']",
-                         "//result/doc[3]/str[@name='id'][.='3.0']",
-                         "//result/doc[4]/str[@name='id'][.='6.0']");
+                         "//result/doc[1]/str[@name='id'][.='1']",
+                         "//result/doc[2]/str[@name='id'][.='2']",
+                         "//result/doc[3]/str[@name='id'][.='3']",
+                         "//result/doc[4]/str[@name='id'][.='6']");
 
     //Test SOLR-5773 with score collapse criteria
     // try both default & sort localparams as alternate ways to ask for max score
@@ -473,9 +473,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("qt", "/elevate");
       params.add("elevateIds", "1,5");
       assertQ(req(params), "*[count(//doc)=3]",
-              "//result/doc[1]/str[@name='id'][.='1.0']",
-              "//result/doc[2]/str[@name='id'][.='5.0']",
-              "//result/doc[3]/str[@name='id'][.='3.0']");
+              "//result/doc[1]/str[@name='id'][.='1']",
+              "//result/doc[2]/str[@name='id'][.='5']",
+              "//result/doc[3]/str[@name='id'][.='3']");
     }
     
     //Test SOLR-5773 with max field collapse criteria
@@ -490,9 +490,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("qt", "/elevate");
       params.add("elevateIds", "1,5");
       assertQ(req(params), "*[count(//doc)=3]",
-              "//result/doc[1]/str[@name='id'][.='1.0']",
-              "//result/doc[2]/str[@name='id'][.='5.0']",
-              "//result/doc[3]/str[@name='id'][.='3.0']");
+              "//result/doc[1]/str[@name='id'][.='1']",
+              "//result/doc[2]/str[@name='id'][.='5']",
+              "//result/doc[3]/str[@name='id'][.='3']");
     }
     
     //Test SOLR-5773 with min field collapse criteria
@@ -507,9 +507,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("qt", "/elevate");
       params.add("elevateIds", "1,5");
       assertQ(req(params), "*[count(//doc)=3]",
-              "//result/doc[1]/str[@name='id'][.='1.0']",
-              "//result/doc[2]/str[@name='id'][.='5.0']",
-              "//result/doc[3]/str[@name='id'][.='4.0']");
+              "//result/doc[1]/str[@name='id'][.='1']",
+              "//result/doc[2]/str[@name='id'][.='5']",
+              "//result/doc[3]/str[@name='id'][.='4']");
     }
     
     //Test SOLR-5773 elevating documents with null group
@@ -522,10 +522,10 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("qt", "/elevate");
     params.add("elevateIds", "3,4");
     assertQ(req(params), "*[count(//doc)=4]",
-        "//result/doc[1]/str[@name='id'][.='3.0']",
-        "//result/doc[2]/str[@name='id'][.='4.0']",
-        "//result/doc[3]/str[@name='id'][.='2.0']",
-        "//result/doc[4]/str[@name='id'][.='6.0']");
+        "//result/doc[1]/str[@name='id'][.='3']",
+        "//result/doc[2]/str[@name='id'][.='4']",
+        "//result/doc[3]/str[@name='id'][.='2']",
+        "//result/doc[4]/str[@name='id'][.='6']");
 
 
     // Non trivial sort local param for picking group head
@@ -535,9 +535,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id desc");
     assertQ(req(params),
             "*[count(//doc)=3]",
-            "//result/doc[1]/str[@name='id'][.='5.0']",
-            "//result/doc[2]/str[@name='id'][.='4.0']",
-            "//result/doc[3]/str[@name='id'][.='1.0']"
+            "//result/doc[1]/str[@name='id'][.='5']",
+            "//result/doc[2]/str[@name='id'][.='4']",
+            "//result/doc[3]/str[@name='id'][.='1']"
     );
     // 
     params = new ModifiableSolrParams();
@@ -546,9 +546,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "id desc");
     assertQ(req(params),
             "*[count(//doc)=3]",
-            "//result/doc[1]/str[@name='id'][.='6.0']",
-            "//result/doc[2]/str[@name='id'][.='3.0']",
-            "//result/doc[3]/str[@name='id'][.='2.0']"
+            "//result/doc[1]/str[@name='id'][.='6']",
+            "//result/doc[2]/str[@name='id'][.='3']",
+            "//result/doc[3]/str[@name='id'][.='2']"
     );
     
 
@@ -562,8 +562,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("sort", "id desc");
       assertQ(req(params),
               "*[count(//doc)=2]",
-              "//result/doc[1]/str[@name='id'][.='5.0']",
-              "//result/doc[2]/str[@name='id'][.='1.0']");
+              "//result/doc[1]/str[@name='id'][.='5']",
+              "//result/doc[2]/str[@name='id'][.='1']");
 
       params = new ModifiableSolrParams();
       params.add("q", "*:*");
@@ -571,8 +571,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("sort", "id asc");
       assertQ(req(params),
               "*[count(//doc)=2]",
-              "//result/doc[1]/str[@name='id'][.='1.0']",
-              "//result/doc[2]/str[@name='id'][.='5.0']");
+              "//result/doc[1]/str[@name='id'][.='1']",
+              "//result/doc[2]/str[@name='id'][.='5']");
       
       params = new ModifiableSolrParams();
       params.add("q", "*:*");
@@ -580,8 +580,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("sort", "test_l asc,id desc");
       assertQ(req(params),
               "*[count(//doc)=2]",
-              "//result/doc[1]/str[@name='id'][.='5.0']",
-              "//result/doc[2]/str[@name='id'][.='1.0']");
+              "//result/doc[1]/str[@name='id'][.='5']",
+              "//result/doc[2]/str[@name='id'][.='1']");
 
       params = new ModifiableSolrParams();
       params.add("q", "*:*");
@@ -591,8 +591,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("bf", "field(id)");
       assertQ(req(params),
               "*[count(//doc)=2]",
-              "//result/doc[1]/str[@name='id'][.='5.0']",
-              "//result/doc[2]/str[@name='id'][.='1.0']");
+              "//result/doc[1]/str[@name='id'][.='5']",
+              "//result/doc[2]/str[@name='id'][.='1']");
     }
 
 
@@ -602,8 +602,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("fq", "{!collapse field="+group+" max=test_i"+hint+"}");
     params.add("sort", "test_i asc");
     assertQ(req(params), "*[count(//doc)=2]",
-                         "//result/doc[1]/str[@name='id'][.='6.0']",
-                         "//result/doc[2]/str[@name='id'][.='2.0']"
+                         "//result/doc[1]/str[@name='id'][.='6']",
+                         "//result/doc[2]/str[@name='id'][.='2']"
         );
 
     try {
@@ -613,8 +613,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("fq", "{!collapse field="+group+" min=test_l"+hint+"}");
       params.add("sort", "test_i desc");
       assertQ(req(params), "*[count(//doc)=2]",
-          "//result/doc[1]/str[@name='id'][.='1.0']",
-          "//result/doc[2]/str[@name='id'][.='5.0']");
+          "//result/doc[1]/str[@name='id'][.='1']",
+          "//result/doc[2]/str[@name='id'][.='5']");
 
 
       //Test collapse by max long field
@@ -623,8 +623,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params.add("fq", "{!collapse field="+group+" max=test_l"+hint+"}");
       params.add("sort", "test_i desc");
       assertQ(req(params), "*[count(//doc)=2]",
-                           "//result/doc[1]/str[@name='id'][.='2.0']",
-                           "//result/doc[2]/str[@name='id'][.='6.0']");
+                           "//result/doc[1]/str[@name='id'][.='2']",
+                           "//result/doc[2]/str[@name='id'][.='6']");
     } catch (Exception e) {
       if(!numeric) {
         throw e;
@@ -638,8 +638,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("fq", "{!collapse field="+group+" min=test_f"+hint+"}");
     params.add("sort", "test_i desc");
     assertQ(req(params), "*[count(//doc)=2]",
-                         "//result/doc[1]/str[@name='id'][.='2.0']",
-                         "//result/doc[2]/str[@name='id'][.='6.0']");
+                         "//result/doc[1]/str[@name='id'][.='2']",
+                         "//result/doc[2]/str[@name='id'][.='6']");
 
     //Test collapse by min float field
     params = new ModifiableSolrParams();
@@ -647,8 +647,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("fq", "{!collapse field="+group+" max=test_f"+hint+"}");
     params.add("sort", "test_i asc");
     assertQ(req(params), "*[count(//doc)=2]",
-                         "//result/doc[1]/str[@name='id'][.='5.0']",
-                         "//result/doc[2]/str[@name='id'][.='1.0']");
+                         "//result/doc[1]/str[@name='id'][.='5']",
+                         "//result/doc[2]/str[@name='id'][.='1']");
 
     //Test collapse by min float field sort by score
     params = new ModifiableSolrParams();
@@ -662,8 +662,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("facet.field", "{!ex=test}term_s");
 
     assertQ(req(params), "*[count(//doc)=2]",
-        "//result/doc[1]/str[@name='id'][.='5.0']",
-        "//result/doc[2]/str[@name='id'][.='1.0']");
+        "//result/doc[1]/str[@name='id'][.='5']",
+        "//result/doc[2]/str[@name='id'][.='1']");
     
     // Test collapse using selector field in no docs
     // tie selector in all of these cases
@@ -718,9 +718,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       
       assertQ(req(collapse, "q", "*:*", "sort", "test_i desc"),
               "*[count(//doc)=3]",
-              "//result/doc[1]/str[@name='id'][.='4.0']",
-              "//result/doc[2]/str[@name='id'][.='1.0']",
-              "//result/doc[3]/str[@name='id'][.='5.0']");
+              "//result/doc[1]/str[@name='id'][.='4']",
+              "//result/doc[2]/str[@name='id'][.='1']",
+              "//result/doc[3]/str[@name='id'][.='5']");
     }
     
 
@@ -730,10 +730,10 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("fq", "{!collapse field="+group+" max=test_f nullPolicy=expand"+hint+"}");
     params.add("sort", "id desc");
     assertQ(req(params), "*[count(//doc)=4]",
-        "//result/doc[1]/str[@name='id'][.='5.0']",
-        "//result/doc[2]/str[@name='id'][.='4.0']",
-        "//result/doc[3]/str[@name='id'][.='3.0']",
-        "//result/doc[4]/str[@name='id'][.='1.0']");
+        "//result/doc[1]/str[@name='id'][.='5']",
+        "//result/doc[2]/str[@name='id'][.='4']",
+        "//result/doc[3]/str[@name='id'][.='3']",
+        "//result/doc[4]/str[@name='id'][.='1']");
 
     //Test nullPolicy collapse
     params = new ModifiableSolrParams();
@@ -741,9 +741,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("fq", "{!collapse field="+group+" max=test_f nullPolicy=collapse"+hint+"}");
     params.add("sort", "id desc");
     assertQ(req(params), "*[count(//doc)=3]",
-        "//result/doc[1]/str[@name='id'][.='5.0']",
-        "//result/doc[2]/str[@name='id'][.='4.0']",
-        "//result/doc[3]/str[@name='id'][.='1.0']");
+        "//result/doc[1]/str[@name='id'][.='5']",
+        "//result/doc[2]/str[@name='id'][.='4']",
+        "//result/doc[3]/str[@name='id'][.='1']");
 
 
     params = new ModifiableSolrParams();
@@ -778,9 +778,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("qf", "term_s");
     params.add("qt", "/elevate");
     assertQ(req(params), "*[count(//doc)=3]",
-                         "//result/doc[1]/str[@name='id'][.='3.0']",
-                         "//result/doc[2]/str[@name='id'][.='6.0']",
-                         "//result/doc[3]/str[@name='id'][.='7.0']");
+                         "//result/doc[1]/str[@name='id'][.='3']",
+                         "//result/doc[2]/str[@name='id'][.='6']",
+                         "//result/doc[3]/str[@name='id'][.='7']");
 
 
   }
@@ -861,14 +861,14 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
         params.add("fq", "{!collapse field="+group+" nullPolicy=expand "+selector+"}");
         assertQ(req(params)
                 , "*[count(//doc)=8]"
-                ,"//result/doc[1]/str[@name='id'][.='8.0']"
-                ,"//result/doc[2]/str[@name='id'][.='7.0']"
-                ,"//result/doc[3]/str[@name='id'][.='6.0']"
-                ,"//result/doc[4]/str[@name='id'][.='5.0']"
-                ,"//result/doc[5]/str[@name='id'][.='4.0']"
-                ,"//result/doc[6]/str[@name='id'][.='3.0']"
-                ,"//result/doc[7]/str[@name='id'][.='2.0']"
-                ,"//result/doc[8]/str[@name='id'][.='1.0']"
+                ,"//result/doc[1]/str[@name='id'][.='8']"
+                ,"//result/doc[2]/str[@name='id'][.='7']"
+                ,"//result/doc[3]/str[@name='id'][.='6']"
+                ,"//result/doc[4]/str[@name='id'][.='5']"
+                ,"//result/doc[5]/str[@name='id'][.='4']"
+                ,"//result/doc[6]/str[@name='id'][.='3']"
+                ,"//result/doc[7]/str[@name='id'][.='2']"
+                ,"//result/doc[8]/str[@name='id'][.='1']"
                 );
 
         

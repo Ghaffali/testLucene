@@ -145,23 +145,23 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
   
   private void testSubQueryJSON() throws Exception {
     String[] test1 = new String[] {
-        "/response/docs/[0]/children/docs/[0]/id==2",
-        "/response/docs/[0]/children/docs/[1]/id==3",
-        "/response/docs/[0]/children/docs/[2]/id==4",
-        "/response/docs/[0]/children/docs/[3]/id==5",
-        "/response/docs/[0]/children/docs/[4]/id==6",
-        "/response/docs/[0]/children/docs/[5]/id==7"
+        "/response/docs/[0]/children/docs/[0]/id=='2'",
+        "/response/docs/[0]/children/docs/[1]/id=='3'",
+        "/response/docs/[0]/children/docs/[2]/id=='4'",
+        "/response/docs/[0]/children/docs/[3]/id=='5'",
+        "/response/docs/[0]/children/docs/[4]/id=='6'",
+        "/response/docs/[0]/children/docs/[5]/id=='7'"
     };
 
     String[] test2 = new String[] {
-        "/response/docs/[0]/children/docs/[0]/id==2",
-        "/response/docs/[0]/children/docs/[1]/id==4",
-        "/response/docs/[0]/children/docs/[2]/id==6"
+        "/response/docs/[0]/children/docs/[0]/id=='2'",
+        "/response/docs/[0]/children/docs/[1]/id=='4'",
+        "/response/docs/[0]/children/docs/[2]/id=='6'"
     };
 
     String[] test3 = new String[] {
-        "/response/docs/[0]/children/docs/[0]/id==3",
-        "/response/docs/[0]/children/docs/[1]/id==5"
+        "/response/docs/[0]/children/docs/[0]/id=='3'",
+        "/response/docs/[0]/children/docs/[1]/id=='5'"
     };
 
 
@@ -186,23 +186,23 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
 
   private void testChildDoctransformerJSON() throws Exception {
     String[] test1 = new String[] {
-        "/response/docs/[0]/_childDocuments_/[0]/id==2",
-        "/response/docs/[0]/_childDocuments_/[1]/id==3",
-        "/response/docs/[0]/_childDocuments_/[2]/id==4",
-        "/response/docs/[0]/_childDocuments_/[3]/id==5",
-        "/response/docs/[0]/_childDocuments_/[4]/id==6",
-        "/response/docs/[0]/_childDocuments_/[5]/id==7"
+        "/response/docs/[0]/_childDocuments_/[0]/id=='2'",
+        "/response/docs/[0]/_childDocuments_/[1]/id=='3'",
+        "/response/docs/[0]/_childDocuments_/[2]/id=='4'",
+        "/response/docs/[0]/_childDocuments_/[3]/id=='5'",
+        "/response/docs/[0]/_childDocuments_/[4]/id=='6'",
+        "/response/docs/[0]/_childDocuments_/[5]/id=='7'"
     };
 
     String[] test2 = new String[] {
-        "/response/docs/[0]/_childDocuments_/[0]/id==2",
-        "/response/docs/[0]/_childDocuments_/[1]/id==4",
-        "/response/docs/[0]/_childDocuments_/[2]/id==6"
+        "/response/docs/[0]/_childDocuments_/[0]/id=='2'",
+        "/response/docs/[0]/_childDocuments_/[1]/id=='4'",
+        "/response/docs/[0]/_childDocuments_/[2]/id=='6'"
     };
 
     String[] test3 = new String[] {
-        "/response/docs/[0]/_childDocuments_/[0]/id==3",
-        "/response/docs/[0]/_childDocuments_/[1]/id==5"
+        "/response/docs/[0]/_childDocuments_/[0]/id=='3'",
+        "/response/docs/[0]/_childDocuments_/[1]/id=='5'"
     };
 
 
@@ -285,12 +285,12 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
   private void testParentFilterJSON() throws Exception {
 
     String[] tests = new String[] {
-        "/response/docs/[0]/id==1",
-        "/response/docs/[0]/_childDocuments_/[0]/id==2",
+        "/response/docs/[0]/id=='1'",
+        "/response/docs/[0]/_childDocuments_/[0]/id=='2'",
         "/response/docs/[0]/_childDocuments_/[0]/cat/[0]/=='childDocument'",
         "/response/docs/[0]/_childDocuments_/[0]/title/[0]/=='" + titleVals[0] + "'",
-        "/response/docs/[1]/id==4",
-        "/response/docs/[1]/_childDocuments_/[0]/id==5",
+        "/response/docs/[1]/id=='4'",
+        "/response/docs/[1]/_childDocuments_/[0]/id=='5'",
         "/response/docs/[1]/_childDocuments_/[0]/cat/[0]/=='childDocument'",
         "/response/docs/[1]/_childDocuments_/[0]/title/[0]/=='" + titleVals[1] + "'"
     };
@@ -313,12 +313,12 @@ public class TestChildDocTransformer extends SolrTestCaseJ4 {
   private void testSubQueryParentFilterJSON() throws Exception {
 
     String[] tests = new String[] {
-        "/response/docs/[0]/id==1",
-        "/response/docs/[0]/children/docs/[0]/id==2",
+        "/response/docs/[0]/id=='1'",
+        "/response/docs/[0]/children/docs/[0]/id=='2'",
         "/response/docs/[0]/children/docs/[0]/cat/[0]/=='childDocument'",
         "/response/docs/[0]/children/docs/[0]/title/[0]/=='" + titleVals[0] + "'",
-        "/response/docs/[1]/id==4",
-        "/response/docs/[1]/children/docs/[0]/id==5",
+        "/response/docs/[1]/id=='4'",
+        "/response/docs/[1]/children/docs/[0]/id=='5'",
         "/response/docs/[1]/children/docs/[0]/cat/[0]/=='childDocument'",
         "/response/docs/[1]/children/docs/[0]/title/[0]/=='" + titleVals[1] + "'"
     };
