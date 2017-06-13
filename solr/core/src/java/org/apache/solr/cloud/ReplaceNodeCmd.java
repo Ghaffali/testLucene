@@ -63,6 +63,7 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
     String source = message.getStr("source");
     String target = message.getStr("target");
     String async = message.getStr("async");
+    int timeout = message.getInt("timeout", 10 * 60); // 10 minutes
     boolean parallel = message.getBool("parallel", false);
     ClusterState clusterState = zkStateReader.getClusterState();
 
@@ -73,14 +74,16 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Target Node: " + target + " is not live");
     }
     List<ZkNodeProps> sourceReplicas = getReplicasOfNode(source, clusterState);
-    // how many leaders are we moving?
+    // how many leaders are we moving? for these replicas we have to make sure that either:
+    // * another existing replica can become a leader, or
+    // * we wait until the newly created replica completes recovery (and can become the new leader)
     int numLeaders = 0;
     for (ZkNodeProps props : sourceReplicas) {
       if (props.getBool(ZkStateReader.LEADER_PROP, false)) {
         numLeaders++;
       }
     }
-    // map of shardId_replicaId to watchers
+    // map of collectionName_coreNodeName to watchers
     Map<String, RecoveryWatcher> watchers = new HashMap<>();
     List<ZkNodeProps> createdReplicas = new ArrayList<>();
 
@@ -91,13 +94,14 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
 
     for (ZkNodeProps sourceReplica : sourceReplicas) {
       if (sourceReplica.getBool(ZkStateReader.LEADER_PROP, false)) {
-        String shardId = sourceReplica.getStr(SHARD_ID_PROP);
-        String replicaId = sourceReplica.getStr(ZkStateReader.REPLICA_PROP);
-        String collectionId = sourceReplica.getStr(COLLECTION_PROP);
-        String key = shardId + "_" + replicaId;
-        RecoveryWatcher watcher = new RecoveryWatcher(collectionId, shardId, replicaId, replicasToRecover);
+        String shardName = sourceReplica.getStr(SHARD_ID_PROP);
+        String coreNodeName = sourceReplica.getStr(ZkStateReader.CORE_NODE_NAME_PROP);
+        String replicaName = sourceReplica.getStr(ZkStateReader.REPLICA_PROP);
+        String collectionName = sourceReplica.getStr(COLLECTION_PROP);
+        String key = collectionName + "_" + coreNodeName;
+        RecoveryWatcher watcher = new RecoveryWatcher(collectionName, shardName, replicaName, replicasToRecover);
         watchers.put(key, watcher);
-        zkStateReader.registerCollectionStateWatcher(collectionId, watcher);
+        zkStateReader.registerCollectionStateWatcher(collectionName, watcher);
       }
       NamedList nl = new NamedList();
       log.info("Going to create replica for collection={} shard={} on node={}", sourceReplica.getStr(COLLECTION_PROP), sourceReplica.getStr(SHARD_ID_PROP), target);
@@ -129,7 +133,7 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
     }
 
     log.debug("Waiting for replicas to be added");
-    if (!countDownLatch.await(5, TimeUnit.MINUTES)) {
+    if (!countDownLatch.await(timeout, TimeUnit.SECONDS)) {
       log.info("Timed out waiting for replicas to be added");
       anyOneFailed.set(true);
     } else {
@@ -138,7 +142,7 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
 
     // now wait for leader replicas to recover
     log.debug("Waiting for " + numLeaders + " leader replicas to recover");
-    if (!replicasToRecover.await(5, TimeUnit.MINUTES)) {
+    if (!replicasToRecover.await(timeout, TimeUnit.SECONDS)) {
       log.info("Timed out waiting for " + replicasToRecover.getCount() + " leader replicas to recover");
       anyOneFailed.set(true);
     } else {
@@ -172,6 +176,7 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
         }
       }
       cleanupLatch.await(5, TimeUnit.MINUTES);
+      return;
     }
 
 
@@ -191,6 +196,7 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
                 COLLECTION_PROP, e.getKey(),
                 SHARD_ID_PROP, slice.getName(),
                 ZkStateReader.CORE_NAME_PROP, replica.getCoreName(),
+                ZkStateReader.CORE_NODE_NAME_PROP, replica.getStr(ZkStateReader.CORE_NODE_NAME_PROP),
                 ZkStateReader.REPLICA_PROP, replica.getName(),
                 ZkStateReader.REPLICA_TYPE, replica.getType().name(),
                 ZkStateReader.LEADER_PROP, String.valueOf(replica.equals(slice.getLeader())),
@@ -229,9 +235,15 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
         return true;
       }
       for (Replica replica : slice.getReplicas()) {
-        if (!replica.getName().equals(replicaId)) { // another replica exists - check that it's active
+        // check if another replica exists - doesn't have to be the one we're moving
+        // as long as it's active and can become a leader, in which case we don't have to wait
+        // for recovery of specifically the one that we've just added
+        if (!replica.getName().equals(replicaId)) {
+          if (replica.getType().equals(Replica.Type.PULL)) { // not eligible for leader election
+            continue;
+          }
           // check its state
-          if (replica.getState().equals(Replica.State.ACTIVE)) { // recovered - stop waiting
+          if (replica.isActive(liveNodes)) { // recovered - stop waiting
             countDownLatch.countDown();
             return true;
           }
