@@ -45,7 +45,7 @@ public class TestQueryTypes extends AbstractSolrTestCase {
     assertU(adoc("id","10","text_no_analyzer","should just work"));
 
     Object[] arr = new Object[] {
-    "id",999.0
+    "id",999
     ,"v_s","wow dude"
     ,"v_t","wow"
     ,"v_ti",-1
@@ -116,7 +116,7 @@ public class TestQueryTypes extends AbstractSolrTestCase {
 
     // frange and function query only work on single valued field types
     Object[] fc_vals = new Object[] {
-      "id",999.0
+      "id_i",999
       ,"v_s","wow dude"
       ,"v_ti",-1
       ,"v_tl",-1234567891234567890L
@@ -154,7 +154,7 @@ public class TestQueryTypes extends AbstractSolrTestCase {
               ,"//result[@numFound='1']"
               );
 
-      if (!"id".equals(f)) {
+      if (!"id_i".equals(f)) {
         assertQ(req( "fq","id:1", "q", "{!frange l=1 u=1}if(exists("+f+"),1,0)" )
             ,"//result[@numFound='0']"
         );
