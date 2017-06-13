@@ -792,6 +792,7 @@
   <copyField source="*_t" dest="text"/>
 
   <copyField source="id" dest="range_facet_l"/>
+  <copyField source="id" dest="id_i1"/>
   <copyField source="range_facet_f" dest="range_facet_d"/>
   <copyField source="range_facet_f1" dest="range_facet_f1_dv"/>
 

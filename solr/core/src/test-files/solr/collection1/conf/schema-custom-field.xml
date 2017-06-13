@@ -34,6 +34,10 @@
          stored="true" multiValued="false" docValues="true" required="true"/>
   <dynamicField name="*_sS" type="string" indexed="false" stored="true"/>
 
+  <!-- int varient of id, adding this here simplifies some indexing to do numeric sorting -->
+  <field name="id_i" type="int" indexed="true" stored="true" multiValued="false" />
+  <copyField source="id" dest="id_i" />
+
   <!-- catchall wildcard to help ensure we aren't breaking function sorting -->
   <dynamicField name="*" type="string" indexed="true" stored="true"/>
   <uniqueKey>id</uniqueKey>
