@@ -156,6 +156,10 @@ Bug Fixes
 
 * SOLR-10223: Allow running examples as root on Linux with -force option (janhoy)
 
+* SOLR-10830: Solr now correctly enforces that the '_root_' field has the same fieldType as the
+  uniqueKey field.  With out this enforcement, child document updating was unreliable. (hossman)
+
+
 Optimizations
 ----------------------
 
@@ -256,6 +260,8 @@ Other Changes
 * SOLR-10800: Factor out HttpShardHandler.transformReplicasToShardUrls from HttpShardHandler.prepDistributed.
   (Domenico Fabio Marino, Christine Poerschke)
 
+* SOLR-8392: Remove instanceof checks on return value of SolrParam::get (Mike Drob, Varun Thacker)
+
 ==================  6.7.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
@@ -283,6 +289,9 @@ Upgrade Notes
 
 New Features
 ----------------------
+
+* SOLR-10849: MoreLikeThisComponent should expose setMaxDocFreqPct (maxDoc 
+  frequency percentage). (Dawid Weiss)
 
 * SOLR-10307: Allow Passing SSL passwords through environment variables. (Mano Kovacs via Mark Miller)
 
@@ -350,6 +359,18 @@ Bug Fixes
 
 * SOLR-10829: Fixed IndexSchema to enforce that uniqueKey can not be Points based for correctness (hossman)
 
+* SOLR-10836: The query parsers igain, significantTerms, and tlogit (used by streaming expressions by
+  the same name) might throw a NullPointerException if the referenced field had no indexed data in some
+  shards. The fix included an optimization to use Solr's cached AtomicReader instead of re-calculating.
+  (David Smiley)
+
+* SOLR-10715: /v2/ should not be an alias for /v2/collections (Cao Manh Dat)
+
+* SOLR-10835: Add support for point fields in Export Handler (Tomás Fernández Löbbe)
+
+* SOLR-10704: REPLACENODE may cause data loss when replicationFactor is 1. (ab, shalin)
+
+
 Optimizations
 ----------------------
 * SOLR-10634: JSON Facet API: When a field/terms facet will retrieve all buckets (i.e. limit:-1)
@@ -388,6 +409,19 @@ Other Changes
 * SOLR-8762: return child docs in DIH debug (Gopikannan Venugopalsamy via Mikhail Khludnev)
 
 * SOLR-10501: Test sortMissing{First,Last} with points fields.  (Steve Rowe)
+
+* SOLR-10761: Switch trie numeric/date fields to points in data-driven-enabled example and test schemas.
+  (Steve Rowe)
+
+* SOLR-10851: SolrClients should clarify expectations for solrServerUrl parameter (Jason Gerlowski 
+  via Tomás Fernández Löbbe)
+
+==================  6.6.1 ==================
+
+Bug Fixes
+----------------------
+
+* SOLR-10857: standalone Solr loads UNLOADed core on request (Erick Erickson, Mikhail Khludnev)
 
 ==================  6.6.0 ==================
 
