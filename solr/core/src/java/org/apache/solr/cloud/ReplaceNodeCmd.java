@@ -95,10 +95,9 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
     for (ZkNodeProps sourceReplica : sourceReplicas) {
       if (sourceReplica.getBool(ZkStateReader.LEADER_PROP, false)) {
         String shardName = sourceReplica.getStr(SHARD_ID_PROP);
-        String coreNodeName = sourceReplica.getStr(ZkStateReader.CORE_NODE_NAME_PROP);
         String replicaName = sourceReplica.getStr(ZkStateReader.REPLICA_PROP);
         String collectionName = sourceReplica.getStr(COLLECTION_PROP);
-        String key = collectionName + "_" + coreNodeName;
+        String key = collectionName + "_" + replicaName;
         RecoveryWatcher watcher = new RecoveryWatcher(collectionName, shardName, replicaName, replicasToRecover);
         watchers.put(key, watcher);
         zkStateReader.registerCollectionStateWatcher(collectionName, watcher);
@@ -196,7 +195,6 @@ public class ReplaceNodeCmd implements OverseerCollectionMessageHandler.Cmd {
                 COLLECTION_PROP, e.getKey(),
                 SHARD_ID_PROP, slice.getName(),
                 ZkStateReader.CORE_NAME_PROP, replica.getCoreName(),
-                ZkStateReader.CORE_NODE_NAME_PROP, replica.getStr(ZkStateReader.CORE_NODE_NAME_PROP),
                 ZkStateReader.REPLICA_PROP, replica.getName(),
                 ZkStateReader.REPLICA_TYPE, replica.getType().name(),
                 ZkStateReader.LEADER_PROP, String.valueOf(replica.equals(slice.getLeader())),
