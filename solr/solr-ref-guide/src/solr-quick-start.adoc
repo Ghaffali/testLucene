@@ -17,14 +17,12 @@ To follow along with this tutorial, you will need...
 . To meet the {solr-javadocs}/solr/api/SYSTEM_REQUIREMENTS.html[system requirements]
 . An Apache Solr release http://lucene.apache.org/solr/downloads.html[download]. This tutorial was written using Apache Solr {solr-version}.
 
+[[tutorial-getting-started]]
 == Getting Started
 
-Please run the browser showing this tutorial and the Solr server on the same machine so tutorial links will correctly
-point to your Solr server.
+Please run the browser showing this tutorial and the Solr server on the same machine so tutorial links will correctly point to your Solr server.
 
-Begin by unzipping the Solr release and changing your working directory to the subdirectory where Solr was installed.
-Note that the base directory name may vary with the version of Solr downloaded. For example, with a shell in UNIX,
-Cygwin, or MacOS:
+Begin by unzipping the Solr release and changing your working directory to the subdirectory where Solr was installed. Note that the base directory name may vary with the version of Solr downloaded. For example, with a shell in UNIX, Cygwin, or MacOS:
 
 [source,bash]
 /:$ ls solr*
@@ -106,7 +104,7 @@ The command-line breaks down as follows:
 
 You have now indexed thousands of documents into the `gettingstarted` collection in Solr and committed these changes.
 
-You can search for "solr" by loading the Admin UI http://localhost:8983/solr/#/gettingstarted/query[Query tab], enter "solr" in the `q` param (replacing `*:*`, which matches all documents), and "Execute Query". See the <<searching,Searching>> section below for more information.
+You can search for "solr" by loading the Admin UI http://localhost:8983/solr/#/gettingstarted/query[Query tab], enter "solr" in the `q` param (replacing `*:*`, which matches all documents), and "Execute Query". See the <<tutorial-searching,Searching>> section below for more information.
 
 To index your own data, re-run the directory indexing command pointed to your own directory of documents. For example, on a Mac instead of `docs/` try `~/Documents/` or `~/Desktop/`! You may want to start from a clean, empty system again rather than have your content in addition to the Solr `docs/` directory; see the Cleanup section [below](#cleanup) for how to get back to a clean starting point.
 
@@ -159,6 +157,7 @@ You can browse the documents indexed at http://localhost:8983/solr/gettingstarte
 The `/browse` view defaults to assuming the `gettingstarted` schema and data are a catch-all mix of structured XML, JSON, CSV example data, and unstructured rich documents. Your own data may not look ideal at first, though the `/browse` templates are customizable.)
 ====
 
+[[tutorial-indexing-json]]
 === Indexing JSON
 
 Solr supports indexing JSON, either arbitrary structured JSON or "Solr JSON" (which is similar to Solr XML).
@@ -182,7 +181,7 @@ Time spent: 0:00:00.493
 
 For more information on indexing Solr JSON, see the section <<uploading-data-with-index-handlers.adoc#UploadingDatawithIndexHandlers-Solr-StyleJSON,Solr-Style JSON>>.
 
-To flatten (and/or split) and index arbitrary structured JSON, a topic beyond this quick start guide, check out <<uploading-data-with-index-handlers.adoc#UploadingDatawithIndexHandlers-TransformingandIndexingCustomJSON,Transforming and Indexing Custom JSON data>>.
+To flatten (and/or split) and index arbitrary structured JSON, a topic beyond this quick start guide, check out <<transforming-and-indexing-custom-json.adoc#transforming-and-indexing-custom-json,Transforming and Indexing Custom JSON>>.
 
 === Indexing CSV (Comma/Column Separated Values)
 
@@ -209,7 +208,7 @@ For more information, see the section <<uploading-data-with-index-handlers.adoc#
 
 === Other indexing techniques
 
-* Import records from a database using the <<uploading-structured-data-store-data-with-the-data-import-handler.adoc#uuploading-structured-data-store-data-with-the-data-import-handler,Data Import Handler (DIH)>>.
+* Import records from a database using the <<uploading-structured-data-store-data-with-the-data-import-handler.adoc#uploading-structured-data-store-data-with-the-data-import-handler,Data Import Handler (DIH)>>.
 
 * Use <<using-solrj.adoc#using-solrj,SolrJ>> for JVM-based languages or
 other <<client-apis.adoc#client-apis,Solr clients>> to programmatically create documents to send to Solr.
@@ -232,7 +231,7 @@ Execute the following command to delete a specific document:
 
 `bin/post -c gettingstarted -d "<delete><id>SP2514N</id></delete>"`
 
-
+[[tutorial-searching]]
 == Searching
 
 Solr can be queried via REST clients, cURL, wget, Chrome POSTMAN, etc., as well as via the native clients available for many programming languages.
@@ -342,7 +341,7 @@ To search for documents that contain the term "two" but *don't* contain the term
 
 For more Solr search options, see the section on <<searching.adoc#searching,Searching>>.
 
-
+[[tutorial-faceting]]
 === Faceting
 
 One of Solr's most popular features is faceting. Faceting allows the search results to be arranged into subsets (or buckets or categories), providing a count for each subset. There are several types of faceting: field values, numeric and date ranges, pivots (decision tree), and arbitrary query faceting.
