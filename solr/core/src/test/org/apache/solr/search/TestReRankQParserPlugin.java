@@ -441,7 +441,7 @@ public class TestReRankQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("rq", "{!"+ReRankQParserPlugin.NAME+" "+ReRankQParserPlugin.RERANK_QUERY+"=$rqq "+ReRankQParserPlugin.RERANK_DOCS+"=6}");
     // function query for predictible scores (relative to id) independent of similarity
-    params.add("q", "{!func}id");
+    params.add("q", "{!func}id_i");
     // constant score for each clause (unique per doc) for predictible scores independent of similarity
     // NOTE: biased in favor of doc id == 2
     params.add("rqq", "id:1^=10 id:2^=40 id:3^=30 id:4^=40 id:5^=50 id:6^=60");

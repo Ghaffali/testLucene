@@ -70,7 +70,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field=group_s sort=$sort}");
-    params.add("sort", "test_i asc, test_l desc, id desc");
+    params.add("sort", "test_i asc, test_l desc, id_i desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='7']"
@@ -80,8 +80,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     // group heads are selected using a complex sort, simpler sort used for final groups
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
-    params.add("fq", "{!collapse field=group_s sort='test_i asc, test_l desc, id desc'}");
-    params.add("sort", "id asc");
+    params.add("fq", "{!collapse field=group_s sort='test_i asc, test_l desc, id_i desc'}");
+    params.add("sort", "id_i asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='3']"
@@ -91,8 +91,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     // diff up the sort directions, only first clause matters with our data
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
-    params.add("fq", "{!collapse field=group_s sort='test_i desc, test_l asc, id asc'}");
-    params.add("sort", "id desc");
+    params.add("fq", "{!collapse field=group_s sort='test_i desc, test_l asc, id_i asc'}");
+    params.add("sort", "id_i desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='8']"
@@ -103,7 +103,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field=group_s sort='test_l desc'}");
-    params.add("sort", "id desc");
+    params.add("sort", "id_i desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='6']"
@@ -113,7 +113,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     // score, then tiebreakers; note top level sort by score ASCENDING (just for weirdness)
     params = new ModifiableSolrParams();
     params.add("q", "*:* term_s:YYYY");
-    params.add("fq", "{!collapse field=group_s sort='score desc, test_l desc, test_i asc, id asc'}");
+    params.add("fq", "{!collapse field=group_s sort='score desc, test_l desc, test_i asc, id_i asc'}");
     params.add("sort", "score asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
@@ -124,8 +124,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     // score, then tiebreakers; note no score in top level sort/fl to check needsScores logic
     params = new ModifiableSolrParams();
     params.add("q", "*:* term_s:YYYY");
-    params.add("fq", "{!collapse field=group_s sort='score desc, test_l desc, test_i asc, id asc'}");
-    params.add("sort", "id desc");
+    params.add("fq", "{!collapse field=group_s sort='score desc, test_l desc, test_i asc, id_i asc'}");
+    params.add("sort", "id_i desc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='5']"
@@ -136,7 +136,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field=group_s sort='term_s desc, test_l asc'}");
-    params.add("sort", "id asc");
+    params.add("sort", "id_i asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='1']"
@@ -147,7 +147,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field=group_s sort='term_s asc, test_l asc'}");
-    params.add("sort", "id asc");
+    params.add("sort", "id_i asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='1']"
@@ -158,7 +158,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field=test_i sort='term_s asc, group_s asc'}");
-    params.add("sort", "id asc");
+    params.add("sort", "id_i asc");
     assertQ(req(params)
             , "*[count(//doc)=2]"
             ,"//result/doc[1]/str[@name='id'][.='4']"
@@ -168,8 +168,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     // collapse on term_s (very sparse) with nullPolicy=collapse
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
-    params.add("fq", "{!collapse field=term_s nullPolicy=collapse sort='test_i asc, test_l desc, id asc'}");
-    params.add("sort", "test_l asc, id asc");
+    params.add("fq", "{!collapse field=term_s nullPolicy=collapse sort='test_i asc, test_l desc, id_i asc'}");
+    params.add("sort", "test_l asc, id_i asc");
     assertQ(req(params)
             , "*[count(//doc)=3]"
             ,"//result/doc[1]/str[@name='id'][.='5']"
@@ -184,7 +184,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "test_l asc");
     params.add("qt", "/elevate");
     params.add("forceElevation", "true");
-    params.add("elevateIds", "4.0");
+    params.add("elevateIds", "4");
     assertQ(req(params),
             "*[count(//doc)=2]",
             "//result/doc[1]/str[@name='id'][.='4']",
@@ -196,7 +196,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("sort", "test_l asc");
     params.add("qt", "/elevate");
     params.add("forceElevation", "true");
-    params.add("elevateIds", "7.0");
+    params.add("elevateIds", "7");
     assertQ(req(params),
             "*[count(//doc)=2]",
             "//result/doc[1]/str[@name='id'][.='7']",
@@ -427,7 +427,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("defType", "edismax");
     params.add("bf", "field(test_i)");
     params.add("fl", "id");
-    params.add("sort", "id desc");
+    params.add("sort", "id_i desc");
     assertQ(req(params), "*[count(//doc)=3]",
         "//result/doc[1]/str[@name='id'][.='5']",
         "//result/doc[2]/str[@name='id'][.='4']",
@@ -532,7 +532,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field="+group+" nullPolicy=collapse sort='term_s asc, test_i asc' "+hint+"}");
-    params.add("sort", "id desc");
+    params.add("sort", "id_i desc");
     assertQ(req(params),
             "*[count(//doc)=3]",
             "//result/doc[1]/str[@name='id'][.='5']",
@@ -543,7 +543,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field="+group+" nullPolicy=collapse sort='term_s asc, test_i desc' "+hint+"}");
-    params.add("sort", "id desc");
+    params.add("sort", "id_i desc");
     assertQ(req(params),
             "*[count(//doc)=3]",
             "//result/doc[1]/str[@name='id'][.='6']",
@@ -559,7 +559,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params = new ModifiableSolrParams();
       params.add("q", "*:*");
       params.add("fq", "{!collapse field="+group + min + hint+"}");
-      params.add("sort", "id desc");
+      params.add("sort", "id_i desc");
       assertQ(req(params),
               "*[count(//doc)=2]",
               "//result/doc[1]/str[@name='id'][.='5']",
@@ -568,7 +568,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params = new ModifiableSolrParams();
       params.add("q", "*:*");
       params.add("fq", "{!collapse field="+group + min + hint+"}");
-      params.add("sort", "id asc");
+      params.add("sort", "id_i asc");
       assertQ(req(params),
               "*[count(//doc)=2]",
               "//result/doc[1]/str[@name='id'][.='1']",
@@ -577,7 +577,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params = new ModifiableSolrParams();
       params.add("q", "*:*");
       params.add("fq", "{!collapse field="+group + min + hint+"}");
-      params.add("sort", "test_l asc,id desc");
+      params.add("sort", "test_l asc,id_i desc");
       assertQ(req(params),
               "*[count(//doc)=2]",
               "//result/doc[1]/str[@name='id'][.='5']",
@@ -586,9 +586,9 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
       params = new ModifiableSolrParams();
       params.add("q", "*:*");
       params.add("fq", "{!collapse field="+group + min + hint+"}");
-      params.add("sort", "score desc,id asc");
+      params.add("sort", "score desc,id_i asc");
       params.add("defType", "edismax");
-      params.add("bf", "field(id)");
+      params.add("bf", "field(id_i)");
       assertQ(req(params),
               "*[count(//doc)=2]",
               "//result/doc[1]/str[@name='id'][.='5']",
@@ -655,7 +655,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params.add("q", "*:*");
     params.add("fq", "{!collapse field="+group+" max=test_f"+hint+"}");
     params.add("defType", "edismax");
-    params.add("bf", "field(id)");
+    params.add("bf", "field(id_i)");
     params.add("fl", "score, id");
     params.add("facet","true");
     params.add("fq", "{!tag=test}term_s:YYYY");
@@ -690,8 +690,8 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     
     // attempting to use cscore() in sort local param should fail
     assertQEx("expected error trying to sort on a function that includes cscore()",
-              req(params("q", "{!func}sub(sub(test_l,1000),id)",
-                         "fq", "{!collapse field="+group+" sort='abs(cscore()) asc, id asc'}",
+              req(params("q", "{!func}sub(sub(test_l,1000),id_i)",
+                         "fq", "{!collapse field="+group+" sort='abs(cscore()) asc, id_i asc'}",
                          "sort", "score asc")),
               SolrException.ErrorCode.BAD_REQUEST);
     
@@ -728,7 +728,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field="+group+" max=test_f nullPolicy=expand"+hint+"}");
-    params.add("sort", "id desc");
+    params.add("sort", "id_i desc");
     assertQ(req(params), "*[count(//doc)=4]",
         "//result/doc[1]/str[@name='id'][.='5']",
         "//result/doc[2]/str[@name='id'][.='4']",
@@ -739,7 +739,7 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
     params = new ModifiableSolrParams();
     params.add("q", "*:*");
     params.add("fq", "{!collapse field="+group+" max=test_f nullPolicy=collapse"+hint+"}");
-    params.add("sort", "id desc");
+    params.add("sort", "id_i desc");
     assertQ(req(params), "*[count(//doc)=3]",
         "//result/doc[1]/str[@name='id'][.='5']",
         "//result/doc[2]/str[@name='id'][.='4']",
@@ -850,14 +850,14 @@ public class TestCollapseQParserPlugin extends SolrTestCaseJ4 {
         // w/default nullPolicy, no groups found
         params = new ModifiableSolrParams();
         params.add("q", "*:*");
-        params.add("sort", "id desc");
+        params.add("sort", "id_i desc");
         params.add("fq", "{!collapse "+group+" "+selector+"}");
         assertQ(req(params), "*[count(//doc)=0]");
 
         // w/nullPolicy=expand, every doc found
         params = new ModifiableSolrParams();
         params.add("q", "*:*");
-        params.add("sort", "id desc");
+        params.add("sort", "id_i desc");
         params.add("fq", "{!collapse field="+group+" nullPolicy=expand "+selector+"}");
         assertQ(req(params)
                 , "*[count(//doc)=8]"

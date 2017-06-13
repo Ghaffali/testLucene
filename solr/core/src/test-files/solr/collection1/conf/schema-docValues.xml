@@ -54,6 +54,9 @@
 
 
   <field name="id" type="string" required="true"/>
+  <!-- int varient of id, adding this here simplifies some indexing to do numeric sorting -->
+  <field name="id_i" type="int" indexed="true" stored="true" multiValued="false" />
+  <copyField source="id" dest="id_i" />
 
   <field name="floatdv" type="float" indexed="false" stored="false" docValues="true" default="1"/>
   <field name="intdv" type="int" indexed="false" stored="false" docValues="true" default="2"/>

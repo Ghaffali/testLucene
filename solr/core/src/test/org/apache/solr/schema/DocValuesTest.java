@@ -366,13 +366,13 @@ public class DocValuesTest extends SolrTestCaseJ4 {
     assertU(commit());
 
     // string: termquery
-    assertQ(req("q", "stringdv:car", "sort", "id asc"),
+    assertQ(req("q", "stringdv:car", "sort", "id_i asc"),
         "//*[@numFound='1']",
         "//result/doc[1]/str[@name='id'][.=4]"
     );
     
     // string: range query
-    assertQ(req("q", "stringdv:[b TO d]", "sort", "id asc"),
+    assertQ(req("q", "stringdv:[b TO d]", "sort", "id_i asc"),
         "//*[@numFound='3']",
         "//result/doc[1]/str[@name='id'][.=1]",
         "//result/doc[2]/str[@name='id'][.=3]",
@@ -380,33 +380,33 @@ public class DocValuesTest extends SolrTestCaseJ4 {
     );
     
     // string: prefix query
-    assertQ(req("q", "stringdv:c*", "sort", "id asc"),
+    assertQ(req("q", "stringdv:c*", "sort", "id_i asc"),
         "//*[@numFound='2']",
         "//result/doc[1]/str[@name='id'][.=3]",
         "//result/doc[2]/str[@name='id'][.=4]"
     );
     
     // string: wildcard query
-    assertQ(req("q", "stringdv:c?r", "sort", "id asc"),
+    assertQ(req("q", "stringdv:c?r", "sort", "id_i asc"),
         "//*[@numFound='1']",
         "//result/doc[1]/str[@name='id'][.=4]"
     );
     
     // string: regexp query
-    assertQ(req("q", "stringdv:/c[a-b]r/", "sort", "id asc"),
+    assertQ(req("q", "stringdv:/c[a-b]r/", "sort", "id_i asc"),
         "//*[@numFound='1']",
         "//result/doc[1]/str[@name='id'][.=4]"
     );
     
     // float: termquery
-    assertQ(req("q", "floatdv:3", "sort", "id asc"),
+    assertQ(req("q", "floatdv:3", "sort", "id_i asc"),
         "//*[@numFound='2']",
         "//result/doc[1]/str[@name='id'][.=3]",
         "//result/doc[2]/str[@name='id'][.=4]"
     );
     
     // float: rangequery
-    assertQ(req("q", "floatdv:[2 TO 3]", "sort", "id asc"),
+    assertQ(req("q", "floatdv:[2 TO 3]", "sort", "id_i asc"),
         "//*[@numFound='3']",
         "//result/doc[1]/str[@name='id'][.=1]",
         "//result/doc[2]/str[@name='id'][.=3]",
@@ -414,59 +414,59 @@ public class DocValuesTest extends SolrTestCaseJ4 {
     );
     
     // (neg) float: termquery
-    assertQ(req("q", "floatdv:\"-5\"", "sort", "id asc"),
+    assertQ(req("q", "floatdv:\"-5\"", "sort", "id_i asc"),
             "//*[@numFound='1']",
             "//result/doc[1]/str[@name='id'][.=2]"
             );
 
     // (neg) float: rangequery
-    assertQ(req("q", "floatdv:[-6 TO -4]", "sort", "id asc"),
+    assertQ(req("q", "floatdv:[-6 TO -4]", "sort", "id_i asc"),
             "//*[@numFound='1']",
             "//result/doc[1]/str[@name='id'][.=2]"
             );
     
     // (cross zero bounds) float: rangequery
-    assertQ(req("q", "floatdv:[-6 TO 2.1]", "sort", "id asc"),
+    assertQ(req("q", "floatdv:[-6 TO 2.1]", "sort", "id_i asc"),
             "//*[@numFound='2']",
             "//result/doc[1]/str[@name='id'][.=1]",
             "//result/doc[2]/str[@name='id'][.=2]"
             );
     
     // int: termquery
-    assertQ(req("q", "intdv:1", "sort", "id asc"),
+    assertQ(req("q", "intdv:1", "sort", "id_i asc"),
             "//*[@numFound='1']",
             "//result/doc[1]/str[@name='id'][.=3]"
             );
     
     // int: rangequery
-    assertQ(req("q", "intdv:[3 TO 4]", "sort", "id asc"),
+    assertQ(req("q", "intdv:[3 TO 4]", "sort", "id_i asc"),
             "//*[@numFound='2']",
             "//result/doc[1]/str[@name='id'][.=1]",
             "//result/doc[2]/str[@name='id'][.=2]"
             );
     
     // (neg) int: termquery
-    assertQ(req("q", "intdv:\"-1\"", "sort", "id asc"),
+    assertQ(req("q", "intdv:\"-1\"", "sort", "id_i asc"),
             "//*[@numFound='1']",
             "//result/doc[1]/str[@name='id'][.=4]"
             );
     
     // (neg) int: rangequery
-    assertQ(req("q", "intdv:[-1 TO 1]", "sort", "id asc"),
+    assertQ(req("q", "intdv:[-1 TO 1]", "sort", "id_i asc"),
             "//*[@numFound='2']",
             "//result/doc[1]/str[@name='id'][.=3]",
             "//result/doc[2]/str[@name='id'][.=4]"
             );
 
     // long: termquery
-    assertQ(req("q", "longdv:1", "sort", "id asc"),
+    assertQ(req("q", "longdv:1", "sort", "id_i asc"),
         "//*[@numFound='2']",
         "//result/doc[1]/str[@name='id'][.=3]",
         "//result/doc[2]/str[@name='id'][.=4]"
     );
     
     // long: rangequery
-    assertQ(req("q", "longdv:[1 TO 2]", "sort", "id asc"),
+    assertQ(req("q", "longdv:[1 TO 2]", "sort", "id_i asc"),
         "//*[@numFound='3']",
         "//result/doc[1]/str[@name='id'][.=2]",
         "//result/doc[2]/str[@name='id'][.=3]",
@@ -474,45 +474,45 @@ public class DocValuesTest extends SolrTestCaseJ4 {
     );
     
     // double: termquery
-    assertQ(req("q", "doubledv:3.1", "sort", "id asc"),
+    assertQ(req("q", "doubledv:3.1", "sort", "id_i asc"),
             "//*[@numFound='1']",
             "//result/doc[1]/str[@name='id'][.=1]"
             );
     
     // double: rangequery
-    assertQ(req("q", "doubledv:[2 TO 3.3]", "sort", "id asc"),
+    assertQ(req("q", "doubledv:[2 TO 3.3]", "sort", "id_i asc"),
             "//*[@numFound='2']",
             "//result/doc[1]/str[@name='id'][.=1]",
             "//result/doc[2]/str[@name='id'][.=3]"
             );
     
     // (neg) double: termquery
-    assertQ(req("q", "doubledv:\"-4.3\"", "sort", "id asc"),
+    assertQ(req("q", "doubledv:\"-4.3\"", "sort", "id_i asc"),
             "//*[@numFound='1']",
             "//result/doc[1]/str[@name='id'][.=2]"
             );
     
     // (neg) double: rangequery
-    assertQ(req("q", "doubledv:[-6 TO -4]", "sort", "id asc"),
+    assertQ(req("q", "doubledv:[-6 TO -4]", "sort", "id_i asc"),
             "//*[@numFound='1']",
             "//result/doc[1]/str[@name='id'][.=2]"
             );
     
     // (cross zero bounds) double: rangequery
-    assertQ(req("q", "doubledv:[-6 TO 2.0]", "sort", "id asc"),
+    assertQ(req("q", "doubledv:[-6 TO 2.0]", "sort", "id_i asc"),
             "//*[@numFound='2']",
             "//result/doc[1]/str[@name='id'][.=2]",
             "//result/doc[2]/str[@name='id'][.=4]"
             );
     // boolean basic queries:
 
-    assertQ(req("q", "booldv:false", "sort", "id asc"),
+    assertQ(req("q", "booldv:false", "sort", "id_i asc"),
         "//*[@numFound='2']",
         "//result/doc[1]/str[@name='id'][.=1]",
         "//result/doc[2]/str[@name='id'][.=3]"
     );
 
-    assertQ(req("q", "booldv:true", "sort", "id asc"),
+    assertQ(req("q", "booldv:true", "sort", "id_i asc"),
         "//*[@numFound='2']",
         "//result/doc[1]/str[@name='id'][.=2]",
         "//result/doc[2]/str[@name='id'][.=4]"
@@ -630,7 +630,7 @@ public class DocValuesTest extends SolrTestCaseJ4 {
         }
         log.info("Expected: "+tests);
         assertQ(req("q", fieldName[i] + ":" + (minInclusive? '[': '{') + min + " TO " + max + (maxInclusive? ']': '}'),
-                         "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+                         "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
             testsArr);
       }
     }
@@ -654,20 +654,20 @@ public class DocValuesTest extends SolrTestCaseJ4 {
       assertU(commit());
 
       // Negative Zero to Positive
-      assertQ(req("q", fieldName[i]+":[-0.0 TO 2.5]", "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+      assertQ(req("q", fieldName[i]+":[-0.0 TO 2.5]", "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
           "//*[@numFound='1']",
           "//result/doc[1]/str[@name='id'][.=1]"
           );
 
       // Negative to Positive Zero
-      assertQ(req("q", fieldName[i]+":[-6 TO 0]", "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+      assertQ(req("q", fieldName[i]+":[-6 TO 0]", "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
           "//*[@numFound='2']",
           "//result/doc[1]/str[@name='id'][.=2]",
           "//result/doc[2]/str[@name='id'][.=5]"
           );
 
       // Negative to Positive
-      assertQ(req("q", fieldName[i]+":[-6 TO 2.5]", "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+      assertQ(req("q", fieldName[i]+":[-6 TO 2.5]", "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
           "//*[@numFound='3']",
           "//result/doc[1]/str[@name='id'][.=1]",
           "//result/doc[2]/str[@name='id'][.=2]",
@@ -675,7 +675,7 @@ public class DocValuesTest extends SolrTestCaseJ4 {
           );
 
       // Positive to Positive
-      assertQ(req("q", fieldName[i]+":[2 TO 3]", "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+      assertQ(req("q", fieldName[i]+":[2 TO 3]", "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
           "//*[@numFound='3']",
           "//result/doc[1]/str[@name='id'][.=1]",
           "//result/doc[2]/str[@name='id'][.=3]",
@@ -683,7 +683,7 @@ public class DocValuesTest extends SolrTestCaseJ4 {
           );
 
       // Positive to POSITIVE_INF
-      assertQ(req("q", fieldName[i]+":[2 TO *]", "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+      assertQ(req("q", fieldName[i]+":[2 TO *]", "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
           "//*[@numFound='4']",
           "//result/doc[1]/str[@name='id'][.=1]",
           "//result/doc[2]/str[@name='id'][.=3]",
@@ -692,14 +692,14 @@ public class DocValuesTest extends SolrTestCaseJ4 {
           );
 
       // NEGATIVE_INF to Negative
-      assertQ(req("q", fieldName[i]+":[* TO -1]", "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+      assertQ(req("q", fieldName[i]+":[* TO -1]", "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
           "//*[@numFound='2']",
           "//result/doc[1]/str[@name='id'][.=2]",
           "//result/doc[2]/str[@name='id'][.=6]"
           );
 
       // NEGATIVE_INF to Positive
-      assertQ(req("q", fieldName[i]+":[* TO 2]", "sort", "id asc", "fl", "id,"+fieldName[i]),
+      assertQ(req("q", fieldName[i]+":[* TO 2]", "sort", "id_i asc", "fl", "id,"+fieldName[i]),
           "//*[@numFound='4']",
           "//result/doc[1]/str[@name='id'][.=1]",
           "//result/doc[2]/str[@name='id'][.=2]",
@@ -708,7 +708,7 @@ public class DocValuesTest extends SolrTestCaseJ4 {
           );
 
       // NEGATIVE_INF to Positive (non-inclusive)
-      assertQ(req("q", fieldName[i]+":[* TO 2}", "sort", "id asc", "fl", "id,"+fieldName[i]),
+      assertQ(req("q", fieldName[i]+":[* TO 2}", "sort", "id_i asc", "fl", "id,"+fieldName[i]),
           "//*[@numFound='3']",
           "//result/doc[1]/str[@name='id'][.=2]",
           "//result/doc[2]/str[@name='id'][.=5]",
@@ -716,7 +716,7 @@ public class DocValuesTest extends SolrTestCaseJ4 {
           );
 
       // Negative to POSITIVE_INF
-      assertQ(req("q", fieldName[i]+":[-6 TO *]", "sort", "id asc", "fl", "id,"+fieldName[i]),
+      assertQ(req("q", fieldName[i]+":[-6 TO *]", "sort", "id_i asc", "fl", "id,"+fieldName[i]),
           "//*[@numFound='6']",
           "//result/doc[1]/str[@name='id'][.=1]",
           "//result/doc[2]/str[@name='id'][.=2]",
@@ -727,7 +727,7 @@ public class DocValuesTest extends SolrTestCaseJ4 {
           );
 
       // NEGATIVE_INF to POSITIVE_INF
-      assertQ(req("q", fieldName[i]+":[* TO *]", "sort", "id asc", "fl", "id,"+fieldName[i]+",score"),
+      assertQ(req("q", fieldName[i]+":[* TO *]", "sort", "id_i asc", "fl", "id,"+fieldName[i]+",score"),
           "//*[@numFound='7']",
           "//result/doc[1]/str[@name='id'][.=1]",
           "//result/doc[2]/str[@name='id'][.=2]",
