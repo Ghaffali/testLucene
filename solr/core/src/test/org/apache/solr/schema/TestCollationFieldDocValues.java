@@ -185,10 +185,10 @@ public class TestCollationFieldDocValues extends SolrTestCaseJ4 {
    */
   public void testCustomCollation() {
     assertQ("Collated TQ: ",
-        req("fl", "id", "q", "sort_custom:toene", "sort", "id asc" ),
+        req("fl", "id", "q", "sort_custom:toene" ),
                "//*[@numFound='2']",
-               "//result/doc[1]/str[@name='id'][.=4]",
-               "//result/doc[2]/str[@name='id'][.=10]"
+               "//result/doc/str[@name='id'][.=4]",
+               "//result/doc/str[@name='id'][.=10]"
      );
   }
 }
