@@ -504,7 +504,7 @@ public class TestFunctionQuery extends SolrTestCaseJ4 {
 
     String threeonetwo =  "/response/docs==[{'x_i':200},{'x_i':100},{'x_i':300}]";
 
-    String q = "id:[1 TO 3]";
+    String q = "id_i:[1 TO 3]";
     assertJQ(req("q",q,  "fl","x_i", "sort","add(x_i,x_i) desc")
       ,desc
     );
