@@ -92,6 +92,8 @@ Upgrading from Solr 6.x
 * Custom SolrMetricReporter classes must implement a new, factored out doInit() method and the validate() method
   must pass for all reporters including reporters that are not enabled, please see SOLR-10671 for details.
 
+* TemplateUpdateRequestProcessorFactory uses {} instead of ${} for template
+
 New Features
 ----------------------
 * SOLR-9857, SOLR-9858: Collect aggregated metrics from nodes and shard leaders in overseer. (ab)
@@ -158,6 +160,8 @@ Bug Fixes
 
 * SOLR-10830: Solr now correctly enforces that the '_root_' field has the same fieldType as the
   uniqueKey field.  With out this enforcement, child document updating was unreliable. (hossman)
+
+* SOLR-10876: Regression in loading runtime UpdateRequestProcessors like TemplateUpdateProcessorFactory (noble)
 
 
 Optimizations
