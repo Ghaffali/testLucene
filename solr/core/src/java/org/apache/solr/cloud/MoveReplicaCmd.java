@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
@@ -29,6 +31,7 @@ import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
+import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
@@ -60,6 +63,7 @@ public class MoveReplicaCmd implements Cmd{
     ocmh.checkRequired(message, COLLECTION_PROP, "targetNode");
     String collection = message.getStr(COLLECTION_PROP);
     String targetNode = message.getStr("targetNode");
+    int timeout = message.getInt("timeout", 10 * 60); // 10 minutes
 
     String async = message.getStr(ASYNC);
 
@@ -103,14 +107,14 @@ public class MoveReplicaCmd implements Cmd{
     assert slice != null;
     Object dataDir = replica.get("dataDir");
     if (dataDir != null && dataDir.toString().startsWith("hdfs:/")) {
-      moveHdfsReplica(clusterState, results, dataDir.toString(), targetNode, async, coll, replica, slice);
+      moveHdfsReplica(clusterState, results, dataDir.toString(), targetNode, async, coll, replica, slice, timeout);
     } else {
-      moveNormalReplica(clusterState, results, targetNode, async, coll, replica, slice);
+      moveNormalReplica(clusterState, results, targetNode, async, coll, replica, slice, timeout);
     }
   }
 
   private void moveHdfsReplica(ClusterState clusterState, NamedList results, String dataDir, String targetNode, String async,
-                                 DocCollection coll, Replica replica, Slice slice) throws Exception {
+                                 DocCollection coll, Replica replica, Slice slice, int timeout) throws Exception {
     String newCoreName = Assign.buildCoreName(coll, slice.getName(), replica.getType());
 
     ZkNodeProps removeReplicasProps = new ZkNodeProps(
@@ -154,7 +158,7 @@ public class MoveReplicaCmd implements Cmd{
   }
 
   private void moveNormalReplica(ClusterState clusterState, NamedList results, String targetNode, String async,
-                                 DocCollection coll, Replica replica, Slice slice) throws Exception {
+                                 DocCollection coll, Replica replica, Slice slice, int timeout) throws Exception {
     String newCoreName = Assign.buildCoreName(coll, slice.getName(), replica.getType());
     ZkNodeProps addReplicasProps = new ZkNodeProps(
         COLLECTION_PROP, coll.getName(),
@@ -163,7 +167,7 @@ public class MoveReplicaCmd implements Cmd{
         CoreAdminParams.NAME, newCoreName);
     if(async!=null) addReplicasProps.getProperties().put(ASYNC, async);
     NamedList addResult = new NamedList();
-    ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
+    ZkNodeProps newReplica = ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
     if (addResult.get("failure") != null) {
       String errorString = String.format(Locale.ROOT, "Failed to create replica for collection=%s shard=%s" +
           " on node=%s", coll.getName(), slice.getName(), targetNode);
@@ -171,12 +175,32 @@ public class MoveReplicaCmd implements Cmd{
       results.add("failure", errorString);
       return;
     }
-
+    // wait for the other replica to be active if the source replica was a leader
+    if (replica.equals(slice.getLeader())) {
+      log.info("==== Waiting for leader replica to recover.");
+      CountDownLatch countDownLatch = new CountDownLatch(1);
+      ReplaceNodeCmd.RecoveryWatcher watcher = new ReplaceNodeCmd.RecoveryWatcher(coll.getName(), slice.getName(),
+          replica.getName(), newReplica.getStr(ZkStateReader.CORE_NAME_PROP), countDownLatch);
+      try {
+        ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
+        if (!countDownLatch.await(timeout, TimeUnit.SECONDS)) {
+          String errorString = String.format(Locale.ROOT, "Timed out waiting for leader replica to recover, collection=%s shard=%s" +
+              " on node=%s", coll.getName(), slice.getName(), targetNode);
+          log.warn(errorString);
+          results.add("failure", errorString);
+          return;
+        } else {
+          log.info("Replica " + watcher.getRecoveredReplica() + " is active - deleting the source...");
+        }
+      } finally {
+        ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
+      }
+    }
     ZkNodeProps removeReplicasProps = new ZkNodeProps(
         COLLECTION_PROP, coll.getName(),
         SHARD_ID_PROP, slice.getName(),
         REPLICA_PROP, replica.getName());
-    if(async!=null) removeReplicasProps.getProperties().put(ASYNC, async);
+    if (async != null) removeReplicasProps.getProperties().put(ASYNC, async);
     NamedList deleteResult = new NamedList();
     ocmh.deleteReplica(clusterState, removeReplicasProps, deleteResult, null);
     if (deleteResult.get("failure") != null) {

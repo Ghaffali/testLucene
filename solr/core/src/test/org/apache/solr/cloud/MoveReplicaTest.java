@@ -31,8 +31,10 @@ import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.CoreAdminRequest;
 import org.apache.solr.client.solrj.response.CoreAdminResponse;
 import org.apache.solr.client.solrj.response.RequestStatusState;
+import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
+import org.apache.solr.common.cloud.ZkStateReader;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -56,10 +58,11 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     cluster.waitForAllNodes(5000);
     String coll = "movereplicatest_coll";
     log.info("total_jettys: " + cluster.getJettySolrRunners().size());
+    int REPLICATION = 1;
 
     CloudSolrClient cloudClient = cluster.getSolrClient();
 
-    CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(coll, "conf1", 2, 2);
+    CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(coll, "conf1", 2, REPLICATION);
     create.setMaxShardsPerNode(2);
     cloudClient.request(create);
 
@@ -98,12 +101,75 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     }
     assertTrue(success);
     checkNumOfCores(cloudClient, replica.getNodeName(), 0);
-    checkNumOfCores(cloudClient, targetNode, 2);
+    checkNumOfCores(cloudClient, targetNode, REPLICATION);
+    // wait for recovery
+    boolean recovered = false;
+    for (int i = 0; i < 300; i++) {
+      DocCollection collState = getCollectionState(coll);
+      List<Replica> replicas = collState.getReplicas(targetNode);
+      boolean allActive = true;
+      boolean hasLeaders = true;
+      if (replicas != null && !replicas.isEmpty()) {
+        for (Replica r : replicas) {
+          if (!r.isActive(Collections.singleton(targetNode))) {
+            log.info("Not active yet: " + r);
+            allActive = false;
+          }
+        }
+      } else {
+        allActive = false;
+      }
+      for (Slice slice : collState.getSlices()) {
+        if (slice.getLeader() == null) {
+          hasLeaders = false;
+        }
+      }
+      if (allActive && hasLeaders) {
+        assertEquals("total number of replicas", REPLICATION, replicas.size());
+        recovered = true;
+        break;
+      } else {
+        log.info("--- waiting, allActive=" + allActive + ", hasLeaders=" + hasLeaders);
+        Thread.sleep(1000);
+      }
+    }
+    assertTrue("replica never fully recovered", recovered);
 
     moveReplica = new CollectionAdminRequest.MoveReplica(coll, shardId, targetNode, replica.getNodeName());
     moveReplica.process(cloudClient);
     checkNumOfCores(cloudClient, replica.getNodeName(), 1);
-    checkNumOfCores(cloudClient, targetNode, 1);
+    checkNumOfCores(cloudClient, targetNode, REPLICATION - 1);
+    // wait for recovery
+    recovered = false;
+    for (int i = 0; i < 300; i++) {
+      DocCollection collState = getCollectionState(coll);
+      List<Replica> replicas = collState.getReplicas(targetNode);
+      boolean allActive = true;
+      boolean hasLeaders = true;
+      if (replicas != null && !replicas.isEmpty()) {
+        for (Replica r : replicas) {
+          if (!r.isActive(Collections.singleton(targetNode))) {
+            log.info("Not active yet: " + r);
+            allActive = false;
+          }
+        }
+      } else {
+        allActive = false;
+      }
+      for (Slice slice : collState.getSlices()) {
+        if (slice.getLeader() == null) {
+          hasLeaders = false;
+        }
+      }
+      if (allActive && hasLeaders) {
+        assertEquals("total number of replicas", 1, replicas.size());
+        recovered = true;
+        break;
+      } else {
+        Thread.sleep(1000);
+      }
+    }
+    assertTrue("replica never fully recovered", recovered);
   }
 
   private Replica getRandomReplica(String coll, CloudSolrClient cloudClient) {
