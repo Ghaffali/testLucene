@@ -167,22 +167,28 @@ public class MoveReplicaCmd implements Cmd{
         CoreAdminParams.NAME, newCoreName);
     if(async!=null) addReplicasProps.getProperties().put(ASYNC, async);
     NamedList addResult = new NamedList();
+    CountDownLatch countDownLatch = new CountDownLatch(1);
+    ReplaceNodeCmd.RecoveryWatcher watcher = null;
+    if (replica.equals(slice.getLeader())) {
+      watcher = new ReplaceNodeCmd.RecoveryWatcher(coll.getName(), slice.getName(),
+          replica.getName(), null, countDownLatch);
+      ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
+    }
     ZkNodeProps newReplica = ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
     if (addResult.get("failure") != null) {
       String errorString = String.format(Locale.ROOT, "Failed to create replica for collection=%s shard=%s" +
           " on node=%s", coll.getName(), slice.getName(), targetNode);
       log.warn(errorString);
       results.add("failure", errorString);
+      if (watcher != null) { // unregister
+        ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
+      }
       return;
     }
     // wait for the other replica to be active if the source replica was a leader
-    if (replica.equals(slice.getLeader())) {
-      log.info("==== Waiting for leader replica to recover.");
-      CountDownLatch countDownLatch = new CountDownLatch(1);
-      ReplaceNodeCmd.RecoveryWatcher watcher = new ReplaceNodeCmd.RecoveryWatcher(coll.getName(), slice.getName(),
-          replica.getName(), newReplica.getStr(ZkStateReader.CORE_NAME_PROP), countDownLatch);
+    if (watcher != null) {
       try {
-        ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
+        log.info("==== Waiting for leader replica to recover.");
         if (!countDownLatch.await(timeout, TimeUnit.SECONDS)) {
           String errorString = String.format(Locale.ROOT, "Timed out waiting for leader replica to recover, collection=%s shard=%s" +
               " on node=%s", coll.getName(), slice.getName(), targetNode);
@@ -193,9 +199,10 @@ public class MoveReplicaCmd implements Cmd{
           log.info("Replica " + watcher.getRecoveredReplica() + " is active - deleting the source...");
         }
       } finally {
-        ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
+        ocmh.zkStateReader.removeCollectionStateWatcher(coll.getName(), watcher);
       }
     }
+
     ZkNodeProps removeReplicasProps = new ZkNodeProps(
         COLLECTION_PROP, coll.getName(),
         SHARD_ID_PROP, slice.getName(),

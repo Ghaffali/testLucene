@@ -97,7 +97,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
         break;
       }
       assertFalse(rsp.getRequestStatus() == RequestStatusState.FAILED);
-      Thread.sleep(50);
+      Thread.sleep(500);
     }
     assertTrue(success);
     checkNumOfCores(cloudClient, replica.getNodeName(), 0);
@@ -143,12 +143,12 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     recovered = false;
     for (int i = 0; i < 300; i++) {
       DocCollection collState = getCollectionState(coll);
-      List<Replica> replicas = collState.getReplicas(targetNode);
+      List<Replica> replicas = collState.getReplicas(replica.getNodeName());
       boolean allActive = true;
       boolean hasLeaders = true;
       if (replicas != null && !replicas.isEmpty()) {
         for (Replica r : replicas) {
-          if (!r.isActive(Collections.singleton(targetNode))) {
+          if (!r.isActive(Collections.singleton(replica.getNodeName()))) {
             log.info("Not active yet: " + r);
             allActive = false;
           }
