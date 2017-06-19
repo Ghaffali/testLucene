@@ -435,8 +435,10 @@ public class OverseerCollectionMessageHandler implements OverseerMessageHandler 
           deleted =  true;
         }
       }
-      // Return true if either someone already deleted the collection/slice/replica.
-      if (docCollection == null || deleted) break;
+      // Return true if someone already deleted the collection/slice/replica.
+      if (docCollection == null || deleted) {
+        return true;
+      }
     }
     return deleted;
   }
