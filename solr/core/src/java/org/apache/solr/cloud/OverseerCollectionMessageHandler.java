@@ -425,22 +425,19 @@ public class OverseerCollectionMessageHandler implements OverseerMessageHandler 
 
   boolean waitForCoreNodeGone(String collectionName, String shard, String replicaName, int timeoutms) throws InterruptedException {
     TimeOut timeout = new TimeOut(timeoutms, TimeUnit.MILLISECONDS);
-    boolean deleted = false;
     while (! timeout.hasTimedOut()) {
       Thread.sleep(100);
       DocCollection docCollection = zkStateReader.getClusterState().getCollection(collectionName);
-      if(docCollection != null) {
-        Slice slice = docCollection.getSlice(shard);
-        if(slice == null || slice.getReplica(replicaName) == null) {
-          deleted =  true;
-        }
+      if (docCollection == null) { // someone already deleted the collection
+        return true;
       }
-      // Return true if someone already deleted the collection/slice/replica.
-      if (docCollection == null || deleted) {
+      Slice slice = docCollection.getSlice(shard);
+      if(slice == null || slice.getReplica(replicaName) == null) {
         return true;
       }
     }
-    return deleted;
+    // replica still exists after the timeout
+    return false;
   }
 
   void deleteCoreNode(String collectionName, String replicaName, Replica replica, String core) throws KeeperException, InterruptedException {
