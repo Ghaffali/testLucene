@@ -20,6 +20,7 @@ package org.apache.solr.cloud;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
@@ -58,7 +59,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     cluster.waitForAllNodes(5000);
     String coll = "movereplicatest_coll";
     log.info("total_jettys: " + cluster.getJettySolrRunners().size());
-    int REPLICATION = 1;
+    int REPLICATION = 2;
 
     CloudSolrClient cloudClient = cluster.getSolrClient();
 
@@ -101,18 +102,22 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     }
     assertTrue(success);
     checkNumOfCores(cloudClient, replica.getNodeName(), 0);
-    checkNumOfCores(cloudClient, targetNode, REPLICATION);
+    assertTrue("should be at least one core on target node!", getNumOfCores(cloudClient, targetNode) > 0);
     // wait for recovery
     boolean recovered = false;
     for (int i = 0; i < 300; i++) {
       DocCollection collState = getCollectionState(coll);
-      List<Replica> replicas = collState.getReplicas(targetNode);
+      log.info("###### " + collState);
+      Collection<Replica> replicas = collState.getSlice(shardId).getReplicas();
       boolean allActive = true;
       boolean hasLeaders = true;
       if (replicas != null && !replicas.isEmpty()) {
         for (Replica r : replicas) {
+          if (!r.getNodeName().equals(targetNode)) {
+            continue;
+          }
           if (!r.isActive(Collections.singleton(targetNode))) {
-            log.info("Not active yet: " + r);
+            log.info("Not active: " + r);
             allActive = false;
           }
         }
@@ -125,6 +130,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
         }
       }
       if (allActive && hasLeaders) {
+        // check the number of active replicas
         assertEquals("total number of replicas", REPLICATION, replicas.size());
         recovered = true;
         break;
@@ -138,16 +144,19 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     moveReplica = new CollectionAdminRequest.MoveReplica(coll, shardId, targetNode, replica.getNodeName());
     moveReplica.process(cloudClient);
     checkNumOfCores(cloudClient, replica.getNodeName(), 1);
-    checkNumOfCores(cloudClient, targetNode, REPLICATION - 1);
     // wait for recovery
     recovered = false;
     for (int i = 0; i < 300; i++) {
       DocCollection collState = getCollectionState(coll);
-      List<Replica> replicas = collState.getReplicas(replica.getNodeName());
+      log.info("###### " + collState);
+      Collection<Replica> replicas = collState.getSlice(shardId).getReplicas();
       boolean allActive = true;
       boolean hasLeaders = true;
       if (replicas != null && !replicas.isEmpty()) {
         for (Replica r : replicas) {
+          if (!r.getNodeName().equals(replica.getNodeName())) {
+            continue;
+          }
           if (!r.isActive(Collections.singleton(replica.getNodeName()))) {
             log.info("Not active yet: " + r);
             allActive = false;
@@ -162,7 +171,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
         }
       }
       if (allActive && hasLeaders) {
-        assertEquals("total number of replicas", 1, replicas.size());
+        assertEquals("total number of replicas", REPLICATION, replicas.size());
         recovered = true;
         break;
       } else {

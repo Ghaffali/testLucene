@@ -59,7 +59,7 @@ public class MoveReplicaCmd implements Cmd{
   }
 
   private void moveReplica(ClusterState clusterState, ZkNodeProps message, NamedList results) throws Exception {
-    log.info("moveReplica() : {}", Utils.toJSONString(message));
+    log.debug("moveReplica() : {}", Utils.toJSONString(message));
     ocmh.checkRequired(message, COLLECTION_PROP, "targetNode");
     String collection = message.getStr(COLLECTION_PROP);
     String targetNode = message.getStr("targetNode");
@@ -174,7 +174,7 @@ public class MoveReplicaCmd implements Cmd{
           replica.getName(), null, countDownLatch);
       ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
     }
-    ZkNodeProps newReplica = ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
+    ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
     if (addResult.get("failure") != null) {
       String errorString = String.format(Locale.ROOT, "Failed to create replica for collection=%s shard=%s" +
           " on node=%s", coll.getName(), slice.getName(), targetNode);
@@ -188,15 +188,15 @@ public class MoveReplicaCmd implements Cmd{
     // wait for the other replica to be active if the source replica was a leader
     if (watcher != null) {
       try {
-        log.info("==== Waiting for leader replica to recover.");
+        log.debug("Waiting for leader's replica to recover.");
         if (!countDownLatch.await(timeout, TimeUnit.SECONDS)) {
-          String errorString = String.format(Locale.ROOT, "Timed out waiting for leader replica to recover, collection=%s shard=%s" +
+          String errorString = String.format(Locale.ROOT, "Timed out waiting for leader's replica to recover, collection=%s shard=%s" +
               " on node=%s", coll.getName(), slice.getName(), targetNode);
           log.warn(errorString);
           results.add("failure", errorString);
           return;
         } else {
-          log.info("Replica " + watcher.getRecoveredReplica() + " is active - deleting the source...");
+          log.debug("Replica " + watcher.getRecoveredReplica() + " is active - deleting the source...");
         }
       } finally {
         ocmh.zkStateReader.removeCollectionStateWatcher(coll.getName(), watcher);
