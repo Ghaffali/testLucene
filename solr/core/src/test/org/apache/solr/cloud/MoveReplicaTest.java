@@ -43,6 +43,7 @@ import org.slf4j.LoggerFactory;
 
 public class MoveReplicaTest extends SolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
   @BeforeClass
   public static void setupCluster() throws Exception {
     configureCluster(4)
@@ -107,7 +108,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     boolean recovered = false;
     for (int i = 0; i < 300; i++) {
       DocCollection collState = getCollectionState(coll);
-      log.info("###### " + collState);
+      log.debug("###### " + collState);
       Collection<Replica> replicas = collState.getSlice(shardId).getReplicas();
       boolean allActive = true;
       boolean hasLeaders = true;
@@ -148,7 +149,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     recovered = false;
     for (int i = 0; i < 300; i++) {
       DocCollection collState = getCollectionState(coll);
-      log.info("###### " + collState);
+      log.debug("###### " + collState);
       Collection<Replica> replicas = collState.getSlice(shardId).getReplicas();
       boolean allActive = true;
       boolean hasLeaders = true;
