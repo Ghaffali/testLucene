@@ -102,7 +102,7 @@ public class DeleteNodeTest extends SolrCloudTestCase {
     CollectionAdminRequest.RequestStatusResponse rsp = null;
     for (int i = 0; i < 200; i++) {
       rsp = requestStatus.process(cloudClient);
-      if (rsp.getRequestStatus() != RequestStatusState.RUNNING) {
+      if (rsp.getRequestStatus() == RequestStatusState.FAILED || rsp.getRequestStatus() == RequestStatusState.COMPLETED) {
         break;
       }
       Thread.sleep(50);
