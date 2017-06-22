@@ -32,6 +32,9 @@ import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.SolrCloudTestCase;
+import org.apache.solr.common.cloud.ClusterState;
+import org.apache.solr.common.cloud.DocCollection;
+import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.SolrParams;
@@ -103,6 +106,7 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
   public void testNodeLost() throws Exception  {
     // let's start a node so that we have at least two
     JettySolrRunner runner = cluster.startJettySolrRunner();
+    String node = runner.getNodeName();
 
     CloudSolrClient solrClient = cluster.getSolrClient();
     String setTriggerCommand = "{" +
@@ -126,7 +130,13 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
     waitForState("Timed out waiting for replicas of new collection to be active",
         "testNodeLost", (liveNodes, collectionState) -> collectionState.getReplicas().stream().allMatch(replica -> replica.isActive(liveNodes)));
 
-    zkClient().printLayoutToStdOut();
+    zkClient().printLayoutToStdOut(); // todo nocommit
+
+    ClusterState clusterState = cluster.getSolrClient().getZkStateReader().getClusterState();
+    DocCollection collection = clusterState.getCollection("testNodeLost");
+    List<Replica> replicas = collection.getReplicas(node);
+    assertNotNull(replicas);
+    assertFalse(replicas.isEmpty());
 
     cluster.startJettySolrRunner();
     cluster.waitForAllNodes(30);
@@ -149,9 +159,9 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
     assertEquals("ComputePlanAction should have computed exactly 1 operation", 1, operations.size());
     SolrRequest solrRequest = operations.get(0);
     SolrParams params = solrRequest.getParams();
-    assertEquals("Expected MOVEREPLICA action after adding node", MOVEREPLICA, CollectionParams.CollectionAction.get(params.get("operation")));
-    String nodeAdded = params.get("srcNode");
-    assertEquals("Unexpected node in computed operation", runner.getNodeName(), nodeAdded);
+    assertEquals("Expected MOVEREPLICA action after adding node", MOVEREPLICA, CollectionParams.CollectionAction.get(params.get("action")));
+    String replicaToBeMoved = params.get("replica");
+    assertEquals("Unexpected node in computed operation", replicas.get(0).getName(), replicaToBeMoved);
   }
 
   @Test
