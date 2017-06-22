@@ -39,12 +39,14 @@ class Row implements MapWriter {
   Map<String, Map<String, List<ReplicaInfo>>> collectionVsShardVsReplicas;
   List<Clause> violations = new ArrayList<>();
   boolean anyValueMissing = false;
+  boolean isLive = true;
 
   Row(String node, List<String> params, ClusterDataProvider dataProvider) {
     collectionVsShardVsReplicas = dataProvider.getReplicaInfo(node, params);
     if (collectionVsShardVsReplicas == null) collectionVsShardVsReplicas = new HashMap<>();
     this.node = node;
     cells = new Cell[params.size()];
+    isLive = dataProvider.getNodes().contains(node);
     Map<String, Object> vals = dataProvider.getNodeValues(node, params);
     for (int i = 0; i < params.size(); i++) {
       String s = params.get(i);

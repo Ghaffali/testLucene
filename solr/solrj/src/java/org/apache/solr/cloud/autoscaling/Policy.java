@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -377,6 +378,10 @@ public class Policy implements MapWriter {
               if (!shardInfo.containsKey(shard)) shardInfo.put(shard, new ArrayList<>());
             }
           }
+        }
+        if(hints.get(Hint.SRC_NODE) != null && session.matrix.stream().noneMatch(row -> row.node.equals(hints.get(Hint.SRC_NODE)))){
+          // the source node is dead so live nodes may not have it
+          session.matrix.add(new Row((String) hints.get(Hint.SRC_NODE), session.getPolicy().params, session.dataProvider));
         }
         session.applyRules();
         originalViolations.addAll(session.getViolations());
