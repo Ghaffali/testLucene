@@ -29,12 +29,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.request.GenericSolrRequest;
 import org.apache.solr.client.solrj.response.SimpleSolrResponse;
 import org.apache.solr.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.cloud.autoscaling.Policy;
 import org.apache.solr.cloud.autoscaling.Policy.ReplicaInfo;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
@@ -103,7 +105,7 @@ public class SolrClientDataProvider implements ClusterDataProvider, MapWriter {
 
   @Override
   public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-    return data.getOrDefault(node, Collections.emptyMap());//todo fill other details
+    return data.computeIfAbsent(node, s -> Collections.emptyMap());//todo fill other details
   }
 
   @Override

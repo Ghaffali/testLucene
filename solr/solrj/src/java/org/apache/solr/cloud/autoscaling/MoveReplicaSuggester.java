@@ -17,6 +17,7 @@
 
 package org.apache.solr.cloud.autoscaling;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 
 import org.apache.solr.client.solrj.SolrRequest;
@@ -24,7 +25,9 @@ import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.autoscaling.Clause.Violation;
 import org.apache.solr.cloud.autoscaling.Policy.ReplicaInfo;
 import org.apache.solr.cloud.autoscaling.Policy.Suggester;
+import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.util.Pair;
+import org.apache.solr.common.util.Utils;
 
 public class MoveReplicaSuggester extends Suggester {
 
@@ -57,6 +60,7 @@ public class MoveReplicaSuggester extends Suggester {
       final int i = getMatrix().indexOf(fromRow);
       for (int j = getMatrix().size() - 1; j > i; j--) {
         Row targetRow = getMatrix().get(j);
+        if(!targetRow.isLive) continue;
         if (!isAllowed(targetRow.node, Hint.TARGET_NODE)) continue;
         targetRow = targetRow.addReplica(coll, shard);
         targetRow.violations.clear();
