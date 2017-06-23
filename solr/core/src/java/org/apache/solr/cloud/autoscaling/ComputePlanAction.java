@@ -67,16 +67,13 @@ public class ComputePlanAction implements TriggerAction {
           .withHttpClient(container.getUpdateShardHandler().getHttpClient())
           .build()) {
         ZkStateReader zkStateReader = cloudSolrClient.getZkStateReader();
-        zkStateReader.getZkClient().printLayoutToStdOut();
         Map<String, Object> autoScalingConf = Utils.getJson(zkStateReader.getZkClient(), ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, true);
         if (autoScalingConf.isEmpty()) {
           log.error("Action: " + getName() + " executed but no policy is configured");
           return;
         }
-        log.debug("Fetched autoscaling conf: {}", autoScalingConf); // todo nocommit
         AutoScalingConfig config = new AutoScalingConfig(autoScalingConf);
         Policy policy = config.getPolicy();
-        log.debug("created policy"); // todo nocommit
         Policy.Session session = policy.createSession(new SolrClientDataProvider(cloudSolrClient));
         Policy.Suggester suggester = getSuggester(session, event);
         while (true) {
@@ -90,10 +87,8 @@ public class ComputePlanAction implements TriggerAction {
             operations.add(operation);
             return operations;
           });
-          // todo nocommit following code is temporarily disabled until iterative calling of suggester is supported
-//          session = suggester.getSession();
-//          suggester = getSuggester(session, event);
-          break;
+          session = suggester.getSession();
+          suggester = getSuggester(session, event);
         }
       }
     } catch (KeeperException e) {

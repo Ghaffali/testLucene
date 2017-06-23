@@ -130,14 +130,14 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
     waitForState("Timed out waiting for replicas of new collection to be active",
         "testNodeLost", (liveNodes, collectionState) -> collectionState.getReplicas().stream().allMatch(replica -> replica.isActive(liveNodes)));
 
-    zkClient().printLayoutToStdOut(); // todo nocommit
-
     ClusterState clusterState = cluster.getSolrClient().getZkStateReader().getClusterState();
     DocCollection collection = clusterState.getCollection("testNodeLost");
     List<Replica> replicas = collection.getReplicas(node);
     assertNotNull(replicas);
     assertFalse(replicas.isEmpty());
 
+    // start another node because because when the other node goes away, the cluster policy requires only
+    // 1 replica per node and none on the overseer
     cluster.startJettySolrRunner();
     cluster.waitForAllNodes(30);
 
@@ -150,7 +150,7 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
     }
     cluster.waitForAllNodes(30);
 
-    assertTrue("Trigger was not fired even after 5 seconds", triggerFiredLatch.await(180, TimeUnit.SECONDS));
+    assertTrue("Trigger was not fired even after 5 seconds", triggerFiredLatch.await(5, TimeUnit.SECONDS));
     assertTrue(fired.get());
     Map context = (Map) eventContextRef.get();
     assertNotNull(context);
