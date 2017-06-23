@@ -18,6 +18,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// TODO SOLR-10842 this entire page is essentially Solr Tutorial-lite...is it valuable? 
 This section describes how to run Solr with an example schema, how to add documents, and how to run queries.
 
 [[RunningSolr-StarttheServer]]
