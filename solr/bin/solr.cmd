@@ -1404,6 +1404,7 @@ IF "!CREATE_NAME!"=="" (
   set "SCRIPT_ERROR=Name (-c) is a required parameter for %SCRIPT_CMD%"
   goto invalid_cmd_line
 )
+IF "!CREATE_CONFDIR!"=="" set CREATE_CONFDIR=_default
 IF "!CREATE_NUM_SHARDS!"=="" set CREATE_NUM_SHARDS=1
 IF "!CREATE_REPFACT!"=="" set CREATE_REPFACT=1
 
