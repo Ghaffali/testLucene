@@ -64,7 +64,7 @@ Once extracted, you are now ready to run Solr using the instructions provided in
 
 == Directory Layout
 
-After installing Solr, you'll see the following directories:
+After installing Solr, you'll see the following directories and files within them:
 
 bin::
 This directory includes several important scripts that will make using Solr easier.
@@ -86,7 +86,7 @@ dist::
 The `dist` directory contains the main Solr .jar files.
 
 docs::
-The `docs` directory includes a link to the online Javadocs. It is retained in the Solr distribution as a historical artifact - it used to contain the Javadocs, but those were removed from the packaging in preference to the online version.
+The `docs` directory includes a link to online Javadocs for Solr.
 
 example::
 The `example` directory includes several types of examples that demonstrate various Solr capabilities. See the section <<Solr Examples>> below for more details on what is in this directory.
@@ -108,7 +108,7 @@ Solr includes a set of example documents and configurations to use when getting 
 Here are the examples included with Solr:
 
 exampledocs::
-This is a small set of simple CSV, XML, and JSON files that can be used with `bin/post` when first getting started with Solr.
+This is a small set of simple CSV, XML, and JSON files that can be used with `bin/post` when first getting started with Solr. For more information about using `bin/post` with these files, see <<post-tool.adoc#post-tool,Post Tool>>.
 
 example-DIH::
 This directory includes a few example DataImport Handler (DIH) configurations to help you get started with importing structured content in a database, an email server, or even an Atom feed. Each example will index a different set of data; see the README there for more details about these examples.
