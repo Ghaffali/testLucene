@@ -19,6 +19,7 @@ package org.apache.solr.handler;
 
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,6 +28,7 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.impl.BinaryResponseParser;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.XMLResponseParser;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.V2Request;
@@ -67,8 +69,13 @@ public class V2ApiIntegrationTest extends SolrCloudTestCase {
         .withPayload(payload)
         .build();
     v2Request.setResponseParser(responseParser);
-    V2Response response = v2Request.process(cluster.getSolrClient());
-    assertEquals(getStatus(response), expectedCode);
+    try {
+      v2Request.process(cluster.getSolrClient());
+      fail("expected an exception with error code: "+expectedCode);
+    } catch (HttpSolrClient.RemoteExecutionException e) {
+      assertEquals(expectedCode, e.code());
+
+    }
   }
 
   @Test
@@ -132,9 +139,15 @@ public class V2ApiIntegrationTest extends SolrCloudTestCase {
     result = resAsMap(client, new V2Request.Builder("/collections/"+COLL_NAME+"/get/_introspect").build());
     assertEquals("/collections/collection1/get", Utils.getObjectByPath(result, true, "/spec[0]/url/paths[0]"));
     String tempDir = createTempDir().toFile().getPath();
+    Map<String, Object> backupPayload = new HashMap<>();
+    Map<String, Object> backupParams = new HashMap<>();
+    backupPayload.put("backup-collection", backupParams);
+    backupParams.put("name", "backup_test");
+    backupParams.put("collection", COLL_NAME);
+    backupParams.put("location", tempDir);
     client.request(new V2Request.Builder("/c")
         .withMethod(SolrRequest.METHOD.POST)
-        .withPayload("{backup-collection:{name: backup_test, collection: "+COLL_NAME+" , location: '"+tempDir+"' }}")
+        .withPayload(Utils.toJSONString(backupPayload))
         .build());
   }
 
