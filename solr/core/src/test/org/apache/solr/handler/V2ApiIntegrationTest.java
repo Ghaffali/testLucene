@@ -18,22 +18,26 @@
 package org.apache.solr.handler;
 
 
-import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.solr.client.solrj.ResponseParser;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.impl.BinaryResponseParser;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.impl.XMLResponseParser;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.V2Request;
+import org.apache.solr.client.solrj.response.DelegationTokenResponse;
+import org.apache.solr.client.solrj.response.V2Response;
 import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
-import org.apache.solr.util.RestTestHarness;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -52,14 +56,50 @@ public class V2ApiIntegrationTest extends SolrCloudTestCase {
 
   @Test
   public void testWelcomeMessage() throws Exception {
-    NamedList res = cluster.getSolrClient().request(
-        new V2Request.Builder("").build());
-    NamedList header = (NamedList) res.get("responseHeader");
-    assertEquals(0, header.get("status"));
+    V2Response res = new V2Request.Builder("").build().process(cluster.getSolrClient());
+    assertEquals(0, res.getStatus());
 
-    res = cluster.getSolrClient().request(new V2Request.Builder("/_introspect").build());
-    header = (NamedList) res.get("responseHeader");
-    assertEquals(0, header.get("status"));
+    res = new V2Request.Builder("/_introspect").build().process(cluster.getSolrClient());
+    assertEquals(0, res.getStatus());
+  }
+
+  private void testException(ResponseParser responseParser, int expectedCode, String path, String payload) throws IOException, SolrServerException {
+    V2Request v2Request = new V2Request.Builder(path)
+        .withMethod(SolrRequest.METHOD.POST)
+        .withPayload(payload)
+        .build();
+    v2Request.setResponseParser(responseParser);
+    try {
+      v2Request.process(cluster.getSolrClient());
+      fail("expected an exception with error code: "+expectedCode);
+    } catch (HttpSolrClient.RemoteExecutionException e) {
+      assertEquals(expectedCode, e.code());
+
+    }
+  }
+
+  @Test
+  public void testException() throws Exception {
+    String notFoundPath = "/c/" + COLL_NAME + "/abccdef";
+    String incorrectPayload = "{rebalance-leaders: {maxAtOnce: abc, maxWaitSeconds: xyz}}";
+    testException(new XMLResponseParser(),404,
+        notFoundPath, incorrectPayload);
+    testException(new DelegationTokenResponse.JsonMapResponseParser(),404,
+        notFoundPath, incorrectPayload);
+    testException(new BinaryResponseParser(),404,
+        notFoundPath, incorrectPayload);
+    testException(new XMLResponseParser(), 400, "/c/" + COLL_NAME, incorrectPayload);
+    testException(new BinaryResponseParser(), 400, "/c/" + COLL_NAME, incorrectPayload);
+    testException(new DelegationTokenResponse.JsonMapResponseParser(), 400, "/c/" + COLL_NAME, incorrectPayload);
+  }
+
+  private long getStatus(V2Response response) {
+    Object header = response.getResponse().get("responseHeader");
+    if (header instanceof NamedList) {
+      return (int) ((NamedList) header).get("status");
+    } else {
+      return (long) ((Map) header).get("status");
+    }
   }
 
   @Test
@@ -99,9 +139,15 @@ public class V2ApiIntegrationTest extends SolrCloudTestCase {
     result = resAsMap(client, new V2Request.Builder("/collections/"+COLL_NAME+"/get/_introspect").build());
     assertEquals("/collections/collection1/get", Utils.getObjectByPath(result, true, "/spec[0]/url/paths[0]"));
     String tempDir = createTempDir().toFile().getPath();
+    Map<String, Object> backupPayload = new HashMap<>();
+    Map<String, Object> backupParams = new HashMap<>();
+    backupPayload.put("backup-collection", backupParams);
+    backupParams.put("name", "backup_test");
+    backupParams.put("collection", COLL_NAME);
+    backupParams.put("location", tempDir);
     client.request(new V2Request.Builder("/c")
         .withMethod(SolrRequest.METHOD.POST)
-        .withPayload("{backup-collection:{name: backup_test, collection: "+COLL_NAME+" , location: '"+tempDir+"' }}")
+        .withPayload(Utils.toJSONString(backupPayload))
         .build());
   }
 

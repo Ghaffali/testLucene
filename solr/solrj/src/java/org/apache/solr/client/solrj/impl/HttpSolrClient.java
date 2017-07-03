@@ -65,6 +65,7 @@ import org.apache.solr.client.solrj.ResponseParser;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.V2RequestSupport;
 import org.apache.solr.client.solrj.request.RequestWriter;
 import org.apache.solr.client.solrj.request.V2Request;
 import org.apache.solr.common.SolrException;
@@ -80,6 +81,8 @@ import org.apache.solr.common.util.Utils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.slf4j.MDC;
+
+import static org.apache.solr.common.util.Utils.getObjectByPath;
 
 /**
  * A SolrClient implementation that talks directly to a Solr server via HTTP
@@ -140,8 +143,40 @@ public class HttpSolrClient extends SolrClient {
   private volatile Integer connectionTimeout;
   private volatile Integer soTimeout;
   
+  /**
+   * @deprecated use {@link HttpSolrClient#HttpSolrClient(Builder)} instead, as it is a more extension/subclassing-friendly alternative
+   */
+  @Deprecated
   protected HttpSolrClient(String baseURL, HttpClient client, ResponseParser parser, boolean allowCompression) {
-    this.baseUrl = baseURL;
+    this(new Builder(baseURL)
+        .withHttpClient(client)
+        .withResponseParser(parser)
+        .allowCompression(allowCompression));
+  }
+
+  /**
+   * The constructor.
+   *
+   * @param baseURL The base url to communicate with the Solr server
+   * @param client Http client instance to use for communication
+   * @param parser Response parser instance to use to decode response from Solr server
+   * @param allowCompression Should compression be allowed ?
+   * @param invariantParams The parameters which should be included with every request.
+   * 
+   * @deprecated use {@link HttpSolrClient#HttpSolrClient(Builder)} instead, as it is a more extension/subclassing-friendly alternative
+   */
+  @Deprecated
+  protected HttpSolrClient(String baseURL, HttpClient client, ResponseParser parser, boolean allowCompression,
+      ModifiableSolrParams invariantParams) {
+    this(new Builder(baseURL)
+        .withHttpClient(client)
+        .withResponseParser(parser)
+        .allowCompression(allowCompression)
+        .withInvariantParams(invariantParams));
+  }
+  
+  protected HttpSolrClient(Builder builder) {
+    this.baseUrl = builder.baseSolrUrl;
     if (baseUrl.endsWith("/")) {
       baseUrl = baseUrl.substring(0, baseUrl.length() - 1);
     }
@@ -151,34 +186,19 @@ public class HttpSolrClient extends SolrClient {
               + baseUrl);
     }
     
-    if (client != null) {
-      httpClient = client;
-      internalClient = false;
+    if (builder.httpClient != null) {
+      this.httpClient = builder.httpClient;
+      this.internalClient = false;
     } else {
-      internalClient = true;
+      this.internalClient = true;
       ModifiableSolrParams params = new ModifiableSolrParams();
       params.set(HttpClientUtil.PROP_FOLLOW_REDIRECTS, followRedirects);
-      params.set(HttpClientUtil.PROP_ALLOW_COMPRESSION, allowCompression);
+      params.set(HttpClientUtil.PROP_ALLOW_COMPRESSION, builder.compression);
       httpClient = HttpClientUtil.createClient(params);
     }
     
-    this.parser = parser;
-  }
-
-  /**
-   * The consturctor.
-   *
-   * @param baseURL The base url to communicate with the Solr server
-   * @param client Http client instance to use for communication
-   * @param parser Response parser instance to use to decode response from Solr server
-   * @param allowCompression Should compression be allowed ?
-   * @param invariantParams The parameters which should be included with every request.
-   */
-  protected HttpSolrClient(String baseURL, HttpClient client, ResponseParser parser, boolean allowCompression,
-      ModifiableSolrParams invariantParams) {
-    this(baseURL, client, parser, allowCompression);
-
-    this.invariantParams = invariantParams;
+    this.parser = builder.responseParser;
+    this.invariantParams = builder.invariantParams;
   }
 
   public Set<String> getQueryParams() {
@@ -227,7 +247,11 @@ public class HttpSolrClient extends SolrClient {
       throws SolrServerException, IOException {
     HttpRequestBase method = createMethod(request, collection);
     setBasicAuthHeader(request, method);
-    return executeMethod(method, processor);
+    return executeMethod(method, processor, isV2ApiRequest(request));
+  }
+
+  private boolean isV2ApiRequest(final SolrRequest request) {
+    return request instanceof V2Request || request.getPath().contains("/____v2");
   }
 
   private void setBasicAuthHeader(SolrRequest request, HttpRequestBase method) throws UnsupportedEncodingException {
@@ -267,7 +291,7 @@ public class HttpSolrClient extends SolrClient {
     ExecutorService pool = ExecutorUtil.newMDCAwareFixedThreadPool(1, new SolrjNamedThreadFactory("httpUriRequest"));
     try {
       MDC.put("HttpSolrClient.url", baseUrl);
-      mrr.future = pool.submit(() -> executeMethod(method, processor));
+      mrr.future = pool.submit(() -> executeMethod(method, processor, isV2ApiRequest(request)));
  
     } finally {
       pool.shutdown();
@@ -295,8 +319,10 @@ public class HttpSolrClient extends SolrClient {
     return queryModParams;
   }
 
-  protected HttpRequestBase createMethod(final SolrRequest request, String collection) throws IOException, SolrServerException {
-
+  protected HttpRequestBase createMethod(SolrRequest request, String collection) throws IOException, SolrServerException {
+    if (request instanceof V2RequestSupport) {
+      request = ((V2RequestSupport) request).getV2Request();
+    }
     SolrParams params = request.getParams();
     Collection<ContentStream> streams = requestWriter.getContentStreams(request);
     String path = requestWriter.getPath(request);
@@ -403,7 +429,7 @@ public class HttpSolrClient extends SolrClient {
             parts.add(new FormBodyPart(name,
                 new InputStreamBody(
                     content.getStream(),
-                    contentType,
+                    ContentType.parse(contentType),
                     content.getName())));
           }
         }
@@ -470,7 +496,7 @@ public class HttpSolrClient extends SolrClient {
 
   }
   
-  protected NamedList<Object> executeMethod(HttpRequestBase method, final ResponseParser processor) throws SolrServerException {
+  protected NamedList<Object> executeMethod(HttpRequestBase method, final ResponseParser processor, final boolean isV2Api) throws SolrServerException {
     method.addHeader("User-Agent", AGENT);
  
     org.apache.http.client.config.RequestConfig.Builder requestConfigBuilder = HttpClientUtil.createDefaultRequestConfigBuilder();
@@ -568,7 +594,13 @@ public class HttpSolrClient extends SolrClient {
       } catch (Exception e) {
         throw new RemoteSolrException(baseUrl, httpStatus, e.getMessage(), e);
       }
-      if (httpStatus != HttpStatus.SC_OK) {
+      if (isV2Api) {
+        Object err = rsp.get("error");
+        if (err != null) {
+          throw RemoteExecutionException.create(baseUrl, rsp);
+        }
+      }
+      if (httpStatus != HttpStatus.SC_OK && !isV2Api) {
         NamedList<String> metadata = null;
         String reason = null;
         try {
@@ -752,14 +784,47 @@ public class HttpSolrClient extends SolrClient {
   }
 
   /**
+   * This should be thrown when a server has an error in executing the request and
+   * it sends a proper payload back to the client
+   */
+  public static class RemoteExecutionException extends RemoteSolrException {
+    private NamedList meta;
+
+    public RemoteExecutionException(String remoteHost, int code, String msg, NamedList meta) {
+      super(remoteHost, code, msg, null);
+      this.meta = meta;
+    }
+
+
+    public static RemoteExecutionException create(String host, NamedList errResponse) {
+      Object errObj = errResponse.get("error");
+      if (errObj != null) {
+        Number code = (Number) getObjectByPath(errObj, true, Collections.singletonList("code"));
+        String msg = (String) getObjectByPath(errObj, true, Collections.singletonList("msg"));
+        return new RemoteExecutionException(host, code == null ? ErrorCode.UNKNOWN.code : code.intValue(),
+            msg == null ? "Unknown Error" : msg, errResponse);
+
+      } else {
+        throw new RuntimeException("No error");
+      }
+
+    }
+
+    public NamedList getMetaData() {
+
+      return meta;
+    }
+  }
+
+  /**
    * Constructs {@link HttpSolrClient} instances from provided configuration.
    */
   public static class Builder {
-    private String baseSolrUrl;
-    private HttpClient httpClient;
-    private ResponseParser responseParser;
-    private boolean compression;
-    private ModifiableSolrParams invariantParams = new ModifiableSolrParams();
+    protected String baseSolrUrl;
+    protected HttpClient httpClient;
+    protected ResponseParser responseParser;
+    protected boolean compression;
+    protected ModifiableSolrParams invariantParams = new ModifiableSolrParams();
 
     public Builder() {
       this.responseParser = new BinaryResponseParser();
@@ -876,9 +941,9 @@ public class HttpSolrClient extends SolrClient {
       }
 
       if (this.invariantParams.get(DelegationTokenHttpSolrClient.DELEGATION_TOKEN_PARAM) == null) {
-        return new HttpSolrClient(baseSolrUrl, httpClient, responseParser, compression, invariantParams);
+        return new HttpSolrClient(this);
       } else {
-        return new DelegationTokenHttpSolrClient(baseSolrUrl, httpClient, responseParser, compression, invariantParams);
+        return new DelegationTokenHttpSolrClient(this);
       }
     }
   }

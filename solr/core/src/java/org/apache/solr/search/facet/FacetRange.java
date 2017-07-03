@@ -177,7 +177,7 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
   private SimpleOrderedMap<Object> getRangeCounts() throws IOException {
     final FieldType ft = sf.getType();
 
-    if (ft instanceof TrieField) {
+    if (ft instanceof TrieField || ft.isPointField()) {
       switch (ft.getNumberType()) {
         case FLOAT:
           calc = new FloatCalc(sf);
@@ -490,7 +490,11 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
 
     @Override
     public Comparable bitsToValue(long bits) {
-      return Float.intBitsToFloat( (int)bits );
+      if (field.getType().isPointField() && field.multiValued()) {
+        return NumericUtils.sortableIntToFloat((int)bits);
+      } else {
+        return Float.intBitsToFloat( (int)bits );
+      }
     }
 
     @Override
@@ -511,7 +515,11 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
   private static class DoubleCalc extends Calc {
     @Override
     public Comparable bitsToValue(long bits) {
-      return Double.longBitsToDouble(bits);
+      if (field.getType().isPointField() && field.multiValued()) {
+        return NumericUtils.sortableLongToDouble(bits);
+      } else {
+        return Double.longBitsToDouble(bits);
+      }
     }
 
     @Override
@@ -532,6 +540,10 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
   private static class IntCalc extends Calc {
 
     public IntCalc(final SchemaField f) { super(f); }
+    @Override
+    public Comparable bitsToValue(long bits) {
+      return (int)bits;
+    }
     @Override
     protected Integer parseStr(String rawval) {
       return Integer.valueOf(rawval);
@@ -559,8 +571,8 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
                     final Date now) {
       super(f);
       this.now = now;
-      if (! (field.getType() instanceof TrieDateField) ) {
-        throw new IllegalArgumentException("SchemaField must use field type extending TrieDateField or DateRangeField");
+      if (! (field.getType() instanceof TrieDateField) && !(field.getType().isPointField()) ) {
+        throw new IllegalArgumentException("SchemaField must use field type extending TrieDateField, DateRangeField or PointField");
       }
     }
 
@@ -700,7 +712,7 @@ class FacetRangeProcessor extends FacetProcessor<FacetRange> {
 
     SimpleOrderedMap<Object> bucket = new SimpleOrderedMap<>();
     FieldType ft = sf.getType();
-    bucket.add("val", bucketVal);
+    bucket.add("val", range.low); // use "low" instead of bucketVal because it will be the right type (we may have been passed back long instead of int for example)
     // String internal = ft.toInternal( tobj.toString() );  // TODO - we need a better way to get from object to query...
 
     Query domainQ = sf.getType().getRangeQuery(null, sf, range.low == null ? null : calc.formatValue(range.low), range.high==null ? null : calc.formatValue(range.high), range.includeLower, range.includeUpper);

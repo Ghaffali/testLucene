@@ -22,6 +22,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringReader;
 import java.lang.invoke.MethodHandles;
+import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -39,6 +40,7 @@ import java.util.regex.Pattern;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.util.EntityUtils;
+import org.apache.solr.client.solrj.impl.BinaryRequestWriter;
 import org.apache.solr.common.IteratorWriter;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
@@ -47,6 +49,7 @@ import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkOperation;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.server.ByteBufferInputStream;
 import org.noggit.CharArr;
 import org.noggit.JSONParser;
 import org.noggit.JSONWriter;
@@ -100,6 +103,12 @@ public class Utils {
       v = getDeepCopy((Collection) v, maxDepth - 1, mutable, sorted);
     }
     return v;
+  }
+
+  public static InputStream toJavabin(Object o) throws IOException {
+    BinaryRequestWriter.BAOS baos = new BinaryRequestWriter.BAOS();
+    new JavaBinCodec().marshal(o,baos);
+    return new ByteBufferInputStream(ByteBuffer.wrap(baos.getbuf(),0,baos.size()));
   }
 
   public static Collection getDeepCopy(Collection c, int maxDepth, boolean mutable) {
@@ -184,8 +193,7 @@ public class Utils {
   }
 
   public static Object fromJSONResource(String resourceName){
-   return fromJSON(Thread.currentThread()
-        .getContextClassLoader().getResourceAsStream(resourceName));
+   return fromJSON(Utils.class.getClassLoader().getResourceAsStream(resourceName));
 
   }
   public static JSONParser getJSONParser(Reader reader){
@@ -204,15 +212,79 @@ public class Utils {
     }
   }
 
-  public static Object getObjectByPath(Map root, boolean onlyPrimitive, String hierarchy) {
+  public static Object getObjectByPath(Object root, boolean onlyPrimitive, String hierarchy) {
     List<String> parts = StrUtils.splitSmart(hierarchy, '/');
     if (parts.get(0).isEmpty()) parts.remove(0);
     return getObjectByPath(root, onlyPrimitive, parts);
   }
 
-  public static Object getObjectByPath(Map root, boolean onlyPrimitive, List<String> hierarchy) {
+  public static boolean setObjectByPath(Object root, String hierarchy, Object value) {
+    List<String> parts = StrUtils.splitSmart(hierarchy, '/');
+    if (parts.get(0).isEmpty()) parts.remove(0);
+    return setObjectByPath(root, parts, value);
+  }
+
+  public static boolean setObjectByPath(Object root, List<String> hierarchy, Object value) {
+    if (root == null) return false;
+    if (!isMapLike(root)) throw new RuntimeException("must be a Map or NamedList");
+    Object obj = root;
+    for (int i = 0; i < hierarchy.size(); i++) {
+      int idx = -2; //-1 means append to list, -2 means not found
+      String s = hierarchy.get(i);
+      if (s.endsWith("]")) {
+        Matcher matcher = ARRAY_ELEMENT_INDEX.matcher(s);
+        if (matcher.find()) {
+          s = matcher.group(1);
+          idx = Integer.parseInt(matcher.group(2));
+        }
+      }
+      if (i < hierarchy.size() - 1) {
+        Object o = getVal(obj, s);
+        if (o == null) return false;
+        if (idx > -1) {
+          List l = (List) o;
+          o = idx < l.size() ? l.get(idx) : null;
+        }
+        if (!isMapLike(o)) return false;
+        obj = o;
+      } else {
+        if (idx == -2) {
+          if (obj instanceof NamedList) {
+            NamedList namedList = (NamedList) obj;
+            int location = namedList.indexOf(s, 0);
+            if (location == -1) namedList.add(s, value);
+            else namedList.setVal(location, value);
+          } else if (obj instanceof Map) {
+            ((Map) obj).put(s, value);
+          }
+          return true;
+        } else {
+          Object v = getVal(obj, s);
+          if (v instanceof List) {
+            List list = (List) v;
+            if (idx == -1) {
+              list.add(value);
+            } else {
+              if (idx < list.size()) list.set(idx, value);
+              else return false;
+            }
+            return true;
+          } else {
+            return false;
+          }
+        }
+      }
+    }
+
+    return false;
+
+  }
+
+
+  public static Object getObjectByPath(Object root, boolean onlyPrimitive, List<String> hierarchy) {
     if(root == null) return null;
-    Map obj = root;
+    if(!isMapLike(root)) throw new RuntimeException("must be a Map or NamedList");
+    Object obj = root;
     for (int i = 0; i < hierarchy.size(); i++) {
       int idx = -1;
       String s = hierarchy.get(i);
@@ -224,22 +296,22 @@ public class Utils {
         }
       }
       if (i < hierarchy.size() - 1) {
-        Object o = obj.get(s);
+        Object o = getVal(obj, s);
         if (o == null) return null;
         if (idx > -1) {
           List l = (List) o;
           o = idx < l.size() ? l.get(idx) : null;
         }
-        if (!(o instanceof Map)) return null;
-        obj = (Map) o;
+        if (!isMapLike(o)) return null;
+        obj = o;
       } else {
-        Object val = obj.get(s);
+        Object val = getVal(obj, s);
         if (val == null) return null;
         if (idx > -1) {
           List l = (List) val;
           val = idx < l.size() ? l.get(idx) : null;
         }
-        if (onlyPrimitive && val instanceof Map) {
+        if (onlyPrimitive && isMapLike(val)) {
           return null;
         }
         return val;
@@ -248,7 +320,17 @@ public class Utils {
 
     return false;
   }
-  
+
+  private static boolean isMapLike(Object o) {
+    return o instanceof Map || o instanceof NamedList;
+  }
+
+  private static Object getVal(Object obj, String key) {
+    if(obj instanceof NamedList) return ((NamedList) obj).get(key);
+    else if (obj instanceof Map) return ((Map) obj).get(key);
+    else throw new RuntimeException("must be a NamedList or Map");
+  }
+
   /**
    * If the passed entity has content, make sure it is fully
    * read and closed.
@@ -303,7 +385,7 @@ public class Utils {
   }
 
   public static final Pattern ARRAY_ELEMENT_INDEX = Pattern
-      .compile("(\\S*?)\\[(\\d+)\\]");
+      .compile("(\\S*?)\\[([-]?\\d+)\\]");
 
   public static SpecProvider getSpec(final String name) {
     return () -> {
