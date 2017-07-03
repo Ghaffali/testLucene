@@ -52,7 +52,7 @@ public class NodeLostTrigger extends TriggerBase {
   private final Map<String, Object> properties;
   private final CoreContainer container;
   private final List<TriggerAction> actions;
-  private final AtomicReference<AutoScaling.TriggerListener> listenerRef;
+  private final AtomicReference<AutoScaling.EventProcessor> processorRef;
   private final boolean enabled;
   private final int waitForSecond;
   private final AutoScaling.EventType eventType;
@@ -71,7 +71,7 @@ public class NodeLostTrigger extends TriggerBase {
     this.properties = properties;
     this.container = container;
     this.timeSource = TimeSource.CURRENT_TIME;
-    this.listenerRef = new AtomicReference<>();
+    this.processorRef = new AtomicReference<>();
     List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
     if (o != null && !o.isEmpty()) {
       actions = new ArrayList<>(3);
@@ -117,13 +117,13 @@ public class NodeLostTrigger extends TriggerBase {
   }
 
   @Override
-  public void setListener(AutoScaling.TriggerListener listener) {
-    listenerRef.set(listener);
+  public void setProcessor(AutoScaling.EventProcessor processor) {
+    processorRef.set(processor);
   }
 
   @Override
-  public AutoScaling.TriggerListener getListener() {
-    return listenerRef.get();
+  public AutoScaling.EventProcessor getProcessor() {
+    return processorRef.get();
   }
 
   @Override
@@ -250,10 +250,10 @@ public class NodeLostTrigger extends TriggerBase {
         Long timeRemoved = entry.getValue();
         if (TimeUnit.SECONDS.convert(timeSource.getTime() - timeRemoved, TimeUnit.NANOSECONDS) >= getWaitForSecond()) {
           // fire!
-          AutoScaling.TriggerListener listener = listenerRef.get();
-          if (listener != null) {
-            log.debug("NodeLostTrigger firing registered listener");
-            if (listener.triggerFired(new NodeLostEvent(getEventType(), getName(), timeRemoved, nodeName)))  {
+          AutoScaling.EventProcessor processor = processorRef.get();
+          if (processor != null) {
+            log.debug("NodeLostTrigger firing registered processor");
+            if (processor.process(new NodeLostEvent(getEventType(), getName(), timeRemoved, nodeName)))  {
               it.remove();
               removeNodeLostMarker(nodeName);
             }

@@ -127,7 +127,7 @@ public class ScheduledTriggers implements Closeable {
       scheduledTrigger.setReplay(false);
       scheduledTriggers.replace(newTrigger.getName(), scheduledTrigger);
     }
-    newTrigger.setListener(event -> {
+    newTrigger.setProcessor(event -> {
       ScheduledTrigger scheduledSource = scheduledTriggers.get(event.getSource());
       if (scheduledSource == null) {
         log.warn("Ignoring autoscaling event " + event + " because the source trigger: " + event.getSource() + " doesn't exist.");
@@ -303,7 +303,7 @@ public class ScheduledTriggers implements Closeable {
           while ((event = queue.peekEvent()) != null) {
             // override REPLAYING=true
             event.getProperties().put(TriggerEvent.REPLAYING, true);
-            if (! trigger.getListener().triggerFired(event)) {
+            if (! trigger.getProcessor().process(event)) {
               log.error("Failed to re-play event, discarding: " + event);
             }
             queue.pollEvent(); // always remove it from queue
