@@ -16,7 +16,74 @@ In this release, there is an example Solr server including a bundled
 servlet container in the directory named "example".
 See the Quick Start guide at http://lucene.apache.org/solr/quickstart.html
 
+==================  8.0.0 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.14.v20161028
+
+
+(No Changes)
+
+
+==================  7.1.0 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.14.v20161028
+
+Detailed Change List
+----------------------
+
+Upgrade Notes
+----------------------
+
+(No Notes)
+
+New Features
+----------------------
+
+(No Changes)
+
+Bug Fixes
+----------------------
+
+(No Changes)
+
+Optimizations
+----------------------
+
+(No Changes)
+
+Other Changes
+----------------------
+
+(No Changes)
+
 ==================  7.0.0 ==================
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.14.v20161028
 
 Upgrading from Solr 6.x
 ----------------------
@@ -232,6 +299,8 @@ Bug Fixes
 * SOLR-6807: CloudSolrClient's ZK state version check with the server was ignored when handleSelect=false
   (David Smiley)
 
+* SOLR-10878: MOVEREPLICA command may lose data when replicationFactor is 1. (ab, shalin)
+
 Optimizations
 ----------------------
 
@@ -371,6 +440,9 @@ Other Changes
   (added leading '/' in request handlers). Switch all tests referring to "standard" request handler to
   instead refer to "/select" with SearchHandler. Deprecated the old StandardRequestHandler. (David Smiley)
 
+* SOLR-10456: Deprecate timeout related setters from SolrClients, and replace with Builder based implementation
+  (Jason Gerlowski, Anshum Gupta)
+
 ==================  6.7.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
@@ -500,6 +572,8 @@ when using one of Exact*StatsCache (Mikhail Khludnev)
 
 * SOLR-10910: Clean up a few details left over from pluggable transient core and untangling
   CoreDescriptor/CoreContainer references (Erick Erickson)
+
+* SOLR-10914: RecoveryStrategy's sendPrepRecoveryCmd can get stuck for 5 minutes if leader is unloaded. (shalin)
 
 Optimizations
 ----------------------
