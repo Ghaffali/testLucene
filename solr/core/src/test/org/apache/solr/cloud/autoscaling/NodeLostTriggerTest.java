@@ -43,7 +43,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
   private static AtomicBoolean actionInitCalled = new AtomicBoolean(false);
   private static AtomicBoolean actionCloseCalled = new AtomicBoolean(false);
 
-  private AutoScaling.TriggerListener noFirstRunListener = event -> {
+  private AutoScaling.EventProcessor noFirstRunProcessor = event -> {
     fail("Did not expect the listener to fire on first run!");
     return true;
   };
@@ -74,7 +74,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
     Map<String, Object> props = createTriggerProps(waitForSeconds);
 
     try (NodeLostTrigger trigger = new NodeLostTrigger("node_lost_trigger", props, container)) {
-      trigger.setProcessor(noFirstRunListener);
+      trigger.setProcessor(noFirstRunProcessor);
       trigger.run();
       String lostNodeName = cluster.getJettySolrRunner(1).getNodeName();
       cluster.stopJettySolrRunner(1);
@@ -115,7 +115,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
     try (NodeLostTrigger trigger = new NodeLostTrigger("node_lost_trigger", props, container)) {
       final long waitTime = 2;
       props.put("waitFor", waitTime);
-      trigger.setProcessor(noFirstRunListener);
+      trigger.setProcessor(noFirstRunProcessor);
       trigger.run();
 
       JettySolrRunner lostNode = cluster.getJettySolrRunner(1);
@@ -210,7 +210,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
     CoreContainer container = cluster.getJettySolrRunners().get(0).getCoreContainer();
     Map<String, Object> props = createTriggerProps(0);
     try (NodeLostTrigger trigger = new NodeLostTrigger("node_added_trigger", props, container)) {
-      trigger.setProcessor(noFirstRunListener);
+      trigger.setProcessor(noFirstRunProcessor);
 
       JettySolrRunner newNode = cluster.startJettySolrRunner();
       cluster.waitForAllNodes(5);
@@ -263,7 +263,7 @@ public class NodeLostTriggerTest extends SolrCloudTestCase {
     // and assert that the new trigger still fires
 
     NodeLostTrigger trigger = new NodeLostTrigger("node_lost_trigger", props, container);
-    trigger.setProcessor(noFirstRunListener);
+    trigger.setProcessor(noFirstRunProcessor);
     trigger.run();
 
     // stop the newly created node

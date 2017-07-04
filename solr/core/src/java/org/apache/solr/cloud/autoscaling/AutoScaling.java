@@ -64,21 +64,17 @@ public class AutoScaling {
   }
 
   public interface TriggerListener {
-    /**
-     * This method is executed when a trigger is ready to fire.
-     *
-     * @param event a subclass of {@link TriggerEvent}
-     * @return true if the listener was ready to perform actions on the event, false
-     * otherwise. If false was returned then callers should assume the event was discarded.
-     */
-    boolean triggerFired(TriggerEvent event);
-  }
 
-  public static class HttpCallbackListener implements TriggerListener {
-    @Override
-    public boolean triggerFired(TriggerEvent event) {
-      return true;
-    }
+    void init(CoreContainer coreContainer);
+
+    /**
+     * This method is called when either a particular <code>stage</code> or
+     * <code>actionName</code> is reached during event processing.
+     * @param stage {@link TriggerStage} that this listener was registered for, or null
+     * @param actionName {@link TriggerAction} name that this listener was registered for, or null
+     * @param event current event being processed
+     */
+    void onEvent(TriggerStage stage, String actionName, TriggerEvent event);
   }
 
   /**

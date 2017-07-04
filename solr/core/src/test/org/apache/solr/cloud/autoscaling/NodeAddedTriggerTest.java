@@ -43,7 +43,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
   private static AtomicBoolean actionInitCalled = new AtomicBoolean(false);
   private static AtomicBoolean actionCloseCalled = new AtomicBoolean(false);
 
-  private AutoScaling.TriggerListener noFirstRunListener = event -> {
+  private AutoScaling.EventProcessor noFirstRunProcessor = event -> {
     fail("Did not expect the listener to fire on first run!");
     return true;
   };
@@ -73,7 +73,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
     Map<String, Object> props = createTriggerProps(waitForSeconds);
 
     try (NodeAddedTrigger trigger = new NodeAddedTrigger("node_added_trigger", props, container)) {
-      trigger.setProcessor(noFirstRunListener);
+      trigger.setProcessor(noFirstRunProcessor);
       trigger.run();
 
       JettySolrRunner newNode = cluster.startJettySolrRunner();
@@ -112,7 +112,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
     try (NodeAddedTrigger trigger = new NodeAddedTrigger("node_added_trigger", props, container)) {
       final long waitTime = 2;
       props.put("waitFor", waitTime);
-      trigger.setProcessor(noFirstRunListener);
+      trigger.setProcessor(noFirstRunProcessor);
       trigger.run();
 
       JettySolrRunner newNode = cluster.startJettySolrRunner();
@@ -196,7 +196,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
     CoreContainer container = cluster.getJettySolrRunners().get(0).getCoreContainer();
     Map<String, Object> props = createTriggerProps(0);
     try (NodeAddedTrigger trigger = new NodeAddedTrigger("node_added_trigger", props, container)) {
-      trigger.setProcessor(noFirstRunListener);
+      trigger.setProcessor(noFirstRunProcessor);
       trigger.run(); // starts tracking live nodes
 
       JettySolrRunner newNode = cluster.startJettySolrRunner();
@@ -232,7 +232,7 @@ public class NodeAddedTriggerTest extends SolrCloudTestCase {
     // add a new node but update the trigger before the waitFor period expires
     // and assert that the new trigger still fires
     NodeAddedTrigger trigger = new NodeAddedTrigger("node_added_trigger", props, container);
-    trigger.setProcessor(noFirstRunListener);
+    trigger.setProcessor(noFirstRunProcessor);
     trigger.run();
 
     JettySolrRunner newNode = cluster.startJettySolrRunner();
