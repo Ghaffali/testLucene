@@ -92,9 +92,7 @@ public class TestRandomRequestDistribution extends AbstractFullDistribZkTestBase
     assertEquals(1, replicas.size());
     String baseUrl = replicas.iterator().next().getStr(ZkStateReader.BASE_URL_PROP);
     if (!baseUrl.endsWith("/")) baseUrl += "/";
-    try (HttpSolrClient client = getHttpSolrClient(baseUrl + "a1x2")) {
-      client.setSoTimeout(5000);
-      client.setConnectionTimeout(2000);
+    try (HttpSolrClient client = getHttpSolrClient(baseUrl + "a1x2", 2000, 5000)) {
 
       log.info("Making requests to " + baseUrl + "a1x2");
       for (int i = 0; i < 10; i++) {
@@ -108,7 +106,7 @@ public class TestRandomRequestDistribution extends AbstractFullDistribZkTestBase
       SolrMetricManager metricManager = container.getMetricManager();
       for (SolrCore core : container.getCores()) {
         String registry = core.getCoreMetricManager().getRegistryName();
-        Counter cnt = metricManager.counter(null, registry, "requests", "QUERY.standard");
+        Counter cnt = metricManager.counter(null, registry, "requests", "QUERY./select");
         SolrRequestHandler select = core.getRequestHandler("");
 //        long c = (long) select.getStatistics().get("requests");
         shardVsCount.put(core.getName(), (int) cnt.getCount());
@@ -170,9 +168,7 @@ public class TestRandomRequestDistribution extends AbstractFullDistribZkTestBase
     if (!baseUrl.endsWith("/")) baseUrl += "/";
     String path = baseUrl + "football";
     log.info("Firing queries against path=" + path);
-    try (HttpSolrClient client = getHttpSolrClient(path)) {
-      client.setSoTimeout(5000);
-      client.setConnectionTimeout(2000);
+    try (HttpSolrClient client = getHttpSolrClient(path, 2000, 5000)) {
 
       SolrCore leaderCore = null;
       for (JettySolrRunner jetty : jettys) {
@@ -188,7 +184,7 @@ public class TestRandomRequestDistribution extends AbstractFullDistribZkTestBase
 
       SolrMetricManager leaderMetricManager = leaderCore.getCoreContainer().getMetricManager();
       String leaderRegistry = leaderCore.getCoreMetricManager().getRegistryName();
-      Counter cnt = leaderMetricManager.counter(null, leaderRegistry, "requests", "QUERY.standard");
+      Counter cnt = leaderMetricManager.counter(null, leaderRegistry, "requests", "QUERY./select");
 
       // All queries should be served by the active replica
       // To make sure that's true we keep querying the down replica

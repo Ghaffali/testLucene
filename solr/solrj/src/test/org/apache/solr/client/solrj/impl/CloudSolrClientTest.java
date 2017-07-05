@@ -456,16 +456,14 @@ public class CloudSolrClientTest extends SolrCloudTestCase {
 
   private Long getNumRequests(String baseUrl, String collectionName) throws
       SolrServerException, IOException {
-    return getNumRequests(baseUrl, collectionName, "QUERY", "standard", null, false);
+    return getNumRequests(baseUrl, collectionName, "QUERY", "/select", null, false);
   }
 
   private Long getNumRequests(String baseUrl, String collectionName, String category, String key, String scope, boolean returnNumErrors) throws
       SolrServerException, IOException {
 
     NamedList<Object> resp;
-    try (HttpSolrClient client = getHttpSolrClient(baseUrl + "/"+ collectionName)) {
-      client.setConnectionTimeout(15000);
-      client.setSoTimeout(60000);
+    try (HttpSolrClient client = getHttpSolrClient(baseUrl + "/"+ collectionName, 15000, 60000)) {
       ModifiableSolrParams params = new ModifiableSolrParams();
       params.set("qt", "/admin/mbeans");
       params.set("stats", "true");
