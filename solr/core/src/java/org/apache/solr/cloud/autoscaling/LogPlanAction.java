@@ -17,28 +17,10 @@
 
 package org.apache.solr.cloud.autoscaling;
 
-import java.io.IOException;
-import java.util.Map;
-
 /**
  * todo nocommit
  */
-public class LogPlanAction implements TriggerAction {
-  @Override
-  public void close() throws IOException {
-
-  }
-
-  @Override
-  public void init(Map<String, String> args) {
-
-  }
-
-  @Override
-  public String getName() {
-    return null;
-  }
-
+public class LogPlanAction extends TriggerActionBase {
   @Override
   public void process(TriggerEvent event, ActionContext actionContext) {
 

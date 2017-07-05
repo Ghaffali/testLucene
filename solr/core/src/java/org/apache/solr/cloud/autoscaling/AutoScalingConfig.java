@@ -17,7 +17,6 @@
 package org.apache.solr.cloud.autoscaling;
 
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -46,9 +45,10 @@ public class AutoScalingConfig {
   private Map<String, TriggerListenerConfig> listeners;
 
   /**
-   * Bean representation of {@link org.apache.solr.cloud.autoscaling.AutoScaling.TriggerListener} config.
+   * Bean representation of {@link TriggerListener} config.
    */
   public static class TriggerListenerConfig {
+    public final String name;
     public final String trigger;
     public final Set<AutoScaling.EventProcessorStage> stages;
     public final String listenerClass;
@@ -56,22 +56,23 @@ public class AutoScalingConfig {
     public final Set<String> afterActions;
     public final Map<String, Object> properties = new HashMap<>();
 
-    public TriggerListenerConfig(Map<String, Object> properties) {
+    public TriggerListenerConfig(String name, Map<String, Object> properties) {
+      this.name = name;
       this.properties.putAll(properties);
       trigger = (String)properties.get(AutoScalingParams.TRIGGER);
-      List<String> stageNames = (List<String>)properties.getOrDefault(AutoScalingParams.STAGE, Collections.emptyList());
+      List<String> stageNames = getList(AutoScalingParams.STAGE, properties);
       stages = new HashSet<>(stageNames.size());
-      for (String name : stageNames) {
+      for (String stageName : stageNames) {
         try {
-          AutoScaling.EventProcessorStage stage = AutoScaling.EventProcessorStage.valueOf(name.toUpperCase(Locale.ROOT));
+          AutoScaling.EventProcessorStage stage = AutoScaling.EventProcessorStage.valueOf(stageName.toUpperCase(Locale.ROOT));
           stages.add(stage);
         } catch (Exception e) {
           LOG.warn("Invalid stage name '" + name + "' in listener config, skipping: " + properties);
         }
       }
       listenerClass = (String)properties.get(AutoScalingParams.CLASS);
-      beforeActions = new HashSet<>((List<String>)properties.getOrDefault(AutoScalingParams.BEFORE_ACTION, Collections.emptyList()));
-      afterActions = new HashSet<>((List<String>)properties.getOrDefault(AutoScalingParams.AFTER_ACTION, Collections.emptyList()));
+      beforeActions = new HashSet<>(getList(AutoScalingParams.BEFORE_ACTION, properties));
+      afterActions = new HashSet<>(getList(AutoScalingParams.AFTER_ACTION, properties));
     }
   }
 
@@ -79,10 +80,12 @@ public class AutoScalingConfig {
    * Bean representation of {@link org.apache.solr.cloud.autoscaling.AutoScaling.Trigger} config.
    */
   public static class TriggerConfig {
+    public final String name;
     public final AutoScaling.EventType eventType;
     public final Map<String, Object> properties = new HashMap<>();
 
-    public TriggerConfig(Map<String, Object> properties) {
+    public TriggerConfig(String name, Map<String, Object> properties) {
+      this.name = name;
       String event = (String) properties.get(AutoScalingParams.EVENT);
       this.eventType = AutoScaling.EventType.valueOf(event.toUpperCase(Locale.ROOT));
       this.properties.putAll(properties);
@@ -129,7 +132,7 @@ public class AutoScalingConfig {
       } else {
         triggers = new HashMap<>(trigMap.size());
         for (Map.Entry<String, Object> entry : trigMap.entrySet()) {
-          triggers.put(entry.getKey(), new TriggerConfig((Map<String, Object>)entry.getValue()));
+          triggers.put(entry.getKey(), new TriggerConfig(entry.getKey(), (Map<String, Object>)entry.getValue()));
         }
       }
     }
@@ -167,11 +170,30 @@ public class AutoScalingConfig {
       } else {
         listeners = new HashMap<>(map.size());
         for (Map.Entry<String, Object> entry : map.entrySet()) {
-          listeners.put(entry.getKey(), new TriggerListenerConfig((Map<String, Object>)entry.getValue()));
+          listeners.put(entry.getKey(), new TriggerListenerConfig(entry.getKey(), (Map<String, Object>)entry.getValue()));
         }
       }
     }
     return listeners;
+  }
+
+  private static List<String> getList(String key, Map<String, Object> properties) {
+    return getList(key, properties, null);
+  }
+
+  private static List<String> getList(String key, Map<String, Object> properties, List<String> defaultList) {
+    if (defaultList == null) {
+      defaultList = Collections.emptyList();
+    }
+    Object o = properties.get(key);
+    if (o == null) {
+      return defaultList;
+    }
+    if (o instanceof List) {
+      return (List)o;
+    } else {
+      return Collections.singletonList(String.valueOf(o));
+    }
   }
 
 }

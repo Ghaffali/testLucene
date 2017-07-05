@@ -16,24 +16,31 @@
  */
 package org.apache.solr.cloud.autoscaling;
 
-import org.apache.http.client.HttpClient;
+import java.io.IOException;
+
 import org.apache.solr.core.CoreContainer;
 
 /**
- * Simple HTTP callback that sends trigger events as JSON.
+ * Base class for implementations of {@link TriggerListener}.
  */
-public class HttpTriggerListener extends TriggerListenerBase {
+public abstract class TriggerListenerBase implements TriggerListener {
 
-  private HttpClient httpClient;
+  protected AutoScalingConfig.TriggerListenerConfig config;
+  protected CoreContainer coreContainer;
 
   @Override
   public void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) {
-    super.init(coreContainer, config);
-    httpClient = coreContainer.getUpdateShardHandler().getHttpClient();
+    this.coreContainer = coreContainer;
+    this.config = config;
   }
 
   @Override
-  public void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message) {
+  public AutoScalingConfig.TriggerListenerConfig getTriggerListenerConfig() {
+    return config;
+  }
+
+  @Override
+  public void close() throws IOException {
 
   }
 }

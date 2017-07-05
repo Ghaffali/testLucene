@@ -391,7 +391,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     // validate that we can load the listener class
     // todo nocommit -- what about MemClassLoader?
     try {
-      container.getResourceLoader().findClass(listenerClass, AutoScaling.TriggerListener.class);
+      container.getResourceLoader().findClass(listenerClass, TriggerListener.class);
     } catch (Exception e) {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Listener not found: " + listenerClass, e);
     }

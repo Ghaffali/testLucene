@@ -25,31 +25,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Implementation of {@link org.apache.solr.cloud.autoscaling.AutoScaling.TriggerListener} that reports
+ * Implementation of {@link TriggerListener} that reports
  * events to a log.
  */
-public class LogTriggerListener implements AutoScaling.TriggerListener {
+public class LogTriggerListener extends TriggerListenerBase {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-
-  private AutoScalingConfig.TriggerListenerConfig config;
-
-  @Override
-  public void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) {
-    this.config = config;
-  }
-
-  @Override
-  public AutoScalingConfig.TriggerListenerConfig getTriggerListenerConfig() {
-    return config;
-  }
 
   @Override
   public void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message) {
     LOG.info("stage={}, actionName={}, event={}, messsage={}", stage, actionName, event, message);
-  }
-
-  @Override
-  public void close() throws IOException {
-
   }
 }

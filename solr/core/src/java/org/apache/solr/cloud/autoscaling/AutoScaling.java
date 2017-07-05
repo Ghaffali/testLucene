@@ -64,27 +64,6 @@ public class AutoScaling {
   }
 
   /**
-   * Implementations of this interface are notified of stages in event processing that they were
-   * registered for. Note: instances may be closed and re-created on each auto-scaling config update.
-   */
-  public interface TriggerListener extends Closeable {
-
-    void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config);
-
-    AutoScalingConfig.TriggerListenerConfig getTriggerListenerConfig();
-
-    /**
-     * This method is called when either a particular <code>stage</code> or
-     * <code>actionName</code> is reached during event processing.
-     * @param stage {@link EventProcessorStage} that this listener was registered for, or null
-     * @param actionName {@link TriggerAction} name that this listener was registered for, or null
-     * @param event current event being processed
-     * @param message optional message
-     */
-    void onEvent(EventProcessorStage stage, String actionName, TriggerEvent event, String message);
-  }
-
-  /**
    * Interface for a Solr trigger. Each trigger implements Runnable and Closeable interface. A trigger
    * is scheduled using a {@link java.util.concurrent.ScheduledExecutorService} so it is executed as
    * per a configured schedule to check whether the trigger is ready to fire. The {@link Trigger#setProcessor(EventProcessor)}
