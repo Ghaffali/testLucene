@@ -17,6 +17,7 @@
 
 package org.apache.solr.cloud.autoscaling;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 
 import org.apache.solr.core.CoreContainer;
@@ -30,13 +31,25 @@ import org.slf4j.LoggerFactory;
 public class LogTriggerListener implements AutoScaling.TriggerListener {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  @Override
-  public void init(CoreContainer coreContainer) {
+  private AutoScalingConfig.TriggerListenerConfig config;
 
+  @Override
+  public void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) {
+    this.config = config;
   }
 
   @Override
-  public void onEvent(AutoScaling.TriggerStage stage, String actionName, TriggerEvent event) {
-    LOG.info("stage={}, actionName={}, event={}", stage, actionName, event);
+  public AutoScalingConfig.TriggerListenerConfig getTriggerListenerConfig() {
+    return config;
+  }
+
+  @Override
+  public void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message) {
+    LOG.info("stage={}, actionName={}, event={}, messsage={}", stage, actionName, event, message);
+  }
+
+  @Override
+  public void close() throws IOException {
+
   }
 }

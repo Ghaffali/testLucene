@@ -379,7 +379,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
 
     for (String stage : stageNames) {
       try {
-        AutoScaling.TriggerStage.valueOf(stage);
+        AutoScaling.EventProcessorStage.valueOf(stage);
       } catch (IllegalArgumentException e) {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Invalid stage name: " + stage);
       }

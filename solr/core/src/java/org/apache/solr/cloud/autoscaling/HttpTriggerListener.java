@@ -16,6 +16,8 @@
  */
 package org.apache.solr.cloud.autoscaling;
 
+import java.io.IOException;
+
 import org.apache.http.client.HttpClient;
 import org.apache.solr.core.CoreContainer;
 
@@ -25,14 +27,26 @@ import org.apache.solr.core.CoreContainer;
 public class HttpTriggerListener implements AutoScaling.TriggerListener {
 
   private HttpClient httpClient;
+  private AutoScalingConfig.TriggerListenerConfig config;
 
   @Override
-  public void init(CoreContainer coreContainer) {
+  public void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) {
+    this.config = config;
     httpClient = coreContainer.getUpdateShardHandler().getHttpClient();
   }
 
   @Override
-  public void onEvent(AutoScaling.TriggerStage stage, String actionName, TriggerEvent event) {
+  public void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message) {
+
+  }
+
+  @Override
+  public AutoScalingConfig.TriggerListenerConfig getTriggerListenerConfig() {
+    return config;
+  }
+
+  @Override
+  public void close() throws IOException {
 
   }
 }

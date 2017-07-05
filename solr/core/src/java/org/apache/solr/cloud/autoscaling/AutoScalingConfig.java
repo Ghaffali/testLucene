@@ -20,9 +20,11 @@ import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.common.params.AutoScalingParams;
@@ -41,35 +43,35 @@ public class AutoScalingConfig {
 
   private Policy policy;
   private Map<String, TriggerConfig> triggers;
-  private Map<String, ListenerConfig> listeners;
+  private Map<String, TriggerListenerConfig> listeners;
 
   /**
    * Bean representation of {@link org.apache.solr.cloud.autoscaling.AutoScaling.TriggerListener} config.
    */
-  public static class ListenerConfig {
+  public static class TriggerListenerConfig {
     public final String trigger;
-    public final List<AutoScaling.TriggerStage> stages;
+    public final Set<AutoScaling.EventProcessorStage> stages;
     public final String listenerClass;
-    public final List<Map<String, String>> beforeActions;
-    public final List<Map<String, String>> afterActions;
+    public final Set<String> beforeActions;
+    public final Set<String> afterActions;
     public final Map<String, Object> properties = new HashMap<>();
 
-    public ListenerConfig(Map<String, Object> properties) {
+    public TriggerListenerConfig(Map<String, Object> properties) {
       this.properties.putAll(properties);
       trigger = (String)properties.get(AutoScalingParams.TRIGGER);
       List<String> stageNames = (List<String>)properties.getOrDefault(AutoScalingParams.STAGE, Collections.emptyList());
-      stages = new ArrayList<>(stageNames.size());
+      stages = new HashSet<>(stageNames.size());
       for (String name : stageNames) {
         try {
-          AutoScaling.TriggerStage stage = AutoScaling.TriggerStage.valueOf(name.toUpperCase(Locale.ROOT));
+          AutoScaling.EventProcessorStage stage = AutoScaling.EventProcessorStage.valueOf(name.toUpperCase(Locale.ROOT));
           stages.add(stage);
         } catch (Exception e) {
           LOG.warn("Invalid stage name '" + name + "' in listener config, skipping: " + properties);
         }
       }
       listenerClass = (String)properties.get(AutoScalingParams.CLASS);
-      beforeActions = (List<Map<String, String>>)properties.getOrDefault(AutoScalingParams.BEFORE_ACTION, Collections.emptyList());
-      afterActions = (List<Map<String, String>>)properties.getOrDefault(AutoScalingParams.AFTER_ACTION, Collections.emptyList());
+      beforeActions = new HashSet<>((List<String>)properties.getOrDefault(AutoScalingParams.BEFORE_ACTION, Collections.emptyList()));
+      afterActions = new HashSet<>((List<String>)properties.getOrDefault(AutoScalingParams.AFTER_ACTION, Collections.emptyList()));
     }
   }
 
@@ -85,6 +87,10 @@ public class AutoScalingConfig {
       this.eventType = AutoScaling.EventType.valueOf(event.toUpperCase(Locale.ROOT));
       this.properties.putAll(properties);
     }
+  }
+
+  public AutoScalingConfig(byte[] utf8) {
+    this(utf8 != null && utf8.length > 0 ? (Map<String, Object>)Utils.fromJSON(utf8) : Collections.emptyMap());
   }
 
   /**
@@ -153,7 +159,7 @@ public class AutoScalingConfig {
   /**
    * Get listener configurations.
    */
-  public Map<String, ListenerConfig> getListenerConfigs() {
+  public Map<String, TriggerListenerConfig> getTriggerListenerConfigs() {
     if (listeners == null) {
       Map<String, Object> map = (Map<String, Object>)jsonMap.get("listeners");
       if (map == null) {
@@ -161,38 +167,11 @@ public class AutoScalingConfig {
       } else {
         listeners = new HashMap<>(map.size());
         for (Map.Entry<String, Object> entry : map.entrySet()) {
-          listeners.put(entry.getKey(), new ListenerConfig((Map<String, Object>)entry.getValue()));
+          listeners.put(entry.getKey(), new TriggerListenerConfig((Map<String, Object>)entry.getValue()));
         }
       }
     }
     return listeners;
   }
 
-  /**
-   * Get listeners for a specific trigger name.
-   * @param triggerName name of the trigger
-   * @return a map where keys are the stages and values are the list of listener configs that apply to a
-   * particular triggerName and stage.
-   */
-  public Map<AutoScaling.TriggerStage, List<ListenerConfig>> getListenerConfigsForTrigger(String triggerName) {
-    Map<String, ListenerConfig> configs = getListenerConfigs();
-    if (configs.isEmpty()) {
-      return Collections.emptyMap();
-    } else {
-      Map<AutoScaling.TriggerStage, List<ListenerConfig>> res = new HashMap<>();
-      for (ListenerConfig cfg : configs.values()) {
-        if (triggerName.equals(cfg.trigger)) {
-          for (AutoScaling.TriggerStage stage : cfg.stages) {
-            List<ListenerConfig> cfgsPerStage = res.get(stage);
-            if (cfgsPerStage == null) {
-              cfgsPerStage = new ArrayList<>();
-              res.put(stage, cfgsPerStage);
-            }
-            cfgsPerStage.add(cfg);
-          }
-        }
-      }
-      return res;
-    }
-  }
 }
