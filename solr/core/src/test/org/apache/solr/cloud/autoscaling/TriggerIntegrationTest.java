@@ -968,7 +968,8 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     }
 
     @Override
-    public synchronized void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message) {
+    public synchronized void onEvent(TriggerEvent event, AutoScaling.EventProcessorStage stage, String actionName,
+                                     ActionContext context, Throwable error, String message) {
       List<TestEvent> lst = listenerEvents.get(config.name);
       if (lst == null) {
         lst = new ArrayList<>();

@@ -16,24 +16,129 @@
  */
 package org.apache.solr.cloud.autoscaling;
 
+import java.io.IOException;
+import java.lang.invoke.MethodHandles;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Properties;
+
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.entity.StringEntity;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.util.PropertiesUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Simple HTTP callback that sends trigger events as JSON.
+ * Simple HTTP callback that POSTs event data to a URL.
+ * <p>URL and payload may contain property substitution patterns, with the following properties available:
+ * <ul>
+ *   <li>config.* - listener configuration</li>
+ *   <li>event.* - event properties</li>
+ *   <li>stage - current stage of event processing</li>
+ *   <li>actionName - optional current action name</li>
+ *   <li>context.* - optional {@link ActionContext} properties</li>
+ *   <li>error - optional error string (from {@link Throwable#toString()})</li>
+ *   <li>message - optional message</li>
+ * </ul>
+ * </p>
+ * The following listener configuration is supported:
+ * <ul>
+ *   <li>url - a URL template</li>
+ *   <li>payload - optional payload template. If absent a JSON string of all properties listed above will be used.</li>
+ *   <li>contentType - optional payload content type. If absent then <code>application/json</code> will be used.</li>
+ *   <li>header.* - optional header template(s). The name of the property without "header." prefix defines the literal header name.</li>
+ * </ul>
  */
 public class HttpTriggerListener extends TriggerListenerBase {
+  private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private HttpClient httpClient;
+  private String urlTemplate;
+  private String payloadTemplate;
+  private String contentType;
+  private Map<String, String> headerTemplates = new HashMap<>();
 
   @Override
   public void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) {
     super.init(coreContainer, config);
     httpClient = coreContainer.getUpdateShardHandler().getHttpClient();
+    urlTemplate = (String)config.properties.get("url");
+    payloadTemplate = (String)config.properties.get("payload");
+    contentType = (String)config.properties.get("contentType");
+    config.properties.forEach((k, v) -> {
+      if (k.startsWith("header.")) {
+        headerTemplates.put(k.substring(7), String.valueOf(v));
+      }
+    });
   }
 
   @Override
-  public void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message) {
-
+  public void onEvent(TriggerEvent event, AutoScaling.EventProcessorStage stage, String actionName, ActionContext context, Throwable error, String message) {
+    Properties properties = new Properties();
+    properties.setProperty("stage", stage.toString());
+    if (actionName != null) {
+      properties.setProperty("actionName", actionName);
+    }
+    if (context != null) {
+      context.getProperties().forEach((k, v) -> {
+        properties.setProperty("context." + k, String.valueOf(v));
+      });
+    }
+    if (error != null) {
+      properties.setProperty("error", error.toString());
+    }
+    if (message != null) {
+      properties.setProperty("message", message);
+    }
+    // add event properties
+    properties.setProperty("event.id", event.getId());
+    properties.setProperty("event.source", event.getSource());
+    properties.setProperty("event.eventTime", String.valueOf(event.eventTime));
+    properties.setProperty("event.eventType", event.getEventType().toString());
+    event.getProperties().forEach((k, v) -> {
+      properties.setProperty("event.properties." + k, String.valueOf(v));
+    });
+    // add config properties
+    config.properties.forEach((k, v) -> {
+      properties.setProperty("config." + k, String.valueOf(v));
+    });
+    String url = PropertiesUtil.substituteProperty(urlTemplate, properties);
+    String payload;
+    String type;
+    if (payloadTemplate != null) {
+      payload = PropertiesUtil.substituteProperty(payloadTemplate, properties);
+      if (contentType != null) {
+        type = contentType;
+      } else {
+        type = "application/json";
+      }
+    } else {
+      payload = Utils.toJSONString(properties);
+      type = "application/json";
+    }
+    HttpPost post = new HttpPost(url);
+    HttpEntity entity = new StringEntity(payload, "UTF-8");
+    headerTemplates.forEach((k, v) -> {
+      String headerVal = PropertiesUtil.substituteProperty(v, properties);
+      if (!headerVal.isEmpty()) {
+        post.addHeader(k, headerVal);
+      }
+    });
+    post.setEntity(entity);
+    post.setHeader("Content-Type", type);
+    try {
+      HttpResponse rsp = httpClient.execute(post);
+      int statusCode = rsp.getStatusLine().getStatusCode();
+      if (statusCode != 200) {
+        LOG.warn("Error sending request for event " + event + ", HTTP response: " + rsp.toString());
+      }
+    } catch (IOException e) {
+      LOG.warn("Exception sending request for event " + event, e);
+    }
   }
 }

@@ -18,6 +18,7 @@ package org.apache.solr.cloud.autoscaling;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -50,7 +51,7 @@ public class AutoScalingConfig {
   public static class TriggerListenerConfig {
     public final String name;
     public final String trigger;
-    public final Set<AutoScaling.EventProcessorStage> stages;
+    public final EnumSet<AutoScaling.EventProcessorStage> stages = EnumSet.noneOf(AutoScaling.EventProcessorStage.class);
     public final String listenerClass;
     public final Set<String> beforeActions;
     public final Set<String> afterActions;
@@ -61,7 +62,6 @@ public class AutoScalingConfig {
       this.properties.putAll(properties);
       trigger = (String)properties.get(AutoScalingParams.TRIGGER);
       List<String> stageNames = getList(AutoScalingParams.STAGE, properties);
-      stages = new HashSet<>(stageNames.size());
       for (String stageName : stageNames) {
         try {
           AutoScaling.EventProcessorStage stage = AutoScaling.EventProcessorStage.valueOf(stageName.toUpperCase(Locale.ROOT));

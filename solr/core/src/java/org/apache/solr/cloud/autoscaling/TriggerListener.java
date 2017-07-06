@@ -33,10 +33,13 @@ public interface TriggerListener extends Closeable {
   /**
    * This method is called when either a particular <code>stage</code> or
    * <code>actionName</code> is reached during event processing.
+   * @param event current event being processed
    * @param stage {@link AutoScaling.EventProcessorStage} that this listener was registered for, or null
    * @param actionName {@link TriggerAction} name that this listener was registered for, or null
-   * @param event current event being processed
+   * @param context optional {@link ActionContext} when the processing stage is related to an action, or null
+   * @param error optional {@link Throwable} error, or null
    * @param message optional message
    */
-  void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message);
+  void onEvent(TriggerEvent event, AutoScaling.EventProcessorStage stage, String actionName, ActionContext context,
+               Throwable error, String message);
 }

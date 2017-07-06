@@ -32,7 +32,8 @@ public class LogTriggerListener extends TriggerListenerBase {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   @Override
-  public void onEvent(AutoScaling.EventProcessorStage stage, String actionName, TriggerEvent event, String message) {
-    LOG.info("stage={}, actionName={}, event={}, messsage={}", stage, actionName, event, message);
+  public void onEvent(TriggerEvent event, AutoScaling.EventProcessorStage stage, String actionName, ActionContext context,
+               Throwable error, String message) {
+    LOG.info("{}: stage={}, actionName={}, event={}, error={}, messsage={}", config.name, stage, actionName, event, error, message);
   }
 }
