@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -36,6 +37,7 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collectors;
 
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.cloud.ActionThrottle;
@@ -369,35 +371,75 @@ public class ScheduledTriggers implements Closeable {
   }
 
   private class TriggerListeners {
-    Map<String, Map<AutoScaling.EventProcessorStage, List<TriggerListener>>> listenerPerStage = new HashMap<>();
-    List<TriggerListener> listeners = new ArrayList<>();
+    Map<String, Map<AutoScaling.EventProcessorStage, List<TriggerListener>>> listenersPerStage = new HashMap<>();
+    Map<String, TriggerListener> listenersPerName = new HashMap<>();
     ReentrantLock updateLock = new ReentrantLock();
 
     void setAutoScalingConfig(AutoScalingConfig autoScalingConfig) {
       updateLock.lock();
-      reset();
+      // we will recreate this from scratch
+      listenersPerStage.clear();
       try {
-        // instantiate only those for existing triggers
         Set<String> triggerNames = autoScalingConfig.getTriggerConfigs().keySet();
         Map<String, AutoScalingConfig.TriggerListenerConfig> configs = autoScalingConfig.getTriggerListenerConfigs();
+        Set<String> listenerNames = configs.entrySet().stream().map(entry -> entry.getValue().name).collect(Collectors.toSet());
+        // close those for non-existent triggers and nonexistent listener configs
+        for (Iterator<Map.Entry<String, TriggerListener>> it = listenersPerName.entrySet().iterator(); it.hasNext(); ) {
+          Map.Entry<String, TriggerListener> entry = it.next();
+          String name = entry.getKey();
+          TriggerListener listener = entry.getValue();
+          if (!triggerNames.contains(listener.getConfig().trigger) || !listenerNames.contains(name)) {
+            try {
+              listener.close();
+            } catch (Exception e) {
+              log.warn("Exception closing old listener " + listener.getConfig(), e);
+            }
+            it.remove();
+          }
+        }
         for (Map.Entry<String, AutoScalingConfig.TriggerListenerConfig> entry : configs.entrySet()) {
           AutoScalingConfig.TriggerListenerConfig config = entry.getValue();
           if (!triggerNames.contains(config.trigger)) {
             log.debug("-- skipping listener for non-existent trigger: {}", config);
             continue;
           }
-          String clazz = config.listenerClass;
+          // find previous instance and reuse if possible
+          TriggerListener oldListener = listenersPerName.get(config.name);
           TriggerListener listener = null;
-          try {
-            listener = coreContainer.getResourceLoader().newInstance(clazz, TriggerListener.class);
-          } catch (Exception e) {
-            log.warn("Invalid TriggerListener class name '" + clazz + "', skipping...", e);
+          if (oldListener != null) {
+            if (!oldListener.getConfig().equals(config)) { // changed config
+              try {
+                oldListener.close();
+              } catch (Exception e) {
+                log.warn("Exception closing old listener " + listener.getConfig(), e);
+              }
+            } else {
+              listener = oldListener; // reuse
+            }
+          }
+          if (listener == null) { // create new instance
+            String clazz = config.listenerClass;
+            try {
+              listener = coreContainer.getResourceLoader().newInstance(clazz, TriggerListener.class);
+            } catch (Exception e) {
+              log.warn("Invalid TriggerListener class name '" + clazz + "', skipping...", e);
+            }
+            try {
+              listener.init(coreContainer, config);
+              listenersPerName.put(config.name, listener);
+            } catch (Exception e) {
+              log.warn("Error initializing TriggerListener " + config, e);
+              try {
+                listener.close();
+              } catch (Exception e1) {
+                // ignore
+              }
+              listener = null;
+            }
           }
           if (listener == null) {
             continue;
           }
-          listener.init(coreContainer, config);
-          listeners.add(listener);
           // add per stage
           for (AutoScaling.EventProcessorStage stage : config.stages) {
             addPerStage(config.trigger, stage, listener);
@@ -417,7 +459,7 @@ public class ScheduledTriggers implements Closeable {
 
     private void addPerStage(String triggerName, AutoScaling.EventProcessorStage stage, TriggerListener listener) {
       Map<AutoScaling.EventProcessorStage, List<TriggerListener>> perStage =
-          listenerPerStage.computeIfAbsent(triggerName, k -> new HashMap<>());
+          listenersPerStage.computeIfAbsent(triggerName, k -> new HashMap<>());
       List<TriggerListener> lst = perStage.computeIfAbsent(stage, k -> new ArrayList<>(3));
       lst.add(listener);
     }
@@ -425,11 +467,11 @@ public class ScheduledTriggers implements Closeable {
     void reset() {
       updateLock.lock();
       try {
-        listenerPerStage.clear();
-        for (TriggerListener listener : listeners) {
+        listenersPerStage.clear();
+        for (TriggerListener listener : listenersPerName.values()) {
           IOUtils.closeQuietly(listener);
         }
-        listeners.clear();
+        listenersPerName.clear();
       } finally {
         updateLock.unlock();
       }
@@ -440,7 +482,7 @@ public class ScheduledTriggers implements Closeable {
     }
 
     List<TriggerListener> getTriggerListeners(String trigger, AutoScaling.EventProcessorStage stage) {
-      Map<AutoScaling.EventProcessorStage, List<TriggerListener>> perStage = listenerPerStage.get(trigger);
+      Map<AutoScaling.EventProcessorStage, List<TriggerListener>> perStage = listenersPerStage.get(trigger);
       if (perStage == null) {
         return Collections.emptyList();
       }
@@ -471,7 +513,7 @@ public class ScheduledTriggers implements Closeable {
       try {
         for (TriggerListener listener : getTriggerListeners(trigger, stage)) {
           if (actionName != null) {
-            AutoScalingConfig.TriggerListenerConfig config = listener.getTriggerListenerConfig();
+            AutoScalingConfig.TriggerListenerConfig config = listener.getConfig();
             if (stage == AutoScaling.EventProcessorStage.BEFORE_ACTION) {
               if (!config.beforeActions.contains(actionName)) {
                 continue;
@@ -485,7 +527,7 @@ public class ScheduledTriggers implements Closeable {
           try {
             listener.onEvent(event, stage, actionName, context, error, message);
           } catch (Exception e) {
-            log.warn("Exception running listener " + listener.getTriggerListenerConfig(), e);
+            log.warn("Exception running listener " + listener.getConfig(), e);
           }
         }
       } finally {

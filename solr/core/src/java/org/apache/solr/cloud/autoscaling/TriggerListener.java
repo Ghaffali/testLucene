@@ -26,9 +26,9 @@ import org.apache.solr.core.CoreContainer;
  */
 public interface TriggerListener extends Closeable {
 
-  void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config);
+  void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) throws Exception;
 
-  AutoScalingConfig.TriggerListenerConfig getTriggerListenerConfig();
+  AutoScalingConfig.TriggerListenerConfig getConfig();
 
   /**
    * This method is called when either a particular <code>stage</code> or
@@ -41,5 +41,5 @@ public interface TriggerListener extends Closeable {
    * @param message optional message
    */
   void onEvent(TriggerEvent event, AutoScaling.EventProcessorStage stage, String actionName, ActionContext context,
-               Throwable error, String message);
+               Throwable error, String message) throws Exception;
 }

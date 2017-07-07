@@ -35,7 +35,7 @@ public abstract class TriggerListenerBase implements TriggerListener {
   }
 
   @Override
-  public AutoScalingConfig.TriggerListenerConfig getTriggerListenerConfig() {
+  public AutoScalingConfig.TriggerListenerConfig getConfig() {
     return config;
   }
 
