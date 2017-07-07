@@ -74,6 +74,34 @@ public class AutoScalingConfig {
       beforeActions = new HashSet<>(getList(AutoScalingParams.BEFORE_ACTION, properties));
       afterActions = new HashSet<>(getList(AutoScalingParams.AFTER_ACTION, properties));
     }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      TriggerListenerConfig that = (TriggerListenerConfig) o;
+
+      if (name != null ? !name.equals(that.name) : that.name != null) return false;
+      if (trigger != null ? !trigger.equals(that.trigger) : that.trigger != null) return false;
+      if (!stages.equals(that.stages)) return false;
+      if (listenerClass != null ? !listenerClass.equals(that.listenerClass) : that.listenerClass != null) return false;
+      if (!beforeActions.equals(that.beforeActions)) return false;
+      if (!afterActions.equals(that.afterActions)) return false;
+      return properties.equals(that.properties);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = name != null ? name.hashCode() : 0;
+      result = 31 * result + (trigger != null ? trigger.hashCode() : 0);
+      result = 31 * result + stages.hashCode();
+      result = 31 * result + (listenerClass != null ? listenerClass.hashCode() : 0);
+      result = 31 * result + beforeActions.hashCode();
+      result = 31 * result + afterActions.hashCode();
+      result = 31 * result + properties.hashCode();
+      return result;
+    }
   }
 
   /**
@@ -89,6 +117,26 @@ public class AutoScalingConfig {
       String event = (String) properties.get(AutoScalingParams.EVENT);
       this.eventType = AutoScaling.EventType.valueOf(event.toUpperCase(Locale.ROOT));
       this.properties.putAll(properties);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) return true;
+      if (o == null || getClass() != o.getClass()) return false;
+
+      TriggerConfig that = (TriggerConfig) o;
+
+      if (name != null ? !name.equals(that.name) : that.name != null) return false;
+      if (eventType != that.eventType) return false;
+      return properties.equals(that.properties);
+    }
+
+    @Override
+    public int hashCode() {
+      int result = name != null ? name.hashCode() : 0;
+      result = 31 * result + eventType.hashCode();
+      result = 31 * result + properties.hashCode();
+      return result;
     }
   }
 
