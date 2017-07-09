@@ -22,7 +22,7 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.cloud.MockZkStateReader;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.util.Utils;
@@ -48,7 +48,7 @@ public class TestClusterStateMutator extends SolrTestCaseJ4 {
     message = new ZkNodeProps(Utils.makeMap(
         "name", "abc",
         "numShards", "2",
-        "router.name", "implicit",
+        "router.name", "manual",
         "shards", "x,y",
         "replicationFactor", "3",
         "maxShardsPerNode", "4"
@@ -64,7 +64,7 @@ public class TestClusterStateMutator extends SolrTestCaseJ4 {
     assertSame(Slice.State.ACTIVE, collection.getSlicesMap().get("x").getState());
     assertSame(Slice.State.ACTIVE, collection.getSlicesMap().get("y").getState());
     assertEquals(4, collection.getMaxShardsPerNode());
-    assertEquals(ImplicitDocRouter.class, collection.getRouter().getClass());
+    assertEquals(ManualDocRouter.class, collection.getRouter().getClass());
     assertNotNull(state.getCollectionOrNull("xyz")); // we still have the old collection
   }
 }

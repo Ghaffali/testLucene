@@ -142,7 +142,7 @@ public class FullSolrCloudDistribCmdsTest extends AbstractFullDistribZkTestBase 
     testDeleteByQueryDistrib();
 
     // See SOLR-7384
-//    testDeleteByIdImplicitRouter();
+//    testDeleteByIdManualRouter();
 //
 //    testDeleteByIdCompositeRouterWithRouterField();
 
@@ -152,13 +152,13 @@ public class FullSolrCloudDistribCmdsTest extends AbstractFullDistribZkTestBase 
     docId = testIndexingBatchPerRequestWithHttpSolrClient(docId);
   }
 
-  private void testDeleteByIdImplicitRouter() throws Exception {
+  private void testDeleteByIdManualRouter() throws Exception {
     SolrClient server = createNewSolrClient("", getBaseUrl((HttpSolrClient) clients.get(0)));
     CollectionAdminResponse response;
     Map<String, NamedList<Integer>> coresStatus;
 
     CollectionAdminRequest.Create createCollectionRequest
-      = CollectionAdminRequest.createCollectionWithImplicitRouter("implicit_collection_without_routerfield",
+      = CollectionAdminRequest.createCollectionWithManualRouter("manual_collection_without_routerfield",
                                                                   "conf1","shard1,shard2",2);
     response = createCollectionRequest.process(server);
 
@@ -167,16 +167,16 @@ public class FullSolrCloudDistribCmdsTest extends AbstractFullDistribZkTestBase 
     coresStatus = response.getCollectionCoresStatus();
     assertEquals(4, coresStatus.size());
     for (int i = 0; i < 4; i++) {
-      NamedList<Integer> status = coresStatus.get("implicit_collection_without_routerfield_shard" + (i / 2 + 1) + "_replica" + (i % 2 + 1));
+      NamedList<Integer> status = coresStatus.get("manual_collection_without_routerfield_shard" + (i / 2 + 1) + "_replica" + (i % 2 + 1));
       assertEquals(0, (int) status.get("status"));
       assertTrue(status.get("QTime") > 0);
     }
 
-    waitForRecoveriesToFinish("implicit_collection_without_routerfield", true);
+    waitForRecoveriesToFinish("manual_collection_without_routerfield", true);
 
-    SolrClient shard1 = createNewSolrClient("implicit_collection_without_routerfield_shard1_replica1",
+    SolrClient shard1 = createNewSolrClient("manual_collection_without_routerfield_shard1_replica1",
         getBaseUrl((HttpSolrClient) clients.get(0)));
-    SolrClient shard2 = createNewSolrClient("implicit_collection_without_routerfield_shard2_replica1",
+    SolrClient shard2 = createNewSolrClient("manual_collection_without_routerfield_shard2_replica1",
         getBaseUrl((HttpSolrClient) clients.get(0)));
 
     SolrInputDocument doc = new SolrInputDocument();

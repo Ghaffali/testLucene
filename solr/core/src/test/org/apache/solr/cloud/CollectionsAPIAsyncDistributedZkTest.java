@@ -78,7 +78,7 @@ public class CollectionsAPIAsyncDistributedZkTest extends SolrCloudTestCase {
     final CloudSolrClient client = cluster.getSolrClient();
 
     RequestStatusState state = CollectionAdminRequest.createCollection(collection,"conf1",1,1)
-        .setRouterName("implicit")
+        .setRouterName("manual")
         .setShards("shard1")
         .processAndWait(client, MAX_TIMEOUT_SECONDS);
     assertSame("CreateCollection task did not complete!", RequestStatusState.COMPLETED, state);

@@ -148,10 +148,10 @@ public class CollectionsAPISolrJTest extends SolrCloudTestCase {
 
   @Test
   public void testCreateAndDeleteShard() throws IOException, SolrServerException {
-    // Create an implicit collection
-    String collectionName = "solrj_implicit";
+    // Create a manual collection
+    String collectionName = "solrj_manual";
     CollectionAdminResponse response
-        = CollectionAdminRequest.createCollectionWithImplicitRouter(collectionName, "conf", "shardA,shardB", 1, 1, 1)
+        = CollectionAdminRequest.createCollectionWithManualRouter(collectionName, "conf", "shardA,shardB", 1, 1, 1)
         .setMaxShardsPerNode(3)
         .process(cluster.getSolrClient());
 
@@ -160,7 +160,7 @@ public class CollectionsAPISolrJTest extends SolrCloudTestCase {
     Map<String, NamedList<Integer>> coresStatus = response.getCollectionCoresStatus();
     assertEquals(6, coresStatus.size());
 
-    // Add a shard to the implicit collection
+    // Add a shard to the manual collection
     response = CollectionAdminRequest.createShard(collectionName, "shardC").process(cluster.getSolrClient());
 
     assertEquals(0, response.getStatus());

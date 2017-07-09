@@ -64,7 +64,7 @@ import org.apache.solr.common.cloud.CollectionStatePredicate;
 import org.apache.solr.common.cloud.CollectionStateWatcher;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.DocRouter;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkCoreNodeProps;
@@ -479,7 +479,7 @@ public class CloudSolrClient extends SolrClient {
 
     DocRouter router = col.getRouter();
     
-    if (router instanceof ImplicitDocRouter) {
+    if (router instanceof ManualDocRouter) {
       // short circuit as optimization
       return null;
     }

@@ -40,9 +40,9 @@ public class TestCollectionAdminRequest extends LuceneTestCase {
   }
   
   @Test
-  public void testInvalidShardNamesRejectedWhenCreatingImplicitCollection() {
+  public void testInvalidShardNamesRejectedWhenCreatingManualCollection() {
     final SolrException e = expectThrows(SolrException.class, () -> {
-        CollectionAdminRequest.createCollectionWithImplicitRouter("fine", "fine", "invalid$shard@name",1,0,0);
+        CollectionAdminRequest.createCollectionWithManualRouter("fine", "fine", "invalid$shard@name",1,0,0);
       });
     final String exceptionMessage = e.getMessage();
     assertTrue(exceptionMessage.contains("Invalid shard"));
@@ -52,7 +52,7 @@ public class TestCollectionAdminRequest extends LuceneTestCase {
   
   @Test
   public void testInvalidShardNamesRejectedWhenCallingSetShards() {
-    CollectionAdminRequest.Create request = CollectionAdminRequest.createCollectionWithImplicitRouter("fine",null,"fine",1);
+    CollectionAdminRequest.Create request = CollectionAdminRequest.createCollectionWithManualRouter("fine",null,"fine",1);
     final SolrException e = expectThrows(SolrException.class, () -> {
         request.setShards("invalid$shard@name");
       });

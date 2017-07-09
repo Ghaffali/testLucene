@@ -36,7 +36,7 @@ public class DeleteLastCustomShardedReplicaTest extends SolrCloudTestCase {
 
     final String collectionName = "customcollreplicadeletion";
 
-    CollectionAdminRequest.createCollectionWithImplicitRouter(collectionName, "conf", "a,b", 1)
+    CollectionAdminRequest.createCollectionWithManualRouter(collectionName, "conf", "a,b", 1)
         .setMaxShardsPerNode(5)
         .process(cluster.getSolrClient());
 

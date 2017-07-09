@@ -121,7 +121,7 @@ public class CollectionTooManyReplicasTest extends SolrCloudTestCase {
   public void testAddShard() throws Exception {
 
     String collectionName = "TooManyReplicasWhenAddingShards";
-    CollectionAdminRequest.createCollectionWithImplicitRouter(collectionName, "conf", "shardstart", 2)
+    CollectionAdminRequest.createCollectionWithManualRouter(collectionName, "conf", "shardstart", 2)
         .setMaxShardsPerNode(2)
         .process(cluster.getSolrClient());
 
@@ -178,7 +178,7 @@ public class CollectionTooManyReplicasTest extends SolrCloudTestCase {
   @Test
   public void testDownedShards() throws Exception {
     String collectionName = "TooManyReplicasWhenAddingDownedNode";
-    CollectionAdminRequest.createCollectionWithImplicitRouter(collectionName, "conf", "shardstart", 1)
+    CollectionAdminRequest.createCollectionWithManualRouter(collectionName, "conf", "shardstart", 1)
         .setMaxShardsPerNode(2)
         .process(cluster.getSolrClient());
 

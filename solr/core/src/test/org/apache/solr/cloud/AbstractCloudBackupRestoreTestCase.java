@@ -40,7 +40,7 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.cloud.DocCollection;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CoreAdminParams;
@@ -82,15 +82,15 @@ public abstract class AbstractCloudBackupRestoreTestCase extends SolrCloudTestCa
 
   @Test
   public void test() throws Exception {
-    boolean isImplicit = random().nextBoolean();
-    boolean doSplitShardOperation = !isImplicit && random().nextBoolean();
+    boolean isManual = random().nextBoolean();
+    boolean doSplitShardOperation = !isManual && random().nextBoolean();
     int replFactor = TestUtil.nextInt(random(), 1, 2);
     int numTlogReplicas = TestUtil.nextInt(random(), 0, 1);
     int numPullReplicas = TestUtil.nextInt(random(), 0, 1);
     
-    CollectionAdminRequest.Create create = isImplicit ?
+    CollectionAdminRequest.Create create = isManual ?
       // NOTE: use shard list with same # of shards as NUM_SHARDS; we assume this later
-      CollectionAdminRequest.createCollectionWithImplicitRouter(getCollectionName(), "conf1", "shard1,shard2", replFactor, numTlogReplicas, numPullReplicas) :
+      CollectionAdminRequest.createCollectionWithManualRouter(getCollectionName(), "conf1", "shard1,shard2", replFactor, numTlogReplicas, numPullReplicas) :
       CollectionAdminRequest.createCollection(getCollectionName(), "conf1", NUM_SHARDS, replFactor, numTlogReplicas, numPullReplicas);
     
     if (NUM_SHARDS * (replFactor + numTlogReplicas + numPullReplicas) > cluster.getJettySolrRunners().size() || random().nextBoolean()) {
@@ -105,7 +105,7 @@ public abstract class AbstractCloudBackupRestoreTestCase extends SolrCloudTestCa
     Properties coreProps = new Properties();
     coreProps.put("customKey", "customValue");//just to assert it survives the restoration
     create.setProperties(coreProps);
-    if (isImplicit) { //implicit router
+    if (isManual) { // manual router
       create.setRouterField("shard_s");
     } else {//composite id router
       if (random().nextBoolean()) {
@@ -202,7 +202,7 @@ public abstract class AbstractCloudBackupRestoreTestCase extends SolrCloudTestCa
     for (int i=0; i<numDocs; i++) {
       SolrInputDocument doc = new SolrInputDocument();
       doc.addField("id", i);
-      doc.addField("shard_s", "shard" + (1 + random.nextInt(NUM_SHARDS))); // for implicit router
+      doc.addField("shard_s", "shard" + (1 + random.nextInt(NUM_SHARDS))); // for manual router
       docs.add(doc);
     }
     CloudSolrClient client = cluster.getSolrClient();
@@ -285,7 +285,7 @@ public abstract class AbstractCloudBackupRestoreTestCase extends SolrCloudTestCa
     assertEquals(origShardToDocCount, getShardToDocCountMap(client, restoreCollection));
     //Re-index same docs (should be identical docs given same random seed) and test we have the same result.  Helps
     //  test we reconstituted the hash ranges / doc router.
-    if (!(restoreCollection.getRouter() instanceof ImplicitDocRouter) && random().nextBoolean()) {
+    if (!(restoreCollection.getRouter() instanceof ManualDocRouter) && random().nextBoolean()) {
       indexDocs(restoreCollectionName);
       assertEquals(origShardToDocCount, getShardToDocCountMap(client, restoreCollection));
     }

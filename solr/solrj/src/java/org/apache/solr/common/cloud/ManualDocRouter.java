@@ -27,9 +27,10 @@ import static org.apache.solr.common.params.ShardParams._ROUTE_;
 
 /** This document router is for custom sharding
  */
-public class ImplicitDocRouter extends DocRouter {
+public class ManualDocRouter extends DocRouter {
 
-  public static final String NAME = "implicit";
+  public static final String NAME = "manual";
+  @Deprecated public static final String DEPRECATED_NAME = "implicit";
 
   @Override
   public Slice getTargetSlice(String id, SolrInputDocument sdoc, String route, SolrParams params, DocCollection collection) {
@@ -85,7 +86,7 @@ public class ImplicitDocRouter extends DocRouter {
     // assume the shardKey is just a slice name
     Slice slice = collection.getSlice(shardKey);
     if (slice == null) {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "implicit router can't find shard " + shardKey + " in collection " + collection.getName());
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "manual router can't find shard " + shardKey + " in collection " + collection.getName());
     }
 
     return Collections.singleton(slice);

@@ -56,20 +56,20 @@ public class CustomCollectionTest extends SolrCloudTestCase {
   @Test
   public void testCustomCollectionsAPI() throws Exception {
 
-    final String collection = "implicitcoll";
+    final String collection = "manualcoll";
     int replicationFactor = TestUtil.nextInt(random(), 0, 3) + 2;
     int numShards = 3;
     int maxShardsPerNode = (((numShards + 1) * replicationFactor) / NODE_COUNT) + 1;
 
-    CollectionAdminRequest.createCollectionWithImplicitRouter(collection, "conf", "a,b,c", replicationFactor)
+    CollectionAdminRequest.createCollectionWithManualRouter(collection, "conf", "a,b,c", replicationFactor)
         .setMaxShardsPerNode(maxShardsPerNode)
         .process(cluster.getSolrClient());
 
     DocCollection coll = getCollectionState(collection);
-    assertEquals("implicit", ((Map) coll.get(DOC_ROUTER)).get("name"));
+    assertEquals("manual", ((Map) coll.get(DOC_ROUTER)).get("name"));
     assertNotNull(coll.getStr(REPLICATION_FACTOR));
     assertNotNull(coll.getStr(MAX_SHARDS_PER_NODE));
-    assertNull("A shard of a Collection configured with implicit router must have null range",
+    assertNull("A shard of a Collection configured with manual router must have null range",
         coll.getSlice("a").getRange());
 
     new UpdateRequest()
@@ -120,7 +120,7 @@ public class CustomCollectionTest extends SolrCloudTestCase {
   }
 
   @Test
-  public void testRouteFieldForImplicitRouter() throws Exception {
+  public void testRouteFieldForManualRouter() throws Exception {
 
     int numShards = 4;
     int replicationFactor = TestUtil.nextInt(random(), 0, 3) + 2;
@@ -129,7 +129,7 @@ public class CustomCollectionTest extends SolrCloudTestCase {
 
     final String collection = "withShardField";
 
-    CollectionAdminRequest.createCollectionWithImplicitRouter(collection, "conf", "a,b,c,d", replicationFactor)
+    CollectionAdminRequest.createCollectionWithManualRouter(collection, "conf", "a,b,c,d", replicationFactor)
         .setMaxShardsPerNode(maxShardsPerNode)
         .setRouterField(shard_fld)
         .process(cluster.getSolrClient());
@@ -183,7 +183,7 @@ public class CustomCollectionTest extends SolrCloudTestCase {
   @Test
   public void testCreateShardRepFactor() throws Exception  {
     final String collectionName = "testCreateShardRepFactor";
-    CollectionAdminRequest.createCollectionWithImplicitRouter(collectionName, "conf", "a,b", 1)
+    CollectionAdminRequest.createCollectionWithManualRouter(collectionName, "conf", "a,b", 1)
         .process(cluster.getSolrClient());
 
     CollectionAdminRequest.createShard(collectionName, "x")

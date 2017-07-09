@@ -77,7 +77,7 @@ public abstract class DocRouter {
     routerMap.put(null, plain);     // back compat with 4.0
     routerMap.put(PlainIdRouter.NAME, plain);
     routerMap.put(CompositeIdRouter.NAME, DEFAULT_NAME.equals(CompositeIdRouter.NAME) ? DEFAULT : new CompositeIdRouter());
-    routerMap.put(ImplicitDocRouter.NAME, new ImplicitDocRouter());
+    routerMap.put(ManualDocRouter.NAME, new ManualDocRouter());
     // NOTE: careful that the map keys (the static .NAME members) are filled in by making them final
   }
 

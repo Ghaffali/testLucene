@@ -33,7 +33,7 @@ import org.apache.solr.client.solrj.response.CollectionAdminResponse;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.client.solrj.util.SolrIdentifierValidator;
 import org.apache.solr.common.cloud.DocCollection;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionAdminParams;
@@ -323,18 +323,18 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
   }
 
   /**
-   * Returns a SolrRequest for creating a collection with the implicit router
+   * Returns a SolrRequest for creating a collection with the manual router
    * @param collection  the collection name
    * @param config      the collection config
    * @param shards      a shard definition string
    * @param numReplicas the replication factor of the collection
    */
-  public static Create createCollectionWithImplicitRouter(String collection, String config, String shards, int numReplicas) {
+  public static Create createCollectionWithManualRouter(String collection, String config, String shards, int numReplicas) {
     return new Create(collection, config, shards, numReplicas);
   }
   
   /**
-   * Returns a SolrRequest for creating a collection with the implicit router and specific types of replicas
+   * Returns a SolrRequest for creating a collection with the manual router and specific types of replicas
    * @param collection  the collection name
    * @param config      the collection config
    * @param shards      a shard definition string
@@ -342,8 +342,8 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
    * @param numTlogReplicas the number of replicas of type {@link org.apache.solr.common.cloud.Replica.Type#TLOG}
    * @param numPullReplicas the number of replicas of type {@link org.apache.solr.common.cloud.Replica.Type#PULL}
    */
-  public static Create createCollectionWithImplicitRouter(String collection, String config, String shards, int numNrtReplicas, int numTlogReplicas, int numPullReplicas) {
-    return new Create(collection, config, ImplicitDocRouter.NAME, null, checkNotNull("shards",shards), numNrtReplicas, numTlogReplicas, numPullReplicas);
+  public static Create createCollectionWithManualRouter(String collection, String config, String shards, int numNrtReplicas, int numTlogReplicas, int numPullReplicas) {
+    return new Create(collection, config, ManualDocRouter.NAME, null, checkNotNull("shards",shards), numNrtReplicas, numTlogReplicas, numPullReplicas);
   }
 
   // CREATE request
@@ -371,9 +371,9 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
       this(collection, config, null, numShards, null, numNrtReplicas, numTlogReplicas, numPullReplicas);
     }
 
-    /** Constructor that assumes {@link ImplicitDocRouter#NAME} and an explicit list of <code>shards</code> */
+    /** Constructor that assumes {@link ManualDocRouter#NAME} and an explicit list of <code>shards</code> */
     protected Create(String collection, String config, String shards, int numNrtReplicas) {
-      this(collection, config, ImplicitDocRouter.NAME, null, checkNotNull("shards",shards), numNrtReplicas, null, null);
+      this(collection, config, ManualDocRouter.NAME, null, checkNotNull("shards",shards), numNrtReplicas, null, null);
     }
     
     private Create(String collection, String config, String routerName, Integer numShards, String shards, Integer numNrtReplicas, Integer  numTlogReplicas, Integer numPullReplicas) {

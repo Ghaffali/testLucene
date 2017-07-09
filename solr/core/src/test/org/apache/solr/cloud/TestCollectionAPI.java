@@ -690,7 +690,7 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
       ModifiableSolrParams params = new ModifiableSolrParams();
       params.set("action", CollectionParams.CollectionAction.CREATE.toString());
       params.set("name", "valid_collection_name");
-      params.set("router.name", "implicit");
+      params.set("router.name", "manual");
       params.set("numShards", "1");
       params.set("shards", "invalid@name#with$weird%characters");
       SolrRequest request = new QueryRequest(params);
@@ -732,12 +732,12 @@ public class TestCollectionAPI extends ReplicaPropertiesBase {
   private void testShardCreationNameValidation() throws Exception {
     try (CloudSolrClient client = createCloudClient(null)) {
       client.connect();
-      // Create a collection w/ implicit router
+      // Create a collection w/ manual router
       ModifiableSolrParams params = new ModifiableSolrParams();
       params.set("action", CollectionParams.CollectionAction.CREATE.toString());
       params.set("name", "valid_collection_name");
       params.set("shards", "a");
-      params.set("router.name", "implicit");
+      params.set("router.name", "manual");
       SolrRequest request = new QueryRequest(params);
       request.setPath("/admin/collections");
       client.request(request);

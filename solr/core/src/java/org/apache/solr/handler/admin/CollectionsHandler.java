@@ -56,7 +56,7 @@ import org.apache.solr.common.cloud.Aliases;
 import org.apache.solr.common.cloud.ClusterProperties;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Replica.State;
 import org.apache.solr.common.cloud.Slice;
@@ -518,8 +518,8 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
           SHARD_ID_PROP);
       ClusterState clusterState = h.coreContainer.getZkController().getClusterState();
       final String newShardName = SolrIdentifierValidator.validateShardName(req.getParams().get(SHARD_ID_PROP));
-      if (!ImplicitDocRouter.NAME.equals(((Map) clusterState.getCollection(req.getParams().get(COLLECTION_PROP)).get(DOC_ROUTER)).get(NAME)))
-        throw new SolrException(ErrorCode.BAD_REQUEST, "shards can be added only to 'implicit' collections");
+      if (!ManualDocRouter.NAME.equals(((Map) clusterState.getCollection(req.getParams().get(COLLECTION_PROP)).get(DOC_ROUTER)).get(NAME)))
+        throw new SolrException(ErrorCode.BAD_REQUEST, "shards can be added only to collections using 'manual' router");
       req.getParams().getAll(map,
           REPLICATION_FACTOR,
           CREATE_NODE_SET);

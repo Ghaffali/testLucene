@@ -25,7 +25,7 @@ import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.DocRouter;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
@@ -75,7 +75,7 @@ public class AssignTest extends SolrTestCaseJ4 {
     Slice slice = new Slice("slice1", replicas , new HashMap<String,Object>(0));
     slices.put("slice1", slice);
     
-    DocRouter router = new ImplicitDocRouter();
+    DocRouter router = new ManualDocRouter();
     DocCollection docCollection = new DocCollection(cname, slices, new HashMap<String,Object>(0), router);
 
     collectionStates.put(cname, docCollection);

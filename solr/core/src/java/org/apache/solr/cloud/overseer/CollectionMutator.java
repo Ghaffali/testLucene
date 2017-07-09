@@ -25,7 +25,7 @@ import java.util.Map;
 
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
@@ -122,12 +122,12 @@ public class CollectionMutator {
 
     if (collection == null) {
       //  when updateSlice is called on a collection that doesn't exist, it's currently when a core is publishing itself
-      // without explicitly creating a collection.  In this current case, we assume custom sharding with an "implicit" router.
+      // without explicitly creating a collection.  In this current case, we assume custom sharding with a "manual" router.
       slices = new LinkedHashMap<>(1);
       slices.put(slice.getName(), slice);
       Map<String, Object> props = new HashMap<>(1);
-      props.put(DocCollection.DOC_ROUTER, Utils.makeMap(NAME, ImplicitDocRouter.NAME));
-      newCollection = new DocCollection(collectionName, slices, props, new ImplicitDocRouter());
+      props.put(DocCollection.DOC_ROUTER, Utils.makeMap(NAME, ManualDocRouter.NAME));
+      newCollection = new DocCollection(collectionName, slices, props, new ManualDocRouter());
     } else {
       slices = new LinkedHashMap<>(collection.getSlicesMap()); // make a shallow copy
       slices.put(slice.getName(), slice);

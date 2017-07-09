@@ -32,7 +32,7 @@ import org.apache.solr.cloud.AbstractDistribZkTestBase;
 import org.apache.solr.cloud.MiniSolrCloudCluster;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.cloud.CompositeIdRouter;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.ShardParams;
 import org.junit.Test;
@@ -74,8 +74,8 @@ public class TestDistribIDF extends SolrTestCaseJ4 {
   @Test
   public void testSimpleQuery() throws Exception {
     //3 shards. 3rd shard won't have any data.
-    createCollection("onecollection", "conf1", ImplicitDocRouter.NAME);
-    createCollection("onecollection_local", "conf2", ImplicitDocRouter.NAME);
+    createCollection("onecollection", "conf1", ManualDocRouter.NAME);
+    createCollection("onecollection_local", "conf2", ManualDocRouter.NAME);
 
     SolrInputDocument doc = new SolrInputDocument();
     doc.setField("id", "1");
@@ -195,8 +195,8 @@ public class TestDistribIDF extends SolrTestCaseJ4 {
 
   private void createCollection(String name, String config, String router) throws Exception {
     CollectionAdminResponse response;
-    if (router.equals(ImplicitDocRouter.NAME)) {
-      CollectionAdminRequest.Create create = CollectionAdminRequest.createCollectionWithImplicitRouter(name,config,"a,b,c",1);
+    if (router.equals(ManualDocRouter.NAME)) {
+      CollectionAdminRequest.Create create = CollectionAdminRequest.createCollectionWithManualRouter(name,config,"a,b,c",1);
       create.setMaxShardsPerNode(1);
       response = create.process(solrCluster.getSolrClient());
     } else {

@@ -29,7 +29,7 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.DocRouter;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ManualDocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
@@ -68,7 +68,7 @@ public class ClusterStateMutator {
     } else {
       List<String> shardNames = new ArrayList<>();
 
-      if (router instanceof ImplicitDocRouter) {
+      if (router instanceof ManualDocRouter) {
         getShardNames(shardNames, message.getStr("shards", DocRouter.DEFAULT_NAME));
       } else {
         int numShards = message.getInt(ZkStateReader.NUM_SHARDS_PROP, -1);

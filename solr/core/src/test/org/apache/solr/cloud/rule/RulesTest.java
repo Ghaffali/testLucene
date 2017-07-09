@@ -70,7 +70,7 @@ public class RulesTest extends SolrCloudTestCase {
         ImplicitSnitch.getUsableSpaceInGB(Paths.get("/")) > minGB);
 
     String rulesColl = "rulesColl";
-    CollectionAdminRequest.createCollectionWithImplicitRouter(rulesColl, "conf", "shard1", 2)
+    CollectionAdminRequest.createCollectionWithManualRouter(rulesColl, "conf", "shard1", 2)
         .setRule("cores:<4", "node:*,replica:<2", "freedisk:>"+minGB)
         .setSnitch("class:ImplicitSnitch")
         .process(cluster.getSolrClient());
@@ -98,7 +98,7 @@ public class RulesTest extends SolrCloudTestCase {
     String port = Integer.toString(jetty.getLocalPort());
 
     String rulesColl = "portRuleColl";
-    CollectionAdminRequest.createCollectionWithImplicitRouter(rulesColl, "conf", "shard1", 2)
+    CollectionAdminRequest.createCollectionWithManualRouter(rulesColl, "conf", "shard1", 2)
         .setRule("port:" + port)
         .setSnitch("class:ImplicitSnitch")
         .process(cluster.getSolrClient());
@@ -125,7 +125,7 @@ public class RulesTest extends SolrCloudTestCase {
     String ip_1 = ipFragments[ipFragments.length - 1];
     String ip_2 = ipFragments[ipFragments.length - 2];
 
-    CollectionAdminRequest.createCollectionWithImplicitRouter(rulesColl, "conf", "shard1", 2)
+    CollectionAdminRequest.createCollectionWithManualRouter(rulesColl, "conf", "shard1", 2)
         .setRule("ip_2:" + ip_2, "ip_1:" + ip_1)
         .setSnitch("class:ImplicitSnitch")
         .process(cluster.getSolrClient());
@@ -157,7 +157,7 @@ public class RulesTest extends SolrCloudTestCase {
     expectedException.expect(HttpSolrClient.RemoteSolrException.class);
     expectedException.expectMessage(containsString("ip_1"));
 
-    CollectionAdminRequest.createCollectionWithImplicitRouter(rulesColl, "conf", "shard1", 2)
+    CollectionAdminRequest.createCollectionWithManualRouter(rulesColl, "conf", "shard1", 2)
         .setRule("ip_2:" + ip_2, "ip_1:" + ip_1 + "9999")
         .setSnitch("class:ImplicitSnitch")
         .process(cluster.getSolrClient());

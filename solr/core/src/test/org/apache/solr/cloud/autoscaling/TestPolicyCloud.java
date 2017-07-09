@@ -140,7 +140,7 @@ public class TestPolicyCloud extends SolrCloudTestCase {
     Map<String, Object> json = Utils.getJson(cluster.getZkClient(), ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, true);
     assertEquals("full json:"+ Utils.toJSONString(json) , "#EACH",
         Utils.getObjectByPath(json, true, "/policies/c1[0]/shard"));
-    CollectionAdminRequest.createCollectionWithImplicitRouter("policiesTest", "conf", "s1,s2", 1)
+    CollectionAdminRequest.createCollectionWithManualRouter("policiesTest", "conf", "s1,s2", 1)
         .setPolicy("c1")
         .process(cluster.getSolrClient());
 
@@ -155,7 +155,7 @@ public class TestPolicyCloud extends SolrCloudTestCase {
   }
 
   public void testDataProvider() throws IOException, SolrServerException, KeeperException, InterruptedException {
-    CollectionAdminRequest.createCollectionWithImplicitRouter("policiesTest", "conf", "shard1", 2)
+    CollectionAdminRequest.createCollectionWithManualRouter("policiesTest", "conf", "shard1", 2)
         .process(cluster.getSolrClient());
     DocCollection rulesCollection = getCollectionState("policiesTest");
     SolrClientDataProvider provider = new SolrClientDataProvider(cluster.getSolrClient());
