@@ -262,15 +262,13 @@ public class OverseerTriggerThread implements Runnable, Closeable {
       if (isClosed) {
         return;
       }
-      final Stat stat = new Stat();
-      final byte[] data = zkClient.getData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, watcher, stat, true);
-      log.debug("Refreshing {} with znode version {}", ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, stat.getVersion());
-      if (znodeVersion >= stat.getVersion()) {
+      AutoScalingConfig autoScalingConfig = zkStateReader.getAutoScalingConfig();
+      log.debug("Refreshing {} with znode version {}", ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, autoScalingConfig.getZkVersion());
+      if (znodeVersion >= autoScalingConfig.getZkVersion()) {
         // protect against reordered watcher fires by ensuring that we only move forward
         return;
       }
-      autoScalingConfig = new AutoScalingConfig(data);
-      znodeVersion = stat.getVersion();
+      znodeVersion = autoScalingConfig.getZkVersion();
       Map<String, AutoScaling.Trigger> triggerMap = loadTriggers(triggerFactory, autoScalingConfig);
 
       // remove all active triggers that have been removed from ZK

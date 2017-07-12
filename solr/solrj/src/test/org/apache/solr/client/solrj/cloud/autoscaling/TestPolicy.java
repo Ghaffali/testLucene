@@ -983,7 +983,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
-        "newColl", (Map<String, Object>) Utils.fromJSONString(autoScaleJson),
+        "newColl", new AutoScalingConfig((Map<String, Object>)Utils.fromJSONString(autoScaleJson)),
         dataProvider, Collections.singletonMap("newColl", "c1"), Arrays.asList("shard1", "shard2"), 1, 0, 0, null);
 
     assertTrue(locations.stream().allMatch(it -> it.node.equals("127.0.0.1:50096_solr")) );
@@ -1040,7 +1040,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
-        "newColl", (Map<String, Object>) Utils.fromJSONString(autoScaleJson),
+        "newColl", new AutoScalingConfig((Map<String, Object>) Utils.fromJSONString(autoScaleJson)),
         dataProvider, Collections.singletonMap("newColl", "policy1"), Arrays.asList("shard1", "shard2"), 3,0,0, null);
     assertTrue(locations.stream().allMatch(it -> ImmutableList.of("node2", "node1", "node3").contains(it.node)) );
   }

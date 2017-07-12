@@ -34,7 +34,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
@@ -51,7 +50,6 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.StrUtils;
-import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -65,7 +63,6 @@ import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE
 import static org.apache.solr.common.cloud.DocCollection.SNITCH;
 import static org.apache.solr.common.cloud.ZkStateReader.CORE_NAME_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.MAX_SHARDS_PER_NODE;
-import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_PATH;
 
 
 public class Assign {
@@ -193,9 +190,9 @@ public class Assign {
                                                     int numPullReplicas) throws KeeperException, InterruptedException {
     List<Map> rulesMap = (List) message.get("rule");
     String policyName = message.getStr(POLICY);
-    Map autoScalingJson = Utils.getJson(zkStateReader.getZkClient(), SOLR_AUTOSCALING_CONF_PATH, true);
+    AutoScalingConfig autoScalingConfig = zkStateReader.getAutoScalingConfig();
 
-    if (rulesMap == null && policyName == null && autoScalingJson.get(Policy.CLUSTER_POLICY) == null) {
+    if (rulesMap == null && policyName == null && autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       log.debug("Identify nodes using default");
       int i = 0;
       List<ReplicaPosition> result = new ArrayList<>();
@@ -217,7 +214,7 @@ public class Assign {
       }
     }
 
-    if (policyName != null || autoScalingJson.get(Policy.CLUSTER_POLICY) != null) {
+    if (policyName != null || !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       if (message.getStr(CREATE_NODE_SET) == null)
         nodeList = Collections.emptyList();// unless explicitly specified do not pass node list to Policy
       return getPositionsUsingPolicy(collectionName,
@@ -298,10 +295,10 @@ public class Assign {
       replicaPositions = getNodesViaRules(clusterState, shard, nrtReplicas, cc, coll, createNodeList, l);
     }
     String policyName = coll.getStr(POLICY);
-    AutoScalingConfig autoScalingConfig = cc.getZkController().getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = cc.getZkController().zkStateReader.getAutoScalingConfig();
     if (policyName != null || !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       replicaPositions = Assign.getPositionsUsingPolicy(collectionName, Collections.singletonList(shard), nrtReplicas, 0, 0,
-          policyName, cc.getZkController().getZkStateReader(), createNodeList);
+          policyName, cc.getZkController().zkStateReader, createNodeList);
     }
 
     if(replicaPositions != null){
@@ -328,11 +325,11 @@ public class Assign {
         .withClusterStateProvider(new ZkClientClusterStateProvider(zkStateReader))
         .build()) {
       SolrClientDataProvider clientDataProvider = new SolrClientDataProvider(csc);
-      Map<String, Object> autoScalingJson = Utils.getJson(zkStateReader.getZkClient(), SOLR_AUTOSCALING_CONF_PATH, true);
+      AutoScalingConfig autoScalingConfig = zkStateReader.getAutoScalingConfig();
       Map<String, String> kvMap = Collections.singletonMap(collName, policyName);
       return PolicyHelper.getReplicaLocations(
           collName,
-          autoScalingJson,
+          autoScalingConfig,
           clientDataProvider,
           kvMap,
           shardNames,

@@ -53,7 +53,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient.Builder;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.WaitForState;
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.cloud.overseer.OverseerAction;
 import org.apache.solr.cloud.overseer.SliceMutator;
@@ -72,7 +71,6 @@ import org.apache.solr.common.cloud.ZkMaintenanceUtils;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.ZooKeeperException;
-import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
@@ -180,7 +178,7 @@ public class ZkController {
 
   private final SolrZkClient zkClient;
   private final ZkCmdExecutor cmdExecutor;
-  private final ZkStateReader zkStateReader;
+  public final ZkStateReader zkStateReader;
 
   private final String zkServerAddress;          // example: 127.0.0.1:54062/solr
 
@@ -579,28 +577,6 @@ public class ZkController {
   }
 
   /**
-   * Get current {@link AutoScalingConfig}.
-   * @return current configuration from <code>autoscaling.json</code>. NOTE:
-   * this data is retrieved from ZK on each call.
-   */
-  public AutoScalingConfig getAutoScalingConfig() throws KeeperException, InterruptedException {
-    Stat stat = new Stat();
-    stat.setVersion(-1);
-
-    Map<String, Object> map = new HashMap<>();
-    try {
-      byte[] bytes = zkClient.getData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, null, stat, true);
-      if (bytes != null && bytes.length > 0) {
-        map = (Map<String, Object>) Utils.fromJSON(bytes);
-      }
-    } catch (KeeperException.NoNodeException e) {
-      // ignore
-    }
-    map.put(AutoScalingParams.ZK_VERSION, stat.getVersion());
-    return new AutoScalingConfig(map);
-  }
-
-  /**
    * Returns config file data (in bytes)
    */
   public byte[] getConfigFileData(String zkConfigName, String fileName)
@@ -852,7 +828,7 @@ public class ZkController {
       // then don't create markers
       boolean createNodes = false;
       try {
-        createNodes = getAutoScalingConfig().hasTriggerForEvents(TriggerEventType.NODELOST);
+        createNodes = zkStateReader.getAutoScalingConfig().hasTriggerForEvents(TriggerEventType.NODELOST);
       } catch (KeeperException | InterruptedException e1) {
         log.warn("Unable to read autoscaling.json", e1);
       }
@@ -951,7 +927,7 @@ public class ZkController {
     List<Op> ops = new ArrayList<>(2);
     ops.add(Op.create(nodePath, null, zkClient.getZkACLProvider().getACLsToAdd(nodePath), CreateMode.EPHEMERAL));
     // if there are nodeAdded triggers don't create nodeAdded markers
-    boolean createMarkerNode = getAutoScalingConfig().hasTriggerForEvents(TriggerEventType.NODEADDED);
+    boolean createMarkerNode = zkStateReader.getAutoScalingConfig().hasTriggerForEvents(TriggerEventType.NODEADDED);
     if (createMarkerNode && !zkClient.exists(nodeAddedPath, true)) {
       // use EPHEMERAL so that it disappears if this node goes down
       // and no other action is taken

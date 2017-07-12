@@ -113,7 +113,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
           throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown path: " + path);
         }
 
-        AutoScalingConfig autoScalingConf = container.getZkController().getAutoScalingConfig();
+        AutoScalingConfig autoScalingConf = container.getZkController().zkStateReader.getAutoScalingConfig();
         if (parts.size() == 2)  {
           autoScalingConf.writeMap(new MapWriter.EntryWriter() {
 
@@ -135,7 +135,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
           // errors have already been added to the response so there's nothing left to do
           return;
         }
-        AutoScalingConfig initialConfig = container.getZkController().getAutoScalingConfig();
+        AutoScalingConfig initialConfig = container.getZkController().zkStateReader.getAutoScalingConfig();
         AutoScalingConfig currentConfig = initialConfig;
         for (CommandOperation op : ops) {
           switch (op.name) {

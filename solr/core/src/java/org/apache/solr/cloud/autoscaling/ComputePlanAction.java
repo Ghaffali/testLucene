@@ -30,7 +30,6 @@ import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -56,13 +55,12 @@ public class ComputePlanAction extends TriggerActionBase {
           .withHttpClient(container.getUpdateShardHandler().getHttpClient())
           .build()) {
         ZkStateReader zkStateReader = cloudSolrClient.getZkStateReader();
-        Map<String, Object> autoScalingConf = Utils.getJson(zkStateReader.getZkClient(), ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, true);
-        if (autoScalingConf.isEmpty()) {
+        AutoScalingConfig autoScalingConf = zkStateReader.getAutoScalingConfig();
+        Policy policy = autoScalingConf.getPolicy();
+        if (policy.getClusterPolicy().isEmpty() && policy.getPolicies().isEmpty()) {
           log.error("Action: " + getName() + " executed but no policy is configured");
           return;
         }
-        AutoScalingConfig config = new AutoScalingConfig(autoScalingConf);
-        Policy policy = config.getPolicy();
         Policy.Session session = policy.createSession(new SolrClientDataProvider(cloudSolrClient));
         Policy.Suggester suggester = getSuggester(session, event, zkStateReader);
         while (true) {
