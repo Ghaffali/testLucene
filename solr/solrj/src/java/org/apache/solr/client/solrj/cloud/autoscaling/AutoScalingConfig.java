@@ -44,6 +44,7 @@ public class AutoScalingConfig implements MapWriter {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, Object> jsonMap;
+  private final boolean empty;
 
   private Policy policy;
   private Map<String, TriggerConfig> triggers;
@@ -288,14 +289,16 @@ public class AutoScalingConfig implements MapWriter {
   public AutoScalingConfig(Map<String, Object> jsonMap) {
     this.jsonMap = Utils.getDeepCopy(jsonMap, 10);
     int version = -1;
-    if (jsonMap.containsKey("zkversion")) {
+    if (jsonMap.containsKey(AutoScalingParams.ZK_VERSION)) {
       try {
-        version = Integer.parseInt(String.valueOf(jsonMap.get("zkversion")));
+        version = Integer.parseInt(String.valueOf(jsonMap.get(AutoScalingParams.ZK_VERSION)));
       } catch (Exception e) {
         // ignore
       }
     }
     zkVersion = version;
+    jsonMap.remove(AutoScalingParams.ZK_VERSION);
+    empty = jsonMap.isEmpty();
   }
 
   private AutoScalingConfig(Policy policy, Map<String, TriggerConfig> triggerConfigs, Map<String,
@@ -305,6 +308,14 @@ public class AutoScalingConfig implements MapWriter {
     this.listeners = listenerConfigs != null ? Collections.unmodifiableMap(listenerConfigs) : null;
     this.jsonMap = null;
     this.zkVersion = zkVersion;
+    this.empty = false;
+  }
+
+  /**
+   * Return true if the source <code>autoscaling.json</code> was empty, false otherwise.
+   */
+  public boolean isEmpty() {
+    return empty;
   }
 
   /**

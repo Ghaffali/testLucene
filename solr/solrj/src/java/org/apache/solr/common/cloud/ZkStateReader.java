@@ -167,12 +167,21 @@ public class ZkStateReader implements Closeable {
    * this data is retrieved from ZK on each call.
    */
   public AutoScalingConfig getAutoScalingConfig() throws KeeperException, InterruptedException {
+    return getAutoScalingConfig(null);
+  }
+
+  /**
+   * Get current {@link AutoScalingConfig}.
+   * @param watcher optional {@link Watcher} to set on a znode to watch for config changes.
+   * @return current configuration from <code>autoscaling.json</code>. NOTE:
+   * this data is retrieved from ZK on each call.
+   */
+  public AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws KeeperException, InterruptedException {
     Stat stat = new Stat();
-    stat.setVersion(-1);
 
     Map<String, Object> map = new HashMap<>();
     try {
-      byte[] bytes = zkClient.getData(SOLR_AUTOSCALING_CONF_PATH, null, stat, true);
+      byte[] bytes = zkClient.getData(SOLR_AUTOSCALING_CONF_PATH, watcher, stat, true);
       if (bytes != null && bytes.length > 0) {
         map = (Map<String, Object>) fromJSON(bytes);
       }

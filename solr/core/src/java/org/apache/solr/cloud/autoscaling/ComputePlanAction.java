@@ -56,11 +56,11 @@ public class ComputePlanAction extends TriggerActionBase {
           .build()) {
         ZkStateReader zkStateReader = cloudSolrClient.getZkStateReader();
         AutoScalingConfig autoScalingConf = zkStateReader.getAutoScalingConfig();
-        Policy policy = autoScalingConf.getPolicy();
-        if (policy.getClusterPolicy().isEmpty() && policy.getPolicies().isEmpty()) {
+        if (autoScalingConf.isEmpty()) {
           log.error("Action: " + getName() + " executed but no policy is configured");
           return;
         }
+        Policy policy = autoScalingConf.getPolicy();
         Policy.Session session = policy.createSession(new SolrClientDataProvider(cloudSolrClient));
         Policy.Suggester suggester = getSuggester(session, event, zkStateReader);
         while (true) {
