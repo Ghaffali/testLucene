@@ -23,21 +23,19 @@ import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.cloud.ZkController;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.SolrZkClient;
-import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.ZooKeeperException;
-import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.util.IOUtils;
-import org.apache.solr.common.util.Utils;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -182,10 +180,10 @@ public class OverseerTriggerThread implements Runnable, Closeable {
       boolean cleanOldNodeAddedMarkers = true;
       // add new triggers and/or replace and close the replaced triggers
       for (Map.Entry<String, AutoScaling.Trigger> entry : copy.entrySet()) {
-        if (entry.getValue().getEventType().equals(AutoScaling.EventType.NODELOST)) {
+        if (entry.getValue().getEventType().equals(TriggerEventType.NODELOST)) {
           cleanOldNodeLostMarkers = false;
         }
-        if (entry.getValue().getEventType().equals(AutoScaling.EventType.NODEADDED)) {
+        if (entry.getValue().getEventType().equals(TriggerEventType.NODEADDED)) {
           cleanOldNodeAddedMarkers = false;
         }
         scheduledTriggers.add(entry.getValue());
@@ -305,7 +303,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
 
     for (Map.Entry<String, AutoScalingConfig.TriggerConfig> entry : triggers.entrySet()) {
       AutoScalingConfig.TriggerConfig cfg = entry.getValue();
-      AutoScaling.EventType eventType = cfg.eventType;
+      TriggerEventType eventType = cfg.event;
       String triggerName = entry.getKey();
       triggerMap.put(triggerName, triggerFactory.create(eventType, triggerName, cfg.properties));
     }

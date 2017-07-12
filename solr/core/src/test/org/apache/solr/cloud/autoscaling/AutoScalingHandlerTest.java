@@ -41,6 +41,7 @@ import org.apache.solr.common.util.ContentStream;
 import org.apache.solr.common.util.ContentStreamBase;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
+import org.apache.zookeeper.data.Stat;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -182,7 +183,8 @@ public class AutoScalingHandlerTest extends SolrCloudTestCase {
     assertEquals(response.get("result").toString(), "success");
     assertEquals(response.get("changed").toString(), "[node_lost_trigger]");
 
-    byte[] data = zkClient().getData(SOLR_AUTOSCALING_CONF_PATH, null, null, true);
+    Stat stat = new Stat();
+    byte[] data = zkClient().getData(SOLR_AUTOSCALING_CONF_PATH, null, stat, true);
     ZkNodeProps loaded = ZkNodeProps.load(data);
     Map<String, Object> triggers = (Map<String, Object>) loaded.get("triggers");
     assertNotNull(triggers);
@@ -370,7 +372,7 @@ public class AutoScalingHandlerTest extends SolrCloudTestCase {
     assertEquals(1, listeners.size());
     assertTrue(listeners.containsKey("xyz"));
     Map<String, Object> xyzListener = (Map<String, Object>) listeners.get("xyz");
-    assertEquals(5, xyzListener.size());
+    assertEquals(6, xyzListener.size());
     assertEquals("org.apache.solr.cloud.autoscaling.HttpTriggerListener", xyzListener.get("class").toString());
 
     String removeTriggerCommand = "{" +
