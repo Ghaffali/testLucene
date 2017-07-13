@@ -284,14 +284,15 @@ public class AutoScalingConfig implements MapWriter {
 
   /**
    * Construct from a JSON map representation.
-   * @param jsonMap JSON map representation of the config.
+   * @param jsonMap JSON map representation of the config. Note that this map is evaluated lazily, and
+   *                outside modifications may cause unpredictable behavior.
    */
   public AutoScalingConfig(Map<String, Object> jsonMap) {
-    this.jsonMap = Utils.getDeepCopy(jsonMap, 10);
+    this.jsonMap = jsonMap;
     int version = -1;
     if (jsonMap.containsKey(AutoScalingParams.ZK_VERSION)) {
       try {
-        version = Integer.parseInt(String.valueOf(jsonMap.get(AutoScalingParams.ZK_VERSION)));
+        version = (Integer)jsonMap.get(AutoScalingParams.ZK_VERSION);
       } catch (Exception e) {
         // ignore
       }
@@ -308,7 +309,9 @@ public class AutoScalingConfig implements MapWriter {
     this.listeners = listenerConfigs != null ? Collections.unmodifiableMap(listenerConfigs) : null;
     this.jsonMap = null;
     this.zkVersion = zkVersion;
-    this.empty = false;
+    this.empty = policy == null &&
+        (triggerConfigs == null || triggerConfigs.isEmpty()) &&
+        (listenerConfigs == null || listenerConfigs.isEmpty());
   }
 
   /**

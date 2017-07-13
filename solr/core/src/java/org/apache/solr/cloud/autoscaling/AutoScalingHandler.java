@@ -31,8 +31,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import com.google.common.collect.ImmutableSet;
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
@@ -64,6 +64,8 @@ import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.util.stream.Collectors.collectingAndThen;
+import static java.util.stream.Collectors.toSet;
 import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_PATH;
 import static org.apache.solr.common.params.CommonParams.JSON;
 import static org.apache.solr.common.params.AutoScalingParams.*;
@@ -76,7 +78,8 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   protected final CoreContainer container;
   private final List<Map<String, String>> DEFAULT_ACTIONS = new ArrayList<>(3);
-  private static ImmutableSet<String> singletonCommands = ImmutableSet.of("set-cluster-preferences", "set-cluster-policy");
+  private static Set<String> singletonCommands = Stream.of("set-cluster-preferences", "set-cluster-policy")
+      .collect(collectingAndThen(toSet(), Collections::unmodifiableSet));
   private static final TimeSource timeSource = TimeSource.CURRENT_TIME;
 
 
@@ -135,47 +138,23 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
           // errors have already been added to the response so there's nothing left to do
           return;
         }
-        AutoScalingConfig initialConfig = container.getZkController().zkStateReader.getAutoScalingConfig();
-        AutoScalingConfig currentConfig = initialConfig;
-        for (CommandOperation op : ops) {
-          switch (op.name) {
-            case CMD_SET_TRIGGER:
-              currentConfig = handleSetTrigger(req, rsp, op, currentConfig);
+        while (true) {
+          AutoScalingConfig initialConfig = container.getZkController().zkStateReader.getAutoScalingConfig();
+          AutoScalingConfig currentConfig = initialConfig;
+          currentConfig = processOps(req, rsp, ops, currentConfig);
+          if (!currentConfig.equals(initialConfig)) {
+            // update in ZK
+            if (zkSetAutoScalingConfig(container.getZkController().getZkStateReader(), currentConfig)) {
               break;
-            case CMD_REMOVE_TRIGGER:
-              currentConfig = handleRemoveTrigger(req, rsp, op, currentConfig);
-              break;
-            case CMD_SET_LISTENER:
-              currentConfig = handleSetListener(req, rsp, op, currentConfig);
-              break;
-            case CMD_REMOVE_LISTENER:
-              currentConfig = handleRemoveListener(req, rsp, op, currentConfig);
-              break;
-            case CMD_SUSPEND_TRIGGER:
-              currentConfig = handleSuspendTrigger(req, rsp, op, currentConfig);
-              break;
-            case CMD_RESUME_TRIGGER:
-              currentConfig = handleResumeTrigger(req, rsp, op, currentConfig);
-              break;
-            case CMD_SET_POLICY:
-              currentConfig = handleSetPolicies(req, rsp, op, currentConfig);
-              break;
-            case CMD_REMOVE_POLICY:
-              currentConfig = handleRemovePolicy(req, rsp, op, currentConfig);
-              break;
-            case CMD_SET_CLUSTER_PREFERENCES:
-              currentConfig = handleSetClusterPreferences(req, rsp, op, currentConfig);
-              break;
-            case CMD_SET_CLUSTER_POLICY:
-              currentConfig = handleSetClusterPolicy(req, rsp, op, currentConfig);
-              break;
-            default:
-              throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown command: " + op.name);
+            } else {
+              // someone else updated the config, get the latest one and re-apply our ops
+              rsp.getValues().add("retry", "initialVersion=" + initialConfig.getZkVersion());
+              continue;
+            }
+          } else {
+            // no changes
+            break;
           }
-        }
-        if (!currentConfig.equals(initialConfig)) {
-          // update in ZK
-          zkSetAutoScalingConfig(container.getZkController().getZkStateReader(), currentConfig);
         }
         rsp.getValues().add("result", "success");
       }
@@ -185,6 +164,46 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     } finally {
       RequestHandlerUtils.addExperimentalFormatWarning(rsp);
     }
+  }
+
+  private AutoScalingConfig processOps(SolrQueryRequest req, SolrQueryResponse rsp, List<CommandOperation> ops, AutoScalingConfig currentConfig) throws KeeperException, InterruptedException, IOException {
+    for (CommandOperation op : ops) {
+      switch (op.name) {
+        case CMD_SET_TRIGGER:
+          currentConfig = handleSetTrigger(req, rsp, op, currentConfig);
+          break;
+        case CMD_REMOVE_TRIGGER:
+          currentConfig = handleRemoveTrigger(req, rsp, op, currentConfig);
+          break;
+        case CMD_SET_LISTENER:
+          currentConfig = handleSetListener(req, rsp, op, currentConfig);
+          break;
+        case CMD_REMOVE_LISTENER:
+          currentConfig = handleRemoveListener(req, rsp, op, currentConfig);
+          break;
+        case CMD_SUSPEND_TRIGGER:
+          currentConfig = handleSuspendTrigger(req, rsp, op, currentConfig);
+          break;
+        case CMD_RESUME_TRIGGER:
+          currentConfig = handleResumeTrigger(req, rsp, op, currentConfig);
+          break;
+        case CMD_SET_POLICY:
+          currentConfig = handleSetPolicies(req, rsp, op, currentConfig);
+          break;
+        case CMD_REMOVE_POLICY:
+          currentConfig = handleRemovePolicy(req, rsp, op, currentConfig);
+          break;
+        case CMD_SET_CLUSTER_PREFERENCES:
+          currentConfig = handleSetClusterPreferences(req, rsp, op, currentConfig);
+          break;
+        case CMD_SET_CLUSTER_POLICY:
+          currentConfig = handleSetClusterPolicy(req, rsp, op, currentConfig);
+          break;
+        default:
+          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown command: " + op.name);
+      }
+    }
+    return currentConfig;
   }
 
   private void handleDiagnostics(SolrQueryResponse rsp, AutoScalingConfig autoScalingConf) throws IOException {
@@ -394,7 +413,6 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     if (listenerName == null || listenerName.trim().length() == 0) {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "The listener name cannot be null or empty");
     }
-    Map<String, AutoScalingConfig.TriggerListenerConfig> listeners = currentConfig.getTriggerListenerConfigs();
 
     Map<String, AutoScalingConfig.TriggerConfig> triggers = currentConfig.getTriggerConfigs();
     if (triggers == null || !triggers.containsKey(triggerName)) {
@@ -442,6 +460,8 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
 
   private AutoScalingConfig handleSetTrigger(SolrQueryRequest req, SolrQueryResponse rsp, CommandOperation op,
                                              AutoScalingConfig currentConfig) throws KeeperException, InterruptedException {
+    // we're going to modify the op - use a copy
+    op = new CommandOperation(op.name, Utils.getDeepCopy((Map)op.getCommandData(), 10));
     String triggerName = op.getStr(NAME);
 
     if (triggerName == null || triggerName.trim().length() == 0) {
@@ -460,7 +480,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
       try {
         seconds = parseHumanTime(waitForStr);
       } catch (IllegalArgumentException e) {
-        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Invalid 'waitFor' value in trigger: " + triggerName);
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Invalid 'waitFor' value '" + waitForStr + "' in trigger: " + triggerName);
       }
       op.getDataMap().put(WAIT_FOR, seconds);
     }
@@ -535,9 +555,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     if (!activeListeners.isEmpty()) {
       if (removeListeners) {
         listeners = new HashMap<>(listeners);
-        for (String activeListener : activeListeners) {
-          listeners.remove(activeListener);
-        }
+        listeners.keySet().removeAll(activeListeners);
       } else {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
             "Cannot remove trigger: " + triggerName + " because it has active listeners: " + activeListeners);
@@ -549,17 +567,15 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
   }
 
 
-  private void zkSetAutoScalingConfig(ZkStateReader reader, AutoScalingConfig currentConfig) throws KeeperException, InterruptedException, IOException {
-    while (true) {
-      verifyAutoScalingConf(currentConfig);
-      try {
-        reader.getZkClient().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(currentConfig), currentConfig.getZkVersion(), true);
-      } catch (KeeperException.BadVersionException bve) {
-        // somebody else has changed the configuration so we must retry
-        continue;
-      }
-      break;
+  private boolean zkSetAutoScalingConfig(ZkStateReader reader, AutoScalingConfig currentConfig) throws KeeperException, InterruptedException, IOException {
+    verifyAutoScalingConf(currentConfig);
+    try {
+      reader.getZkClient().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(currentConfig), currentConfig.getZkVersion(), true);
+    } catch (KeeperException.BadVersionException bve) {
+      // somebody else has changed the configuration so we must retry
+      return false;
     }
+    return true;
   }
 
   private void verifyAutoScalingConf(AutoScalingConfig autoScalingConf) throws IOException {
