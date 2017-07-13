@@ -138,25 +138,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
           // errors have already been added to the response so there's nothing left to do
           return;
         }
-        while (true) {
-          AutoScalingConfig initialConfig = container.getZkController().zkStateReader.getAutoScalingConfig();
-          AutoScalingConfig currentConfig = initialConfig;
-          currentConfig = processOps(req, rsp, ops, currentConfig);
-          if (!currentConfig.equals(initialConfig)) {
-            // update in ZK
-            if (zkSetAutoScalingConfig(container.getZkController().getZkStateReader(), currentConfig)) {
-              break;
-            } else {
-              // someone else updated the config, get the latest one and re-apply our ops
-              rsp.getValues().add("retry", "initialVersion=" + initialConfig.getZkVersion());
-              continue;
-            }
-          } else {
-            // no changes
-            break;
-          }
-        }
-        rsp.getValues().add("result", "success");
+        processOps(req, rsp, ops);
       }
     } catch (Exception e) {
       rsp.getValues().add("result", "failure");
@@ -166,44 +148,61 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     }
   }
 
-  private AutoScalingConfig processOps(SolrQueryRequest req, SolrQueryResponse rsp, List<CommandOperation> ops, AutoScalingConfig currentConfig) throws KeeperException, InterruptedException, IOException {
-    for (CommandOperation op : ops) {
-      switch (op.name) {
-        case CMD_SET_TRIGGER:
-          currentConfig = handleSetTrigger(req, rsp, op, currentConfig);
+  public void processOps(SolrQueryRequest req, SolrQueryResponse rsp, List<CommandOperation> ops) throws KeeperException, InterruptedException, IOException {
+    while (true) {
+      AutoScalingConfig initialConfig = container.getZkController().zkStateReader.getAutoScalingConfig();
+      AutoScalingConfig currentConfig = initialConfig;
+      for (CommandOperation op : ops) {
+        switch (op.name) {
+          case CMD_SET_TRIGGER:
+            currentConfig = handleSetTrigger(req, rsp, op, currentConfig);
+            break;
+          case CMD_REMOVE_TRIGGER:
+            currentConfig = handleRemoveTrigger(req, rsp, op, currentConfig);
+            break;
+          case CMD_SET_LISTENER:
+            currentConfig = handleSetListener(req, rsp, op, currentConfig);
+            break;
+          case CMD_REMOVE_LISTENER:
+            currentConfig = handleRemoveListener(req, rsp, op, currentConfig);
+            break;
+          case CMD_SUSPEND_TRIGGER:
+            currentConfig = handleSuspendTrigger(req, rsp, op, currentConfig);
+            break;
+          case CMD_RESUME_TRIGGER:
+            currentConfig = handleResumeTrigger(req, rsp, op, currentConfig);
+            break;
+          case CMD_SET_POLICY:
+            currentConfig = handleSetPolicies(req, rsp, op, currentConfig);
+            break;
+          case CMD_REMOVE_POLICY:
+            currentConfig = handleRemovePolicy(req, rsp, op, currentConfig);
+            break;
+          case CMD_SET_CLUSTER_PREFERENCES:
+            currentConfig = handleSetClusterPreferences(req, rsp, op, currentConfig);
+            break;
+          case CMD_SET_CLUSTER_POLICY:
+            currentConfig = handleSetClusterPolicy(req, rsp, op, currentConfig);
+            break;
+          default:
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown command: " + op.name);
+        }
+      }
+      if (!currentConfig.equals(initialConfig)) {
+        // update in ZK
+        if (zkSetAutoScalingConfig(container.getZkController().getZkStateReader(), currentConfig)) {
           break;
-        case CMD_REMOVE_TRIGGER:
-          currentConfig = handleRemoveTrigger(req, rsp, op, currentConfig);
-          break;
-        case CMD_SET_LISTENER:
-          currentConfig = handleSetListener(req, rsp, op, currentConfig);
-          break;
-        case CMD_REMOVE_LISTENER:
-          currentConfig = handleRemoveListener(req, rsp, op, currentConfig);
-          break;
-        case CMD_SUSPEND_TRIGGER:
-          currentConfig = handleSuspendTrigger(req, rsp, op, currentConfig);
-          break;
-        case CMD_RESUME_TRIGGER:
-          currentConfig = handleResumeTrigger(req, rsp, op, currentConfig);
-          break;
-        case CMD_SET_POLICY:
-          currentConfig = handleSetPolicies(req, rsp, op, currentConfig);
-          break;
-        case CMD_REMOVE_POLICY:
-          currentConfig = handleRemovePolicy(req, rsp, op, currentConfig);
-          break;
-        case CMD_SET_CLUSTER_PREFERENCES:
-          currentConfig = handleSetClusterPreferences(req, rsp, op, currentConfig);
-          break;
-        case CMD_SET_CLUSTER_POLICY:
-          currentConfig = handleSetClusterPolicy(req, rsp, op, currentConfig);
-          break;
-        default:
-          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown command: " + op.name);
+        } else {
+          // someone else updated the config, get the latest one and re-apply our ops
+          rsp.getValues().add("retry", "initialVersion=" + initialConfig.getZkVersion());
+          continue;
+        }
+      } else {
+        // no changes
+        break;
       }
     }
-    return currentConfig;
+    rsp.getValues().add("result", "success");
   }
 
   private void handleDiagnostics(SolrQueryResponse rsp, AutoScalingConfig autoScalingConf) throws IOException {
