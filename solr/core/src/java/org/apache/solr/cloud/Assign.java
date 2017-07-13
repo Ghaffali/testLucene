@@ -50,6 +50,7 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.StrUtils;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -62,8 +63,6 @@ import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET_SHUFFLE_DEFAULT;
 import static org.apache.solr.common.cloud.DocCollection.SNITCH;
 import static org.apache.solr.common.cloud.ZkStateReader.CORE_NAME_PROP;
-import static org.apache.solr.common.cloud.ZkStateReader.MAX_SHARDS_PER_NODE;
-
 
 public class Assign {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -262,8 +261,9 @@ public class Assign {
   public static List<ReplicaCount> getNodesForNewReplicas(ClusterState clusterState, String collectionName,
                                                           String shard, int nrtReplicas,
                                                           Object createNodeSet, CoreContainer cc) throws KeeperException, InterruptedException {
+    log.debug("getNodesForNewReplicas() shard: {} , replicas : {} , createNodeSet {}", shard, nrtReplicas, createNodeSet );
     DocCollection coll = clusterState.getCollection(collectionName);
-    Integer maxShardsPerNode = coll.getInt(MAX_SHARDS_PER_NODE, 1);
+    Integer maxShardsPerNode = coll.getMaxShardsPerNode();
     List<String> createNodeList = null;
 
     if (createNodeSet instanceof List) {
@@ -321,13 +321,16 @@ public class Assign {
                                                               int pullReplicas,
                                                               String policyName, ZkStateReader zkStateReader,
                                                               List<String> nodesList) throws KeeperException, InterruptedException {
+    log.debug("shardnames {} NRT {} TLOG {} PULL {} , policy {}, nodeList {}", shardNames, nrtReplicas, tlogReplicas, pullReplicas, policyName, nodesList);
+    SolrClientDataProvider clientDataProvider = null;
+    List<ReplicaPosition> replicaPositions = null;
+    AutoScalingConfig autoScalingConfig = zkStateReader.getAutoScalingConfig();
     try (CloudSolrClient csc = new CloudSolrClient.Builder()
         .withClusterStateProvider(new ZkClientClusterStateProvider(zkStateReader))
         .build()) {
-      SolrClientDataProvider clientDataProvider = new SolrClientDataProvider(csc);
-      AutoScalingConfig autoScalingConfig = zkStateReader.getAutoScalingConfig();
+      clientDataProvider = new SolrClientDataProvider(csc);
       Map<String, String> kvMap = Collections.singletonMap(collName, policyName);
-      return PolicyHelper.getReplicaLocations(
+      replicaPositions = PolicyHelper.getReplicaLocations(
           collName,
           autoScalingConfig,
           clientDataProvider,
@@ -337,8 +340,16 @@ public class Assign {
           tlogReplicas,
           pullReplicas,
           nodesList);
+      return replicaPositions;
     } catch (IOException e) {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error closing CloudSolrClient",e);
+    } finally {
+      if (log.isTraceEnabled()) {
+        if (clientDataProvider != null) log.trace("CLUSTER_DATA_PROVIDER: " + Utils.toJSONString(clientDataProvider));
+        if (replicaPositions != null)
+          log.trace("REPLICA_POSITIONS: " + Utils.toJSONString(Utils.getDeepCopy(replicaPositions, 7, true)));
+        log.trace("AUTOSCALING_CONF: " + Utils.toJSONString(autoScalingConfig));
+      }
     }
   }
 
@@ -390,7 +401,7 @@ public class Assign {
       return nodeNameVsShardCount;
     }
     DocCollection coll = clusterState.getCollection(collectionName);
-    Integer maxShardsPerNode = coll.getInt(MAX_SHARDS_PER_NODE, 1);
+    Integer maxShardsPerNode = coll.getMaxShardsPerNode();
     Map<String, DocCollection> collections = clusterState.getCollectionsMap();
     for (Map.Entry<String, DocCollection> entry : collections.entrySet()) {
       DocCollection c = entry.getValue();

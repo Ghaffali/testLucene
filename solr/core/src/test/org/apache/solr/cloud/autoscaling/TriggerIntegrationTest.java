@@ -1019,7 +1019,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "{" +
         "'name' : 'foo'," +
         "'trigger' : 'node_added_trigger'," +
-        "'stage' : ['WAITING', 'STARTED','ABORTED','SUCCEEDED', 'FAILED']," +
+        "'stage' : ['STARTED','ABORTED','SUCCEEDED', 'FAILED']," +
         "'beforeAction' : 'test'," +
         "'afterAction' : ['test', 'test1']," +
         "'class' : '" + TestTriggerListener.class.getName() + "'" +
@@ -1034,7 +1034,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "{" +
         "'name' : 'bar'," +
         "'trigger' : 'node_added_trigger'," +
-        "'stage' : ['WAITING','FAILED','SUCCEEDED']," +
+        "'stage' : ['FAILED','SUCCEEDED']," +
         "'beforeAction' : ['test', 'test1']," +
         "'afterAction' : 'test'," +
         "'class' : '" + TestTriggerListener.class.getName() + "'" +
