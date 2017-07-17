@@ -1,7 +1,7 @@
 = Solr Quick Start
 :page-shortname: solr-quick-start
 :page-permalink: solr-quick-start.html
-:page-toc: false
+:page-tocclass: right
 
 // TODO make a solr-version attribute that inserts the current Solr version and update the install examples below for that.
 
@@ -15,7 +15,7 @@ and getting a feel for the Solr administrative and search interfaces.
 To follow along with this tutorial, you will need...
 
 . To meet the {solr-javadocs}/solr/api/SYSTEM_REQUIREMENTS.html[system requirements]
-. An Apache Solr release http://lucene.apache.org/solr/downloads.html[download]. This tutorial was written using Apache Solr {solr-version}.
+. An Apache Solr release http://lucene.apache.org/solr/downloads.html[download]. This tutorial is designed for Apache Solr {solr-docs-version}.
 
 For best results, please run the browser showing this tutorial and the Solr server on the same machine so tutorial links will correctly point to your Solr server.
 
@@ -24,7 +24,7 @@ For best results, please run the browser showing this tutorial and the Solr serv
 
 Begin by unzipping the Solr release and changing your working directory to the subdirectory where Solr was installed. Note that the base directory name may vary with the version of Solr downloaded. For example, with a shell in UNIX, Cygwin, or MacOS:
 
-[source,bash]
+[source,bash,subs="verbatim,attributes+"]
 ----
 /:$ ls solr*
 solr-{solr-docs-version}.0.zip
@@ -37,9 +37,9 @@ solr-{solr-docs-version}.0.zip
 === Launch Solr
 To launch Solr, run: `bin/solr start -e cloud -noprompt`. This will start an interactive session that will start two Solr "servers" on your machine.
 
-[source,bash]
+[source,bash,subs="verbatim,attributes+"]
 ----
-/solr-6.6.0:$ bin/solr start -e cloud -noprompt
+/solr-{solr-docs-version}.0:$ bin/solr start -e cloud -noprompt
 
 Welcome to the SolrCloud example!
 
@@ -54,7 +54,7 @@ Started Solr server on port 7574 (pid=8549). Happy searching!
 
 SolrCloud example running, please visit http://localhost:8983/solr
 
-/solr-6.6.0:$ _
+/solr-{solr-docs-version}.0:$ _
 ----
 
 You can see that the Solr is running by loading the Solr Admin UI in your web browser: <http://localhost:8983/solr/>. This is the main starting point for administering Solr.
@@ -72,9 +72,37 @@ Your Solr server is up and running, but it doesn't contain any data. The Solr in
 
 You'll need a command shell to run these examples, rooted in the Solr install directory; the shell from where you launched Solr works just fine.
 
-NOTE: Currently the `bin/post` tool does not have a comparable Windows script, but the underlying Java program invoked is available. See the <<post-tool.adoc#PostTool-WindowsSupport,Windows section>> of the Post Tool documentation for details.
+NOTE: Currently the `bin/post` tool does not have a comparable Windows script, but the underlying Java program invoked is available. See the <<post-tool.adoc#post-tool-windows-support,Windows section>> of the Post Tool documentation for details.
 
 === Index a Directory of "Rich" Files
+
+// Experiment to see if we can use tabs for different data formats
+
+ifdef::backend-html5[]
+++++
+<ul id="profileTabs" class="nav nav-tabs">
+    <li class="active"><a href="#json" data-toggle="tab">JSON</a></li>
+    <li><a href="#csv" data-toggle="tab">CSV</a></li>
+    <li><a href="#xml" data-toggle="tab">XML</a></li>
+</ul>
+  <div class="tab-content">
+<div role="tabpanel" class="tab-pane active" id="json">
+    <h2>JSON Format</h2>
+<p>Praesent sit amet fermentum leo....</p>
+</div>
+
+<div role="tabpanel" class="tab-pane" id="csv">
+    <h2>CSV Format</h2>
+    <p>Lorem ipsum ...</p></div>
+
+<div role="tabpanel" class="tab-pane" id="xml">
+    <h2>XML Format</h2>
+    <p>Vel vehicula ....</p>
+</div>
+</div>
+++++
+endif::[]
+
 
 // TODO this example won't work anymore after 6.5 when we ripped out javadocs
 
@@ -91,9 +119,9 @@ To explain those options a bit:
 
 Here's what it'll look like when it runs:
 
-[source,bash]
-/solr-6.6.0:$ bin/post -c gettingstarted docs/
-java -classpath /solr-6.6.0/dist/solr-core-6.6.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files -Drecursive=yes org.apache.solr.util.SimplePostTool docs/
+[source,bash,subs="verbatim,attributes+"]
+/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted docs/
+java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files -Drecursive=yes org.apache.solr.util.SimplePostTool docs/
 SimplePostTool version 5.0.0
 Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
 Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
@@ -117,7 +145,7 @@ To index your own data, re-run the directory indexing command pointed to your ow
 
 === Indexing Solr XML
 
-Solr supports indexing structured content in a variety of incoming formats. The historically predominant format for getting structured content into Solr has been <<uploading-data-with-index-handlers.adoc#UploadingDatawithIndexHandlers-XMLFormattedIndexUpdates,Solr XML>>. Many Solr indexers have been coded to process domain content into Solr XML output, generally HTTP POSTed directly to Solr's `/update` endpoint.
+Solr supports indexing structured content in a variety of incoming formats. The historically predominant format for getting structured content into Solr has been <<uploading-data-with-index-handlers.adoc#xml-formatted-index-updates,Solr XML>>. Many Solr indexers have been coded to process domain content into Solr XML output, generally HTTP POSTed directly to Solr's `/update` endpoint.
 
 Solr includes a handful of Solr XML formatted files with example data (mostly mocked tech product data).
 
@@ -129,9 +157,9 @@ Using `bin/post`, index the example Solr XML files in `example/exampledocs/`:
 
 Here's what you'll see:
 
-[source,bash]
-/solr-6.6.0:$ bin/post -c gettingstarted example/exampledocs/*.xml
-java -classpath /solr-6.6.0/dist/solr-core-6.6.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/gb18030-example.xml ...
+[source,bash,subs="verbatim,attributes+"]
+/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/*.xml
+java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/gb18030-example.xml ...
 SimplePostTool version 5.0.0
 Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
 Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
@@ -154,7 +182,7 @@ COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/updat
 Time spent: 0:00:02.077
 
 ...and now you can search for all sorts of things using the default
-<<the-standard-query-parser.adoc#TheStandardQueryParser-SpecifyingTermsfortheStandardQueryParser,Solr Query Syntax>>
+<<the-standard-query-parser.adoc#specifying-terms-for-the-standard-query-parser,Solr Query Syntax>>
 (a superset of the Lucene query syntax)...
 
 [NOTE]
@@ -175,9 +203,9 @@ Solr includes a small sample Solr JSON file to illustrate this capability. Again
 
 You'll see:
 
-[source,bash]
-/solr-6.6.0:$ bin/post -c gettingstarted example/exampledocs/books.json
-java -classpath /solr-6.6.0/dist/solr-core-6.6.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.json
+[source,bash,subs="verbatim,attributes+"]
+/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/books.json
+java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.json
 SimplePostTool version 5.0.0
 Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
 Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
@@ -186,7 +214,7 @@ POSTing file books.json (application/json) to [base]/json/docs
 COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
 Time spent: 0:00:00.493
 
-For more information on indexing Solr JSON, see the section <<uploading-data-with-index-handlers.adoc#UploadingDatawithIndexHandlers-Solr-StyleJSON,Solr-Style JSON>>.
+For more information on indexing Solr JSON, see the section <<uploading-data-with-index-handlers.adoc#solr-style-json,Solr-Style JSON>>.
 
 To flatten (and/or split) and index arbitrary structured JSON, a topic beyond this quick start guide, check out <<transforming-and-indexing-custom-json.adoc#transforming-and-indexing-custom-json,Transforming and Indexing Custom JSON>>.
 
@@ -200,9 +228,9 @@ Using `bin/post` index the included example CSV file:
 
 In your terminal you'll see:
 
-[source,bash]
-/solr-6.6.0:$ bin/post -c gettingstarted example/exampledocs/books.csv
-java -classpath /solr-6.6.0/dist/solr-core-6.6.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.csv
+[source,bash,subs="verbatim,attributes+"]
+/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/books.csv
+java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.csv
 SimplePostTool version 5.0.0
 Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
 Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
@@ -211,7 +239,7 @@ POSTing file books.csv (text/csv) to [base]
 COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
 Time spent: 0:00:00.109
 
-For more information, see the section <<uploading-data-with-index-handlers.adoc#UploadingDatawithIndexHandlers-CSVFormattedIndexUpdates,CSV Formatted Index Updates>>.
+For more information, see the section <<uploading-data-with-index-handlers.adoc#csv-formatted-index-updates,CSV Formatted Index Updates>>.
 
 === Other indexing techniques
 
