@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
  * Implementation of {@link TriggerListener} that reports
  * events to a log.
  */
-public class LogTriggerListener extends TriggerListenerBase {
+public class LoggingListener extends TriggerListenerBase {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   @Override

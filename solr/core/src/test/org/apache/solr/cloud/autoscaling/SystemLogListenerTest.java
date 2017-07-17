@@ -16,7 +16,6 @@
  */
 package org.apache.solr.cloud.autoscaling;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Map;
@@ -46,10 +45,10 @@ import org.slf4j.LoggerFactory;
 import static org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest.createAutoScalingRequest;
 
 /**
- * Test for {@link LogPlanAction}
+ * Test for {@link SystemLogListener}
  */
 @LogLevel("org.apache.solr.cloud.autoscaling=DEBUG")
-public class LogPlanActionTest extends SolrCloudTestCase {
+public class SystemLogListenerTest extends SolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static final AtomicBoolean fired = new AtomicBoolean(false);
@@ -58,13 +57,7 @@ public class LogPlanActionTest extends SolrCloudTestCase {
   private static final AtomicReference<Map> actionContextPropsRef = new AtomicReference<>();
   private static final AtomicReference<TriggerEvent> eventRef = new AtomicReference<>();
 
-  public static class AssertingTriggerAction implements TriggerAction {
-
-    @Override
-    public String getName() {
-      return null;
-    }
-
+  public static class AssertingTriggerAction extends TriggerActionBase {
     @Override
     public void process(TriggerEvent event, ActionContext context) {
       if (fired.compareAndSet(false, true)) {
@@ -73,15 +66,12 @@ public class LogPlanActionTest extends SolrCloudTestCase {
         triggerFiredLatch.countDown();
       }
     }
+  }
 
+  public static class ErrorTriggerAction extends TriggerActionBase {
     @Override
-    public void close() throws IOException {
-
-    }
-
-    @Override
-    public void init(Map<String, String> args) {
-
+    public void process(TriggerEvent event, ActionContext context) {
+      throw new RuntimeException("failure from ErrorTriggerAction");
     }
   }
 
@@ -104,8 +94,9 @@ public class LogPlanActionTest extends SolrCloudTestCase {
         "'waitFor' : '1s'," +
         "'enabled' : true," +
         "'actions' : [{'name':'compute_plan', 'class' : 'solr.ComputePlanAction'}," +
-        "{'name':'log_plan','class':'solr.LogPlanAction'}," +
-        "{'name':'test','class':'" + AssertingTriggerAction.class.getName() + "'}]" +
+        "{'name':'execute_plan','class':'solr.ExecutePlanAction'}," +
+        "{'name':'test','class':'" + AssertingTriggerAction.class.getName() + "'}," +
+        "{'name':'error','class':'" + ErrorTriggerAction.class.getName() + "'}]" +
         "}}";
     SolrRequest req = createAutoScalingRequest(SolrRequest.METHOD.POST, setTriggerCommand);
     NamedList<Object> response = solrClient.request(req);
@@ -118,6 +109,22 @@ public class LogPlanActionTest extends SolrCloudTestCase {
 
     waitForState("Timed out waiting for replicas of new collection to be active",
         "test", clusterShape(3, 2));
+
+    String setListenerCommand = "{" +
+        "'set-listener' : " +
+        "{" +
+        "'name' : 'foo'," +
+        "'trigger' : 'node_lost_trigger'," +
+        "'stage' : ['STARTED','ABORTED','SUCCEEDED', 'FAILED']," +
+        "'beforeAction' : ['compute_plan','execute_plan','test','error']," +
+        "'afterAction' : ['compute_plan','execute_plan','test','error']," +
+        "'class' : '" + SystemLogListener.class.getName() + "'" +
+        "}" +
+        "}";
+    req = createAutoScalingRequest(SolrRequest.METHOD.POST, setListenerCommand);
+    response = solrClient.request(req);
+    assertEquals(response.get("result").toString(), "success");
+
     // stop non-overseer node
     NamedList<Object> overSeerStatus = cluster.getSolrClient().request(CollectionAdminRequest.getOverseerStatus());
     String overseerLeader = (String) overSeerStatus.get("leader");
@@ -134,29 +141,88 @@ public class LogPlanActionTest extends SolrCloudTestCase {
     assertTrue(fired.get());
     Map context = actionContextPropsRef.get();
     assertNotNull(context);
-    // make sure the event doc is committed
-    cluster.getSolrClient().commit(CollectionAdminParams.SYSTEM_COLL);
+
+    // make sure the event docs are replicated and committed
+    Thread.sleep(5000);
+    cluster.getSolrClient().commit(CollectionAdminParams.SYSTEM_COLL, true, true);
+
     ModifiableSolrParams query = new ModifiableSolrParams();
-    query.add(CommonParams.Q, "type:" + LogPlanAction.DOC_TYPE);
+    query.add(CommonParams.Q, "type:" + SystemLogListener.DOC_TYPE);
+    query.add(CommonParams.SORT, "id asc");
     QueryResponse resp = cluster.getSolrClient().query(CollectionAdminParams.SYSTEM_COLL, query);
     SolrDocumentList docs = resp.getResults();
     assertNotNull(docs);
-    assertEquals("wrong number of events added to .system", 1, docs.size());
+    assertEquals("wrong number of events added to .system", 9, docs.size());
+    docs.forEach(doc -> assertCommonFields(doc));
+
+    // STARTED
     SolrDocument doc = docs.get(0);
-    assertEquals(LogPlanAction.class.getSimpleName(), doc.getFieldValue(LogPlanAction.SOURCE_FIELD));
-    assertEquals(LogPlanAction.DOC_TYPE, doc.getFieldValue(CommonParams.TYPE));
-    assertEquals("node_lost_trigger", doc.getFieldValue("event.source_s"));
-    assertNotNull(doc.getFieldValue("event.time_l"));
-    assertNotNull(doc.getFieldValue("timestamp"));
-    assertNotNull(doc.getFieldValue("event.property.nodeName_s"));
-    assertNotNull(doc.getFieldValue("event.property._enqueue_time__s"));
-    assertNotNull(doc.getFieldValue("event_str"));
-    assertNotNull(doc.getFieldValue("context_str"));
-    assertEquals("NODELOST", doc.getFieldValue("event.type_s"));
+    assertEquals("STARTED", doc.getFieldValue("stage_s"));
+
+    // BEFORE_ACTION compute_plan
+    doc = docs.get(1);
+    assertEquals("BEFORE_ACTION", doc.getFieldValue("stage_s"));
+    assertEquals("compute_plan", doc.getFieldValue("action_s"));
+
+    // AFTER_ACTION compute_plan
+    doc = docs.get(2);
+    assertEquals("AFTER_ACTION", doc.getFieldValue("stage_s"));
+    assertEquals("compute_plan", doc.getFieldValue("action_s"));
     Collection<Object> vals = doc.getFieldValues("operations.params_ts");
     assertEquals(3, vals.size());
     for (Object val : vals) {
       assertTrue(val.toString(), String.valueOf(val).contains("action=MOVEREPLICA"));
     }
+
+    // BEFORE_ACTION execute_plan
+    doc = docs.get(3);
+    assertEquals("BEFORE_ACTION", doc.getFieldValue("stage_s"));
+    assertEquals("execute_plan", doc.getFieldValue("action_s"));
+    vals = doc.getFieldValues("operations.params_ts");
+    assertEquals(3, vals.size());
+
+    // AFTER_ACTION execute_plan
+    doc = docs.get(4);
+    assertEquals("AFTER_ACTION", doc.getFieldValue("stage_s"));
+    assertEquals("execute_plan", doc.getFieldValue("action_s"));
+    vals = doc.getFieldValues("operations.params_ts");
+    assertNull(vals); // consumed
+    vals = doc.getFieldValues("responses_ts");
+    assertNotNull(vals);
+    assertEquals(3, vals.size());
+    vals.forEach(s -> assertTrue(s.toString(), s.toString().startsWith("success MOVEREPLICA action completed successfully")));
+
+    // BEFORE_ACTION test
+    doc = docs.get(5);
+    assertEquals("BEFORE_ACTION", doc.getFieldValue("stage_s"));
+    assertEquals("test", doc.getFieldValue("action_s"));
+
+    // AFTER_ACTION test
+    doc = docs.get(6);
+    assertEquals("AFTER_ACTION", doc.getFieldValue("stage_s"));
+    assertEquals("test", doc.getFieldValue("action_s"));
+
+    // BEFORE_ACTION error
+    doc = docs.get(7);
+    assertEquals("BEFORE_ACTION", doc.getFieldValue("stage_s"));
+    assertEquals("error", doc.getFieldValue("action_s"));
+
+    // FAILED error
+    doc = docs.get(8);
+    assertEquals("FAILED", doc.getFieldValue("stage_s"));
+    assertEquals("error", doc.getFieldValue("action_s"));
+    assertEquals("failure from ErrorTriggerAction", doc.getFieldValue("error.message_t"));
+    assertTrue(doc.getFieldValue("error.details_t").toString().contains("RuntimeException"));
+  }
+
+  private void assertCommonFields(SolrDocument doc) {
+    assertEquals(SystemLogListener.class.getSimpleName(), doc.getFieldValue(SystemLogListener.SOURCE_FIELD));
+    assertEquals(SystemLogListener.DOC_TYPE, doc.getFieldValue(CommonParams.TYPE));
+    assertEquals("node_lost_trigger", doc.getFieldValue("event.source_s"));
+    assertNotNull(doc.getFieldValue("event.time_l"));
+    assertNotNull(doc.getFieldValue("timestamp"));
+    assertNotNull(doc.getFieldValue("event.property.nodeName_s"));
+    assertNotNull(doc.getFieldValue("event_str"));
+    assertEquals("NODELOST", doc.getFieldValue("event.type_s"));
   }
 }

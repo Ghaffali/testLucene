@@ -17,6 +17,9 @@
 
 package org.apache.solr.cloud.autoscaling;
 
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
@@ -25,6 +28,8 @@ import java.util.Map;
 import java.util.StringJoiner;
 
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.common.SolrException;
@@ -32,42 +37,75 @@ import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.util.IdUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * This action saves the computed action plan to the {@link CollectionAdminParams#SYSTEM_COLL} collection.
+ * This listener saves events to the {@link CollectionAdminParams#SYSTEM_COLL} collection.
+ * <p>Configuration properties:</p>
+ * <ul>
+ *   <li>collection - optional string, specifies what collection should be used for storing events. Default value
+ *   is {@link CollectionAdminParams#SYSTEM_COLL}.</li>
+ * </ul>
  */
-public class LogPlanAction extends TriggerActionBase {
+public class SystemLogListener extends TriggerListenerBase {
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
   public static final String SOURCE_FIELD = "source_s";
-  public static final String SOURCE = LogPlanAction.class.getSimpleName();
-  public static final String DOC_TYPE = "autoscaling_action";
+  public static final String SOURCE = SystemLogListener.class.getSimpleName();
+  public static final String DOC_TYPE = "autoscaling_event";
+
+  private String collection = CollectionAdminParams.SYSTEM_COLL;
 
   @Override
-  public void process(TriggerEvent event, ActionContext actionContext) {
-    CoreContainer container = actionContext.getCoreContainer();
+  public void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) {
+    super.init(coreContainer, config);
+    collection = (String)config.properties.getOrDefault(CollectionAdminParams.COLLECTION, CollectionAdminParams.SYSTEM_COLL);
+  }
+
+  @Override
+  public void onEvent(TriggerEvent event, TriggerEventProcessorStage stage, String actionName, ActionContext context,
+               Throwable error, String message) throws Exception {
     try (CloudSolrClient cloudSolrClient = new CloudSolrClient.Builder()
-        .withZkHost(container.getZkController().getZkServerAddress())
-        .withHttpClient(container.getUpdateShardHandler().getHttpClient())
+        .withZkHost(coreContainer.getZkController().getZkServerAddress())
+        .withHttpClient(coreContainer.getUpdateShardHandler().getHttpClient())
         .build()) {
       SolrInputDocument doc = new SolrInputDocument();
       doc.addField(CommonParams.TYPE, DOC_TYPE);
       doc.addField(SOURCE_FIELD, SOURCE);
-      doc.addField("id", event.getId());
+      doc.addField("id", IdUtils.timeRandomId());
+      doc.addField("event.id_s", event.getId());
       doc.addField("event.type_s", event.getEventType().toString());
       doc.addField("event.source_s", event.getSource());
       doc.addField("event.time_l", event.getEventTime());
       doc.addField("timestamp", new Date());
       addMap("event.property.", doc, event.getProperties());
-      addOperations(doc, (List<SolrRequest>)actionContext.getProperties().get("operations"));
+      doc.addField("stage_s", stage.toString());
+      if (actionName != null) {
+        doc.addField("action_s", actionName);
+      }
+      if (message != null) {
+        doc.addField("message_t", message);
+      }
+      addError(doc, error);
       // add JSON versions of event and context
       String eventJson = Utils.toJSONString(event);
-      String contextJson = Utils.toJSONString(actionContext);
       doc.addField("event_str", eventJson);
-      doc.addField("context_str", contextJson);
+      if (context != null) {
+        // capture specifics of operations after compute_plan action
+        addOperations(doc, (List<SolrRequest>)context.getProperties().get("operations"));
+        // capture specifics of responses after execute_plan action
+        addResponses(doc, (List<NamedList<Object>>)context.getProperties().get("responses"));
+        String contextJson = Utils.toJSONString(context);
+        doc.addField("context_str", contextJson);
+      }
       UpdateRequest req = new UpdateRequest();
       req.add(doc);
-      cloudSolrClient.request(req, CollectionAdminParams.SYSTEM_COLL);
+      cloudSolrClient.request(req, collection);
     } catch (Exception e) {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
           "Unexpected exception while processing event: " + event, e);
@@ -110,5 +148,36 @@ public class LogPlanAction extends TriggerActionBase {
         doc.addField("operations.params_ts", paramString);
       }
     }
+  }
+
+  private void addResponses(SolrInputDocument doc, List<NamedList<Object>> responses) {
+    if (responses == null || responses.isEmpty()) {
+      return;
+    }
+    for (NamedList<Object> rsp : responses) {
+      Object o = rsp.get("success");
+      if (o != null) {
+        doc.addField("responses_ts", "success " + o);
+      } else {
+        o = rsp.get("failure");
+        if (o != null) {
+          doc.addField("responses_ts", "failure " + o);
+        } else { // something else
+          doc.addField("responses_ts", Utils.toJSONString(rsp));
+        }
+      }
+    }
+  }
+
+  private void addError(SolrInputDocument doc, Throwable error) {
+    if (error == null) {
+      return;
+    }
+    StringWriter sw = new StringWriter();
+    PrintWriter pw = new PrintWriter(sw);
+    error.printStackTrace(pw);
+    pw.flush(); pw.close();
+    doc.addField("error.message_t", error.getMessage());
+    doc.addField("error.details_t", sw.toString());
   }
 }

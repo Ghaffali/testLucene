@@ -72,5 +72,7 @@ public class ExecutePlanAction extends TriggerActionBase {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
           "Unexpected IOException while processing event: " + event, e);
     }
+    // remove successfully executed operations
+    context.getProperties().remove("operations");
   }
 }
