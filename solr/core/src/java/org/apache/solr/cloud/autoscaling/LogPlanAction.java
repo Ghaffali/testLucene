@@ -17,11 +17,9 @@
 
 package org.apache.solr.cloud.autoscaling;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
@@ -33,13 +31,12 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CommonParams;
-import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 
 /**
- * This action saves the computed action plan to a {@link CollectionAdminParams#SYSTEM_COLL} collection.
+ * This action saves the computed action plan to the {@link CollectionAdminParams#SYSTEM_COLL} collection.
  */
 public class LogPlanAction extends TriggerActionBase {
   public static final String SOURCE_FIELD = "source_s";
