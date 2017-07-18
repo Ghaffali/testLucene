@@ -79,6 +79,7 @@ NOTE: Currently the `bin/post` tool does not have a comparable Windows script, b
 // Experiment to see if we can use tabs for different data formats
 
 ifdef::backend-html5[]
+[subs="attributes"]
 ++++
 <ul id="profileTabs" class="nav nav-tabs">
     <li class="active"><a href="#json" data-toggle="tab">JSON</a></li>
@@ -87,10 +88,22 @@ ifdef::backend-html5[]
 </ul>
   <div class="tab-content">
 <div role="tabpanel" class="tab-pane active" id="json">
-    <h2>JSON Format</h2>
-<p>Praesent sit amet fermentum leo....</p>
+    <h3>JSON Format</h3>
+    <h4>Input</h4>
+    <pre class="pygments highlight"> <code data-lang="bash">bin/post -c gettingstarted example/exampledocs/books.json</code> </pre>
+    <h4>Output</h4>
+    <div class="listingblock"><div class="content"><pre class="pygments highlight">
+    <code data-lang="bash">
+/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/books.json
+java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.json
+SimplePostTool version 5.0.0
+Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
+Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
+POSTing file books.json (application/json) to [base]/json/docs
+1 files indexed.
+COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
+Time spent: 0:00:00.493</code></pre></div></div>
 </div>
-
 <div role="tabpanel" class="tab-pane" id="csv">
     <h2>CSV Format</h2>
     <p>Lorem ipsum ...</p></div>
