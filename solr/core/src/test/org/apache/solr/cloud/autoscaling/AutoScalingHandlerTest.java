@@ -367,7 +367,7 @@ public class AutoScalingHandlerTest extends SolrCloudTestCase {
     loaded = ZkNodeProps.load(data);
     Map<String, Object> listeners = (Map<String, Object>) loaded.get("listeners");
     assertNotNull(listeners);
-    assertEquals(1, listeners.size());
+    assertEquals(2, listeners.size());
     assertTrue(listeners.containsKey("xyz"));
     Map<String, Object> xyzListener = (Map<String, Object>) listeners.get("xyz");
     assertEquals(6, xyzListener.size());
@@ -382,10 +382,10 @@ public class AutoScalingHandlerTest extends SolrCloudTestCase {
     try {
       response = solrClient.request(req);
       String errorMsg = (String) ((NamedList)response.get("error")).get("msg");
-      assertTrue(errorMsg.contains("Cannot remove trigger: node_lost_trigger because it has active listeners: [xyz]"));
+      assertTrue(errorMsg.contains("Cannot remove trigger: node_lost_trigger because it has active listeners: ["));
     } catch (HttpSolrClient.RemoteSolrException e) {
       // expected
-      assertTrue(e.getMessage().contains("Cannot remove trigger: node_lost_trigger because it has active listeners: [xyz]"));
+      assertTrue(e.getMessage().contains("Cannot remove trigger: node_lost_trigger because it has active listeners: ["));
     }
 
     String removeListenerCommand = "{\n" +
@@ -393,7 +393,15 @@ public class AutoScalingHandlerTest extends SolrCloudTestCase {
         "\t\t\"name\" : \"xyz\"\n" +
         "\t}\n" +
         "}";
+    String removeListenerCommand1 = "{\n" +
+        "\t\"remove-listener\" : {\n" +
+        "\t\t\"name\" : \".system\"\n" +
+        "\t}\n" +
+        "}";
     req = createAutoScalingRequest(SolrRequest.METHOD.POST, removeListenerCommand);
+    response = solrClient.request(req);
+    assertEquals(response.get("result").toString(), "success");
+    req = createAutoScalingRequest(SolrRequest.METHOD.POST, removeListenerCommand1);
     response = solrClient.request(req);
     assertEquals(response.get("result").toString(), "success");
     data = zkClient().getData(SOLR_AUTOSCALING_CONF_PATH, null, null, true);

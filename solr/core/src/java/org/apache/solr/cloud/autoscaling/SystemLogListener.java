@@ -60,16 +60,21 @@ public class SystemLogListener extends TriggerListenerBase {
   public static final String DOC_TYPE = "autoscaling_event";
 
   private String collection = CollectionAdminParams.SYSTEM_COLL;
+  private boolean enabled = true;
 
   @Override
   public void init(CoreContainer coreContainer, AutoScalingConfig.TriggerListenerConfig config) {
     super.init(coreContainer, config);
     collection = (String)config.properties.getOrDefault(CollectionAdminParams.COLLECTION, CollectionAdminParams.SYSTEM_COLL);
+    enabled = Boolean.parseBoolean(String.valueOf(config.properties.getOrDefault("enabled", true)));
   }
 
   @Override
   public void onEvent(TriggerEvent event, TriggerEventProcessorStage stage, String actionName, ActionContext context,
                Throwable error, String message) throws Exception {
+    if (!enabled) {
+      return;
+    }
     try (CloudSolrClient cloudSolrClient = new CloudSolrClient.Builder()
         .withZkHost(coreContainer.getZkController().getZkServerAddress())
         .withHttpClient(coreContainer.getUpdateShardHandler().getHttpClient())
@@ -100,6 +105,8 @@ public class SystemLogListener extends TriggerListenerBase {
         addOperations(doc, (List<SolrRequest>)context.getProperties().get("operations"));
         // capture specifics of responses after execute_plan action
         addResponses(doc, (List<NamedList<Object>>)context.getProperties().get("responses"));
+        addActions("before", doc, (List<String>)context.getProperties().get(TriggerEventProcessorStage.BEFORE_ACTION.toString()));
+        addActions("after", doc, (List<String>)context.getProperties().get(TriggerEventProcessorStage.AFTER_ACTION.toString()));
         String contextJson = Utils.toJSONString(context);
         doc.addField("context_str", contextJson);
       }
@@ -107,9 +114,21 @@ public class SystemLogListener extends TriggerListenerBase {
       req.add(doc);
       cloudSolrClient.request(req, collection);
     } catch (Exception e) {
-      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR,
-          "Unexpected exception while processing event: " + event, e);
+      if ((e instanceof SolrException) && e.getMessage().contains("Collection not found")) {
+        // relatively benign
+        log.info("Collection " + collection + " does not exist, disabling logging.");
+        enabled = false;
+      } else {
+        log.warn("Exception sending event to collection " + collection, e);
+      }
     }
+  }
+
+  private void addActions(String prefix, SolrInputDocument doc, List<String> actions) {
+    if (actions == null) {
+      return;
+    }
+    actions.forEach(a -> doc.addField(prefix + ".actions_ss", a));
   }
 
   private void addMap(String prefix, SolrInputDocument doc, Map<String, Object> map) {

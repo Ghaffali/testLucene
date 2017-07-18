@@ -102,6 +102,16 @@ public class SystemLogListenerTest extends SolrCloudTestCase {
     NamedList<Object> response = solrClient.request(req);
     assertEquals(response.get("result").toString(), "success");
 
+    // remove default listener
+    String removeListenerCommand = "{\n" +
+        "\t\"remove-listener\" : {\n" +
+        "\t\t\"name\" : \".system\"\n" +
+        "\t}\n" +
+        "}";
+    req = createAutoScalingRequest(SolrRequest.METHOD.POST, removeListenerCommand);
+    response = solrClient.request(req);
+    assertEquals(response.get("result").toString(), "success");
+
     CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection("test",
         "conf",3, 2);
     create.setMaxShardsPerNode(3);
@@ -186,7 +196,8 @@ public class SystemLogListenerTest extends SolrCloudTestCase {
     assertEquals("AFTER_ACTION", doc.getFieldValue("stage_s"));
     assertEquals("execute_plan", doc.getFieldValue("action_s"));
     vals = doc.getFieldValues("operations.params_ts");
-    assertNull(vals); // consumed
+    assertNotNull(vals);
+    assertEquals(3, vals.size());
     vals = doc.getFieldValues("responses_ts");
     assertNotNull(vals);
     assertEquals(3, vals.size());
