@@ -24,7 +24,7 @@ For best results, please run the browser showing this tutorial and the Solr serv
 
 Begin by unzipping the Solr release and changing your working directory to the subdirectory where Solr was installed. Note that the base directory name may vary with the version of Solr downloaded. For example, with a shell in UNIX, Cygwin, or MacOS:
 
-[source,bash,subs="verbatim,attributes+"]
+[source,subs="verbatim,attributes+"]
 ----
 /:$ ls solr*
 solr-{solr-docs-version}.0.zip
@@ -37,22 +37,62 @@ solr-{solr-docs-version}.0.zip
 === Launch Solr
 To launch Solr, run: `bin/solr start -e cloud -noprompt`. This will start an interactive session that will start two Solr "servers" on your machine.
 
-[source,bash,subs="verbatim,attributes+"]
+[source,subs="verbatim,attributes+"]
 ----
-/solr-{solr-docs-version}.0:$ bin/solr start -e cloud -noprompt
+/solr-{solr-docs-version}.0:$ ./bin/solr start -e cloud -noprompt
 
 Welcome to the SolrCloud example!
 
 Starting up 2 Solr nodes for your example SolrCloud cluster.
-...
 
-Started Solr server on port 8983 (pid=8404). Happy searching!
-...
+Creating Solr home directory /solr-{solr-docs-version}.0/example/cloud/node1/solr
+Cloning /solr-{solr-docs-version}.0/example/cloud/node1 into
+   /solr-{solr-docs-version.0/example/cloud/node2
 
-Started Solr server on port 7574 (pid=8549). Happy searching!
-...
+Starting up Solr on port 8983 using command:
+"bin/solr" start -cloud -p 8983 -s "example/cloud/node1/solr"
 
-SolrCloud example running, please visit http://localhost:8983/solr
+Waiting up to 180 seconds to see Solr running on port 8983 [\]
+Started Solr server on port 8983 (pid=74527). Happy searching!
+
+Starting up Solr on port 7574 using command:
+"bin/solr" start -cloud -p 7574 -s "example/cloud/node2/solr" -z localhost:9983
+
+Waiting up to 180 seconds to see Solr running on port 7574 [\]
+Started Solr server on port 7574 (pid=74621). Happy searching!
+
+INFO  - 2017-07-18 09:44:01.273; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
+
+Connecting to ZooKeeper at localhost:9983 ...
+INFO  - 2017-07-18 09:44:01.327; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
+Uploading /solr-{solr-docs-version}.0/server/solr/configsets/_default/conf for config gettingstarted to ZooKeeper at localhost:9983
+
+Creating new collection 'gettingstarted' using command:
+http://localhost:8983/solr/admin/collections?action=CREATE&name=gettingstarted&numShards=2&replicationFactor=2&maxShardsPerNode=2&collection.configName=gettingstarted
+
+{
+  "responseHeader":{
+    "status":0,
+    "QTime":5944},
+  "success":{
+    "192.168.0.110:8983_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":4098},
+      "core":"gettingstarted_shard1_replica_n1"},
+    "192.168.0.110:7574_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":4502},
+      "core":"gettingstarted_shard2_replica_n2"}}}
+
+Enabling auto soft-commits with maxTime 3 secs using the Config API
+
+POSTing request to Config API: http://localhost:8983/solr/gettingstarted/config
+{"set-property":{"updateHandler.autoSoftCommit.maxTime":"3000"}}
+Successfully set-property updateHandler.autoSoftCommit.maxTime to 3000
+
+SolrCloud example running, please visit: http://localhost:8983/solr
 
 /solr-{solr-docs-version}.0:$ _
 ----
@@ -74,85 +114,319 @@ You'll need a command shell to run these examples, rooted in the Solr install di
 
 NOTE: Currently the `bin/post` tool does not have a comparable Windows script, but the underlying Java program invoked is available. See the <<post-tool.adoc#post-tool-windows-support,Windows section>> of the Post Tool documentation for details.
 
-=== Index a Directory of "Rich" Files
 
-// Experiment to see if we can use tabs for different data formats
+=== Index Sample Film Data
 
-ifdef::backend-html5[]
-[subs="attributes"]
-++++
-<ul id="profileTabs" class="nav nav-tabs">
-    <li class="active"><a href="#json" data-toggle="tab">JSON</a></li>
-    <li><a href="#csv" data-toggle="tab">CSV</a></li>
-    <li><a href="#xml" data-toggle="tab">XML</a></li>
-</ul>
-  <div class="tab-content">
-<div role="tabpanel" class="tab-pane active" id="json">
-    <h3>JSON Format</h3>
-    <h4>Input</h4>
-    <pre class="pygments highlight"> <code data-lang="bash">bin/post -c gettingstarted example/exampledocs/books.json</code> </pre>
-    <h4>Output</h4>
-    <div class="listingblock"><div class="content"><pre class="pygments highlight">
-    <code data-lang="bash">
-/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/books.json
-java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.json
+Let's start by working with some sample data that ships with Solr. This data contains title, director, genre, and release date information for 1100 films. It is a simple data set that we can use to learn more about the features of Solr.
+
+The data is located in the `example/films` directory of your installation. It comes in three formats: JSON, XML and CSV.
+
+The previous step created a collection named "gettingstarted". We can use that one here:
+
+.To Index JSON Format
+[source,bash,subs="verbatim"]
+bin/post -c gettingstarted example/films/films.json
+
+.To Index XML Format
+[source,bash]
+bin/post -c gettingstarted example/films/films.xml
+
+.To Index CSV Format
+[source,bash]
+bin/post -c gettingstarted example/films/films.csv -params "f.genre.split=true&f.directed_by.split=true&f.genre.separator=|&f.directed_by.separator=|"
+
+Each commands includes these main parameters:
+
+* `-c gettingstarted`: this is the Solr collection to index data to.
+* `example/films/films.json` (or `films.xml` or `films.csv`): this is the path to the data file to index. You could simply supply the directory where this file resides, but since you know the format you want to index, specifying the exact file for that format is more efficient.
+
+Note the CSV command includes extra parameters. This is to ensure multi-valued entries in the "genre" and "directed_by" columns are split by the pipe (`|`) character, used in this file as a separator. Telling Solr to split these columns this way will ensure proper indexing of the data.
+
+Each command will produce output similar to the below seen while indexing JSON:
+
+[source,bash,subs="verbatim,attributes"]
+$ ./bin/post -c gettingstarted example/films/films.json
+/bin/java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/films/films.json
 SimplePostTool version 5.0.0
 Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
 Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
-POSTing file books.json (application/json) to [base]/json/docs
+POSTing file films.json (application/json) to [base]/json/docs
 1 files indexed.
 COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
-Time spent: 0:00:00.493</code></pre></div></div>
-</div>
-<div role="tabpanel" class="tab-pane" id="csv">
-    <h2>CSV Format</h2>
-    <p>Lorem ipsum ...</p></div>
+Time spent: 0:00:00.878
 
-<div role="tabpanel" class="tab-pane" id="xml">
-    <h2>XML Format</h2>
-    <p>Vel vehicula ....</p>
-</div>
-</div>
-++++
-endif::[]
+If we gave the command a directory instead of a single file, we would see a list of each file processed in the output.
 
+Now that we have some data, let's work with some searches.
+
+[[tutorial-searching]]
+== Searching
+
+Solr can be queried via REST clients, cURL, wget, Chrome POSTMAN, etc., as well as via native clients available for many programming languages.
+
+The Solr Admin UI includes a query builder interface via the Query tab for the `gettingstarted` collection (at http://localhost:8983/solr/#/gettingstarted/query). If you click the `Execute Query` button without changing anything in the form, you'll get 10 documents in JSON format (`\*:*` in the `q` param matches all documents):
+
+.Query Screen
+image::images/solr-quick-start/quickstart-query-screen.png[Solr Quick Start: gettingstarted Query tab]
+
+The URL sent by the Admin UI to Solr is shown in light grey near the top right of the above screenshot - if you click on it, your browser will show you the raw response.
+
+To use cURL, give the same URL shown in your browser in quotes on the command line:
+
+`curl "http://localhost:8983/solr/gettingstarted/select?indent=on&q=*:*&wt=json"`
+
+=== Basic Searching
+
+==== Search for a Single Term
+
+To search for a term, give it as the `q` param value in the core-specific Solr Admin UI Query section, replace `\*:*` with the term you want to find. To search for "foundation":
+
+`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=foundation"`
+
+You'll see:
+
+[source,json]
+    {
+      "responseHeader":{
+        "zkConnected":true,
+        "status":0,
+        "QTime":527,
+        "params":{
+          "q":"foundation",
+          "indent":"true",
+          "wt":"json"}},
+      "response":{"numFound":4156,"start":0,"maxScore":0.10203234,"docs":[
+          {
+            "id":"0553293354",
+            "cat":["book"],
+            "name":["Foundation"]
+    }]}}
+
+The response indicates that there are 4,156 hits (`"numFound":4156`), of which the first 10 were returned, since by default `start=0` and `rows=10`. You can specify these params to page through results, where `start` is the (zero-based) position of the first result to return, and `rows` is the page size.
+
+To restrict fields returned in the response, use the `fl` param, which takes a comma-separated list of field names. For example, to only return the `id` field:
+
+`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=foundation&fl=id"`
+
+The parameter `q=foundation` matches nearly all of the docs we've indexed, since most of the files under `docs/` contain "The Apache Software Foundation". To restrict search to a particular field, use the syntax `q=field:value`, e.g., to search for `Foundation` only in the `name` field:
+
+`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=name:Foundation"`
+
+The above request returns only one document (`"numFound":1`) - from the response:
+
+[source,json]
+    ...
+      "response":{"numFound":1,"start":0,"maxScore":2.5902672,"docs":[
+          {
+            "id":"0553293354",
+            "cat":["book"],
+            "name":["Foundation"],
+
+
+==== Phrase Search
+
+To search for a multi-term phrase, enclose it in double quotes: `q="multiple terms here"`. For example, to search for "CAS latency" - note that the space between terms must be converted to "+" in a URL (the Admin UI will handle URL encoding for you automatically):
+
+`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=\"CAS+latency\""`
+
+You'll get back:
+
+[source,json]
+    {
+      "responseHeader":{
+        "zkConnected":true,
+        "status":0,
+        "QTime":391,
+        "params":{
+          "q":"\"CAS latency\"",
+          "indent":"true",
+          "wt":"json"}},
+      "response":{"numFound":3,"start":0,"maxScore":22.027056,"docs":[
+          {
+            "id":"TWINX2048-3200PRO",
+            "name":["CORSAIR  XMS 2GB (2 x 1GB) 184-Pin DDR SDRAM Unbuffered DDR 400 (PC 3200) Dual Channel Kit System Memory - Retail"],
+            "manu":["Corsair Microsystems Inc."],
+            "manu_id_s":"corsair",
+            "cat":["electronics", "memory"],
+            "features":["CAS latency 2,  2-3-3-6 timing, 2.75v, unbuffered, heat-spreader"],
+
+
+==== Combining Searches
+
+By default, when you search for multiple terms and/or phrases in a single query, Solr will only require that one of them is present in order for a document to match. Documents containing more terms will be sorted higher in the results list.
+
+You can require that a term or phrase is present by prefixing it with a "`+`"; conversely, to disallow the presence of a term or phrase, prefix it with a "-".
+
+To find documents that contain both terms "one" and "three", enter `+one +three` in the `q` param in the Admin UI Query tab. Because the `+` character has a reserved purpose in URLs (encoding the space character), you must URL encode it for `curl` as "`%2B`":
+
+`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=%2Bone+%2Bthree"`
+
+To search for documents that contain the term "two" but *don't* contain the term "one", enter `+two -one` in the `q` param in the Admin UI. Again, URL encode "+" as "%2B":
+
+`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=%2Btwo+-one"`
+
+==== In Depth
+
+For more Solr search options, see the section on <<searching.adoc#searching,Searching>>.
+
+[[tutorial-faceting]]
+=== Faceting
+
+One of Solr's most popular features is faceting. Faceting allows the search results to be arranged into subsets (or buckets or categories), providing a count for each subset. There are several types of faceting: field values, numeric and date ranges, pivots (decision tree), and arbitrary query faceting.
+
+==== Field Facets
+
+In addition to providing search results, a Solr query can return the number of documents that contain each unique value in the whole result set.
+
+From the core-specific Admin UI Query tab, if you check the "`facet`" checkbox, you'll see a few facet-related options appear:
+
+.Facet options in the Query screen
+image::images/solr-quick-start/quickstart-admin-ui-facet-options.png[Solr Quick Start: Query tab facet options]
+
+To see facet counts from all documents (`q=\*:*`): turn on faceting (`facet=true`), and specify the field to facet on via the `facet.field` param. If you only want facets, and no document contents, specify `rows=0`. The `curl` command below will return facet counts for the `manu_id_s` field:
+
+`curl 'http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=*:*&rows=0&facet=true&facet.field=manu_id_s'`
+
+In your terminal, you'll see:
+
+[source,json]
+    {
+      "responseHeader":{
+        "zkConnected":true,
+        "status":0,
+        "QTime":201,
+        "params":{
+          "q":"*:*",
+          "facet.field":"manu_id_s",
+          "indent":"true",
+          "rows":"0",
+          "wt":"json",
+          "facet":"true"}},
+      "response":{"numFound":4374,"start":0,"maxScore":1.0,"docs":[]
+      },
+      "facet_counts":{
+        "facet_queries":{},
+        "facet_fields":{
+          "manu_id_s":[
+            "corsair",3,
+            "belkin",2,
+            "canon",2,
+            "apple",1,
+            "asus",1,
+            "ati",1,
+            "boa",1,
+            "dell",1,
+            "eu",1,
+            "maxtor",1,
+            "nor",1,
+            "uk",1,
+            "viewsonic",1,
+            "samsung",0]},
+        "facet_ranges":{},
+        "facet_intervals":{},
+        "facet_heatmaps":{}}}
+
+==== Range Facets
+
+For numerics or dates, it's often desirable to partition the facet counts into ranges rather than discrete values. A prime example of numeric range faceting, using the example product data, is `price`.  In the `/browse` UI, it looks like this:
+
+.Range facets
+image::images/solr-quick-start/quickstart-range-facet.png[Solr Quick Start: Range facets]
+
+The data for these price range facets can be seen in JSON format with this command:
+
+[source,bash]
+curl 'http://localhost:8983/solr/gettingstarted/select?q=*:*&wt=json&indent=on&rows=0'\
+    '&facet=true'\
+    '&facet.range=price'\
+    '&f.price.facet.range.start=0'\
+    '&f.price.facet.range.end=600'\
+    '&f.price.facet.range.gap=50'\
+    '&facet.range.other=after'
+
+In your terminal you will see:
+
+[source,json]
+    {
+      "responseHeader":{
+        "zkConnected":true,
+        "status":0,
+        "QTime":248,
+        "params":{
+          "facet.range":"price",
+          "q":"*:*",
+          "f.price.facet.range.start":"0",
+          "facet.range.other":"after",
+          "indent":"on",
+          "f.price.facet.range.gap":"50",
+          "rows":"0",
+          "wt":"json",
+          "facet":"true",
+          "f.price.facet.range.end":"600"}},
+      "response":{"numFound":4374,"start":0,"maxScore":1.0,"docs":[]
+      },
+      "facet_counts":{
+        "facet_queries":{},
+        "facet_fields":{},
+        "facet_ranges":{
+          "price":{
+            "counts":[
+              "0.0",19,
+              "50.0",1,
+              "100.0",0,
+              "150.0",2,
+              "200.0",0,
+              "250.0",1,
+              "300.0",1,
+              "350.0",2,
+              "400.0",0,
+              "450.0",1,
+              "500.0",0,
+              "550.0",0],
+            "gap":50.0,
+            "after":2,
+            "start":0.0,
+            "end":600.0}},
+        "facet_intervals":{},
+        "facet_heatmaps":{}}}
+
+==== Pivot Facets
+
+Another faceting type is pivot facets, also known as "decision trees", allowing two or more fields to be nested for all the various possible combinations. Using the example technical product data, pivot facets can be used to see how many of the products in the "book" category (the `cat` field) are in stock or not in stock. Here's how to get at the raw data for this scenario:
+
+`curl 'http://localhost:8983/solr/gettingstarted/select?q=*:*&rows=0&wt=json&indent=on&facet=on&facet.pivot=cat,inStock'`
+
+This results in the following response (trimmed to just the book category output), which says out of 14 items in the "book" category, 12 are in stock and 2 are not in stock:
+
+[source,json]
+    ...
+    "facet_pivot":{
+      "cat,inStock":[{
+          "field":"cat",
+          "value":"book",
+          "count":14,
+          "pivot":[{
+              "field":"inStock",
+              "value":true,
+              "count":12},
+            {
+              "field":"inStock",
+              "value":false,
+              "count":2}]},
+    ...
+
+==== More faceting options
+
+For the full scoop on Solr faceting, visit the section <<faceting.adoc#faceting,Faceting>>.
+
+
+
+'''
+=== Index a Directory of "Rich" Files
 
 // TODO this example won't work anymore after 6.5 when we ripped out javadocs
 
-Let's first index local "rich" files including HTML, PDF, Microsoft Office formats (such as MS Word), plain text and many other formats. The Post Tool (`bin/post`) features the ability to crawl a directory of files, optionally recursively even, sending the raw content of each file into Solr for extraction and indexing. A Solr install includes a `docs/` subdirectory, so that makes a convenient set of (mostly) HTML files built-in to start with.
-
-Here's the command to start indexing:
-
-`bin/post -c gettingstarted docs/`
-
-To explain those options a bit:
-
-* `-c gettingstarted`: name of the collection to index into
-* `docs/`: a relative path of the Solr install `docs/` directory
-
-Here's what it'll look like when it runs:
-
-[source,bash,subs="verbatim,attributes+"]
-/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted docs/
-java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files -Drecursive=yes org.apache.solr.util.SimplePostTool docs/
-SimplePostTool version 5.0.0
-Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
-Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
-Entering recursive mode, max depth=999, delay=0s
-Indexing directory docs (3 files, depth=0)
-POSTing file index.html (text/html) to [base]/extract
-POSTing file quickstart.html (text/html) to [base]/extract
-POSTing file SYSTEM_REQUIREMENTS.html (text/html) to [base]/extract
-Indexing directory docs/changes (1 files, depth=1)
-POSTing file Changes.html (text/html) to [base]/extract
-...
-4329 files indexed.
-COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
-Time spent: 0:01:16.252
-
-You have now indexed thousands of documents into the `gettingstarted` collection in Solr and committed these changes.
-
-You can search for "solr" by loading the Admin UI http://localhost:8983/solr/#/gettingstarted/query[Query tab], enter "solr" in the `q` param (replacing `\*:*`, which matches all documents), and "Execute Query". See the <<tutorial-searching,Searching>> section below for more information.
+Let's first index local "rich" files including HTML, PDF, Microsoft Office formats (such as MS Word), plain text and many other formats. The Post Tool (`bin/post`) features the ability to crawl a directory of files, optionally recursively even, sending the raw content of each file into Solr for extraction and indexing.
 
 To index your own data, re-run the directory indexing command pointed to your own directory of documents. For example, on a Mac instead of `docs/` try `~/Documents/` or `~/Desktop/`! You may want to start from a clean, empty system again rather than have your content in addition to the Solr `docs/` directory; see the Cleanup section [below](#cleanup) for how to get back to a clean starting point.
 
@@ -254,7 +528,7 @@ Time spent: 0:00:00.109
 
 For more information, see the section <<uploading-data-with-index-handlers.adoc#csv-formatted-index-updates,CSV Formatted Index Updates>>.
 
-=== Other indexing techniques
+=== Other Indexing Techniques
 
 * Import records from a database using the <<uploading-structured-data-store-data-with-the-data-import-handler.adoc#uploading-structured-data-store-data-with-the-data-import-handler,Data Import Handler (DIH)>>.
 
@@ -278,265 +552,6 @@ You can delete data by POSTing a delete command to the update URL and specifying
 Execute the following command to delete a specific document:
 
 `bin/post -c gettingstarted -d "<delete><id>SP2514N</id></delete>"`
-
-[[tutorial-searching]]
-== Searching
-
-Solr can be queried via REST clients, cURL, wget, Chrome POSTMAN, etc., as well as via the native clients available for many programming languages.
-
-The Solr Admin UI includes a query builder interface - see the `gettingstarted` query tab at http://localhost:8983/solr/#/gettingstarted/query. If you click the `Execute Query` button without changing anything in the form, you'll get 10 documents in JSON format (`*:*` in the `q` param matches all documents):
-
-.Query Screen
-image::images/solr-quick-start/quickstart-query-screen.png[Solr Quick Start: gettingstarted Query tab]
-
-The URL sent by the Admin UI to Solr is shown in light grey near the top right of the above screenshot - if you click on it, your browser will show you the raw response. To use cURL, give the same URL in quotes on the `curl` command line:
-
-`curl "http://localhost:8983/solr/gettingstarted/select?indent=on&q=*:*&wt=json"`
-
-=== Basics
-
-==== Search for a single term
-
-To search for a term, give it as the `q` param value in the core-specific Solr Admin UI Query section, replace `*:*`
-with the term you want to find. To search for "foundation":
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=foundation"`
-
-You'll see:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":527,
-        "params":{
-          "q":"foundation",
-          "indent":"true",
-          "wt":"json"}},
-      "response":{"numFound":4156,"start":0,"maxScore":0.10203234,"docs":[
-          {
-            "id":"0553293354",
-            "cat":["book"],
-            "name":["Foundation"]
-    }]}}
-
-The response indicates that there are 4,156 hits (`"numFound":4156`), of which the first 10 were returned, since by default `start=0` and `rows=10`. You can specify these params to page through results, where `start` is the (zero-based) position of the first result to return, and `rows` is the page size.
-
-To restrict fields returned in the response, use the `fl` param, which takes a comma-separated list of field names. For example, to only return the `id` field:
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=foundation&fl=id"`
-
-The parameter `q=foundation` matches nearly all of the docs we've indexed, since most of the files under `docs/` contain "The Apache Software Foundation". To restrict search to a particular field, use the syntax `q=field:value`, e.g., to search for `Foundation` only in the `name` field:
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=name:Foundation"`
-
-The above request returns only one document (`"numFound":1`) - from the response:
-
-[source,json]
-    ...
-      "response":{"numFound":1,"start":0,"maxScore":2.5902672,"docs":[
-          {
-            "id":"0553293354",
-            "cat":["book"],
-            "name":["Foundation"],
-
-
-==== Phrase search
-
-To search for a multi-term phrase, enclose it in double quotes: `q="multiple terms here"`. For example, to search for "CAS latency" - note that the space between terms must be converted to "+" in a URL (the Admin UI will handle URL encoding for you automatically):
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=\"CAS+latency\""`
-
-You'll get back:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":391,
-        "params":{
-          "q":"\"CAS latency\"",
-          "indent":"true",
-          "wt":"json"}},
-      "response":{"numFound":3,"start":0,"maxScore":22.027056,"docs":[
-          {
-            "id":"TWINX2048-3200PRO",
-            "name":["CORSAIR  XMS 2GB (2 x 1GB) 184-Pin DDR SDRAM Unbuffered DDR 400 (PC 3200) Dual Channel Kit System Memory - Retail"],
-            "manu":["Corsair Microsystems Inc."],
-            "manu_id_s":"corsair",
-            "cat":["electronics", "memory"],
-            "features":["CAS latency 2,  2-3-3-6 timing, 2.75v, unbuffered, heat-spreader"],
-
-
-==== Combining searches
-
-By default, when you search for multiple terms and/or phrases in a single query, Solr will only require that one of them is present in order for a document to match. Documents containing more terms will be sorted higher in the results list.
-
-You can require that a term or phrase is present by prefixing it with a "`+`"; conversely, to disallow the presence of a term or phrase, prefix it with a "-".
-
-To find documents that contain both terms "one" and "three", enter `+one +three` in the `q` param in the Admin UI Query tab. Because the `+` character has a reserved purpose in URLs (encoding the space character), you must URL encode it for `curl` as "`%2B`":
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=%2Bone+%2Bthree"`
-
-To search for documents that contain the term "two" but *don't* contain the term "one", enter `+two -one` in the `q` param in the Admin UI. Again, URL encode "+" as "%2B":
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=%2Btwo+-one"`
-
-==== In Depth
-
-For more Solr search options, see the section on <<searching.adoc#searching,Searching>>.
-
-[[tutorial-faceting]]
-=== Faceting
-
-One of Solr's most popular features is faceting. Faceting allows the search results to be arranged into subsets (or buckets or categories), providing a count for each subset. There are several types of faceting: field values, numeric and date ranges, pivots (decision tree), and arbitrary query faceting.
-
-==== Field facets
-
-In addition to providing search results, a Solr query can return the number of documents that contain each unique value in the whole result set.
-
-From the core-specific Admin UI Query tab, if you check the "`facet`" checkbox, you'll see a few facet-related options appear:
-
-.Facet options in the Query screen
-image::images/solr-quick-start/quickstart-admin-ui-facet-options.png[Solr Quick Start: Query tab facet options]
-
-To see facet counts from all documents (`q=\*:*`): turn on faceting (`facet=true`), and specify the field to facet on via the `facet.field` param. If you only want facets, and no document contents, specify `rows=0`. The `curl` command below will return facet counts for the `manu_id_s` field:
-
-`curl 'http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=*:*&rows=0&facet=true&facet.field=manu_id_s'`
-
-In your terminal, you'll see:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":201,
-        "params":{
-          "q":"*:*",
-          "facet.field":"manu_id_s",
-          "indent":"true",
-          "rows":"0",
-          "wt":"json",
-          "facet":"true"}},
-      "response":{"numFound":4374,"start":0,"maxScore":1.0,"docs":[]
-      },
-      "facet_counts":{
-        "facet_queries":{},
-        "facet_fields":{
-          "manu_id_s":[
-            "corsair",3,
-            "belkin",2,
-            "canon",2,
-            "apple",1,
-            "asus",1,
-            "ati",1,
-            "boa",1,
-            "dell",1,
-            "eu",1,
-            "maxtor",1,
-            "nor",1,
-            "uk",1,
-            "viewsonic",1,
-            "samsung",0]},
-        "facet_ranges":{},
-        "facet_intervals":{},
-        "facet_heatmaps":{}}}
-
-==== Range facets
-
-For numerics or dates, it's often desirable to partition the facet counts into ranges rather than discrete values. A prime example of numeric range faceting, using the example product data, is `price`.  In the `/browse` UI, it looks like this:
-
-.Range facets
-image::images/solr-quick-start/quickstart-range-facet.png[Solr Quick Start: Range facets]
-
-The data for these price range facets can be seen in JSON format with this command:
-
-[source,bash]
-curl 'http://localhost:8983/solr/gettingstarted/select?q=*:*&wt=json&indent=on&rows=0'\
-    '&facet=true'\
-    '&facet.range=price'\
-    '&f.price.facet.range.start=0'\
-    '&f.price.facet.range.end=600'\
-    '&f.price.facet.range.gap=50'\
-    '&facet.range.other=after'
-
-In your terminal you will see:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":248,
-        "params":{
-          "facet.range":"price",
-          "q":"*:*",
-          "f.price.facet.range.start":"0",
-          "facet.range.other":"after",
-          "indent":"on",
-          "f.price.facet.range.gap":"50",
-          "rows":"0",
-          "wt":"json",
-          "facet":"true",
-          "f.price.facet.range.end":"600"}},
-      "response":{"numFound":4374,"start":0,"maxScore":1.0,"docs":[]
-      },
-      "facet_counts":{
-        "facet_queries":{},
-        "facet_fields":{},
-        "facet_ranges":{
-          "price":{
-            "counts":[
-              "0.0",19,
-              "50.0",1,
-              "100.0",0,
-              "150.0",2,
-              "200.0",0,
-              "250.0",1,
-              "300.0",1,
-              "350.0",2,
-              "400.0",0,
-              "450.0",1,
-              "500.0",0,
-              "550.0",0],
-            "gap":50.0,
-            "after":2,
-            "start":0.0,
-            "end":600.0}},
-        "facet_intervals":{},
-        "facet_heatmaps":{}}}
-
-==== Pivot facets
-
-Another faceting type is pivot facets, also known as "decision trees", allowing two or more fields to be nested for all the various possible combinations. Using the example technical product data, pivot facets can be used to see how many of the products in the "book" category (the `cat` field) are in stock or not in stock. Here's how to get at the raw data for this scenario:
-
-`curl 'http://localhost:8983/solr/gettingstarted/select?q=*:*&rows=0&wt=json&indent=on&facet=on&facet.pivot=cat,inStock'`
-
-This results in the following response (trimmed to just the book category output), which says out of 14 items in the "book" category, 12 are in stock and 2 are not in stock:
-
-[source,json]
-    ...
-    "facet_pivot":{
-      "cat,inStock":[{
-          "field":"cat",
-          "value":"book",
-          "count":14,
-          "pivot":[{
-              "field":"inStock",
-              "value":true,
-              "count":12},
-            {
-              "field":"inStock",
-              "value":false,
-              "count":2}]},
-    ...
-
-==== More faceting options
-
-For the full scoop on Solr faceting, visit the section <<faceting.adoc#faceting,Faceting>>.
 
 
 === Spatial
