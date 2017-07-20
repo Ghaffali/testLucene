@@ -24,7 +24,7 @@ For best results, please run the browser showing this tutorial and the Solr serv
 
 Begin by unzipping the Solr release and changing your working directory to the subdirectory where Solr was installed. Note that the base directory name may vary with the version of Solr downloaded. For example, with a shell in UNIX, Cygwin, or MacOS:
 
-[source,subs="verbatim,attributes+"]
+[source,bash,subs="verbatim,attributes+"]
 ----
 /:$ ls solr*
 solr-{solr-docs-version}.0.zip
@@ -145,6 +145,7 @@ Note the CSV command includes extra parameters. This is to ensure multi-valued e
 Each command will produce output similar to the below seen while indexing JSON:
 
 [source,bash,subs="verbatim,attributes"]
+----
 $ ./bin/post -c gettingstarted example/films/films.json
 /bin/java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/films/films.json
 SimplePostTool version 5.0.0
@@ -154,6 +155,7 @@ POSTing file films.json (application/json) to [base]/json/docs
 1 files indexed.
 COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
 Time spent: 0:00:00.878
+----
 
 If we gave the command a directory instead of a single file, we would see a list of each file processed in the output.
 
