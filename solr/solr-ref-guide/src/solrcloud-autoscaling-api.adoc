@@ -22,7 +22,6 @@
 
 The AutoScaling API can be used to read, set and remove cluster policy, preferences, triggers, listeners as well as for diagnostics on the state of the cluster.
 
-[[read]]
 == Read API
 
 The AutoScaling read API is available at `/solr/admin/autoscaling` as well as on `/v2/cluster/autoscaling` path. It returns information about the configured cluster preferences, policies, triggers and listeners.
@@ -33,45 +32,37 @@ __TODO__
 
 == Write API
 
-[[set-cluster-preferences]]
 === set-cluster-preferences: Create and modify cluster preferences
 
 __TODO__
 
-[[set-cluster-policy]]
 === set-cluster-policy: Create and modify cluster preferences
 
 __TODO__
 
-[[set-policy]]
 === set-policy: Create and modify collection specific policy
 
 __TODO__
 
-[[remove-policy]]
 === remove-policy: Remove a collection specific policy
 
 __TODO__
 
-[[set-trigger]]
 === set-trigger: Create and modify a trigger
 
 __TODO__
 
 
-[[remove-trigger]]
 === remove-trigger: Remove a trigger
 
 __TODO__
 
 
-[[set-listener]]
 === set-listener: Create and modify a listener
 
 __TODO__
 
 
-[[remove-listener]]
 === remove-listener: Remove a listener
 
 __TODO__

@@ -34,7 +34,6 @@ There are three distinct problems that this feature solves:
 
 Before we get into the details of how each of these problems are solved, let's take a quick look at the easiest way to setup autoscaling for your cluster.
 
-[[quickstart]]
 == QuickStart: Automatically adding replicas
 
 Say that we want to create a collection which always requires us to have three replicas available for each shard all the time. We can set the replicationFactor=3 while creating the collection but what happens if a node containing one or more of the replicas either crashed or was shutdown for maintenance. In such a case, we'd like to create additional replicas to replace the ones that are no longer available to preserve the original number of replicas.
@@ -49,7 +48,6 @@ You can see the section __TODO_FIX_ME__ to learn more about how to enable or dis
 
 The selection of the node that will host the new replica is made according to the default cluster preferences that we will learn more about in the next sections.
 
-[[cluster-preferences]]
 == Cluster Preferences
 
 The cluster preferences, as the name suggests, apply to all cluster management operations regardless of which collection they affect.
@@ -60,7 +58,6 @@ The default cluster preferences consist of the above example which is to minimiz
 
 You can learn more about preferences in the __TODO__ section.
 
-[[cluster-policy]]
 == Cluster Policy
 
 The cluster policy is a set of conditions that a node, shard or collection must satisfy before it can be chosen as the target of a cluster management operation. These conditions are applied across the cluster regardless of the collection being managed. For example, the condition `{"cores":"<10", "node":"#ANY"}` means that any node must have less than ten Solr cores in total regardless of which collection they belong to.
@@ -69,7 +66,6 @@ There are many metrics on which the condition can be based e.g. system load aver
 
 When a node, shard or collection does not satisfy the policy, we call it a *violation*. Solr ensures that cluster management operations minimize the number of violations. The cluster management operations are either invoked manually by us or automatically in response to *Triggers*.
 
-[[triggers]]
 == Triggers
 
 Now that we have an idea about how cluster management operations use policy and preferences help Solr keep the cluster balanced and stable, we can talk about when to invoke such operations. Triggers are used to watch for events such as a node joining or leaving the cluster. When the event happens, the trigger executes a set of `actions` that compute and execute a *plan* i.e. a set of operations to change the cluster so that the policy and preferences are respected.
@@ -78,14 +74,12 @@ The `autoAddReplicas` parameter passed to the create collection API in the quick
 
 You can learn more about Triggers in the __TODO__ section.
 
-[[listeners]]
 == Listeners
 
 An AutoScaling *Listener* is attached to a trigger. Solr calls the listener each time the trigger fires as well as before and after the actions performed by the trigger. Listeners are useful as a call back mechanism to perform tasks such as logging or informing external systems about events. For example, a listener is automatically added by Solr to each Trigger to log details of the trigger fire and actions to the `.system` collection.
 
 You can learn more about Listeners in the __TODO__ section.
 
-[[apis]]
 == AutoScaling APIs
 
 The autoscaling APIs available at `/admin/autoscaling` can be used to read and modify each of the components discussed above.
