@@ -2,8 +2,7 @@
 :page-shortname: solr-quick-start
 :page-permalink: solr-quick-start.html
 :page-tocclass: right
-
-// TODO make a solr-version attribute that inserts the current Solr version and update the install examples below for that.
+:experimental:
 
 == Overview
 
@@ -14,35 +13,62 @@ and getting a feel for the Solr administrative and search interfaces.
 
 To follow along with this tutorial, you will need...
 
+// TODO possibly remove this system requirements or only replace the link
 . To meet the {solr-javadocs}/solr/api/SYSTEM_REQUIREMENTS.html[system requirements]
 . An Apache Solr release http://lucene.apache.org/solr/downloads.html[download]. This tutorial is designed for Apache Solr {solr-docs-version}.
 
 For best results, please run the browser showing this tutorial and the Solr server on the same machine so tutorial links will correctly point to your Solr server.
 
 [[tutorial-getting-started]]
-== Unpack Solr and Start an Example
+== Unpack Solr
 
 Begin by unzipping the Solr release and changing your working directory to the subdirectory where Solr was installed. Note that the base directory name may vary with the version of Solr downloaded. For example, with a shell in UNIX, Cygwin, or MacOS:
 
 [source,bash,subs="verbatim,attributes+"]
 ----
-/:$ ls solr*
+$ ls solr*
 solr-{solr-docs-version}.0.zip
 
-/:$ unzip -q solr-{solr-docs-version}.0.zip
+$ unzip -q solr-{solr-docs-version}.0.zip
 
-:$ cd solr-{solr-docs-version}.0/
+$ cd solr-{solr-docs-version}.0/
 ----
 
-=== Launch Solr
-To launch Solr, run: `bin/solr start -e cloud -noprompt`. This will start an interactive session that will start two Solr "servers" on your machine.
+== Exercise 1: Launch Solr and Index Techproducts Example Data
+
+=== Launch Solr in SolrCloud Mode
+To launch Solr, run: `bin/solr start -e cloud`.
+
+This will start an interactive session that will start two Solr "servers" on your machine. This command has an option to run without prompting you for input (`-noprompt`), but we want to modify one of the defaults so we will not use that option in this example.
 
 [source,subs="verbatim,attributes+"]
 ----
-/solr-{solr-docs-version}.0:$ ./bin/solr start -e cloud -noprompt
+solr-{solr-docs-version}.0:$ ./bin/solr start -e cloud
 
 Welcome to the SolrCloud example!
 
+This interactive session will help you launch a SolrCloud cluster on your local workstation.
+To begin, how many Solr nodes would you like to run in your local cluster? (specify 1-4 nodes) [2]:
+----
+The default in this case is "2", which is what we want for this example, so you can simply press kbd:[enter].
+
+[source,subs="verbatim,attributes+"]
+----
+Ok, let's start up 2 Solr nodes for your example SolrCloud cluster.
+Please enter the port for node1 [8983]:
+----
+This will be the port that one of our nodes runs on. Unless you know you have something else running on port 8983 on your machine, accept this default option also by pressing kbd:[enter]. If something is already using that port, you will be asked to choose another port.
+
+[source,subs="verbatim,attributes+"]
+----
+Please enter the port for node2 [7574]:
+----
+This is the port the second node will run on. Again, unless you know you have something else running on port 8983 on your machine, accept this default option also by pressing kbd:[enter]. If something is already using that port, you will be asked to choose another port.
+
+Solr will now initialize itself and start running on those two nodes.
+
+[source,subs="verbatim,attributes+"]
+----
 Starting up 2 Solr nodes for your example SolrCloud cluster.
 
 Creating Solr home directory /solr-{solr-docs-version}.0/example/cloud/node1/solr
@@ -53,51 +79,90 @@ Starting up Solr on port 8983 using command:
 "bin/solr" start -cloud -p 8983 -s "example/cloud/node1/solr"
 
 Waiting up to 180 seconds to see Solr running on port 8983 [\]
-Started Solr server on port 8983 (pid=74527). Happy searching!
+Started Solr server on port 8983 (pid=34942). Happy searching!
+
 
 Starting up Solr on port 7574 using command:
 "bin/solr" start -cloud -p 7574 -s "example/cloud/node2/solr" -z localhost:9983
 
 Waiting up to 180 seconds to see Solr running on port 7574 [\]
-Started Solr server on port 7574 (pid=74621). Happy searching!
+Started Solr server on port 7574 (pid=35036). Happy searching!
 
-INFO  - 2017-07-18 09:44:01.273; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
+INFO  - 2017-07-27 12:28:02.835; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
+----
 
-Connecting to ZooKeeper at localhost:9983 ...
-INFO  - 2017-07-18 09:44:01.327; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
+Notice that it has started two instances of Solr on two nodes. It prints the commands it uses for your reference. Because we are starting in SolrCloud mode, and did not define any details about an external ZooKeeper cluster, Solr launches its own ZooKeeper and connects both nodes to it.
+
+After startup is complete, you'll be prompted to create a collection to use for indexing data:
+
+[source,subs="verbatim,attributes+"]
+----
+Now let's create a new collection for indexing documents in your 2-node cluster.
+Please provide a name for your new collection: [gettingstarted]
+----
+Here's the first place where we'll deviate from the default options. This tutorial will ask you to index some sample data included with Solr, called the "techproducts" data. Let's name our collection that so it's easy to differentiate from other collections we'll create later. Enter `techproducts` at the prompt and hit kbd:[enter].
+
+[source,subs="verbatim,attributes+"]
+----
+How many shards would you like to split techproducts into? [2]
+----
+This is asking how you want to split your index across the two nodes. Choosing two means we will split the index relatively evenly across both nodes, which is a good way to start. Accept the default by hitting kbd:[enter].
+
+[source,subs="verbatim,attributes+"]
+----
+How many replicas per shard would you like to create? [2]
+----
+A replica is a copy of the index that's used for failover. Two is fine to start with here also, so accept the default again by hitting kbd:[enter].
+
+[source,subs="verbatim,attributes+"]
+----
+Please choose a configuration for the techproducts collection, available options are:
+_default or sample_techproducts_configs [_default]
+----
+We've reached another point where we will deviate from the default option. Solr has two sample sets of configuration files (called a ConfigSet) available out-of-the-box.
+
+A collection must have a ConfigSet, which at a minimum includes the two main configuration files for Solr - the schema file (named either `managed-schema` or `schema.xml`) and `solrconfig.xml`. The question here is which ConfigSet you would like to start with. The `_default` is a bare-bones option, but note there's one whose name includes "techproducts", the same as we named our collection. This ConfigSet is specifically designed to support the sample data we want to use, so enter `sample_techproducts_configs` at the prompt and hit kbd:[enter].
+
+At this point, Solr will create the collection and again output to the screen the commands it issues:
+
+[source,subs="verbatim,attributes+"]
+----
 Uploading /solr-{solr-docs-version}.0/server/solr/configsets/_default/conf for config gettingstarted to ZooKeeper at localhost:9983
 
-Creating new collection 'gettingstarted' using command:
-http://localhost:8983/solr/admin/collections?action=CREATE&name=gettingstarted&numShards=2&replicationFactor=2&maxShardsPerNode=2&collection.configName=gettingstarted
+Connecting to ZooKeeper at localhost:9983 ...
+INFO  - 2017-07-27 12:48:59.289; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
+Uploading /solr-{solr-docs-version}.0/server/solr/configsets/sample_techproducts_configs/conf for config techproducts to ZooKeeper at localhost:9983
+
+Creating new collection 'techproducts' using command:
+http://localhost:8983/solr/admin/collections?action=CREATE&name=techproducts&numShards=2&replicationFactor=2&maxShardsPerNode=2&collection.configName=techproducts
 
 {
   "responseHeader":{
     "status":0,
-    "QTime":5944},
+    "QTime":5460},
   "success":{
-    "192.168.0.110:8983_solr":{
-      "responseHeader":{
-        "status":0,
-        "QTime":4098},
-      "core":"gettingstarted_shard1_replica_n1"},
     "192.168.0.110:7574_solr":{
       "responseHeader":{
         "status":0,
-        "QTime":4502},
-      "core":"gettingstarted_shard2_replica_n2"}}}
+        "QTime":4056},
+      "core":"techproducts_shard1_replica_n1"},
+    "192.168.0.110:8983_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":4056},
+      "core":"techproducts_shard2_replica_n2"}}}
 
 Enabling auto soft-commits with maxTime 3 secs using the Config API
 
-POSTing request to Config API: http://localhost:8983/solr/gettingstarted/config
+POSTing request to Config API: http://localhost:8983/solr/techproducts/config
 {"set-property":{"updateHandler.autoSoftCommit.maxTime":"3000"}}
 Successfully set-property updateHandler.autoSoftCommit.maxTime to 3000
 
 SolrCloud example running, please visit: http://localhost:8983/solr
-
-/solr-{solr-docs-version}.0:$ _
 ----
+*Congratulations!* Solr is ready for data!
 
-You can see that the Solr is running by loading the Solr Admin UI in your web browser: <http://localhost:8983/solr/>. This is the main starting point for administering Solr.
+You can see that the Solr is running by loading the Solr Admin UI in your web browser: http://localhost:8983/solr/. This is the main starting point for administering Solr.
 
 Solr will now be running two "nodes", one on port 7574 and one on port 8983. There is one collection created automatically, `gettingstarted`, a two shard collection, each with two replicas.
 
@@ -106,352 +171,39 @@ The http://localhost:8983/solr/#/~cloud[Cloud tab] in the Admin UI diagrams the 
 .SolrCloud Diagram
 image::images/solr-quick-start/quickstart-solrcloud.png[]
 
-== Index Data
+=== Index the Techproducts Data
 
-Your Solr server is up and running, but it doesn't contain any data. The Solr install includes the `bin/post` tool in order to facilitate getting various types of documents easily into Solr from the start. We'll use this tool for the indexing examples below.
+Your Solr server is up and running, but it doesn't contain any data yet, so we can't do any queries.
+
+Solr includes the `bin/post` tool in order to facilitate indexing various types of documents easily. We'll use this tool for the indexing examples below.
 
 You'll need a command shell to run these examples, rooted in the Solr install directory; the shell from where you launched Solr works just fine.
 
-NOTE: Currently the `bin/post` tool does not have a comparable Windows script, but the underlying Java program invoked is available. See the <<post-tool.adoc#post-tool-windows-support,Windows section>> of the Post Tool documentation for details.
+NOTE: Currently the `bin/post` tool does not have a comparable Windows script, but the underlying Java program invoked is available. We'll show examples below for Windows, but you can also see the <<post-tool.adoc#post-tool-windows-support,Windows section>> of the Post Tool documentation for more details.
 
+The data we will index is in the `example/exampledocs` directory. The documents are in a mix of document formats, but fortunately we can index them all at once:
 
-=== Index Sample Film Data
-
-Let's start by working with some sample data that ships with Solr. This data contains title, director, genre, and release date information for 1100 films. It is a simple data set that we can use to learn more about the features of Solr.
-
-The data is located in the `example/films` directory of your installation. It comes in three formats: JSON, XML and CSV.
-
-The previous step created a collection named "gettingstarted". We can use that one here:
-
-.To Index JSON Format
-[source,bash,subs="verbatim"]
-bin/post -c gettingstarted example/films/films.json
-
-.To Index XML Format
-[source,bash]
-bin/post -c gettingstarted example/films/films.xml
-
-.To Index CSV Format
-[source,bash]
-bin/post -c gettingstarted example/films/films.csv -params "f.genre.split=true&f.directed_by.split=true&f.genre.separator=|&f.directed_by.separator=|"
-
-Each commands includes these main parameters:
-
-* `-c gettingstarted`: this is the Solr collection to index data to.
-* `example/films/films.json` (or `films.xml` or `films.csv`): this is the path to the data file to index. You could simply supply the directory where this file resides, but since you know the format you want to index, specifying the exact file for that format is more efficient.
-
-Note the CSV command includes extra parameters. This is to ensure multi-valued entries in the "genre" and "directed_by" columns are split by the pipe (`|`) character, used in this file as a separator. Telling Solr to split these columns this way will ensure proper indexing of the data.
-
-Each command will produce output similar to the below seen while indexing JSON:
-
-[source,bash,subs="verbatim,attributes"]
+.Linux/Mac
+[source,subs="verbatim,attributes+"]
 ----
-$ ./bin/post -c gettingstarted example/films/films.json
-/bin/java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/films/films.json
-SimplePostTool version 5.0.0
-Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
-Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
-POSTing file films.json (application/json) to [base]/json/docs
-1 files indexed.
-COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
-Time spent: 0:00:00.878
+solr-{solr-docs-version}.0:$ bin/post -c techproducts example/exampledocs/*
 ----
 
-If we gave the command a directory instead of a single file, we would see a list of each file processed in the output.
-
-Now that we have some data, let's work with some searches.
-
-[[tutorial-searching]]
-== Searching
-
-Solr can be queried via REST clients, cURL, wget, Chrome POSTMAN, etc., as well as via native clients available for many programming languages.
-
-The Solr Admin UI includes a query builder interface via the Query tab for the `gettingstarted` collection (at http://localhost:8983/solr/#/gettingstarted/query). If you click the `Execute Query` button without changing anything in the form, you'll get 10 documents in JSON format (`\*:*` in the `q` param matches all documents):
-
-.Query Screen
-image::images/solr-quick-start/quickstart-query-screen.png[Solr Quick Start: gettingstarted Query tab]
-
-The URL sent by the Admin UI to Solr is shown in light grey near the top right of the above screenshot - if you click on it, your browser will show you the raw response.
-
-To use cURL, give the same URL shown in your browser in quotes on the command line:
-
-`curl "http://localhost:8983/solr/gettingstarted/select?indent=on&q=*:*&wt=json"`
-
-=== Basic Searching
-
-==== Search for a Single Term
-
-To search for a term, give it as the `q` param value in the core-specific Solr Admin UI Query section, replace `\*:*` with the term you want to find. To search for "foundation":
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=foundation"`
-
-You'll see:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":527,
-        "params":{
-          "q":"foundation",
-          "indent":"true",
-          "wt":"json"}},
-      "response":{"numFound":4156,"start":0,"maxScore":0.10203234,"docs":[
-          {
-            "id":"0553293354",
-            "cat":["book"],
-            "name":["Foundation"]
-    }]}}
-
-The response indicates that there are 4,156 hits (`"numFound":4156`), of which the first 10 were returned, since by default `start=0` and `rows=10`. You can specify these params to page through results, where `start` is the (zero-based) position of the first result to return, and `rows` is the page size.
-
-To restrict fields returned in the response, use the `fl` param, which takes a comma-separated list of field names. For example, to only return the `id` field:
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=foundation&fl=id"`
-
-The parameter `q=foundation` matches nearly all of the docs we've indexed, since most of the files under `docs/` contain "The Apache Software Foundation". To restrict search to a particular field, use the syntax `q=field:value`, e.g., to search for `Foundation` only in the `name` field:
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=name:Foundation"`
-
-The above request returns only one document (`"numFound":1`) - from the response:
-
-[source,json]
-    ...
-      "response":{"numFound":1,"start":0,"maxScore":2.5902672,"docs":[
-          {
-            "id":"0553293354",
-            "cat":["book"],
-            "name":["Foundation"],
-
-
-==== Phrase Search
-
-To search for a multi-term phrase, enclose it in double quotes: `q="multiple terms here"`. For example, to search for "CAS latency" - note that the space between terms must be converted to "+" in a URL (the Admin UI will handle URL encoding for you automatically):
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=\"CAS+latency\""`
-
-You'll get back:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":391,
-        "params":{
-          "q":"\"CAS latency\"",
-          "indent":"true",
-          "wt":"json"}},
-      "response":{"numFound":3,"start":0,"maxScore":22.027056,"docs":[
-          {
-            "id":"TWINX2048-3200PRO",
-            "name":["CORSAIR  XMS 2GB (2 x 1GB) 184-Pin DDR SDRAM Unbuffered DDR 400 (PC 3200) Dual Channel Kit System Memory - Retail"],
-            "manu":["Corsair Microsystems Inc."],
-            "manu_id_s":"corsair",
-            "cat":["electronics", "memory"],
-            "features":["CAS latency 2,  2-3-3-6 timing, 2.75v, unbuffered, heat-spreader"],
-
-
-==== Combining Searches
-
-By default, when you search for multiple terms and/or phrases in a single query, Solr will only require that one of them is present in order for a document to match. Documents containing more terms will be sorted higher in the results list.
-
-You can require that a term or phrase is present by prefixing it with a "`+`"; conversely, to disallow the presence of a term or phrase, prefix it with a "-".
-
-To find documents that contain both terms "one" and "three", enter `+one +three` in the `q` param in the Admin UI Query tab. Because the `+` character has a reserved purpose in URLs (encoding the space character), you must URL encode it for `curl` as "`%2B`":
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=%2Bone+%2Bthree"`
-
-To search for documents that contain the term "two" but *don't* contain the term "one", enter `+two -one` in the `q` param in the Admin UI. Again, URL encode "+" as "%2B":
-
-`curl "http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=%2Btwo+-one"`
-
-==== In Depth
-
-For more Solr search options, see the section on <<searching.adoc#searching,Searching>>.
-
-[[tutorial-faceting]]
-=== Faceting
-
-One of Solr's most popular features is faceting. Faceting allows the search results to be arranged into subsets (or buckets or categories), providing a count for each subset. There are several types of faceting: field values, numeric and date ranges, pivots (decision tree), and arbitrary query faceting.
-
-==== Field Facets
-
-In addition to providing search results, a Solr query can return the number of documents that contain each unique value in the whole result set.
-
-From the core-specific Admin UI Query tab, if you check the "`facet`" checkbox, you'll see a few facet-related options appear:
-
-.Facet options in the Query screen
-image::images/solr-quick-start/quickstart-admin-ui-facet-options.png[Solr Quick Start: Query tab facet options]
-
-To see facet counts from all documents (`q=\*:*`): turn on faceting (`facet=true`), and specify the field to facet on via the `facet.field` param. If you only want facets, and no document contents, specify `rows=0`. The `curl` command below will return facet counts for the `manu_id_s` field:
-
-`curl 'http://localhost:8983/solr/gettingstarted/select?wt=json&indent=true&q=*:*&rows=0&facet=true&facet.field=manu_id_s'`
-
-In your terminal, you'll see:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":201,
-        "params":{
-          "q":"*:*",
-          "facet.field":"manu_id_s",
-          "indent":"true",
-          "rows":"0",
-          "wt":"json",
-          "facet":"true"}},
-      "response":{"numFound":4374,"start":0,"maxScore":1.0,"docs":[]
-      },
-      "facet_counts":{
-        "facet_queries":{},
-        "facet_fields":{
-          "manu_id_s":[
-            "corsair",3,
-            "belkin",2,
-            "canon",2,
-            "apple",1,
-            "asus",1,
-            "ati",1,
-            "boa",1,
-            "dell",1,
-            "eu",1,
-            "maxtor",1,
-            "nor",1,
-            "uk",1,
-            "viewsonic",1,
-            "samsung",0]},
-        "facet_ranges":{},
-        "facet_intervals":{},
-        "facet_heatmaps":{}}}
-
-==== Range Facets
-
-For numerics or dates, it's often desirable to partition the facet counts into ranges rather than discrete values. A prime example of numeric range faceting, using the example product data, is `price`.  In the `/browse` UI, it looks like this:
-
-.Range facets
-image::images/solr-quick-start/quickstart-range-facet.png[Solr Quick Start: Range facets]
-
-The data for these price range facets can be seen in JSON format with this command:
-
-[source,bash]
-curl 'http://localhost:8983/solr/gettingstarted/select?q=*:*&wt=json&indent=on&rows=0'\
-    '&facet=true'\
-    '&facet.range=price'\
-    '&f.price.facet.range.start=0'\
-    '&f.price.facet.range.end=600'\
-    '&f.price.facet.range.gap=50'\
-    '&facet.range.other=after'
-
-In your terminal you will see:
-
-[source,json]
-    {
-      "responseHeader":{
-        "zkConnected":true,
-        "status":0,
-        "QTime":248,
-        "params":{
-          "facet.range":"price",
-          "q":"*:*",
-          "f.price.facet.range.start":"0",
-          "facet.range.other":"after",
-          "indent":"on",
-          "f.price.facet.range.gap":"50",
-          "rows":"0",
-          "wt":"json",
-          "facet":"true",
-          "f.price.facet.range.end":"600"}},
-      "response":{"numFound":4374,"start":0,"maxScore":1.0,"docs":[]
-      },
-      "facet_counts":{
-        "facet_queries":{},
-        "facet_fields":{},
-        "facet_ranges":{
-          "price":{
-            "counts":[
-              "0.0",19,
-              "50.0",1,
-              "100.0",0,
-              "150.0",2,
-              "200.0",0,
-              "250.0",1,
-              "300.0",1,
-              "350.0",2,
-              "400.0",0,
-              "450.0",1,
-              "500.0",0,
-              "550.0",0],
-            "gap":50.0,
-            "after":2,
-            "start":0.0,
-            "end":600.0}},
-        "facet_intervals":{},
-        "facet_heatmaps":{}}}
-
-==== Pivot Facets
-
-Another faceting type is pivot facets, also known as "decision trees", allowing two or more fields to be nested for all the various possible combinations. Using the example technical product data, pivot facets can be used to see how many of the products in the "book" category (the `cat` field) are in stock or not in stock. Here's how to get at the raw data for this scenario:
-
-`curl 'http://localhost:8983/solr/gettingstarted/select?q=*:*&rows=0&wt=json&indent=on&facet=on&facet.pivot=cat,inStock'`
-
-This results in the following response (trimmed to just the book category output), which says out of 14 items in the "book" category, 12 are in stock and 2 are not in stock:
-
-[source,json]
-    ...
-    "facet_pivot":{
-      "cat,inStock":[{
-          "field":"cat",
-          "value":"book",
-          "count":14,
-          "pivot":[{
-              "field":"inStock",
-              "value":true,
-              "count":12},
-            {
-              "field":"inStock",
-              "value":false,
-              "count":2}]},
-    ...
-
-==== More faceting options
-
-For the full scoop on Solr faceting, visit the section <<faceting.adoc#faceting,Faceting>>.
-
-
-
-'''
-=== Index a Directory of "Rich" Files
-
-// TODO this example won't work anymore after 6.5 when we ripped out javadocs
-
-Let's first index local "rich" files including HTML, PDF, Microsoft Office formats (such as MS Word), plain text and many other formats. The Post Tool (`bin/post`) features the ability to crawl a directory of files, optionally recursively even, sending the raw content of each file into Solr for extraction and indexing.
-
-To index your own data, re-run the directory indexing command pointed to your own directory of documents. For example, on a Mac instead of `docs/` try `~/Documents/` or `~/Desktop/`! You may want to start from a clean, empty system again rather than have your content in addition to the Solr `docs/` directory; see the Cleanup section [below](#cleanup) for how to get back to a clean starting point.
-
-=== Indexing Solr XML
-
-Solr supports indexing structured content in a variety of incoming formats. The historically predominant format for getting structured content into Solr has been <<uploading-data-with-index-handlers.adoc#xml-formatted-index-updates,Solr XML>>. Many Solr indexers have been coded to process domain content into Solr XML output, generally HTTP POSTed directly to Solr's `/update` endpoint.
-
-Solr includes a handful of Solr XML formatted files with example data (mostly mocked tech product data).
-
-NOTE: This tech product data has a more domain-specific configuration, including schema and browse UI. The `bin/solr` script includes built-in support for this by running `bin/solr start -e techproducts` which not only starts Solr but also then indexes this data too (be sure to `bin/solr stop -all` before trying it out). However, the example below assumes Solr was started with `bin/solr start -e cloud` to stay consistent with all examples on this page, and thus the collection used is "gettingstarted", not "techproducts".
-
-Using `bin/post`, index the example Solr XML files in `example/exampledocs/`:
-
-`bin/post -c gettingstarted example/exampledocs/*.xml`
-
-Here's what you'll see:
-
-[source,bash,subs="verbatim,attributes+"]
-/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/*.xml
-java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/gb18030-example.xml ...
+.Windows
+[source,subs="verbatim,attributes+"]
+----
+C:\solr-{solr-docs-version}.0> java -jar -Dc=techproducts -Dauto example\exampledocs\post.jar example\exampledocs\*
+----
+
+You should see output similar to the following:
+
+[source,subs="verbatim,attributes+"]
+----
 SimplePostTool version 5.0.0
-Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
+Posting files to [base] url http://localhost:8983/solr/techproducts/update...
 Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
+POSTing file books.csv (text/csv) to [base]
+POSTing file books.json (application/json) to [base]/json/docs
 POSTing file gb18030-example.xml (application/xml) to [base]
 POSTing file hd.xml (application/xml) to [base]
 POSTing file ipod_other.xml (application/xml) to [base]
@@ -461,85 +213,657 @@ POSTing file mem.xml (application/xml) to [base]
 POSTing file money.xml (application/xml) to [base]
 POSTing file monitor.xml (application/xml) to [base]
 POSTing file monitor2.xml (application/xml) to [base]
+POSTing file more_books.jsonl (application/json) to [base]/json/docs
 POSTing file mp500.xml (application/xml) to [base]
+POSTing file post.jar (application/octet-stream) to [base]/extract
+POSTing file sample.html (text/html) to [base]/extract
 POSTing file sd500.xml (application/xml) to [base]
+POSTing file solr-word.pdf (application/pdf) to [base]/extract
 POSTing file solr.xml (application/xml) to [base]
+POSTing file test_utf8.sh (application/octet-stream) to [base]/extract
 POSTing file utf8-example.xml (application/xml) to [base]
 POSTing file vidcard.xml (application/xml) to [base]
-14 files indexed.
-COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
-Time spent: 0:00:02.077
+21 files indexed.
+COMMITting Solr index changes to http://localhost:8983/solr/techproducts/update...
+Time spent: 0:00:00.822
+----
 
-...and now you can search for all sorts of things using the default
-<<the-standard-query-parser.adoc#specifying-terms-for-the-standard-query-parser,Solr Query Syntax>>
-(a superset of the Lucene query syntax)...
+Congratulations again! You have data in your Solr!
 
-[NOTE]
-====
-You can browse the documents indexed at http://localhost:8983/solr/gettingstarted/browse. The `/browse` UI allows getting a feel for how Solr's technical capabilities can be worked with in a familiar, though a bit rough and prototypical, interactive HTML view.
+Now we're ready to start searching.
 
-The `/browse` view defaults to assuming the `gettingstarted` schema and data are a catch-all mix of structured XML, JSON, CSV example data, and unstructured rich documents. Your own data may not look ideal at first, though the `/browse` templates are customizable.)
-====
+[[tutorial-searching]]
+=== Basic Searching
 
-[[tutorial-indexing-json]]
-=== Indexing JSON
+Solr can be queried via REST clients, cURL, wget, Chrome POSTMAN, etc., as well as via native clients available for many programming languages.
 
-Solr supports indexing JSON, either arbitrary structured JSON or "Solr JSON" (which is similar to Solr XML).
+The Solr Admin UI includes a query builder interface via the Query tab for the `techproducts` collection (at http://localhost:8983/solr/#/techproducts/query). If you click the btn:[Execute Query] button without changing anything in the form, you'll get 10 documents in JSON format:
 
-Solr includes a small sample Solr JSON file to illustrate this capability. Again using `bin/post`, index the sample JSON file:
+.Query Screen
+image::images/solr-quick-start/quickstart-query-screen.png[Solr Quick Start: techproducts Query screen with results]
 
-`bin/post -c gettingstarted example/exampledocs/books.json`
+The URL sent by the Admin UI to Solr is shown in light grey near the top right of the above screenshot. If you click on it, your browser will show you the raw response.
 
-You'll see:
+To use cURL, give the same URL shown in your browser in quotes on the command line:
 
-[source,bash,subs="verbatim,attributes+"]
-/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/books.json
-java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.json
+`curl "http://localhost:8983/solr/techproducts/select?indent=on&q=\*:*"`
+
+What's happening here is that we are using Solr's query parameter (`q`) with a special syntax that requests all documents in the index (`\*:*`). We don't get all the documents, however, because of the default for a parameter called `rows`, which you can see in the form is `10`. You can change the parameter in the UI or in the defaults if you wish.
+
+Solr has very powerful search options, and this tutorial won't be able to cover all of them. But we can cover some of the most common types of queries.
+
+==== Search for a Single Term
+
+To search for a term, enter it as the `q` param value in box in the Solr Admin UI Query screen, replacing `\*:*` with the term you want to find. Enter "foundation" and hit btn:[Execute Query] again.
+
+If you prefer cURL, enter something like this:
+
+`curl "http://localhost:8983/solr/techproducts/select?q=foundation"`
+
+You'll see something like this:
+
+[source,json]
+{
+  "responseHeader":{
+    "zkConnected":true,
+    "status":0,
+    "QTime":8,
+    "params":{
+      "q":"foundation"}},
+  "response":{"numFound":4,"start":0,"maxScore":2.7879646,"docs":[
+      {
+        "id":"0553293354",
+        "cat":["book"],
+        "name":"Foundation",
+        "price":7.99,
+        "price_c":"7.99,USD",
+        "inStock":true,
+        "author":"Isaac Asimov",
+        "author_s":"Isaac Asimov",
+        "series_t":"Foundation Novels",
+        "sequence_i":1,
+        "genre_s":"scifi",
+        "_version_":1574100232473411586,
+        "price_c____l_ns":799}]
+}}
+
+The response indicates that there are 4 hits (`"numFound":4`). We've only included one document here, but since 4 hits is lower than the `rows` parameter default of 10 to be returned, you should see all of them.
+
+Note the `responseHeader` before the documents. This header will include the parameters you have set for the search. By default it shows only the parameters _you_ have set for this query, which in this case is only your query term.
+
+The documents we got back include all the fields for each document that were indexed. This is, again, default behavior. If you want to restrict the fields in the response, you can use the `fl` param, which takes a comma-separated list of field names. This is one of the available fields on the query form in the Admin UI.
+
+Put "id" (without quotes) in the "fl" box and hit btn:[Execute Query] again. Or, to specify it with cURL:
+
+`curl "http://localhost:8983/solr/techproducts/select?q=foundation&fl=id"`
+
+You should only see the IDs of the matching records returned.
+
+==== Field Search
+
+All Solr queries look for documents using some field. Often you want to query across multiple fields at the same time, and this is what we've done so far with the "foundation" query. This is possible with the use of copy fields, which are set up already with this set of configurations. We'll cover that more later.
+
+Sometimes, though, you want to limit your query to a single field. This can make your queries more efficient and the results more relevant for users.
+
+Much of the data in our small sample data set is related to products. Let's say we want to find all the "electronics" products in the index. In the Query screen, enter "electronics" (without quotes) in the `q` box and hit btn:[Execute Query]. You should get 14 results, such as:
+
+[source,json]
+{
+  "responseHeader":{
+    "zkConnected":true,
+    "status":0,
+    "QTime":6,
+    "params":{
+      "q":"electronics"}},
+  "response":{"numFound":14,"start":0,"maxScore":1.5579545,"docs":[
+      {
+        "id":"IW-02",
+        "name":"iPod & iPod Mini USB 2.0 Cable",
+        "manu":"Belkin",
+        "manu_id_s":"belkin",
+        "cat":["electronics",
+          "connector"],
+        "features":["car power adapter for iPod, white"],
+        "weight":2.0,
+        "price":11.5,
+        "price_c":"11.50,USD",
+        "popularity":1,
+        "inStock":false,
+        "store":"37.7752,-122.4232",
+        "manufacturedate_dt":"2006-02-14T23:55:59Z",
+        "_version_":1574100232554151936,
+        "price_c____l_ns":1150}]
+}}
+
+This search finds all documents that contain the term "electronics" anywhere in the indexed fields. However, we can see from the above there is a `cat` field (for "category"). If we limit our search for only documents with the category "electronics", the results will be more precise for our users.
+
+Update your query in the `q` field of the Admin UI so it's `cat:electronics`. Now you get 12 results:
+
+[source,json]
+{
+  "responseHeader":{
+    "zkConnected":true,
+    "status":0,
+    "QTime":6,
+    "params":{
+      "q":"cat:electronics"}},
+  "response":{"numFound":12,"start":0,"maxScore":0.9614112,"docs":[
+      {
+        "id":"SP2514N",
+        "name":"Samsung SpinPoint P120 SP2514N - hard drive - 250 GB - ATA-133",
+        "manu":"Samsung Electronics Co. Ltd.",
+        "manu_id_s":"samsung",
+        "cat":["electronics",
+          "hard drive"],
+        "features":["7200RPM, 8MB cache, IDE Ultra ATA-133",
+          "NoiseGuard, SilentSeek technology, Fluid Dynamic Bearing (FDB) motor"],
+        "price":92.0,
+        "price_c":"92.0,USD",
+        "popularity":6,
+        "inStock":true,
+        "manufacturedate_dt":"2006-02-13T15:26:37Z",
+        "store":"35.0752,-97.032",
+        "_version_":1574100232511160320,
+        "price_c____l_ns":9200}]
+     }}
+
+Using cURL this query would look like this:
+
+`curl "http://localhost:8983/solr/techproducts/select?q=cat:electronics"`
+
+==== Phrase Search
+
+To search for a multi-term phrase, enclose it in double quotes: `q="multiple terms here"`. For example, to search for "CAS latency" by entering that phrase in quotes to the `q` box in the Admin UI.
+
+If you're following along with cURL, note that the space between terms must be converted to "+" in a URL, as so:
+
+`curl "http://localhost:8983/solr/techproducts/select?q=\"CAS+latency\""`
+
+We get 2 results:
+
+[source,json]
+{
+  "responseHeader":{
+    "zkConnected":true,
+    "status":0,
+    "QTime":7,
+    "params":{
+      "q":"\"CAS latency\""}},
+  "response":{"numFound":2,"start":0,"maxScore":5.937691,"docs":[
+      {
+        "id":"VDBDB1A16",
+        "name":"A-DATA V-Series 1GB 184-Pin DDR SDRAM Unbuffered DDR 400 (PC 3200) System Memory - OEM",
+        "manu":"A-DATA Technology Inc.",
+        "manu_id_s":"corsair",
+        "cat":["electronics",
+          "memory"],
+        "features":["CAS latency 3,   2.7v"],
+        "popularity":0,
+        "inStock":true,
+        "store":"45.18414,-93.88141",
+        "manufacturedate_dt":"2006-02-13T15:26:37Z",
+        "payloads":"electronics|0.9 memory|0.1",
+        "_version_":1574100232590852096},
+      {
+        "id":"TWINX2048-3200PRO",
+        "name":"CORSAIR  XMS 2GB (2 x 1GB) 184-Pin DDR SDRAM Unbuffered DDR 400 (PC 3200) Dual Channel Kit System Memory - Retail",
+        "manu":"Corsair Microsystems Inc.",
+        "manu_id_s":"corsair",
+        "cat":["electronics",
+          "memory"],
+        "features":["CAS latency 2,  2-3-3-6 timing, 2.75v, unbuffered, heat-spreader"],
+        "price":185.0,
+        "price_c":"185.00,USD",
+        "popularity":5,
+        "inStock":true,
+        "store":"37.7752,-122.4232",
+        "manufacturedate_dt":"2006-02-13T15:26:37Z",
+        "payloads":"electronics|6.0 memory|3.0",
+        "_version_":1574100232584560640,
+        "price_c____l_ns":18500}]
+  }}
+
+==== Combining Searches
+
+By default, when you search for multiple terms and/or phrases in a single query, Solr will only require that one of them is present in order for a document to match. Documents containing more terms will be sorted higher in the results list.
+
+You can require that a term or phrase is present by prefixing it with a `+`; conversely, to disallow the presence of a term or phrase, prefix it with a `-`.
+
+To find documents that contain both terms "electronics" and "music", enter `+electronics +music` in the `q` box in the Admin UI Query tab.
+
+If you're using cURL, you must encode the `+` character because it has a reserved purpose in URLs (encoding the space character). The encoding for `+` is `%2B`:
+
+`curl "http://localhost:8983/solr/techproducts/select?q=%2Belectronics%20%2Bmusic"`
+
+You should only get a single result.
+
+To search for documents that contain the term "electronics" but *don't* contain the term "music", enter `+electronics -music` in the `q` box in the Admin UI. For cURL, again, URL encode "+" as "%2B":
+
+`curl "http://localhost:8983/solr/techproducts/select?q=%2Belectronics+-music"`
+
+This time you get 13 results.
+
+==== More Information on Searching
+
+We have only scratched the surface of the search options available in Solr. For more Solr search options, see the section on <<searching.adoc#searching,Searching>>.
+
+=== Exercise 1 Wrap Up
+
+At this point, you've seen how Solr can index data and have done some basic queries. You can choose now to continue to the next example which will introduce more Solr concepts, such as faceting results and managing your schema, or you can strike out on your own.
+
+If you decide not to continue with this tutorial, the data we've indexed so far is likely of little value to you. You can delete your installation and start over, or you can use the `bin/solr` script we started out with to delete this collection:
+
+`bin/solr delete -c techproducts`
+
+And then create a new collection:
+
+`bin/solr create -c <yourCollection>`
+
+To stop both of the Solr nodes we started, issue the command:
+
+`bin/solr stop -all`
+
+For more information on start/stop and collection options with `bin/solr`, see <<solr-control-script-reference.adoc#solr-control-script-reference,Solr Control Script Reference>>.
+
+== Exercise 2: Modify Your Schema and Index Films Data
+
+This section of the tutorial will build on the last one and introduce you to the index schema and Solr's powerful faceting features.
+
+=== Restart Solr
+
+Did you stop Solr after the last exercise? No? Then go ahead.
+
+If you did, though, and need to restart Solr, issue these commands:
+
+`./bin/solr start -c -p 8983 -s example/cloud/node1/solr`
+
+This starts the first node. When it's done start the second node, and tell it how to connect to to ZooKeeper:
+
+`./bin/solr start -c -p 7574 -s example/cloud/node2/solr -z localhost:9983`
+
+=== Create a New Collection
+
+We're going to use a whole new data set in this exercise, so it would be better to have a new collection instead of trying to reuse the one we had before.
+
+One reason for this is we're going to use a feature in Solr called "field guessing", where Solr makes a best attempt at guessing what type of data is in a field while it's indexing it. It also creates new fields in the schema for new fields that it finds. This mode is called "Schemaless". We'll see the benefits and limitations of this approach to help you decide how and where to use it in your real application.
+
+.What is a Schema and Why Do I Need One?
+[sidebar]
+Solr's schema is a single file (in XML) that stores the details about the fields and field types Solr is expected to understand. The schema defines not only the field or field type names, but also any modifications that should happen to a field before it is indexed. For example, if you want to ensure that a user who enters "abc" and a user who enters "ABC" can both find a document containing the term "ABC", you will want to normalize (lower-case it, in this case) "ABC" when it is indexed, and normalize the user query to be sure of a match. These rules are defined in your schema.
++
+Earlier in the tutorial we mentioned copy fields, which are fields made up of data that originated from other fields. You can also define dynamic fields, which use wildcards (such as `*_t` or `*_s`) to dynamically create fields of a specific field type. These types of rules are also defined in the schema.
+
+When you initially started Solr in the first exercise, you had a choice of a ConfigSet to use. The one you chose had a schema that was pre-defined for the data you later indexed. This time, you're going to use a ConfigSet that has a very minimal schema and let Solr figure out from our data what fields to add.
+
+The data you're going to index is related to films, so start by creating a collection named "films" that uses the `_default` ConfigSet:
+
+`bin/solr create -c films -s 2 -rf 2`
+
+Whoa, wait. You didn't specify a ConfigSet! That's fine, the `_default` is appropriately named, since it's the default and is used if you don't specify one at all.
+
+You did, however, set two parameters `-s` and `-rf`. Those are the number of shards to split the collection across (2) and how many replicas to create (2). This is the same as the options we chose with the interactive example from the first exercise.
+
+You should see output like:
+
+[source,subs="verbatim,attributes+"]
+----
+WARNING: Using _default configset. Data driven schema functionality is enabled by default, which is
+         NOT RECOMMENDED for production use.
+
+         To turn it off:
+            curl http://localhost:7574/solr/films/config -d '{"set-user-property": {"update.autoCreateFields":"false"}}'
+
+Connecting to ZooKeeper at localhost:9983 ...
+INFO  - 2017-07-27 15:07:46.191; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
+Uploading /{solr-docs-version}.0/server/solr/configsets/_default/conf for config films to ZooKeeper at localhost:9983
+
+Creating new collection 'films' using command:
+http://localhost:7574/solr/admin/collections?action=CREATE&name=films&numShards=2&replicationFactor=2&maxShardsPerNode=2&collection.configName=films
+
+{
+  "responseHeader":{
+    "status":0,
+    "QTime":3830},
+  "success":{
+    "192.168.0.110:8983_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":2076},
+      "core":"films_shard2_replica_n1"},
+    "192.168.0.110:7574_solr":{
+      "responseHeader":{
+        "status":0,
+        "QTime":2494},
+      "core":"films_shard1_replica_n2"}}}
+----
+
+The first thing the command printed was a warning about not using this ConfigSet in production. That's due to some of the limitations we'll cover shortly.
+
+Otherwise, though, the collection should be created. If we go to the Admin UI at http://localhost:8983/solr/#/films/collection-overview we should see the overview screen.
+
+==== Preparing Schemaless for Data
+
+There are two parallel things happening with our schema.
+
+First, we are using a "managed schema", which is configured to only be modified by Solr's Schema API. That means we should not hand-edit it. Solr's Schema API allows us to make changes to fields, field types, and other types of schema rules.
+
+Second, we are using "field guessing", which is configured in the `solrconfig.xml` file, which has most of Solr's various configuration settings. This field guessing is designed to allow us to start using Solr without having to define all the fields we think will be in our documents before trying to index them. This is why we call it "schemaless", because you can start quickly and let Solr create fields for you as it encounters fields in documents.
+
+Sounds great! Well, not really, there are limitations. It's a bit brute force still, and if it guesses wrong, you can't change much about a field after data has been indexed without having to reindex it. If we only have a few thousand documents that might not be bad, but if you have millions and millions of documents or, worse, don't have access to the original data anymore, this can be a real problem.
+
+For these reasons, the Solr community does not recommend going to production without a schema that you have defined yourself. By this we mean that the schemaless features are fine to start with, but you should still always make sure your schema matches your expectations for how you want your data indexed and how users are going to try to query it.
+
+It is possible to mix schemaless features with a defined schema. Using the Schema API, you can define a few fields that you know you want to control, and let Solr guess others that are less important or which you are confident (through testing) will be guessed to your satisfaction. That's what we're going to do here.
+
+===== Create the "names" Field
+The films data we are going to index has a small number of fields: an ID, director names, film name, release date, and genres. If you look at one of the files in `example/films`, you'll see the first film is named _.45_, released in 2006. As the first record, Solr is going to guess the field type based on the data in the record. If we go ahead and index this data, that first film is going to indicate to Solr that that field type is a "float" numeric field, and will create a "name" field with a type `FloatPointField`. All data after this record will be expected to be a float.
+
+Well, that's not going to work. We have titles like _A Mighty Wind_ and _Chicken Run_, which are strings - decidedly not numeric and not floats. What will happen is later titles will cause an error and indexing will fail. That's not a great way to start.
+
+What we can do is set up the "name" field in Solr before we index the data to be sure that it always interprets it as a string. At the command line, enter this curl command:
+
+[source,bash]
+curl -X POST -H 'Content-type:application/json' --data-binary '{"add-field" : {"name":"name","type":"text_general","multiValued":false,"stored":true}}' http://localhost:8983/solr/films/schema
+
+This command uses the Schema API to explicitly define a field named "name" that has the field type "text_general" (a text field). It will not be permitted to have multiple values, but it will be stored (meaning it can be retrieved by queries).
+
+===== Create a "catchall" Copy Field
+
+In the first exercise when we queried the documents we had indexed, we didn't have to specify a field to search because the configuration we used was set up to copy fields into a `text` field, and that field was the default when no other field was defined in the query.
+
+The configuration we're using now is missing part of that configuration. We would need to define a field to search on for every one of our queries. We can, however, set up what we call a catchall field by defining a copy field that will take all data from all fields and index it into a field named `\_text_`. Let's do that now.
+
+At the command line, use the Schema API again to define a copy field:
+
+[source,bash]
+curl -X POST -H 'Content-type:application/json' --data-binary '{"add-copy-field" : {"source":"*","dest":"_text_"}}' http://localhost:8983/solr/films/schema
+
+What this does is make a copy of all fields and put the data into the "\_text_" field.
+
+TIP: It can be very expensive to do this with your production data because it tell Solr to effectively index everything twice. It will make indexing slower, and also make your index larger. With your production data, you will want to be sure you only copy fields that really warrant it for your application.
+
+OK, now we're ready to index the data and start playing around with it.
+
+=== Index Sample Film Data
+
+The films data we will index is located in the `example/films` directory of your installation. It comes in three formats: JSON, XML and CSV. Pick one of the formats and index it into the "films" collection:
+
+.To Index JSON Format
+[source,subs="verbatim,attributes+"]
+----
+bin/post -c films example/films/films.json
+
+C:\solr-{solr-docs-version}.0> java -jar -Dc=films -Dauto example\exampledocs\post.jar example\films\*.json
+----
+
+.To Index XML Format
+[source,subs="verbatim,attributes+"]
+----
+bin/post -c films example/films/films.xml
+
+C:\solr-{solr-docs-version}.0> java -jar -Dc=films -Dauto example\exampledocs\post.jar example\films\*.xml
+----
+
+.To Index CSV Format
+[source,subs="verbatim,attributes+"]
+----
+bin/post -c films example/films/films.csv -params "f.genre.split=true&f.directed_by.split=true&f.genre.separator=|&f.directed_by.separator=|"
+
+C:\solr-{solr-docs-version}.0> java -jar -Dc=films -Dparams=f.genre.split=true&f.directed_by.split=true&f.genre.separator=|&f.directed_by.separator=| -Dauto example\exampledocs\post.jar example\films\*.csv
+----
+
+Each commands includes these main parameters:
+
+* `-c films`: this is the Solr collection to index data to.
+* `example/films/films.json` (or `films.xml` or `films.csv`): this is the path to the data file to index. You could simply supply the directory where this file resides, but since you know the format you want to index, specifying the exact file for that format is more efficient.
+
+Note the CSV command includes extra parameters. This is to ensure multi-valued entries in the "genre" and "directed_by" columns are split by the pipe (`|`) character, used in this file as a separator. Telling Solr to split these columns this way will ensure proper indexing of the data.
+
+Each command will produce output similar to the below seen while indexing JSON:
+
+[source,bash,subs="verbatim,attributes"]
+----
+$ ./bin/post -c films example/films/films.json
+/bin/java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=films -Ddata=files org.apache.solr.util.SimplePostTool example/films/films.json
 SimplePostTool version 5.0.0
-Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
+Posting files to [base] url http://localhost:8983/solr/films/update...
 Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
-POSTing file books.json (application/json) to [base]/json/docs
+POSTing file films.json (application/json) to [base]/json/docs
 1 files indexed.
-COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
-Time spent: 0:00:00.493
+COMMITting Solr index changes to http://localhost:8983/solr/films/update...
+Time spent: 0:00:00.878
+----
 
-For more information on indexing Solr JSON, see the section <<uploading-data-with-index-handlers.adoc#solr-style-json,Solr-Style JSON>>.
+Hooray!
 
-To flatten (and/or split) and index arbitrary structured JSON, a topic beyond this quick start guide, check out <<transforming-and-indexing-custom-json.adoc#transforming-and-indexing-custom-json,Transforming and Indexing Custom JSON>>.
+If you go to the Query screen in the Admin UI for films (http://localhost:8983/solr/#/films/query) and hit kbd:[Execute Query] you should see 1100 results, with the first 10 returned to the screen.
 
-=== Indexing CSV (Comma/Column Separated Values)
+Let's do a query to see if the "catchall" field worked properly. Enter "comedy" in the `q` box and hit kbd:[Execute Query] again. You should see get 417 results. Feel free to play around with other searches before we move on to faceting.
 
-A great conduit of data into Solr is via CSV, especially when the documents are homogeneous by all having the same set of fields. CSV can be conveniently exported from a spreadsheet such as Excel, or exported from databases such as MySQL. When getting started with Solr, it can often be easiest to get your structured data into CSV format and then index that into Solr rather than a more sophisticated single step operation.
+[[tutorial-faceting]]
+=== Faceting
 
-Using `bin/post` index the included example CSV file:
+One of Solr's most popular features is faceting. Faceting allows the search results to be arranged into subsets (or buckets, or categories), providing a count for each subset. There are several types of faceting: field values, numeric and date ranges, pivots (decision tree), and arbitrary query faceting.
 
-`bin/post -c gettingstarted example/exampledocs/books.csv`
+==== Field Facets
 
-In your terminal you'll see:
+In addition to providing search results, a Solr query can return the number of documents that contain each unique value in the whole result set.
 
-[source,bash,subs="verbatim,attributes+"]
-/solr-{solr-docs-version}.0:$ bin/post -c gettingstarted example/exampledocs/books.csv
-java -classpath /solr-{solr-docs-version}.0/dist/solr-core-{solr-docs-version}.0.jar -Dauto=yes -Dc=gettingstarted -Ddata=files org.apache.solr.util.SimplePostTool example/exampledocs/books.csv
-SimplePostTool version 5.0.0
-Posting files to [base] url http://localhost:8983/solr/gettingstarted/update...
-Entering auto mode. File endings considered are xml,json,jsonl,csv,pdf,doc,docx,ppt,pptx,xls,xlsx,odt,odp,ods,ott,otp,ots,rtf,htm,html,txt,log
-POSTing file books.csv (text/csv) to [base]
-1 files indexed.
-COMMITting Solr index changes to http://localhost:8983/solr/gettingstarted/update...
-Time spent: 0:00:00.109
+On the Admin UI Query tab, if you check the `facet` checkbox, you'll see a few facet-related options appear:
 
-For more information, see the section <<uploading-data-with-index-handlers.adoc#csv-formatted-index-updates,CSV Formatted Index Updates>>.
+.Facet options in the Query screen
+image::images/solr-quick-start/quickstart-admin-ui-facet-options.png[Solr Quick Start: Query tab facet options]
 
-=== Other Indexing Techniques
+To see facet counts from all documents (`q=\*:*`): turn on faceting (`facet=true`), and specify the field to facet on via the `facet.field` param. If you only want facets, and no document contents, specify `rows=0`. The `curl` command below will return facet counts for the `genre_str` field:
 
-* Import records from a database using the <<uploading-structured-data-store-data-with-the-data-import-handler.adoc#uploading-structured-data-store-data-with-the-data-import-handler,Data Import Handler (DIH)>>.
+`curl '\http://localhost:8983/solr/gettingstarted/select?q=*:*&rows=0&facet=true&facet.field=genre_str'`
 
-* Use <<using-solrj.adoc#using-solrj,SolrJ>> for JVM-based languages or
-other <<client-apis.adoc#client-apis,Solr clients>> to programmatically create documents to send to Solr.
+In your terminal, you'll see something like:
 
-* Use the Admin UI <<documents-screen.adoc#documents-screen,Documents tab>> (at http://localhost:8983/solr/#/gettingstarted/documents) to paste in a document to be indexed, or select `Document Builder` from the `Document Type` dropdown to build a document one field at a time. Click on the `Submit Document` button below the form to index your document.
+[source,json]
+{
+  "responseHeader":{
+    "zkConnected":true,
+    "status":0,
+    "QTime":11,
+    "params":{
+      "q":"*:*",
+      "facet.field":"genre_str",
+      "rows":"0",
+      "facet":"true"}},
+  "response":{"numFound":1100,"start":0,"maxScore":1.0,"docs":[]
+  },
+  "facet_counts":{
+    "facet_queries":{},
+    "facet_fields":{
+      "genre_str":[
+        "Drama",552,
+        "Comedy",389,
+        "Romance Film",270,
+        "Thriller",259,
+        "Action Film",196,
+        "Crime Fiction",170,
+        "World cinema",167]},
+        "facet_ranges":{},
+        "facet_intervals":{},
+        "facet_heatmaps":{}}}
 
-== Updating Data
+We've truncated the output here a little bit, but in the `facet_counts` section, you see by default you get a count of the number of documents using each genre for every genre in the index. Solr has a parameter `facet.mincount` that you could use to limit the facets to only those that contain a certain number of documents (this parameter is not shown in the UI). Or, perhaps you do want all the facets, and you'll let your application's front-end control how it's displayed to users.
+
+If you wanted to control the number of items in a bucket, you could do something like this:
+
+`curl \http://localhost:8983/solr/films/select?=&q=*:*&facet.field=genre_str&facet.mincount=200&facet=on&rows=0`
+
+You should only see 4 facets returned.
+
+There are a great deal of other parameters available to help you control how Solr constructs the facets and facet lists. We'll cover some of them in this exercise, but you can also see the section <<faceting.adoc#faceting,Faceting>> for more detail.
+
+==== Range Facets
+
+For numerics or dates, it's often desirable to partition the facet counts into ranges rather than discrete values. A prime example of numeric range faceting, using the example techproducts data from our previous exercise, is `price`.  In the `/browse` UI, it looks like this:
+
+.Range facets
+image::images/solr-quick-start/quickstart-range-facet.png[Solr Quick Start: Range facets]
+
+The films data includes the release date for films, and we could use that to create date range facets, which are another common use for range facets.
+
+If we construct a query that looks like this:
+
+[source,bash]
+curl 'http://localhost:8983/solr/films/select?q=*:*&rows=0' \
+    '&facet=true' \
+    '&facet.range=initial_release_date' \
+    '&facet.range.start=NOW-20YEAR' \
+    '&facet.range.end=NOW' \
+    '&facet.range.gap=%2B1YEAR'
+
+This will request all films and ask for them to be grouped by year starting with 20 years ago (our earliest release date is in 2000) and ending today. Note that this query again URL encodes a `+` as `%2B`.
+
+In the terminal you will see:
+
+[source,json]
+{
+  "responseHeader":{
+    "zkConnected":true,
+    "status":0,
+    "QTime":8,
+    "params":{
+      "facet.range":"initial_release_date",
+      "facet.limit":"300",
+      "q":"*:*",
+      "facet.range.gap":"+1YEAR",
+      "rows":"0",
+      "facet":"on",
+      "facet.range.start":"NOW-20YEAR",
+      "facet.range.end":"NOW"}},
+  "response":{"numFound":1100,"start":0,"maxScore":1.0,"docs":[]
+  },
+  "facet_counts":{
+    "facet_queries":{},
+    "facet_fields":{},
+    "facet_ranges":{
+      "initial_release_date":{
+        "counts":[
+          "1997-07-28T17:12:06.919Z",0,
+          "1998-07-28T17:12:06.919Z",0,
+          "1999-07-28T17:12:06.919Z",48,
+          "2000-07-28T17:12:06.919Z",82,
+          "2001-07-28T17:12:06.919Z",103,
+          "2002-07-28T17:12:06.919Z",131,
+          "2003-07-28T17:12:06.919Z",137,
+          "2004-07-28T17:12:06.919Z",163,
+          "2005-07-28T17:12:06.919Z",189,
+          "2006-07-28T17:12:06.919Z",92,
+          "2007-07-28T17:12:06.919Z",26,
+          "2008-07-28T17:12:06.919Z",7,
+          "2009-07-28T17:12:06.919Z",3,
+          "2010-07-28T17:12:06.919Z",0,
+          "2011-07-28T17:12:06.919Z",0,
+          "2012-07-28T17:12:06.919Z",1,
+          "2013-07-28T17:12:06.919Z",1,
+          "2014-07-28T17:12:06.919Z",1,
+          "2015-07-28T17:12:06.919Z",0,
+          "2016-07-28T17:12:06.919Z",0],
+        "gap":"+1YEAR",
+        "start":"1997-07-28T17:12:06.919Z",
+        "end":"2017-07-28T17:12:06.919Z"}},
+    "facet_intervals":{},
+    "facet_heatmaps":{}}}
+
+==== Pivot Facets
+
+Another faceting type is pivot facets, also known as "decision trees", allowing two or more fields to be nested for all the various possible combinations. Using the example films data, pivot facets can be used to see how many of the films in the "Drama" category (the `genre_str` field) are directed by a director. Here's how to get at the raw data for this scenario:
+
+`curl 'http://localhost:8983/solr/films/select?q=*:*&rows=0&facet=on&facet.pivot=genre_str,directed_by_str'`
+
+This results in the following response (trimmed to just the book category output), which says out of 14 items in the "book" category, 12 are in stock and 2 are not in stock:
+
+[source,json]
+{"responseHeader":{
+    "zkConnected":true,
+    "status":0,
+    "QTime":1147,
+    "params":{
+      "q":"*:*",
+      "facet.pivot":"genre_str,directed_by_str",
+      "rows":"0",
+      "facet":"on"}},
+  "response":{"numFound":1100,"start":0,"maxScore":1.0,"docs":[]
+  },
+  "facet_counts":{
+    "facet_queries":{},
+    "facet_fields":{},
+    "facet_ranges":{},
+    "facet_intervals":{},
+    "facet_heatmaps":{},
+    "facet_pivot":{
+      "genre_str,directed_by_str":[{
+          "field":"genre_str",
+          "value":"Drama",
+          "count":552,
+          "pivot":[{
+              "field":"directed_by_str",
+              "value":"Ridley Scott",
+              "count":5},
+            {
+              "field":"directed_by_str",
+              "value":"Steven Soderbergh",
+              "count":5},
+            {
+              "field":"directed_by_str",
+              "value":"Michael Winterbottom",
+              "count":4}}]}]}}}
+
+We've truncated this output as well - you will see a lot of genres and directors in your screen.
+
+=== Exercise 2 Wrap Up
+
+In this exercise, we learned a little bit more about how Solr organizes data in the indexes, and how to work with the Schema API to manipulate the schema file. We also learned a bit about facets in Solr, including range facets and pivot facets. In both of these things, we've only scratched the surface of the available options. If you can dream it, it might be possible!
+
+Like our previous exercise, this data may not be relevant to your needs. We can clean up our work by deleting the collection:
+
+`bin/solr delete -c films`
+
+== Exercise 3: Index Your Own Data
+
+For this last exercise, you will work with your own data. This can be files on your local hard drive, a set of data you have worked with before, or maybe a sample of the data you intend to index to Solr for your production application. This exercise is intended to get you thinking about what you will need to do for your application:
+
+* What sorts of data do you need to index?
+* What will you need to do to prepare Solr for your data (such as, create specific fields, set up copy fields, determine analysis rules, etc.)
+* What kinds of search options do you want to provide to users?
+* How much testing will you need to do to ensure everything works the way you expect?
+
+=== Create Your Own Collection
+
+Before you get started, create a new collection, named whatever you'd like. In this example, the collection will be named "localDocs"; replace that value with whatever name you choose.
+
+`./bin/solr create -c localDocs -s 2 -rf 2`
+
+Again, as we saw from exercise 2 above, this will use the `_default` ConfigSet and all the schemaless features it provides. This may cause problems with our data.
+
+=== Indexing Ideas
+
+Local Files with bin/post::
+If you have a local directory of files, the Post Tool (`bin/post`) can index a directory of files. We saw this in action in our first exercise.
+
+We used only JSON, XML and CSV in our exercises, but the Post Tool can also handle HTML, PDF, Microsoft Office formats (such as MS Word), plain text, and more.
+
+In this example, assume there is a directory named "Documents" locally. To index it, we would issue a command like this:
+
+`./bin/post -c localDocs ~/Documents`
+
+You may get errors as it works through your documents. These might be caused by the field guessing, or the file type may not be supported. Indexing content such as this demonstrates the need to plan Solr for your data, which requires understanding it and perhaps also some trial & error.
+
+DataImportHandler::
+Solr includes a tool called the <<uploading-structured-data-store-data-with-the-data-import-handler.adoc#uploading-structured-data-store-data-with-the-data-import-handler,Data Import Handler (DIH)>> which can connect to databases (if you have a jdbc driver), mail servers, or other structured data sources. There are several examples included for feeds, GMail, and a small HSQL database.
+
+SolrJ::
+Use <<using-solrj.adoc#using-solrj,SolrJ>> for JVM-based languages or other <<client-apis.adoc#client-apis,Solr clients>> to programmatically create documents to send to Solr.
+
+Documents Screen::
+Use the Admin UI <<documents-screen.adoc#documents-screen,Documents tab>> (at http://localhost:8983/solr/#/gettingstarted/documents) to paste in a document to be indexed, or select `Document Builder` from the `Document Type` dropdown to build a document one field at a time. Click on the `Submit Document` button below the form to index your document.
+
+=== Updating Data
 
 You may notice that even if you index content in this guide more than once, it does not duplicate the results found. This is because the example Solr schema (a file named either `managed-schema` or `schema.xml`) specifies a `uniqueKey` field called `id`. Whenever you POST commands to Solr to add a document with the same value for the `uniqueKey` as an existing document, it automatically replaces it for you. You can see that that has happened by looking at the values for `numDocs` and `maxDoc` in the core-specific Overview section of the Solr Admin UI.
 
@@ -547,16 +871,27 @@ You may notice that even if you index content in this guide more than once, it d
 
 Go ahead and edit any of the existing example data files, change some of the data, and re-run the PostTool (`bin/post`) command. You'll see your changes reflected in subsequent searches.
 
-== Deleting Data
+=== Deleting Data
 
 You can delete data by POSTing a delete command to the update URL and specifying the value of the document's unique key field, or a query that matches multiple documents (be careful with that one!). Since these commands are smaller, we specify them right on the command line rather than reference a JSON or XML file.
 
 Execute the following command to delete a specific document:
 
-`bin/post -c gettingstarted -d "<delete><id>SP2514N</id></delete>"`
+`bin/post -c localDocs -d "<delete><id>SP2514N</id></delete>"`
 
+To delete all documents, you can use a command like:
 
-=== Spatial
+`bin/post -c localDocs -d "<delete><query>*:*</query></delete>"`
+
+You can also modify the above to only delete documents that match a specific query.
+
+=== Exercise 3 Wrap Up
+
+At this point, you're ready to start working on your own.
+
+Jump ahead to the overall <<Wrapping Up,wrap up>> when you're ready to stop Solr and remove all the examples you worked with and start fresh.
+
+== Spatial Queries
 
 Solr has sophisticated geospatial support, including searching within a specified distance range of a given location (or within a bounding box), sorting by distance, or even boosting results by the distance. Some of the example tech products documents in `example/exampledocs/*.xml` have locations associated with them to illustrate the spatial capabilities. To run the tech products example, see the [techproducts example section](#techproducts). Spatial queries can be combined with any other types of queries, such as in this example of querying for "ipod" within 10 kilometers from San Francisco:
 
@@ -569,16 +904,14 @@ leveraging the `/browse` UI to show a map for each item and allow easy selection
 
 To learn more about Solr's spatial capabilities, see the section <<spatial-search.adoc#spatial-search,Spatial Search>>.
 
-== Wrapping up
+== Wrapping Up
 
 If you've run the full set of commands in this quick start guide you have done the following:
 
 * Launched Solr into SolrCloud mode, two nodes, two collections including shards and replicas
-* Indexed a directory of rich text files
-* Indexed Solr XML files
-* Indexed Solr JSON files
-* Indexed CSV content
-* Opened the admin console, used its query interface to get JSON formatted results
+* Indexed several types of files
+* Used the Schema API to modify your schema
+* Opened the admin console, used its query interface to get results
 * Opened the /browse interface to explore Solr's features in a more friendly and familiar interface
 
 Nice work! The script (see below) to run all of these items took under two minutes! (Your run time may vary, depending on your computer's power and resources available.)
@@ -606,6 +939,8 @@ As you work through this guide, you may want to stop Solr and reset the environm
 
 == Where to next?
 
-For more information on Solr, check out the following resources:
+This Guide will be your best resource for learning more about Solr.
+
+Solr also has a robust community. For more information, check out the following resources:
 
   * See also additional [Resources](http://lucene.apache.org/solr/resources.html)
