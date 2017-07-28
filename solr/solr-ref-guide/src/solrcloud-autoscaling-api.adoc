@@ -1,0 +1,77 @@
+= SolrCloud AutoScaling API
+:page-shortname: solrcloud-autoscaling-api
+:page-permalink: solrcloud-autoscaling-api.html
+:page-toclevels: 2
+:page-tocclass: right
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+The AutoScaling API can be used to read, set and remove cluster policy, preferences, triggers, listeners as well as for diagnostics on the state of the cluster.
+
+[[read]]
+== Read API
+
+The AutoScaling read API is available at `/solr/admin/autoscaling` as well as on `/v2/cluster/autoscaling` path. It returns information about the configured cluster preferences, policies, triggers and listeners.
+
+=== Diagnostics
+
+__TODO__
+
+== Write API
+
+[[set-cluster-preferences]]
+=== set-cluster-preferences: Create and modify cluster preferences
+
+__TODO__
+
+[[set-cluster-policy]]
+=== set-cluster-policy: Create and modify cluster preferences
+
+__TODO__
+
+[[set-policy]]
+=== set-policy: Create and modify collection specific policy
+
+__TODO__
+
+[[remove-policy]]
+=== remove-policy: Remove a collection specific policy
+
+__TODO__
+
+[[set-trigger]]
+=== set-trigger: Create and modify a trigger
+
+__TODO__
+
+
+[[remove-trigger]]
+=== remove-trigger: Remove a trigger
+
+__TODO__
+
+
+[[set-listener]]
+=== set-listener: Create and modify a listener
+
+__TODO__
+
+
+[[remove-listener]]
+=== remove-listener: Remove a listener
+
+__TODO__

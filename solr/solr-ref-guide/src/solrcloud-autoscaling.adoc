@@ -1,0 +1,29 @@
+= SolrCloud AutoScaling
+:page-shortname: solrcloud-autoscaling
+:page-permalink: solrcloud-autoscaling.html
+:page-children: solrcloud-autoscaling-overview, solrcloud-autoscaling-api, solrcloud-autoscaling-policy-preferences, solrcloud-autoscaling-triggers, solrcloud-autoscaling-listeners, solrcloud-autoscaling-auto-add-replicas
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+This section describes the autoscaling features of SolrCloud. It covers the following topics:
+
+* <<solrcloud-autoscaling-overview.adoc#solrcloud-autoscaling-overview,Overview of AutoScaling in SolrCloud>>
+* <<solrcloud-autoscaling-api.adoc#solrcloud-autoscaling-api,SolrCloud AutoScaling API>>
+* <<solrcloud-autoscaling-policy-preferences.adoc#solrcloud-autoscaling-policy-preferences,SolrCloud AutoScaling Policy and Preferences>>
+* <<solrcloud-autoscaling-triggers.adoc#solrcloud-autoscaling-triggers,SolrCloud AutoScaling Triggers>>
+* <<solrcloud-autoscaling-listeners.adoc#solrcloud-autoscaling-listeners,SolrCloud AutoScaling Listeners>>
+* <<solrcloud-autoscaling-auto-add-replicas.adoc#solrcloud-autoscaling-auto-add-replicas,SolrCloud AutoScaling - Automatically Adding Replicas>>
