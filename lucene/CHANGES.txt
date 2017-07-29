@@ -16,6 +16,12 @@ Changes in Runtime Behavior
 ======================= Lucene 7.1.0 =======================
 (No Changes)
 
+Optimizations
+
+* LUCENE-7905: Optimize how OrdinalMap (used by
+  SortedSetDocValuesFacetCounts and others) builds its map (Robert
+  Muir, Adrien Grand, Mike McCandless)
+
 ======================= Lucene 7.0.0 =======================
 
 New Features
@@ -139,6 +145,9 @@ Improvements
 
 * LUCENE-7730: More accurate encoding of the length normalization factor
   thanks to the removal of index-time boosts. (Adrien Grand)
+
+* LUCENE-7901: Original Highlighter now eagerly throws an exception if you
+  provide components that are null. (Jason Gerlowski, David Smiley)
 
 Optimizations
 
