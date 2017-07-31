@@ -44,7 +44,7 @@ When a node, shard or collection does not satisfy the policy, we call it a *viol
 
 Sometimes a collection may need conditions in addition to those specified in the cluster policy. In such cases, we can create named policies that can be used for specific collections. Firstly, we can use the `set-policy` API to create a new policy and then specify `policy=<policy_name>` parameter to the create collection API.
 
-`http://localhost:8983/solr/admin/collections?action=CREATE&name=coll1&numShards=1&replicationFactor=2&policy=policy1`
+`/admin/collections?action=CREATE&name=coll1&numShards=1&replicationFactor=2&policy=policy1`
 
 The above create collection command will associate a policy named policy1 with the collection named coll1. Only a single policy may be associated with a collection.
 
