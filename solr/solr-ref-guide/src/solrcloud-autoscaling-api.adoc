@@ -24,11 +24,109 @@ The AutoScaling API can be used to read, set and remove cluster policy, preferen
 
 == Read API
 
-The AutoScaling read API is available at `/solr/admin/autoscaling` as well as on `/v2/cluster/autoscaling` path. It returns information about the configured cluster preferences, cluster policy and collection specific policies.
+The AutoScaling read API is available at `/admin/autoscaling` as well as on `/v2/cluster/autoscaling` path. It returns information about the configured cluster preferences, cluster policy and collection specific policies.
 
-=== Diagnostics
+This API does not take any parameters.
 
-__TODO__
+=== Read API response
+
+The output will contain cluster preferences, cluster policy and collection specific policies.
+
+=== Examples using Read API
+
+*Output*
+
+[source,json]
+----
+
+----
+
+== Diagnostics
+
+The diagnostics API shows the violations, if any, of all conditions in the cluster or collection specific policy. It is available at the `/admin/autoscaling/diagnostics` path.
+
+This API does not take any parameters.
+
+=== Diagnostics API response
+
+The output will contain `sortedNodes` which is a list of nodes in the cluster sorted according to overall load in descending order (as determined by the preferences) and `violations` which is a list of nodes along with the conditions that they violate.
+
+=== Diagnostics API examples
+
+Here is an example with no violations but in the `sortedNodes` section, we can see that the first node is most loaded (according to number of cores):
+
+[source,json]
+----
+{
+    "responseHeader": {
+        "status": 0,
+        "QTime": 65
+    },
+    "diagnostics": {
+        "sortedNodes": [
+            {
+                "node": "127.0.0.1:8983_solr",
+                "cores": 3
+            },
+            {
+                "node": "127.0.0.1:7574_solr",
+                "cores": 2
+            }
+        ],
+        "violations": []
+    },
+    "WARNING": "This response format is experimental.  It is likely to change in the future."
+}
+----
+
+Suppose we added a condition to the cluster policy as follows:
+[source,json]
+----
+{ 'replica': '<2', 'shard': '#EACH', 'node': '#ANY'}
+----
+However, since the first node in the first example had more than 1 replica for a shard already, then the diagnostics API will return:
+[source,json]
+----
+{
+    "responseHeader": {
+        "status": 0,
+        "QTime": 45
+    },
+    "diagnostics": {
+        "sortedNodes": [
+            {
+                "node": "127.0.0.1:8983_solr",
+                "cores": 3
+            },
+            {
+                "node": "127.0.0.1:7574_solr",
+                "cores": 2
+            }
+        ],
+        "violations": [
+            {
+                "collection": "gettingstarted",
+                "shard": "shard1",
+                "node": "127.0.0.1:8983_solr",
+                "tagKey": "127.0.0.1:8983_solr",
+                "violation": {
+                    "replica": "2",
+                    "delta": 0
+                },
+                "clause": {
+                    "replica": "<2",
+                    "shard": "#EACH",
+                    "node": "#ANY",
+                    "collection": "gettingstarted"
+                }
+            }
+        ]
+    },
+    "WARNING": "This response format is experimental.  It is likely to change in the future."
+}
+----
+
+In the above example the node with port 8983 has two replicas for `shard1` in violation of our policy.
 
 == Write API
 
