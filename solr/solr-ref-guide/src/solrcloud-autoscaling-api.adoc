@@ -1,4 +1,4 @@
-= SolrCloud AutoScaling API
+= SolrCloud Autoscaling API
 :page-shortname: solrcloud-autoscaling-api
 :page-permalink: solrcloud-autoscaling-api.html
 :page-toclevels: 2
@@ -20,15 +20,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-The AutoScaling API can be used to read, set and remove cluster policy, preferences as well as for diagnostics on the state of the cluster.
+The Autoscaling API can be used to manage autoscaling policies and preferences, and to get diagnostics on the state of the cluster.
 
 == Read API
 
-The AutoScaling read API is available at `/admin/autoscaling` as well as on `/v2/cluster/autoscaling` path. It returns information about the configured cluster preferences, cluster policy and collection specific policies.
+The autoscaling Read API is available at `/admin/autoscaling` or `/v2/cluster/autoscaling`. It returns information about the configured cluster preferences, cluster policy and collection-specific policies.
 
 This API does not take any parameters.
 
-=== Read API response
+=== Read API Response
 
 The output will contain cluster preferences, cluster policy and collection specific policies.
 
@@ -54,17 +54,17 @@ The output will contain cluster preferences, cluster policy and collection speci
 }
 ----
 
-== Diagnostics
+== Diagnostics API
 
-The diagnostics API shows the violations, if any, of all conditions in the cluster or collection specific policy. It is available at the `/admin/autoscaling/diagnostics` path.
+The diagnostics API shows the violations, if any, of all conditions in the cluster or collection-specific policy. It is available at the `/admin/autoscaling/diagnostics` path.
 
 This API does not take any parameters.
 
-=== Diagnostics API response
+=== Diagnostics API Response
 
 The output will contain `sortedNodes` which is a list of nodes in the cluster sorted according to overall load in descending order (as determined by the preferences) and `violations` which is a list of nodes along with the conditions that they violate.
 
-=== Diagnostics API examples
+=== Examples Using Diagnostics API
 
 Here is an example with no violations but in the `sortedNodes` section, we can see that the first node is most loaded (according to number of cores):
 
@@ -93,11 +93,14 @@ Here is an example with no violations but in the `sortedNodes` section, we can s
 ----
 
 Suppose we added a condition to the cluster policy as follows:
+
 [source,json]
 ----
-{ "replica": "<2", "shard": "#EACH", "node": "#ANY"}
+{"replica": "<2", "shard": "#EACH", "node": "#ANY"}
 ----
+
 However, since the first node in the first example had more than 1 replica for a shard already, then the diagnostics API will return:
+
 [source,json]
 ----
 {
@@ -145,9 +148,9 @@ In the above example the node with port 8983 has two replicas for `shard1` in vi
 
 The Write API is available at the same `/admin/autoscaling` and `/v2/cluster/autoscaling` endpoints as the read API but can only be used with the *POST* HTTP verb.
 
-The payload of the POST request is a JSON message having commands to set and remove components. Multiple commands can be specified together in the payload. The commands are executed in the order specified and the changes are atomic i.e. either all succeed or none.
+The payload of the POST request is a JSON message with commands to set and remove components. Multiple commands can be specified together in the payload. The commands are executed in the order specified and the changes are atomic, i.e., either all succeed or none.
 
-=== set-cluster-preferences: Create and modify cluster preferences
+=== set-cluster-preferences: Create and Modify Cluster Preferences
 
 The cluster preferences are specified as a list of sort preferences. Multiple sorting preferences can be specified and they are applied in order.
 
@@ -157,19 +160,20 @@ Each preference is a JSON map having the following syntax:
 
 You can see the __TODO__ section to know more about the allowed values for the `sort_order`, `sort_param` and `precision` parameters.
 
-*Input*:
+*Input*
+
 [source,json]
 ----
 {
-	"set-cluster-preferences" : [
-		{ "minimize": "cores"}
+    "set-cluster-preferences" : [
+      {"minimize": "cores"}
 	]
 }
 ----
 
-*Output*:
+*Output*
 
-The output has a key named `result` which either has `success` or `failure` as the value depending on whether the command succeeded or failed.
+The output has a key named `result` which will return either `success` or `failure` depending on whether the command succeeded or failed.
 
 [source,json]
 ----
@@ -183,14 +187,14 @@ The output has a key named `result` which either has `success` or `failure` as t
 }
 ----
 
-==== Example
+==== Example Setting Cluster Preferences
 
 In this example we add cluster preferences that sort on three different parameters:
 
 [source,json]
 ----
 {
-  "cluster-preferences": [
+  "set-cluster-preferences": [
     {
       "minimize": "cores",
       "precision": 2
@@ -207,7 +211,7 @@ In this example we add cluster preferences that sort on three different paramete
 }
 ----
 
-=== set-cluster-policy: Create and modify cluster preferences
+=== set-cluster-policy: Create and Modify Cluster Policies
 
 You can see the __TODO__ section to know more about the allowed values for each condition in the policy.
 
@@ -215,8 +219,8 @@ You can see the __TODO__ section to know more about the allowed values for each 
 [source,json]
 ----
 {
-	"set-cluster-policy" : [
-		{ "replica": "<2", "shard": "#EACH", "node": "#ANY"}
+	"set-cluster-policy": [
+		{"replica": "<2", "shard": "#EACH", "node": "#ANY"}
 	]
 }
 ----
@@ -234,25 +238,28 @@ Output:
 }
 ----
 
-=== set-policy: Create and modify collection specific policy
+=== set-policy: Create and Modify Collection-Specific Policy
 
 This command accepts a map of policy name to the list of conditions for that policy. Multiple named policies can be specified together. A named policy that does not exist already is created and if the named policy accepts already then it is replaced.
 
 You can see the __TODO__ section to know more about the allowed values for each condition in the policy.
 
-*Input*:
+*Input*
+
 [source,json]
 ----
 {
-	"set-policy" : {
-		"policy1": [
-			{"replica": "1", "shard": "#EACH", "port": "8983"}
-		]
-	}
+    "set-policy": {
+      "policy1": [
+        {"replica": "1", "shard": "#EACH", "port": "8983"}
+      ]
+  }
 }
 ----
 
-*Output*:
+*Output*
+
+[source,json]
 ----
 {
     "responseHeader": {
@@ -264,19 +271,18 @@ You can see the __TODO__ section to know more about the allowed values for each 
 }
 ----
 
-=== remove-policy: Remove a collection specific policy
+=== remove-policy: Remove a Collection-Specific Policy
 
 This command accepts a policy name to be removed from Solr. The policy being removed must not be attached to any collection otherwise the command will fail.
 
-*Input*:
+*Input*
 [source,json]
 ----
-{
-	"remove-policy" : "policy1"
-}
+{"remove-policy": "policy1"}
 ----
 
-*Output*:
+*Output*
+[source,json]
 ----
 {
     "responseHeader": {

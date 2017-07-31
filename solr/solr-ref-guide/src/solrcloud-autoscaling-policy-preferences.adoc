@@ -1,4 +1,4 @@
-= SolrCloud AutoScaling Policy and Preferences
+= SolrCloud Autoscaling Policy and Preferences
 :page-shortname: solrcloud-autoscaling-policy-preferences
 :page-permalink: solrcloud-autoscaling-policy-preferences.html
 // Licensed to the Apache Software Foundation (ASF) under one

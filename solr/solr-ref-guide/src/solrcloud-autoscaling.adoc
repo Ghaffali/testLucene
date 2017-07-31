@@ -1,4 +1,4 @@
-= SolrCloud AutoScaling
+= SolrCloud Autoscaling
 :page-shortname: solrcloud-autoscaling
 :page-permalink: solrcloud-autoscaling.html
 :page-children: solrcloud-autoscaling-overview, solrcloud-autoscaling-api, solrcloud-autoscaling-policy-preferences
@@ -19,8 +19,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-This section describes the autoscaling features of SolrCloud. It covers the following topics:
+The goal of autoscaling is to make SolrCloud cluster management easier by providing a way for changes to the cluster to be more automatic and more intelligent.
 
-* <<solrcloud-autoscaling-overview.adoc#solrcloud-autoscaling-overview,Overview of AutoScaling in SolrCloud>>
-* <<solrcloud-autoscaling-api.adoc#solrcloud-autoscaling-api,SolrCloud AutoScaling API>>
-* <<solrcloud-autoscaling-policy-preferences.adoc#solrcloud-autoscaling-policy-preferences,SolrCloud AutoScaling Policy and Preferences>>
+Autoscaling includes an API to manage cluster-wide and collection-specific policies and preferences and a rules syntax to define the guidelines for your cluster. Future Solr releases will include features to utilize the policies and preferences so they perform actions automatically when the rules are violated.
+
+The following sections describe the autoscaling features of SolrCloud:
+
+* <<solrcloud-autoscaling-overview.adoc#solrcloud-autoscaling-overview,Overview of Autoscaling in SolrCloud>>
+* <<solrcloud-autoscaling-api.adoc#solrcloud-autoscaling-api,SolrCloud Autoscaling API>>
+* <<solrcloud-autoscaling-policy-preferences.adoc#solrcloud-autoscaling-policy-preferences,SolrCloud Autoscaling Policy and Preferences>>
