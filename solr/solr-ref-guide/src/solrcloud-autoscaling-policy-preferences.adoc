@@ -18,4 +18,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-TODO
+== Cluster preferences specification
+
+`sort_order`::
+Value can be ‘maximize’ or ‘minimize’. ‘minimize’ sorts the nodes with least value as the least loaded. e.g :  ‘minimize’ : ‘cores’ sorts the nodes with the least number of cores as the least loaded node. ‘maximize’ : ‘freedisk’ sorts the nodes with maximum free disk space as the least loaded node. The objective of the system is to make every node the least loaded. So, it usually targets the ‘most loaded’ node and takes load off of it. In a sort of more loaded to less loaded, minimize is akin to sort in descending order and maximize is akin to sorting in ascending order.
