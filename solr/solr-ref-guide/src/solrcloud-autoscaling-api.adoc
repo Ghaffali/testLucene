@@ -20,11 +20,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-The AutoScaling API can be used to read, set and remove cluster policy, preferences, triggers, listeners as well as for diagnostics on the state of the cluster.
+The AutoScaling API can be used to read, set and remove cluster policy, preferences as well as for diagnostics on the state of the cluster.
 
 == Read API
 
-The AutoScaling read API is available at `/solr/admin/autoscaling` as well as on `/v2/cluster/autoscaling` path. It returns information about the configured cluster preferences, policies, triggers and listeners.
+The AutoScaling read API is available at `/solr/admin/autoscaling` as well as on `/v2/cluster/autoscaling` path. It returns information about the configured cluster preferences, cluster policy and collection specific policies.
 
 === Diagnostics
 
