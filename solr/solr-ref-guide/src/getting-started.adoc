@@ -39,7 +39,4 @@ This section introduces you to the basic Solr architecture and features to help 
 
 <<upgrading-a-solr-cluster.adoc#upgrading-a-solr-cluster,Upgrading a Solr Cluster>>
 
-[TIP]
-====
-Solr includes a Quick Start tutorial which will be helpful if you are just starting out with Solr. You can find it online at http://lucene.apache.org/solr/quickstart.html.
-====
+TIP: Solr includes a Quick Start tutorial which will be helpful if you are just starting out with Solr. You can find it in this Guide at <<solr-tutorial.adoc#solr-tutorial,Solr Tutorial>>.

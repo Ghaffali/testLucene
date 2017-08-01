@@ -21,8 +21,6 @@
 
 This section describes how to run Solr and how to look at Solr when it is running. It contains the following sections:
 
-<<taking-solr-to-production.adoc#taking-solr-to-production,Taking Solr to Production>>: Describes how to install Solr as a service on Linux for production environments.
-
 <<securing-solr.adoc#securing-solr,Securing Solr>>: How to use the Basic and Kerberos authentication and rule-based authorization plugins for Solr, and how to enable SSL.
 
 <<running-solr-on-hdfs.adoc#running-solr-on-hdfs,Running Solr on HDFS>>: How to use HDFS to store your Solr indexes and transaction logs.
