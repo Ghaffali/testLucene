@@ -211,6 +211,14 @@ In this example we add cluster preferences that sort on three different paramete
 }
 ----
 
+We can remove all cluster preferences by setting preferences to an empty list.
+[source,json]
+----
+{
+  "set-cluster-preferences": []
+}
+----
+
 === set-cluster-policy: Create and Modify Cluster Policies
 
 You can see the __TODO__ section to know more about the allowed values for each condition in the policy.
@@ -235,6 +243,14 @@ Output:
     },
     "result": "success",
     "WARNING": "This response format is experimental.  It is likely to change in the future."
+}
+----
+
+We can remove all cluster policy conditions by setting policy to an empty list.
+[source,json]
+----
+{
+  "set-cluster-policy": []
 }
 ----
 
