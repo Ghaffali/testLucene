@@ -18,7 +18,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-== Solr Home & Configuration Files
+Solr has several configuration files that you will interact with during your implementation.
+
+Many of these files are in XML format, although APIs that interact with configuration settings tend to accept JSON for programmatic access as needed.
+
+== Solr Home
 When Solr runs, it needs access to a home directory.
 
 When you first install Solr, your home directory is `server/solr`. However, some examples may change this location (such as, if you run `bin/solr start -e cloud`, your home directory will be `example/cloud`).
@@ -59,7 +63,10 @@ The crucial parts of the Solr home directory are shown in these examples:
       data/
 ----
 
-You may see other files, but the main ones you need to know are:
+You may see other files, but the main ones you need to know are discussed in the next section.
+
+== Configuration Files
+Inside Solr's Home, you'll find these files:
 
 * `solr.xml` specifies configuration options for your Solr server instance. For more information on `solr.xml` see <<solr-cores-and-solr-xml.adoc#solr-cores-and-solr-xml,Solr Cores and solr.xml>>.
 * Per Solr Core:

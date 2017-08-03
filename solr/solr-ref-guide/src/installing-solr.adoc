@@ -19,9 +19,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-Installation of Solr on Unix-compatible or Windows servers is straightforward.
+Installation of Solr on Unix-compatible or Windows servers generally requires simply extracting (or, unzipping) the download package.
 
-This section assumes you have reviewed the <<solr-system-requirements.adoc#solr-system-requirements,Solr System Requirements>>.
+Please be sure to review the <<solr-system-requirements.adoc#solr-system-requirements,Solr System Requirements>> before starting Solr.
 
 == Available Solr Packages
 
@@ -60,7 +60,7 @@ cd ~/
 tar zxf solr-{solr-docs-version}.0.tgz
 ----
 
-Once extracted, you are now ready to run Solr using the instructions provided in the <<running-solr.adoc#running-solr,Running Solr>> section.
+Once extracted, you are now ready to run Solr using the instructions provided in the <<Starting Solr>> section below.
 
 == Directory Layout
 
@@ -103,7 +103,7 @@ This directory is where the heart of the Solr application resides. A README in t
 
 == Solr Examples
 
-Solr includes a set of example documents and configurations to use when getting started. If you ran through the <<solr-tutorial.adoc#solr-tutorial,Solr Tutorial>>, you have already interacted with some of these files.
+Solr includes a number of example documents and configurations to use when getting started. If you ran through the <<solr-tutorial.adoc#solr-tutorial,Solr Tutorial>>, you have already interacted with some of these files.
 
 Here are the examples included with Solr:
 
@@ -118,3 +118,79 @@ The `files` directory provides a basic search UI for documents such as Word or P
 
 films::
 The `films` directory includes a robust set of data about movies in three formats: CSV, XML, and JSON. See the README there for details on how to use this dataset.
+
+== Starting Solr
+
+Solr includes a command line interface tool called `bin/solr` (Linux/MacOS) or `bin\solr.cmd` (Windows). This tool allows you to start and stop Solr, create cores and collections, configure authentication, and check the status of your system.
+
+To use it to start Solr you can simply enter:
+
+[source,bash]
+----
+bin/solr start
+----
+
+If you are running Windows, you can start Solr by running `bin\solr.cmd` instead.
+
+[source,plain]
+----
+bin\solr.cmd start
+----
+
+This will start Solr in the background, listening on port 8983.
+
+When you start Solr in the background, the script will wait to make sure Solr starts correctly before returning to the command line prompt.
+
+TIP: All of the options for the Solr CLI are described in the section <<solr-control-script-reference.adoc#solr-control-script-reference,Solr Control Script Reference>>.
+
+=== Start Solr with a Specific Bundled Example
+
+Solr also provides a number of useful examples to help you learn about key features. You can launch the examples using the `-e` flag. For instance, to launch the "techproducts" example, you would do:
+
+[source,bash]
+----
+bin/solr -e techproducts
+----
+
+Currently, the available examples you can run are: techproducts, dih, schemaless, and cloud. See the section <<solr-control-script-reference.adoc#running-with-example-configurations,Running with Example Configurations>> for details on each example.
+
+.Getting Started with SolrCloud
+NOTE: Running the `cloud` example starts Solr in <<solrcloud.adoc#solrcloud,SolrCloud>> mode. For more information on starting Solr in cloud mode, see the section <<getting-started-with-solrcloud.adoc#getting-started-with-solrcloud,Getting Started with SolrCloud>>.
+
+=== Check if Solr is Running
+
+If you're not sure if Solr is running locally, you can use the status command:
+
+[source,bash]
+----
+bin/solr status
+----
+
+This will search for running Solr instances on your computer and then gather basic information about them, such as the version and memory usage.
+
+That's it! Solr is running. If you need convincing, use a Web browser to see the Admin Console.
+
+`\http://localhost:8983/solr/`
+
+.The Solr Admin interface.
+image::images/running-solr/SolrAdminDashboard.png[image,width=900,height=456]
+
+If Solr is not running, your browser will complain that it cannot connect to the server. Check your port number and try again.
+
+=== Create a Core
+
+If you did not start Solr with an example configuration, you would need to create a core in order to be able to index and search. You can do so by running:
+
+[source,bash]
+----
+bin/solr create -c <name>
+----
+
+This will create a core that uses a data-driven schema which tries to guess the correct field type when you add documents to the index.
+
+To see all available options for creating a new core, execute:
+
+[source,bash]
+----
+bin/solr create -help
+----
