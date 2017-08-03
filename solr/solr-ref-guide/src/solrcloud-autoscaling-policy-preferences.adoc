@@ -47,6 +47,8 @@ One and only one of the following supported parameter must be specified:
 `precision`::
 Precision tells the system the minimum (absolute) difference between 2 values to treat them as distinct values. For example, a precision of 10 for `freedisk` means that two nodes whose free disk space is within 10GB of each other should be treated as equal for the purpose of sorting. This helps create ties without which, specifying multiple preferences is not useful. This is an optional parameter whose value must be a positive integer. The maximum value of precision must be less than the maximum value of the `sort_value`, if any.
 
+See the `set-cluster-preferences` API section for details on how to manage cluster preferences.
+
 === Examples of Cluster Preferences
 
 The following is the default cluster preferences. This is applied automatically by Solr when no explicit cluster preferences have been set using the Autoscaling API.
@@ -73,3 +75,65 @@ In this example, we add a precision to the `freedisk` parameter so that nodes wi
   {"minimize" : "sysLoadAvg"}
 ]
 ----
+
+== Policy specification
+
+A policy is a hard rule to be satisfied by each node. If a node does not satisfy the rule then it is called a `violation`. Solr ensures that the number of violations are minimized while invoking any cluster management operations.
+
+== Policy attributes
+A policy can have the following attributes:
+
+`cores`::
+This is a special attribute that applies to the entire cluster. It can only be used along with the `node` attribute and no other. This parameter is optional.
+
+`collection`::
+The name of the collection to which the policy rule should apply. If omitted, the rule applies to all collections. This attribute is optional.
+
+`shard`::
+The name of the shard to which the policy rule should apply. If omitted, the rule is applied for all shards in the collection. It supports a special value `#EACH` which means that the rule is applied for each shard in the collection.
+
+`replica`::
+The number of replicas that must exist to satisfy the rule. This must be a positive integer. This is a required attribute.
+
+`strict`::
+An optional boolean value. The default is `true`. If true, the rule must be satisfied. If false, Solr tries to satisfy the rule on a best effort basis but if no node can satisfy the rule then any node may be chosen.
+
+One and only one of the following attribute can be specified in addition to the above attributes:
+
+`node`::
+The name of the node to which the rule should apply. The default value is `#ANY` which means that any node in the cluster may satisfy the rule.
+
+`port`::
+The port of the node to which the rule should apply.
+
+`freedisk`::
+The free disk space in gigabytes of the node. This must be a positive 64-bit integer value.
+
+`host`::
+The host name of the node.
+
+`sysLoadAvg`::
+The system load average of the node as reported by the Metrics API under the key `solr.jvm/os.systemLoadAverage`. This is floating point value between 0 and 1.
+
+`heapUsage`::
+The heap usage of the node as reported by the Metrics API under the key `solr.jvm/memory.heap.usage`. This is floating point value between 0 and 1.
+
+`nodeRole`::
+The role of the node. The only supported value currently is `overseer`.
+
+`ip_1 , ip_2, ip_3, ip_4`:
+The least significant to most significant segments of IP address. For example, for an IP address `192.168.1.2`, `ip_1 = 2`, `ip_2 = 1`, `ip_3 = 168`, `ip_4 = 192`.
+
+`sysprop.<system_property_name>`:
+The system property set on the node on startup.
+
+== Policy Operators
+
+Each attribute in the policy may specify one of the following operators along with the value.
+
+* `<`: Less than
+* `>`: Greater than
+* `!`: Not
+* None means equal
+
+
