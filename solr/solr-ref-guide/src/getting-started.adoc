@@ -1,7 +1,7 @@
 = Getting Started
 :page-shortname: getting-started
 :page-permalink: getting-started.html
-:page-children: a-quick-overview, solr-system-requirements, installing-solr, solr-configuration-files, running-solr, taking-solr-to-production, upgrading-solr, upgrading-a-solr-cluster
+:page-children: a-quick-overview, solr-system-requirements, installing-solr, solr-configuration-files, running-solr, taking-solr-to-production, solr-upgrade-notes, upgrading-a-solr-cluster
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
@@ -35,7 +35,7 @@ This section introduces you to the basic Solr architecture and features to help 
 
 <<taking-solr-to-production.adoc#taking-solr-to-production,Taking Solr to Production>>
 
-<<upgrading-solr.adoc#upgrading-solr,Upgrading Solr>>
+<<solr-upgrade-notes.adoc#solr-upgrade-notes,Solr Upgrade Notes>>
 
 <<upgrading-a-solr-cluster.adoc#upgrading-a-solr-cluster,Upgrading a Solr Cluster>>
 
