@@ -1,7 +1,7 @@
 = SolrCloud Autoscaling Policy and Preferences
 :page-shortname: solrcloud-autoscaling-policy-preferences
 :page-permalink: solrcloud-autoscaling-policy-preferences.html
-:page-toclevels: 1
+:page-toclevels: 2
 :page-tocclass: right
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
@@ -80,7 +80,7 @@ In this example, we add a precision to the `freedisk` parameter so that nodes wi
 
 A policy is a hard rule to be satisfied by each node. If a node does not satisfy the rule then it is called a `violation`. Solr ensures that the number of violations are minimized while invoking any cluster management operations.
 
-== Policy attributes
+=== Policy attributes
 A policy can have the following attributes:
 
 `cores`::
@@ -127,7 +127,7 @@ The least significant to most significant segments of IP address. For example, f
 `sysprop.<system_property_name>`:
 The system property set on the node on startup.
 
-== Policy Operators
+=== Policy Operators
 
 Each attribute in the policy may specify one of the following operators along with the value.
 
@@ -136,4 +136,74 @@ Each attribute in the policy may specify one of the following operators along wi
 * `!`: Not
 * None means equal
 
+=== Examples of policy rules
+
+`Example 1`::
+Do not place more than one replica of the same shard on the same node
+
+[source,json]
+----
+{"replica": "<2", "shard": "#EACH", "node": "#ANY"}
+----
+
+`Example 2`::
+Do not place more than 10 cores in any node. This rule can only be added to the cluster policy because it mentions the `cores` attribute that is only applicable cluster-wide.
+[source,json]
+----
+{"cores": "<10", "node": "#ANY"}
+----
+
+`Example 3`::
+Place exactly 1 replica of each shard of collection `xyz` on a node running on port `8983`
+[source,json]
+----
+{"replica": 1, "shard": "#EACH", "collection": "xyz", "port": "8983"}
+----
+
+`Example 4`::
+Place all replicas on a node with system property region=us-east-1. Note that we have to write this rule in the negative sense i.e. *0* replicas must be on nodes *not* having the sysprop `region=us-east-1`
+[source,json]
+----
+{"replica": 0, "sysprop.region": "!us-east-1"}
+----
+
+`Example 5`::
+Do not place any replica on a node which has the overseer role. Note that the role is added by the `addRole` collection API. It is *not* automatically the node which is currently the overseer.
+[source,json]
+----
+{"replica": 0, "nodeRole": "overseer"}
+----
+
+`Example 6`::
+Place all replicas in nodes with freedisk more than 500GB. Here again, we have to write the rule in the negative sense.
+[source,json]
+----
+{"replica": 0, "freedisk": "<500"}
+----
+
+`Example 7`::
+Place all replicas in nodes with freedisk more than 500GB when possible. Here we use the strict keyword to signal that this rule is to be honored on a best effort basis.
+[source,json]
+----
+{"replica": 0, "freedisk": "<500", "strict" : false}
+----
+
+
+== Cluster Policy vs Collection-specific Policy
+
+By default, the cluster policy, if it exists, is used automatically for all collections in the cluster. However, we can create named policies which can be attached to a collection at the time of its creation by specifying the policy name along with a `policy` parameter.
+
+When a collection-specific policy is used, the rules in that policy are appended to the rules in the cluster policy and the combination of both are used. Therefore, it is recommended that you do not add rules to collection-specific policy that conflict with the ones in the cluster policy. Doing so will disqualify all nodes in the cluster from matching all criteria and make the policy useless.
+
+Some attributes such as `cores` can only be used in the cluster policy.
+
+The policy is used by Collection APIs such as:
+
+* create
+* createshard
+* addreplica
+* restore
+* splitshard
+
+In future, the policy and preferences will be used by the Autoscaling framework to automatically change the cluster in response to events such as a node being added or lost.
 
