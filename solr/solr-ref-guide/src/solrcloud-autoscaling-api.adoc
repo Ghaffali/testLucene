@@ -160,6 +160,8 @@ Each preference is a JSON map having the following syntax:
 
 You can see the __TODO__ section to know more about the allowed values for the `sort_order`, `sort_param` and `precision` parameters.
 
+Changing the cluster preferences after the cluster is already built doesn't automatically reconfigure the cluster. However, all future cluster management operations will use the changed preferences.
+
 *Input*
 
 [source,json]
@@ -254,6 +256,8 @@ We can remove all cluster policy conditions by setting policy to an empty list.
 }
 ----
 
+Changing the cluster policy after the cluster is already built doesn't automatically reconfigure the cluster. However, all future cluster management operations will use the changed cluster policy.
+
 === set-policy: Create and Modify Collection-Specific Policy
 
 This command accepts a map of policy name to the list of conditions for that policy. Multiple named policies can be specified together. A named policy that does not exist already is created and if the named policy accepts already then it is replaced.
@@ -287,6 +291,8 @@ You can see the __TODO__ section to know more about the allowed values for each 
 }
 ----
 
+Changing the policy after the collection is already built doesn't automatically reconfigure the collection. However, all future cluster management operations will use the changed policy.
+
 === remove-policy: Remove a Collection-Specific Policy
 
 This command accepts a policy name to be removed from Solr. The policy being removed must not be attached to any collection otherwise the command will fail.
@@ -309,3 +315,5 @@ This command accepts a policy name to be removed from Solr. The policy being rem
     "WARNING": "This response format is experimental.  It is likely to change in the future."
 }
 ----
+
+If you attempt to remove a policy that is being used by a collection then this command will fail to delete the policy until the collection itself is deleted.
