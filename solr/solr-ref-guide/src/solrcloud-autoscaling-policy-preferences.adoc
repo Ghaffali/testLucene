@@ -193,7 +193,7 @@ Place all replicas in nodes with freedisk more than 500GB when possible. Here we
 
 By default, the cluster policy, if it exists, is used automatically for all collections in the cluster. However, we can create named policies which can be attached to a collection at the time of its creation by specifying the policy name along with a `policy` parameter.
 
-When a collection-specific policy is used, the rules in that policy are appended to the rules in the cluster policy and the combination of both are used. Therefore, it is recommended that you do not add rules to collection-specific policy that conflict with the ones in the cluster policy. Doing so will disqualify all nodes in the cluster from matching all criteria and make the policy useless.
+When a collection-specific policy is used, the rules in that policy are appended to the rules in the cluster policy and the combination of both are used. Therefore, it is recommended that you do not add rules to collection-specific policy that conflict with the ones in the cluster policy. Doing so will disqualify all nodes in the cluster from matching all criteria and make the policy useless. Also, if `maxShardsPerNode` is specified during the time of collection creation then both `maxShardsPerNode` and the policy rules must be satisfied.
 
 Some attributes such as `cores` can only be used in the cluster policy.
 
