@@ -161,10 +161,10 @@ Place exactly 1 replica of each shard of collection `xyz` on a node running on p
 ----
 
 `Example 4`::
-Place all replicas on a node with system property region=us-east-1. Note that we have to write this rule in the negative sense i.e. *0* replicas must be on nodes *not* having the sysprop `region=us-east-1`
+Place all replicas on a node with system property `availability_zone=us-east-1a`. Note that we have to write this rule in the negative sense i.e. *0* replicas must be on nodes *not* having the sysprop `availability_zone=us-east-1a`
 [source,json]
 ----
-{"replica": 0, "sysprop.region": "!us-east-1"}
+{"replica": 0, "sysprop.availability_zone": "!us-east-1a"}
 ----
 
 `Example 5`::
