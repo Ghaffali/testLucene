@@ -45,4 +45,4 @@ In this section, we'll cover everything you need to know about using Solr in Sol
 ** <<configsets-api.adoc#configsets-api,ConfigSets API>>
 * <<rule-based-replica-placement.adoc#rule-based-replica-placement,Rule-based Replica Placement>>
 * <<cross-data-center-replication-cdcr.adoc#cross-data-center-replication-cdcr,Cross Data Center Replication (CDCR)>>
-*<<solrcloud-autoscaling.adoc#solrcloud-autoscaling,SolrCloud AutoScaling>>
+* <<solrcloud-autoscaling.adoc#solrcloud-autoscaling,SolrCloud Autoscaling>>
