@@ -183,6 +183,7 @@ public interface CommonParams {
   String ZK_PATH = "/admin/zookeeper";
   String METRICS_PATH = "/admin/metrics";
   String AUTOSCALING_PATH = "/admin/autoscaling";
+  String AUTOSCALING_HISTORY_PATH = "/admin/autoscaling/history";
   String AUTOSCALING_DIAGNOSTICS_PATH = "/admin/autoscaling/diagnostics";
 
   Set<String> ADMIN_PATHS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(
@@ -193,6 +194,7 @@ public interface CommonParams {
       AUTHZ_PATH,
       METRICS_PATH,
       AUTOSCALING_PATH,
+      AUTOSCALING_HISTORY_PATH,
       AUTOSCALING_DIAGNOSTICS_PATH)));
   String APISPEC_LOCATION = "apispec/";
   String INTROSPECT = "/_introspect";
