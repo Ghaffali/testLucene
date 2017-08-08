@@ -6,7 +6,7 @@
 // Licensed to the Apache Software Foundation (ASF) under one
 // or more contributor license agreements.  See the NOTICE file
 // distributed with this work for additional information
-// regardin g copyright ownership.  The ASF licenses this file
+// regarding copyright ownership.  The ASF licenses this file
 // to you under the Apache License, Version 2.0 (the
 // "License"); you may not use this file except in compliance
 // with the License.  You may obtain a copy of the License at
@@ -20,11 +20,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
-The Autoscaling API is used to manage autoscaling policies and preferences, and to get diagnostics on the state of the cluster.
+The Autoscaling API is used to manage autoscaling policies, preferences, triggers, listeners and to get diagnostics on the state of the cluster.
 
 == Read API
 
-The autoscaling Read API is available at `/admin/autoscaling` or `/v2/cluster/autoscaling`. It returns information about the configured cluster preferences, cluster policy and collection-specific policies.
+The autoscaling Read API is available at `/admin/autoscaling` or `/v2/cluster/autoscaling`. It returns information about the configured cluster preferences, cluster policy, collection-specific policies triggers and listeners.
 
 This API does not take any parameters.
 
