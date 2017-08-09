@@ -49,7 +49,7 @@ public class AutoscalingHistoryHandlerTest extends SolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    configureCluster(4)
+    configureCluster(3)
         .addConfig("conf", configset("cloud-minimal"))
         .configure();
     solrClient = cluster.getSolrClient();
@@ -221,6 +221,7 @@ public class AutoscalingHistoryHandlerTest extends SolrCloudTestCase {
     await = actionFiredLatch.await(60, TimeUnit.SECONDS);
     // wait for recovery
     waitForRecovery(PREFIX + "_collection");
+    Thread.sleep(5000);
     // commit on the history collection
     solrClient.commit(CollectionAdminParams.SYSTEM_COLL);
     query = params(CommonParams.QT, CommonParams.AUTOSCALING_HISTORY_PATH,
