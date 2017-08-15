@@ -7,11 +7,13 @@
 This tutorial covers getting Solr up and running, ingesting a variety of data sources into multiple collections,
 and getting a feel for the Solr administrative and search interfaces.
 
-It is organized into three sections that each build on the one before it. The first exercise will ask you to start Solr, create a collection, index some basic documents, and then perform a few searches.
+It is organized into three sections that each build on the one before it. The <<exercise-1,first exercise>> will ask you to start Solr, create a collection, index some basic documents, and then perform a few searches.
 
-The second exercise works with a different set of data, and explores requesting facets with the dataset.
+The <<exercise-2,second exercise>> works with a different set of data, and explores requesting facets with the dataset.
 
-The third exercise encourages you to begin to work with your own data and start a plan for your implementation.
+The <<exercise-3,third exercise>> encourages you to begin to work with your own data and start a plan for your implementation.
+
+Finally, we'll introduce <<Spatial Queries,spatial search>> and show you how to get your Solr instance back into a clean state.
 
 == Before You Begin
 
@@ -29,16 +31,17 @@ Begin by unzipping the Solr release and changing your working directory to the s
 
 [source,bash,subs="verbatim,attributes+"]
 ----
-$ ls solr*
+~$ ls solr*
 solr-{solr-docs-version}.0.zip
 
-$ unzip -q solr-{solr-docs-version}.0.zip
+~$ unzip -q solr-{solr-docs-version}.0.zip
 
-$ cd solr-{solr-docs-version}.0/
+~$ cd solr-{solr-docs-version}.0/
 ----
 
 If you'd like to know more about Solr's directory layout before moving to the first exercise, see the section <<installing-solr.adoc#directory-layout,Directory Layout>> for details.
 
+[[exercise-1]]
 == Exercise 1: Index Techproducts Example Data
 
 This exercise will walk you through how to start Solr as a two-node cluster (both nodes on the same machine) and create a collection during startup. Then you will index some sample data that ships with Solr and do some basic searches.
@@ -80,7 +83,7 @@ Starting up 2 Solr nodes for your example SolrCloud cluster.
 
 Creating Solr home directory /solr-{solr-docs-version}.0/example/cloud/node1/solr
 Cloning /solr-{solr-docs-version}.0/example/cloud/node1 into
-   /solr-{solr-docs-version.0/example/cloud/node2
+   /solr-{solr-docs-version}.0/example/cloud/node2
 
 Starting up Solr on port 8983 using command:
 "bin/solr" start -cloud -p 8983 -s "example/cloud/node1/solr"
@@ -115,14 +118,14 @@ Here's the first place where we'll deviate from the default options. This tutori
 How many shards would you like to split techproducts into? [2]
 ----
 
-This is asking how you want to split your index across the two nodes. Choosing "2" (the default) means we will split the index relatively evenly across both nodes, which is a good way to start. Accept the default by hitting kbd:[enter].
+This is asking how many <<solr-glossary.adoc#shard,shards>> you want to split your index into across the two nodes. Choosing "2" (the default) means we will split the index relatively evenly across both nodes, which is a good way to start. Accept the default by hitting kbd:[enter].
 
 [source,subs="verbatim,attributes+"]
 ----
 How many replicas per shard would you like to create? [2]
 ----
 
-A replica is a copy of the index that's used for failover. Again, the default of "2" is fine to start with here also, so accept the default by hitting kbd:[enter].
+A replica is a copy of the index that's used for failover (see also the <<solr-glossary.adoc#replica,Solr Glossary definition>>). Again, the default of "2" is fine to start with here also, so accept the default by hitting kbd:[enter].
 
 [source,subs="verbatim,attributes+"]
 ----
@@ -138,7 +141,7 @@ At this point, Solr will create the collection and again output to the screen th
 
 [source,subs="verbatim,attributes+"]
 ----
-Uploading /solr-{solr-docs-version}.0/server/solr/configsets/_default/conf for config gettingstarted to ZooKeeper at localhost:9983
+Uploading /solr-{solr-docs-version}.0/server/solr/configsets/_default/conf for config techproducts to ZooKeeper at localhost:9983
 
 Connecting to ZooKeeper at localhost:9983 ...
 INFO  - 2017-07-27 12:48:59.289; org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider; Cluster at localhost:9983 ready
@@ -176,12 +179,12 @@ SolrCloud example running, please visit: http://localhost:8983/solr
 
 You can see that Solr is running by launching the Solr Admin UI in your web browser: http://localhost:8983/solr/. This is the main starting point for administering Solr.
 
-Solr will now be running two "nodes", one on port 7574 and one on port 8983. There is one collection created automatically, `gettingstarted`, a two shard collection, each with two replicas.
+Solr will now be running two "nodes", one on port 7574 and one on port 8983. There is one collection created automatically, `techproducts`, a two shard collection, each with two replicas.
 
 The http://localhost:8983/solr/#/~cloud[Cloud tab] in the Admin UI diagrams the collection nicely:
 
 .SolrCloud Diagram
-image::images/solr-quick-start/quickstart-solrcloud.png[]
+image::images/solr-tutorial/tutorial-solrcloud.png[]
 
 === Index the Techproducts Data
 
@@ -252,7 +255,7 @@ Solr can be queried via REST clients, curl, wget, Chrome POSTMAN, etc., as well 
 The Solr Admin UI includes a query builder interface via the Query tab for the `techproducts` collection (at http://localhost:8983/solr/#/techproducts/query). If you click the btn:[Execute Query] button without changing anything in the form, you'll get 10 documents in JSON format:
 
 .Query Screen
-image::images/solr-quick-start/quickstart-query-screen.png[Solr Quick Start: techproducts Query screen with results]
+image::images/solr-tutorial/tutorial-query-screen.png[Solr Quick Start: techproducts Query screen with results]
 
 The URL sent by the Admin UI to Solr is shown in light grey near the top right of the above screenshot. If you click on it, your browser will show you the raw response.
 
@@ -266,7 +269,7 @@ Solr has very powerful search options, and this tutorial won't be able to cover 
 
 ==== Search for a Single Term
 
-To search for a term, enter it as the `q` param value in box in the Solr Admin UI Query screen, replacing `\*:*` with the term you want to find.
+To search for a term, enter it as the `q` param value in the Solr Admin UI Query screen, replacing `\*:*` with the term you want to find.
 
 Enter "foundation" and hit btn:[Execute Query] again.
 
@@ -479,6 +482,7 @@ To stop both of the Solr nodes we started, issue the command:
 
 For more information on start/stop and collection options with `bin/solr`, see <<solr-control-script-reference.adoc#solr-control-script-reference,Solr Control Script Reference>>.
 
+[[exercise-2]]
 == Exercise 2: Modify the Schema and Index Films Data
 
 This exercise will build on the last one and introduce you to the index schema and Solr's powerful faceting features.
@@ -585,6 +589,11 @@ curl -X POST -H 'Content-type:application/json' --data-binary '{"add-field": {"n
 
 This command uses the Schema API to explicitly define a field named "name" that has the field type "text_general" (a text field). It will not be permitted to have multiple values, but it will be stored (meaning it can be retrieved by queries).
 
+You can also use the Admin UI to create fields, but it offers a bit less control over the properties of your field. It will work for our case, though:
+
+.Creating a field
+image::images/solr-tutorial/tutorial-add-field.png[]
+
 ===== Create a "catchall" Copy Field
 
 There's one more change to make before we start indexing.
@@ -593,10 +602,17 @@ In the first exercise when we queried the documents we had indexed, we didn't ha
 
 The configuration we're using now doesn't have that rule. We would need to define a field to search for every query. We can, however, set up a "catchall field" by defining a copy field that will take all data from all fields and index it into a field named `\_text_`. Let's do that now.
 
+You can use either the Admin UI or the Schema API for this.
+
 At the command line, use the Schema API again to define a copy field:
 
 [source,bash]
 curl -X POST -H 'Content-type:application/json' --data-binary '{"add-copy-field" : {"source":"*","dest":"_text_"}}' http://localhost:8983/solr/films/schema
+
+In the Admin UI, choose btn:[Add Copy Field], then fill out the source and destination for your field, as in this screenshot.
+
+.Creating a copy field
+image::images/solr-tutorial/tutorial-add-copy-field.png[]
 
 What this does is make a copy of all fields and put the data into the "\_text_" field.
 
@@ -672,11 +688,11 @@ In addition to providing search results, a Solr query can return the number of d
 On the Admin UI Query tab, if you check the `facet` checkbox, you'll see a few facet-related options appear:
 
 .Facet options in the Query screen
-image::images/solr-quick-start/quickstart-admin-ui-facet-options.png[Solr Quick Start: Query tab facet options]
+image::images/solr-tutorial/tutorial-admin-ui-facet-options.png[Solr Quick Start: Query tab facet options]
 
 To see facet counts from all documents (`q=\*:*`): turn on faceting (`facet=true`), and specify the field to facet on via the `facet.field` param. If you only want facets, and no document contents, specify `rows=0`. The `curl` command below will return facet counts for the `genre_str` field:
 
-`curl "http://localhost:8983/solr/gettingstarted/select?q=*:*&rows=0&facet=true&facet.field=genre_str"`
+`curl "http://localhost:8983/solr/films/select?q=\*:*&rows=0&facet=true&facet.field=genre_str"`
 
 In your terminal, you'll see something like:
 
@@ -712,7 +728,7 @@ We've truncated the output here a little bit, but in the `facet_counts` section,
 
 If you wanted to control the number of items in a bucket, you could do something like this:
 
-`curl "http://localhost:8983/solr/films/select?=&q=*:*&facet.field=genre_str&facet.mincount=200&facet=on&rows=0"`
+`curl "http://localhost:8983/solr/films/select?=&q=\*:*&facet.field=genre_str&facet.mincount=200&facet=on&rows=0"`
 
 You should only see 4 facets returned.
 
@@ -723,7 +739,7 @@ There are a great deal of other parameters available to help you control how Sol
 For numerics or dates, it's often desirable to partition the facet counts into ranges rather than discrete values. A prime example of numeric range faceting, using the example techproducts data from our previous exercise, is `price`.  In the `/browse` UI, it looks like this:
 
 .Range facets
-image::images/solr-quick-start/quickstart-range-facet.png[Solr Quick Start: Range facets]
+image::images/solr-tutorial/tutorial-range-facet.png[Solr Quick Start: Range facets]
 
 The films data includes the release date for films, and we could use that to create date range facets, which are another common use for range facets.
 
@@ -732,12 +748,12 @@ The Solr Admin UI doesn't yet support range facet options, so you will need to u
 If we construct a query that looks like this:
 
 [source,bash]
-curl "http://localhost:8983/solr/films/select?q=*:*&rows=0' \
-    '&facet=true' \
-    '&facet.range=initial_release_date' \
-    '&facet.range.start=NOW-20YEAR' \
-    '&facet.range.end=NOW' \
-    '&facet.range.gap=%2B1YEAR"
+curl 'http://localhost:8983/solr/films/select?q=*:*&rows=0'\
+    '&facet=true'\
+    '&facet.range=initial_release_date'\
+    '&facet.range.start=NOW-20YEAR'\
+    '&facet.range.end=NOW'\
+    '&facet.range.gap=%2B1YEAR'
 
 This will request all films and ask for them to be grouped by year starting with 20 years ago (our earliest release date is in 2000) and ending today. Note that this query again URL encodes a `+` as `%2B`.
 
@@ -796,9 +812,9 @@ In the terminal you will see:
 
 Another faceting type is pivot facets, also known as "decision trees", allowing two or more fields to be nested for all the various possible combinations. Using the films data, pivot facets can be used to see how many of the films in the "Drama" category (the `genre_str` field) are directed by a director. Here's how to get at the raw data for this scenario:
 
-`curl "http://localhost:8983/solr/films/select?q=*:*&rows=0&facet=on&facet.pivot=genre_str,directed_by_str"`
+`curl "http://localhost:8983/solr/films/select?q=\*:*&rows=0&facet=on&facet.pivot=genre_str,directed_by_str"`
 
-This results in the following response (trimmed to just the book category output), which says out of 14 items in the "book" category, 12 are in stock and 2 are not in stock:
+This results in the following response, which shows a facet for each category and director combination:
 
 [source,json]
 {"responseHeader":{
@@ -846,6 +862,7 @@ Like our previous exercise, this data may not be relevant to your needs. We can 
 
 `bin/solr delete -c films`
 
+[[exercise-3]]
 == Exercise 3: Index Your Own Data
 
 For this last exercise, work with a dataset of your choice. This can be files on your local hard drive, a set of data you have worked with before, or maybe a sample of the data you intend to index to Solr for your production application.
@@ -889,7 +906,7 @@ SolrJ::
 SolrJ is a Java-based client for interacting with Solr. Use <<using-solrj.adoc#using-solrj,SolrJ>> for JVM-based languages or other <<client-apis.adoc#client-apis,Solr clients>> to programmatically create documents to send to Solr.
 
 Documents Screen::
-Use the Admin UI <<documents-screen.adoc#documents-screen,Documents tab>> (at http://localhost:8983/solr/#/gettingstarted/documents) to paste in a document to be indexed, or select `Document Builder` from the `Document Type` dropdown to build a document one field at a time. Click on the btn:[Submit Document] button below the form to index your document.
+Use the Admin UI <<documents-screen.adoc#documents-screen,Documents tab>> (at http://localhost:8983/solr/#/localDocs/documents) to paste in a document to be indexed, or select `Document Builder` from the `Document Type` dropdown to build a document one field at a time. Click on the btn:[Submit Document] button below the form to index your document.
 
 === Updating Data
 
@@ -932,7 +949,7 @@ Some of the example techproducts documents we indexed in Exercise 1 have locatio
 Spatial queries can be combined with any other types of queries, such as in this example of querying for "ipod" within 10 kilometers from San Francisco:
 
 .Spatial queries and results
-image::images/solr-quick-start/quickstart-spatial.png[Solr Quick Start: spatial search]
+image::images/solr-tutorial/tutorial-spatial.png[Solr Quick Start: spatial search]
 
 This is from Solr's example search UI (called `/browse`), which has a nice feature to show a map for each item and allow easy selection of the location to search near. You can see this yourself by going to <http://localhost:8983/solr/techproducts/browse?q=ipod&pt=37.7752%2C-122.4232&d=10&sfield=store&fq=%7B%21bbox%7D&queryOpts=spatial&queryOpts=spatial> in a browser.
 
