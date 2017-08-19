@@ -30,33 +30,30 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
+import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler.Cmd;
-import org.apache.solr.cloud.autoscaling.AutoScalingHandler;
 import org.apache.solr.cloud.overseer.ClusterStateMutator;
-import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrException.ErrorCode;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocRouter;
 import org.apache.solr.common.cloud.ImplicitDocRouter;
 import org.apache.solr.common.cloud.Replica;
+import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkConfigManager;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.ZooKeeperException;
-import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
-import org.apache.solr.common.util.CommandOperation;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.handler.admin.ConfigSetsHandlerApi;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.handler.component.ShardRequest;
-import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.TimeOut;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -64,17 +61,19 @@ import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static java.util.Collections.singletonMap;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.COLL_CONF;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.NUM_SLICES;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.RANDOM;
-import static org.apache.solr.common.cloud.ZkStateReader.*;
+import static org.apache.solr.common.cloud.ZkStateReader.MAX_SHARDS_PER_NODE;
+import static org.apache.solr.common.cloud.ZkStateReader.NRT_REPLICAS;
+import static org.apache.solr.common.cloud.ZkStateReader.PULL_REPLICAS;
+import static org.apache.solr.common.cloud.ZkStateReader.REPLICATION_FACTOR;
+import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_PATH;
+import static org.apache.solr.common.cloud.ZkStateReader.TLOG_REPLICAS;
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICA;
 import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
 import static org.apache.solr.common.params.CommonParams.NAME;
-import static org.apache.solr.common.params.CoreAdminParams.REPLICA;
-import static org.apache.solr.common.params.CoreAdminParams.SHARD;
 import static org.apache.solr.common.util.StrUtils.formatString;
 
 public class CreateCollectionCmd implements Cmd {
@@ -129,9 +128,11 @@ public class CreateCollectionCmd implements Cmd {
         ClusterStateMutator.getShardNames(numSlices, shardNames);
       }
 
-      int maxShardsPerNode = message.getInt(MAX_SHARDS_PER_NODE, usePolicyFramework? 0: 1);
-      if(maxShardsPerNode == 0) message.getProperties().put(MAX_SHARDS_PER_NODE, "0");
-
+      int maxShardsPerNode = message.getInt(MAX_SHARDS_PER_NODE, 1);
+      if (usePolicyFramework && message.getStr(MAX_SHARDS_PER_NODE) != null && maxShardsPerNode > 0) {
+        throw new SolrException(ErrorCode.BAD_REQUEST, "'maxShardsPerNode>0' is not supported when autoScaling policies are used");
+      }
+      if (maxShardsPerNode == -1 || usePolicyFramework) maxShardsPerNode = Integer.MAX_VALUE;
       if (numNrtReplicas + numTlogReplicas <= 0) {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, NRT_REPLICAS + " + " + TLOG_REPLICAS + " must be greater than 0");
       }
@@ -162,9 +163,11 @@ public class CreateCollectionCmd implements Cmd {
               + "). It's unusual to run two replica of the same slice on the same Solr-instance.");
         }
 
-        int maxShardsAllowedToCreate = maxShardsPerNode * nodeList.size();
+        int maxShardsAllowedToCreate = maxShardsPerNode == Integer.MAX_VALUE ?
+            Integer.MAX_VALUE :
+            maxShardsPerNode * nodeList.size();
         int requestedShardsToCreate = numSlices * totalNumReplicas;
-        if (!usePolicyFramework &&  maxShardsAllowedToCreate < requestedShardsToCreate) {
+        if (maxShardsAllowedToCreate < requestedShardsToCreate) {
           throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Cannot create collection " + collectionName + ". Value of "
               + MAX_SHARDS_PER_NODE + " is " + maxShardsPerNode
               + ", and the number of nodes currently live or live and part of your "+CREATE_NODE_SET+" is " + nodeList.size()
@@ -176,28 +179,7 @@ public class CreateCollectionCmd implements Cmd {
               + ". This requires " + requestedShardsToCreate
               + " shards to be created (higher than the allowed number)");
         }
-        if (usePolicyFramework && maxShardsPerNode > 0) {
-          if (policy == null) {
-            //this means we should create a policy for this collection
-            AutoScalingHandler ash = (AutoScalingHandler) ocmh.overseer.getZkController().getCoreContainer().getRequestHandler(AutoScalingHandler.HANDLER_PATH);
-            Map newPolicy = Utils.makeMap(REPLICA, "<" + (maxShardsPerNode + 1), SHARD, Policy.EACH, "node", Policy.ANY);
-            SolrQueryResponse rsp = new SolrQueryResponse();
-            policy = "COLL_POLICY_" + collectionName;
-            ash.processOps(null, rsp, Collections.singletonList(new CommandOperation(AutoScalingParams.CMD_SET_POLICY, singletonMap(
-                policy
-                , Collections.singletonList(newPolicy)))));
-            if (!"success".equals(rsp.getValues().get("result"))) {
-              throw new SolrException(ErrorCode.SERVER_ERROR, "unable to create new policy");
-            }
-            message.getProperties().put(Policy.POLICY, policy);
-
-          } else {
-            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Cannot create collection");
-          }
-        }
-
-        replicaPositions = Assign.identifyNodes(() -> ocmh.overseer.getZkController().getCoreContainer(),
-            ocmh.zkStateReader
+        replicaPositions = Assign.identifyNodes(ocmh
             , clusterState, nodeList, collectionName, message, shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas);
       }
 
@@ -331,6 +313,8 @@ public class CreateCollectionCmd implements Cmd {
       throw ex;
     } catch (Exception ex) {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, null, ex);
+    } finally {
+      PolicyHelper.clearFlagAndDecref(ocmh.policySessionRef);
     }
   }
   String getConfigName(String coll, ZkNodeProps message) throws KeeperException, InterruptedException {
@@ -516,4 +500,15 @@ public class CreateCollectionCmd implements Cmd {
           "Could not find configName for collection " + collection + " found:" + configNames);
     }
   }
+
+  public static boolean usePolicyFramework(ZkStateReader zkStateReader, ZkNodeProps message) {
+    Map autoScalingJson = Collections.emptyMap();
+    try {
+      autoScalingJson = Utils.getJson(zkStateReader.getZkClient(), SOLR_AUTOSCALING_CONF_PATH, true);
+    } catch (Exception e) {
+      return false;
+    }
+    return autoScalingJson.get(Policy.CLUSTER_POLICY) != null || message.getStr(Policy.POLICY) != null;
+  }
+
 }
