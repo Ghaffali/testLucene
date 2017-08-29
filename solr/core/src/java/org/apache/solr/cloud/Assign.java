@@ -246,7 +246,7 @@ public class Assign {
     String policyName = message.getStr(POLICY);
     AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudDataProvider().getClusterDataProvider().getAutoScalingConfig();
 
-    if (rulesMap == null && policyName == null && autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
+    if (rulesMap == null && policyName == null && autoScalingConfig.isEmpty()) {
       log.debug("Identify nodes using default");
       int i = 0;
       List<ReplicaPosition> result = new ArrayList<>();
