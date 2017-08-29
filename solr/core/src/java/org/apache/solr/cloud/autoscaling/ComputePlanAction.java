@@ -27,12 +27,8 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
-import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.core.CoreContainer;
-import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,16 +45,16 @@ public class ComputePlanAction extends TriggerActionBase {
   @Override
   public void process(TriggerEvent event, ActionContext context) {
     log.debug("-- processing event: {} with context properties: {}", event, context.getProperties());
-    ClusterDataProvider cdp = context.getClusterDataProvider();
+    SolrCloudDataProvider dataProvider = context.getDataProvider();
     try {
-      AutoScalingConfig autoScalingConf = cdp.getAutoScalingConfig();
+      AutoScalingConfig autoScalingConf = dataProvider.getClusterDataProvider().getAutoScalingConfig();
       if (autoScalingConf.isEmpty()) {
         log.error("Action: " + getName() + " executed but no policy is configured");
         return;
       }
       Policy policy = autoScalingConf.getPolicy();
-      Policy.Session session = policy.createSession(cdp);
-      Policy.Suggester suggester = getSuggester(session, event, cdp);
+      Policy.Session session = policy.createSession(dataProvider.getClusterDataProvider());
+      Policy.Suggester suggester = getSuggester(session, event, dataProvider.getClusterDataProvider());
       while (true) {
         SolrRequest operation = suggester.getOperation();
         if (operation == null) break;
@@ -71,7 +67,7 @@ public class ComputePlanAction extends TriggerActionBase {
           return operations;
         });
         session = suggester.getSession();
-        suggester = getSuggester(session, event, cdp);
+        suggester = getSuggester(session, event, dataProvider.getClusterDataProvider());
       }
     } catch (IOException e) {
       log.error("IOException while processing event: " + event, e);

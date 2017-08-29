@@ -29,7 +29,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -52,10 +52,10 @@ public class NodeAddedTrigger extends TriggerBase {
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           SolrResourceLoader loader,
-                          ClusterDataProvider clusterDataProvider) {
-    super(name, properties, loader, clusterDataProvider);
+                          SolrCloudDataProvider dataProvider) {
+    super(name, properties, loader, dataProvider);
     this.timeSource = TimeSource.CURRENT_TIME;
-    lastLiveNodes = new HashSet<>(clusterDataProvider.getLiveNodes());
+    lastLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     log.debug("NodeAddedTrigger {} instantiated with properties: {}", name, properties);
   }
@@ -65,7 +65,7 @@ public class NodeAddedTrigger extends TriggerBase {
     super.init();
     // pick up added nodes for which marker paths were created
     try {
-      List<String> added = clusterDataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
+      List<String> added = dataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
       added.forEach(n -> {
         // don't add nodes that have since gone away
         if (lastLiveNodes.contains(n)) {
@@ -129,7 +129,7 @@ public class NodeAddedTrigger extends TriggerBase {
       }
       log.debug("Running NodeAddedTrigger {}", name);
 
-      Set<String> newLiveNodes = new HashSet<>(clusterDataProvider.getLiveNodes());
+      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
       log.debug("Found livenodes: {}", newLiveNodes);
 
       // have any nodes that we were tracking been removed from the cluster?
@@ -186,8 +186,8 @@ public class NodeAddedTrigger extends TriggerBase {
   private void removeMarker(String nodeName) {
     String path = ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + nodeName;
     try {
-      if (clusterDataProvider.hasData(path)) {
-        clusterDataProvider.removeData(path, -1);
+      if (dataProvider.hasData(path)) {
+        dataProvider.removeData(path, -1);
       }
     } catch (NoSuchElementException e) {
       // ignore

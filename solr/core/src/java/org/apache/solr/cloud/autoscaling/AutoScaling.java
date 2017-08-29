@@ -24,9 +24,8 @@ import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
-import org.apache.solr.core.CoreContainer;
 import org.apache.solr.core.SolrResourceLoader;
 
 public class AutoScaling {
@@ -133,13 +132,13 @@ public class AutoScaling {
    */
   public static class TriggerFactoryImpl extends TriggerFactory {
 
-    private final ClusterDataProvider clusterDataProvider;
+    private final SolrCloudDataProvider dataProvider;
     private final SolrResourceLoader loader;
 
-    public TriggerFactoryImpl(SolrResourceLoader loader, ClusterDataProvider clusterDataProvider) {
-      Preconditions.checkNotNull(clusterDataProvider);
+    public TriggerFactoryImpl(SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+      Preconditions.checkNotNull(dataProvider);
       Preconditions.checkNotNull(loader);
-      this.clusterDataProvider = clusterDataProvider;
+      this.dataProvider = dataProvider;
       this.loader = loader;
     }
 
@@ -150,9 +149,9 @@ public class AutoScaling {
       }
       switch (type) {
         case NODEADDED:
-          return new NodeAddedTrigger(name, props, loader, clusterDataProvider);
+          return new NodeAddedTrigger(name, props, loader, dataProvider);
         case NODELOST:
-          return new NodeLostTrigger(name, props, loader, clusterDataProvider);
+          return new NodeLostTrigger(name, props, loader, dataProvider);
         default:
           throw new IllegalArgumentException("Unknown event type: " + type + " in trigger: " + name);
       }

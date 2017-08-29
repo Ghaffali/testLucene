@@ -19,24 +19,15 @@ package org.apache.solr.client.solrj.cloud.autoscaling;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.net.ConnectException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
-import org.apache.http.client.HttpClient;
-import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.client.solrj.SolrResponse;
-import org.apache.solr.client.solrj.cloud.DistributedQueue;
 import org.apache.solr.common.cloud.ClusterState;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.Op;
-import org.apache.zookeeper.OpResult;
 import org.apache.zookeeper.Watcher;
 
 /**
- * This interface abstracts the details of dealing with Zookeeper and Solr from the autoscaling framework.
+ * This interface abstracts the access to cluster data.
  */
 public interface ClusterDataProvider extends Closeable {
   /**
@@ -72,9 +63,9 @@ public interface ClusterDataProvider extends Closeable {
     return value;
   }
 
-  AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws ConnectException, InterruptedException, IOException;
+  AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws InterruptedException, IOException;
 
-  default AutoScalingConfig getAutoScalingConfig() throws ConnectException, InterruptedException, IOException {
+  default AutoScalingConfig getAutoScalingConfig() throws InterruptedException, IOException {
     return getAutoScalingConfig(null);
   }
 
@@ -87,50 +78,4 @@ public interface ClusterDataProvider extends Closeable {
   default void close() throws IOException {
   }
 
-  // ZK-like methods
-
-  boolean hasData(String path) throws IOException;
-
-  List<String> listData(String path) throws NoSuchElementException, IOException;
-
-  class VersionedData {
-    public final int version;
-    public final byte[] data;
-
-    public VersionedData(int version, byte[] data) {
-      this.version = version;
-      this.data = data;
-    }
-  }
-
-  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException;
-
-  default VersionedData getData(String path) throws NoSuchElementException, IOException {
-    return getData(path, null);
-  }
-
-  // mutators
-
-  void makePath(String path) throws IOException;
-
-  void createData(String path, byte[] data, CreateMode mode) throws IOException;
-
-  void removeData(String path, int version) throws NoSuchElementException, IOException;
-
-  void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException;
-
-  List<OpResult> multi(final Iterable<Op> ops) throws IOException;
-
-  // Solr-like methods
-
-  SolrResponse request(SolrRequest req) throws IOException;
-
-  HttpClient getHttpClient();
-
-  interface DistributedQueueFactory {
-    DistributedQueue makeQueue(String path) throws IOException;
-    void removeQueue(String path) throws IOException;
-  }
-
-  DistributedQueueFactory getDistributedQueueFactory();
 }

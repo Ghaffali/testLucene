@@ -20,9 +20,8 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.common.MapWriter;
-import org.apache.solr.core.CoreContainer;
 
 /**
  * Provides additional context for the TriggerAction such as the trigger instance on
@@ -31,18 +30,18 @@ import org.apache.solr.core.CoreContainer;
  */
 public class ActionContext implements MapWriter {
 
-  private final ClusterDataProvider clusterDataProvider;
+  private final SolrCloudDataProvider dataProvider;
   private final AutoScaling.Trigger source;
   private final Map<String, Object> properties;
 
-  public ActionContext(ClusterDataProvider clusterDataProvider, AutoScaling.Trigger source, Map<String, Object> properties) {
-    this.clusterDataProvider = clusterDataProvider;
+  public ActionContext(SolrCloudDataProvider dataProvider, AutoScaling.Trigger source, Map<String, Object> properties) {
+    this.dataProvider = dataProvider;
     this.source = source;
     this.properties = properties;
   }
 
-  public ClusterDataProvider getClusterDataProvider() {
-    return clusterDataProvider;
+  public SolrCloudDataProvider getDataProvider() {
+    return dataProvider;
   }
 
   public AutoScaling.Trigger getSource() {

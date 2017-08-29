@@ -33,9 +33,7 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
-import org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider;
+import org.apache.solr.client.solrj.impl.SolrClientCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.cloud.rule.ReplicaAssigner;
 import org.apache.solr.cloud.rule.Rule;
@@ -47,7 +45,6 @@ import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkNodeProps;
-import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
@@ -247,7 +244,7 @@ public class Assign {
                                                     int numPullReplicas) throws IOException, InterruptedException {
     List<Map> rulesMap = (List) message.get("rule");
     String policyName = message.getStr(POLICY);
-    AutoScalingConfig autoScalingConfig = ocmh.overseer.getClusterDataProvider().getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudDataProvider().getClusterDataProvider().getAutoScalingConfig();
 
     if (rulesMap == null && policyName == null && autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       log.debug("Identify nodes using default");
@@ -296,7 +293,7 @@ public class Assign {
         PolicyHelper.SESSION_REF.set(ocmh.policySessionRef);
         try {
           return getPositionsUsingPolicy(collectionName,
-              shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas, policyName, ocmh.overseer.getClusterDataProvider(), nodeList);
+              shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas, policyName, ocmh.overseer.getSolrCloudDataProvider().getClusterDataProvider(), nodeList);
         } finally {
           PolicyHelper.SESSION_REF.remove();
         }
@@ -388,7 +385,7 @@ public class Assign {
                                                               String policyName, ClusterDataProvider cdp,
                                                               List<String> nodesList) throws IOException, InterruptedException {
     log.debug("shardnames {} NRT {} TLOG {} PULL {} , policy {}, nodeList {}", shardNames, nrtReplicas, tlogReplicas, pullReplicas, policyName, nodesList);
-    SolrClientDataProvider clientDataProvider = null;
+    SolrClientCloudDataProvider clientDataProvider = null;
     List<ReplicaPosition> replicaPositions = null;
     AutoScalingConfig autoScalingConfig = cdp.getAutoScalingConfig();
     try {

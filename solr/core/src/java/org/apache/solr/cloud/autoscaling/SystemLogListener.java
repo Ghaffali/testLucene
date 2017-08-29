@@ -31,9 +31,8 @@ import java.util.StringJoiner;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
@@ -42,7 +41,6 @@ import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
-import org.apache.solr.core.CoreContainer;
 import org.apache.solr.util.IdUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,8 +72,8 @@ public class SystemLogListener extends TriggerListenerBase {
   private boolean enabled = true;
 
   @Override
-  public void init(ClusterDataProvider clusterDataProvider, AutoScalingConfig.TriggerListenerConfig config) {
-    super.init(clusterDataProvider, config);
+  public void init(SolrCloudDataProvider dataProvider, AutoScalingConfig.TriggerListenerConfig config) {
+    super.init(dataProvider, config);
     collection = (String)config.properties.getOrDefault(CollectionAdminParams.COLLECTION, CollectionAdminParams.SYSTEM_COLL);
     enabled = Boolean.parseBoolean(String.valueOf(config.properties.getOrDefault("enabled", true)));
   }
@@ -121,7 +119,7 @@ public class SystemLogListener extends TriggerListenerBase {
       UpdateRequest req = new UpdateRequest();
       req.add(doc);
       req.setParam(CollectionAdminParams.COLLECTION, collection);
-      clusterDataProvider.request(req);
+      dataProvider.request(req);
     } catch (Exception e) {
       if ((e instanceof SolrException) && e.getMessage().contains("Collection not found")) {
         // relatively benign

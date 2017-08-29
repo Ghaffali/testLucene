@@ -17,20 +17,15 @@
 
 package org.apache.solr.cloud.autoscaling;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
-import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.util.NamedList;
-import org.apache.solr.core.CoreContainer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +39,7 @@ public class ExecutePlanAction extends TriggerActionBase {
   @Override
   public void process(TriggerEvent event, ActionContext context) {
     log.debug("-- processing event: {} with context properties: {}", event, context.getProperties());
-    ClusterDataProvider clusterDataProvider = context.getClusterDataProvider();
+    SolrCloudDataProvider dataProvider = context.getDataProvider();
     List<SolrRequest> operations = (List<SolrRequest>) context.getProperty("operations");
     if (operations == null || operations.isEmpty()) {
       log.info("No operations to execute for event: {}", event);
@@ -54,7 +49,7 @@ public class ExecutePlanAction extends TriggerActionBase {
       for (SolrRequest operation : operations) {
         log.info("Executing operation: {}", operation.getParams());
         try {
-          SolrResponse response = clusterDataProvider.request(operation);
+          SolrResponse response = dataProvider.request(operation);
           context.getProperties().compute("responses", (s, o) -> {
             List<NamedList<Object>> responses = (List<NamedList<Object>>) o;
             if (responses == null)  responses = new ArrayList<>(operations.size());

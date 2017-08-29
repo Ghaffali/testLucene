@@ -19,26 +19,21 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.lucene.util.IOUtils;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
-import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -50,7 +45,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   protected final String name;
-  protected final ClusterDataProvider clusterDataProvider;
+  protected final SolrCloudDataProvider dataProvider;
   protected final Map<String, Object> properties = new HashMap<>();
   protected final TriggerEventType eventType;
   protected final int waitForSecond;
@@ -61,12 +56,12 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   protected boolean isClosed;
 
 
-  protected TriggerBase(String name, Map<String, Object> properties, SolrResourceLoader loader, ClusterDataProvider clusterDataProvider) {
+  protected TriggerBase(String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
     this.name = name;
     if (properties != null) {
       this.properties.putAll(properties);
     }
-    this.clusterDataProvider = clusterDataProvider;
+    this.dataProvider = dataProvider;
     this.enabled = Boolean.parseBoolean(String.valueOf(this.properties.getOrDefault("enabled", "true")));
     this.eventType = TriggerEventType.valueOf(this.properties.getOrDefault("event", TriggerEventType.INVALID.toString()).toString().toUpperCase(Locale.ROOT));
     this.waitForSecond = ((Long) this.properties.getOrDefault("waitFor", -1L)).intValue();
@@ -82,8 +77,8 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     }
 
     try {
-      if (!clusterDataProvider.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
-        clusterDataProvider.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
+      if (!dataProvider.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
+        dataProvider.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
       }
     } catch (IOException e) {
       LOG.warn("Exception checking ZK path " + ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, e);
@@ -195,12 +190,12 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     byte[] data = Utils.toJSON(state);
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
-      if (clusterDataProvider.hasData(path)) {
+      if (dataProvider.hasData(path)) {
         // update
-        clusterDataProvider.setData(path, data, -1);
+        dataProvider.setData(path, data, -1);
       } else {
         // create
-        clusterDataProvider.createData(path, data, CreateMode.PERSISTENT);
+        dataProvider.createData(path, data, CreateMode.PERSISTENT);
       }
       lastState = state;
     } catch (IOException e) {
@@ -213,8 +208,9 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     byte[] data = null;
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
-      if (clusterDataProvider.hasData(path)) {
-        ClusterDataProvider.VersionedData versionedDat = clusterDataProvider.getData(path);
+      if (dataProvider.hasData(path)) {
+        SolrCloudDataProvider.VersionedData versionedData = dataProvider.getData(path);
+        data = versionedData.data;
       }
     } catch (Exception e) {
       LOG.warn("Exception getting trigger state '" + path + "'", e);

@@ -331,8 +331,8 @@ public class ZkDistributedQueue implements DistributedQueue {
   /**
    * Return the currently-known set of elements, using child names from memory. If no children are found, or no
    * children pass {@code acceptFilter}, waits up to {@code waitMillis} for at least one child to become available.
-   * <p/>
-   * Package-private to support {@link OverseerTaskQueue} specifically.
+   * <p>
+   * Package-private to support {@link OverseerTaskQueue} specifically.</p>
    */
   @Override
   public Collection<Pair<String, byte[]>> peekElements(int max, long waitMillis, Predicate<String> acceptFilter) throws KeeperException, InterruptedException {

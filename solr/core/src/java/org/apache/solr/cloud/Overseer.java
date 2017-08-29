@@ -31,14 +31,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import com.codahale.metrics.Timer;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
-import org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.cloud.autoscaling.AutoScaling;
 import org.apache.solr.cloud.autoscaling.AutoScalingHandler;
 import org.apache.solr.cloud.autoscaling.OverseerTriggerThread;
-import org.apache.solr.cloud.autoscaling.ZkDistributedQueueFactory;
 import org.apache.solr.cloud.overseer.ClusterStateMutator;
 import org.apache.solr.cloud.overseer.CollectionMutator;
 import org.apache.solr.cloud.overseer.NodeMutator;
@@ -546,7 +542,7 @@ public class Overseer implements Closeable {
 
     ThreadGroup triggerThreadGroup = new ThreadGroup("Overseer autoscaling triggers");
     OverseerTriggerThread trigger = new OverseerTriggerThread(zkController.getCoreContainer().getResourceLoader(),
-        zkController.getClusterDataProvider());
+        zkController.getSolrCloudDataProvider());
     triggerThread = new OverseerThread(triggerThreadGroup, trigger, "OverseerAutoScalingTriggerThread-" + id);
 
     updaterThread.start();
@@ -567,8 +563,8 @@ public class Overseer implements Closeable {
     return zkController.getCoreContainer();
   }
 
-  public ClusterDataProvider getClusterDataProvider() {
-    return zkController.getClusterDataProvider();
+  public SolrCloudDataProvider getSolrCloudDataProvider() {
+    return zkController.getSolrCloudDataProvider();
   }
 
   /**

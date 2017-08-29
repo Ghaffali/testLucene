@@ -52,11 +52,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import com.google.common.base.Strings;
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient.Builder;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
+import org.apache.solr.client.solrj.impl.SolrClientCloudDataProvider;
 import org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider;
 import org.apache.solr.client.solrj.request.CoreAdminRequest.WaitForState;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
@@ -197,7 +197,7 @@ public class ZkController {
   private final SolrZkClient zkClient;
   private final ZkCmdExecutor cmdExecutor;
   public final ZkStateReader zkStateReader;
-  private ClusterDataProvider clusterDataProvider;
+  private SolrCloudDataProvider dataProvider;
   private CloudSolrClient cloudSolrClient;
 
   private final String zkServerAddress;          // example: 127.0.0.1:54062/solr
@@ -565,8 +565,8 @@ public class ZkController {
         if (cloudSolrClient != null) {
           IOUtils.closeQuietly(cloudSolrClient);
         }
-        if (clusterDataProvider != null) {
-          IOUtils.closeQuietly(clusterDataProvider);
+        if (dataProvider != null) {
+          IOUtils.closeQuietly(dataProvider);
         }
         try {
           try {
@@ -602,20 +602,20 @@ public class ZkController {
     return zkStateReader.getClusterState();
   }
 
-  public ClusterDataProvider getClusterDataProvider() {
-    if (clusterDataProvider != null) {
-      return clusterDataProvider;
+  public SolrCloudDataProvider getSolrCloudDataProvider() {
+    if (dataProvider != null) {
+      return dataProvider;
     }
     synchronized(this) {
-      if (clusterDataProvider != null) {
-        return clusterDataProvider;
+      if (dataProvider != null) {
+        return dataProvider;
       }
       cloudSolrClient = new CloudSolrClient.Builder()
           .withClusterStateProvider(new ZkClientClusterStateProvider(zkStateReader))
           .build();
-      clusterDataProvider = new SolrClientDataProvider(new ZkDistributedQueueFactory(zkClient), cloudSolrClient);
+      dataProvider = new SolrClientCloudDataProvider(new ZkDistributedQueueFactory(zkClient), cloudSolrClient);
     }
-    return clusterDataProvider;
+    return dataProvider;
   }
 
   /**

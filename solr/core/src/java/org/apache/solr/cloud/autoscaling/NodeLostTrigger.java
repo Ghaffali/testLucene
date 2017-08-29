@@ -29,7 +29,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -52,10 +52,10 @@ public class NodeLostTrigger extends TriggerBase {
 
   public NodeLostTrigger(String name, Map<String, Object> properties,
                          SolrResourceLoader loader,
-                         ClusterDataProvider clusterDataProvider) {
-    super(name, properties, loader, clusterDataProvider);
+                         SolrCloudDataProvider dataProvider) {
+    super(name, properties, loader, dataProvider);
     this.timeSource = TimeSource.CURRENT_TIME;
-    lastLiveNodes = new HashSet<>(clusterDataProvider.getLiveNodes());
+    lastLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
   }
 
@@ -64,7 +64,7 @@ public class NodeLostTrigger extends TriggerBase {
     super.init();
     // pick up lost nodes for which marker paths were created
     try {
-      List<String> lost = clusterDataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
+      List<String> lost = dataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
       lost.forEach(n -> {
         // don't add nodes that have since came back
         if (!lastLiveNodes.contains(n)) {
@@ -131,7 +131,7 @@ public class NodeLostTrigger extends TriggerBase {
         }
       }
 
-      Set<String> newLiveNodes = new HashSet<>(clusterDataProvider.getLiveNodes());
+      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
       log.debug("Running NodeLostTrigger: {} with currently live nodes: {}", name, newLiveNodes);
 
       // have any nodes that we were tracking been added to the cluster?
@@ -190,8 +190,8 @@ public class NodeLostTrigger extends TriggerBase {
   private void removeMarker(String nodeName) {
     String path = ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + nodeName;
     try {
-      if (clusterDataProvider.hasData(path)) {
-        clusterDataProvider.removeData(path, -1);
+      if (dataProvider.hasData(path)) {
+        dataProvider.removeData(path, -1);
       }
     } catch (NoSuchElementException e) {
       // ignore

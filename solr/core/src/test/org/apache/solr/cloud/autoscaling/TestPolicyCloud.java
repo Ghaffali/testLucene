@@ -28,10 +28,11 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
+import org.apache.solr.client.solrj.impl.SolrClientClusterDataProvider;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.OverseerTaskProcessor;
 import org.apache.solr.cloud.SolrCloudTestCase;
@@ -168,7 +169,7 @@ public class TestPolicyCloud extends SolrCloudTestCase {
     CollectionAdminRequest.createCollection("metricsTest", "conf", 1, 1)
         .process(cluster.getSolrClient());
     DocCollection collection = getCollectionState("metricsTest");
-    SolrClientDataProvider provider = new SolrClientDataProvider(new ZkDistributedQueueFactory(cluster.getZkClient()), solrClient);
+    ClusterDataProvider provider = new SolrClientClusterDataProvider(solrClient);
     List<String> tags = Arrays.asList("metrics:solr.node:ADMIN./admin/authorization.clientErrors:count",
         "metrics:solr.jvm:buffers.direct.Count");
     Map<String, Object> val = provider.getNodeValues(collection .getReplicas().get(0).getNodeName(), tags);
@@ -268,7 +269,7 @@ public class TestPolicyCloud extends SolrCloudTestCase {
     CollectionAdminRequest.createCollectionWithImplicitRouter("policiesTest", "conf", "shard1", 2)
         .process(cluster.getSolrClient());
     DocCollection rulesCollection = getCollectionState("policiesTest");
-    SolrClientDataProvider provider = new SolrClientDataProvider(new ZkDistributedQueueFactory(cluster.getZkClient()), cluster.getSolrClient());
+    ClusterDataProvider provider = new SolrClientClusterDataProvider(cluster.getSolrClient());
     Map<String, Object> val = provider.getNodeValues(rulesCollection.getReplicas().get(0).getNodeName(), Arrays.asList(
         "freedisk",
         "cores",

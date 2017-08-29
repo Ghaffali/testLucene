@@ -3,10 +3,9 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Map;
-import java.util.Queue;
 
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -28,9 +27,9 @@ public class TriggerEventQueue {
   private final TimeSource timeSource;
   private final DistributedQueue delegate;
 
-  public TriggerEventQueue(ClusterDataProvider clusterDataProvider, String triggerName, Overseer.Stats stats) throws IOException {
+  public TriggerEventQueue(SolrCloudDataProvider dataProvider, String triggerName, Overseer.Stats stats) throws IOException {
     // TODO: collect stats
-    this.delegate = clusterDataProvider.getDistributedQueueFactory().makeQueue(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName);
+    this.delegate = dataProvider.getDistributedQueueFactory().makeQueue(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName);
     this.triggerName = triggerName;
     this.timeSource = TimeSource.CURRENT_TIME;
   }
