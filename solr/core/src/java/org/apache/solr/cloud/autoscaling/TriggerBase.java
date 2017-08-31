@@ -59,11 +59,11 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   protected final boolean enabled;
   protected boolean isClosed;
 
-  protected TriggerBase(String name, Map<String, Object> properties, SolrResourceLoader loader, SolrZkClient zkClient) {
+  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrZkClient zkClient) {
+    this.eventType = eventType;
     this.name = name;
     this.zkClient = zkClient;
     this.enabled = Boolean.parseBoolean(String.valueOf(this.properties.getOrDefault("enabled", "true")));
-    this.eventType = TriggerEventType.valueOf(this.properties.getOrDefault("event", TriggerEventType.INVALID.toString()).toString().toUpperCase(Locale.ROOT));
     this.waitForSecond = ((Long) this.properties.getOrDefault("waitFor", -1L)).intValue();
     List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
     if (o != null && !o.isEmpty()) {

@@ -88,24 +88,40 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
       cluster.stopJettySolrRunner(1);
       events.clear();
       SolrParams query = params(CommonParams.Q, "*:*");
-      for (int i = 0; i < 1000; i++) {
+      for (int i = 0; i < 200; i++) {
         solrClient.query(COLL1, query);
       }
-      Thread.sleep(5000);
+      Thread.sleep(waitForSeconds * 1000 + 2000);
       trigger.run();
       // should generate collection event
       assertEquals(1, events.size());
       TriggerEvent event = events.get(0);
+      Map<String, Double> hotCollections = (Map<String, Double>)event.getProperty(AutoScalingParams.COLLECTION);
+      assertEquals(1, hotCollections.size());
+      Double Rate = hotCollections.get(COLL1);
+      assertNotNull(Rate);
+      assertTrue(Rate > rate);
       events.clear();
 
       for (int i = 0; i < 1000; i++) {
         solrClient.query(COLL2, query);
       }
-      Thread.sleep(5000);
+      Thread.sleep(waitForSeconds * 1000 + 2000);
       trigger.run();
       // should generate node and collection event
       assertEquals(1, events.size());
       event = events.get(0);
+      Map<String, Double> hotNodes = (Map<String, Double>)event.getProperty(AutoScalingParams.NODE);
+      assertEquals(3, hotNodes.size());
+      hotNodes.forEach((n, r) -> assertTrue(n, r > rate));
+      hotCollections = (Map<String, Double>)event.getProperty(AutoScalingParams.COLLECTION);
+      assertEquals(2, hotCollections.size());
+      Rate = hotCollections.get(COLL1);
+      assertNotNull(Rate);
+      assertTrue(Rate > rate);
+      Rate = hotCollections.get(COLL2);
+      assertNotNull(Rate);
+      assertTrue(Rate > rate);
     }
   }
 

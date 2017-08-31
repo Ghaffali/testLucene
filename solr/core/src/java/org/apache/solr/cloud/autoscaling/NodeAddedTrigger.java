@@ -52,7 +52,7 @@ public class NodeAddedTrigger extends TriggerBase {
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           CoreContainer container) {
-    super(name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
+    super(TriggerEventType.NODEADDED, name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
     this.container = container;
     this.timeSource = TimeSource.CURRENT_TIME;
     lastLiveNodes = new HashSet<>(container.getZkController().getZkStateReader().getClusterState().getLiveNodes());

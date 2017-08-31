@@ -61,7 +61,7 @@ public class SearchRateTrigger extends TriggerBase {
   private long lastEvent;
 
   public SearchRateTrigger(String name, Map<String, Object> properties, CoreContainer container) {
-    super(name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
+    super(TriggerEventType.SEARCHRATE, name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
     this.container = container;
     this.timeSource = TimeSource.CURRENT_TIME;
     this.cloudSolrClient = new CloudSolrClient.Builder()
