@@ -35,6 +35,7 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Clause.Violation;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
+import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -436,6 +437,11 @@ public class TestPolicy extends SolrTestCaseJ4 {
       @Override
       public Collection<String> getNodes() {
         return (Collection<String>) m.get("liveNodes");
+      }
+
+      @Override
+      public ClusterState getClusterState() {
+        throw new UnsupportedOperationException("getClusterState");
       }
 
       @Override
@@ -980,6 +986,11 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
+      public ClusterState getClusterState() {
+        return clusterDataProvider.getClusterState();
+      }
+
+      @Override
       public String getPolicyNameByCollection(String coll) {
         return null;
       }
@@ -1058,6 +1069,11 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
+      public ClusterState getClusterState() {
+        throw new UnsupportedOperationException("getClusterState");
+      }
+
+      @Override
       public String getPolicyNameByCollection(String coll) {
         return null;
       }
@@ -1116,6 +1132,11 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
+      public ClusterState getClusterState() {
+        return clusterDataProvider.getClusterState();
+      }
+
+      @Override
       public String getPolicyNameByCollection(String coll) {
         return "p1";
       }
@@ -1142,6 +1163,11 @@ public class TestPolicy extends SolrTestCaseJ4 {
       @Override
       public Collection<String> getNodes() {
         return nodeValues.keySet();
+      }
+
+      @Override
+      public ClusterState getClusterState() {
+        throw new UnsupportedOperationException("getClusterState");
       }
 
       @Override
@@ -1190,6 +1216,12 @@ public class TestPolicy extends SolrTestCaseJ4 {
       public Collection<String> getNodes() {
         return Arrays.asList( "127.0.0.1:50097_solr", "127.0.0.1:50096_solr");
       }
+
+      @Override
+      public ClusterState getClusterState() {
+        throw new UnsupportedOperationException("getClusterState");
+      }
+
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
         "newColl", new AutoScalingConfig((Map<String, Object>)Utils.fromJSONString(autoScaleJson)),
@@ -1247,6 +1279,12 @@ public class TestPolicy extends SolrTestCaseJ4 {
       public Collection<String> getNodes() {
         return Arrays.asList("node1", "node2", "node3", "node4");
       }
+
+      @Override
+      public ClusterState getClusterState() {
+        throw new UnsupportedOperationException("getClusterState");
+      }
+
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
         "newColl", new AutoScalingConfig((Map<String, Object>) Utils.fromJSONString(autoScaleJson)),
