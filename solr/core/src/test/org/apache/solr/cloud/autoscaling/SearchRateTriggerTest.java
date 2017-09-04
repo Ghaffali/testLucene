@@ -54,7 +54,7 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
     double rate = 1.0;
     CoreContainer container = cluster.getJettySolrRunners().get(0).getCoreContainer();
     URL baseUrl = cluster.getJettySolrRunners().get(1).getBaseUrl();
-    long waitForSeconds = 4 + random().nextInt(5);
+    long waitForSeconds = 5 + random().nextInt(5);
     Map<String, Object> props = createTriggerProps(waitForSeconds, rate);
     final List<TriggerEvent> events = new ArrayList<>();
     CloudSolrClient solrClient = cluster.getSolrClient();
@@ -72,7 +72,10 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
         for (int i = 0; i < 200; i++) {
           simpleClient.query(query);
         }
-        Thread.sleep(5000);
+        trigger.run();
+        // waitFor delay
+        assertEquals(0, events.size());
+        Thread.sleep(waitForSeconds * 1000 + 2000);
         // should generate replica event
         trigger.run();
         assertEquals(1, events.size());
@@ -122,6 +125,17 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
       Rate = hotCollections.get(COLL2);
       assertNotNull(Rate);
       assertTrue(Rate > rate);
+
+      events.clear();
+      // assert that waitFor prevents new events from being generated
+      trigger.run();
+      // should not generate any events
+      assertEquals(0, events.size());
+
+      Thread.sleep(waitForSeconds * 1000 + 2000);
+      trigger.run();
+      // should generate node and collection event
+      assertEquals(1, events.size());
     }
   }
 

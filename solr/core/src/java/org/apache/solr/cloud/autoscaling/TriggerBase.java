@@ -63,8 +63,11 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     this.eventType = eventType;
     this.name = name;
     this.zkClient = zkClient;
+    if (properties != null) {
+      this.properties.putAll(properties);
+    }
     this.enabled = Boolean.parseBoolean(String.valueOf(this.properties.getOrDefault("enabled", "true")));
-    this.waitForSecond = ((Long) this.properties.getOrDefault("waitFor", -1L)).intValue();
+    this.waitForSecond = ((Number) this.properties.getOrDefault("waitFor", -1L)).intValue();
     List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
     if (o != null && !o.isEmpty()) {
       actions = new ArrayList<>(3);

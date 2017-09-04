@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -35,6 +36,7 @@ import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
 import org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider;
+import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.util.IOUtils;
@@ -50,7 +52,6 @@ import org.slf4j.LoggerFactory;
 public class SearchRateTrigger extends TriggerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private final CoreContainer container;
   private final TimeSource timeSource;
   private final CloudSolrClient cloudSolrClient;
   private final String handler;
@@ -58,21 +59,27 @@ public class SearchRateTrigger extends TriggerBase {
   private final String shard;
   private final String node;
   private final double rate;
-  private long lastEvent;
+  private final Map<String, Long> lastCollectionEvent = new ConcurrentHashMap<>();
+  private final Map<String, Long> lastNodeEvent = new ConcurrentHashMap<>();
+  private final Map<String, Object> state = new HashMap<>();
 
   public SearchRateTrigger(String name, Map<String, Object> properties, CoreContainer container) {
     super(TriggerEventType.SEARCHRATE, name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
-    this.container = container;
     this.timeSource = TimeSource.CURRENT_TIME;
     this.cloudSolrClient = new CloudSolrClient.Builder()
         .withClusterStateProvider(new ZkClientClusterStateProvider(container.getZkController().getZkStateReader()))
         .build();
+    this.state.put("lastCollectionEvent", lastCollectionEvent);
+    this.state.put("lastNodeEvent", lastNodeEvent);
+
     // parse config options
     collection = (String)properties.getOrDefault(AutoScalingParams.COLLECTION, Policy.ANY);
     shard = (String)properties.getOrDefault(AutoScalingParams.SHARD, Policy.ANY);
+    if (collection.equals(Policy.ANY) && !shard.equals(Policy.ANY)) {
+      throw new IllegalArgumentException("When 'shard' is other than #ANY collection name must be also other than #ANY");
+    }
     node = (String)properties.getOrDefault(AutoScalingParams.NODE, Policy.ANY);
     handler = (String)properties.getOrDefault(AutoScalingParams.HANDLER, "/select");
-    lastEvent = 0;
 
     if (properties.get("rate") == null) {
       throw new IllegalArgumentException("No 'rate' specified in configuration");
@@ -95,25 +102,42 @@ public class SearchRateTrigger extends TriggerBase {
 
   @Override
   protected Map<String, Object> getState() {
-    return null;
+    return state;
   }
 
   @Override
   protected void setState(Map<String, Object> state) {
-
+    lastCollectionEvent.clear();
+    lastNodeEvent.clear();
+    Map<String, Long> collTimes = (Map<String, Long>)state.get("lastCollectionEvent");
+    if (collTimes != null) {
+      lastCollectionEvent.putAll(collTimes);
+    }
+    Map<String, Long> nodeTimes = (Map<String, Long>)state.get("lastNodeEvent");
+    if (nodeTimes != null) {
+      lastNodeEvent.putAll(nodeTimes);
+    }
   }
 
   @Override
   public void restoreState(AutoScaling.Trigger old) {
+    assert old.isClosed();
+    if (old instanceof SearchRateTrigger) {
+      SearchRateTrigger that = (SearchRateTrigger)old;
+      assert this.name.equals(that.name);
+      this.lastCollectionEvent.clear();
+      this.lastNodeEvent.clear();
+      this.lastCollectionEvent.putAll(that.lastCollectionEvent);
+      this.lastNodeEvent.putAll(that.lastNodeEvent);
+    } else {
+      throw new SolrException(SolrException.ErrorCode.INVALID_STATE,
+          "Unable to restore state from an unknown type of trigger");
+    }
 
   }
 
   @Override
   public void run() {
-    long now = timeSource.getTime();
-    if (TimeUnit.SECONDS.convert(now - lastEvent, TimeUnit.NANOSECONDS) < getWaitForSecond()) {
-      return;
-    }
     AutoScaling.TriggerEventProcessor processor = processorRef.get();
     if (processor == null) {
       return;
@@ -157,9 +181,13 @@ public class SearchRateTrigger extends TriggerBase {
         }
       });
     }
-    // check for exceeded rates
+
+    long now = timeSource.getTime();
+    // check for exceeded rates and filter out those with less than waitFor from previous events
     Map<String, Double> hotNodes = nodeRates.entrySet().stream()
+        .filter(entry -> node.equals(Policy.ANY) || node.equals(entry.getKey()))
         .filter(entry -> entry.getValue().get() > rate)
+        .filter(entry -> waitForElapsed(entry.getKey(), now, lastNodeEvent))
         .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue().get()));
 
     Map<String, Map<String, Double>> hotShards = new HashMap<>();
@@ -174,7 +202,10 @@ public class SearchRateTrigger extends TriggerBase {
               return r;
             })
             .mapToDouble(r -> (Double)r.getVariable(AutoScalingParams.RATE)).sum();
-        if (shardRate > rate) {
+        if (shardRate > rate &&
+            (collection.equals(Policy.ANY) || collection.equals(coll)) &&
+            (shard.equals(Policy.ANY) || shard.equals(sh)) &&
+            waitForElapsed(coll, now, lastCollectionEvent)) {
           hotShards.computeIfAbsent(coll, s -> new HashMap<>()).put(sh, shardRate);
         }
       });
@@ -185,7 +216,9 @@ public class SearchRateTrigger extends TriggerBase {
       double total = shardRates.entrySet().stream()
           .mapToDouble(e -> e.getValue().stream()
               .mapToDouble(r -> (Double)r.getVariable(AutoScalingParams.RATE)).sum()).sum();
-      if (total > rate) {
+      if (total > rate &&
+          (collection.equals(Policy.ANY) || collection.equals(coll)) &&
+          waitForElapsed(coll, now, lastCollectionEvent)) {
         hotCollections.put(coll, total);
       }
     });
@@ -197,8 +230,22 @@ public class SearchRateTrigger extends TriggerBase {
     // generate event
 
     if (processor.process(new SearchRateEvent(getName(), now, hotNodes, hotCollections, hotShards, hotReplicas))) {
-      lastEvent = now;
+      // update lastEvent times
+      hotNodes.keySet().forEach(node -> lastNodeEvent.put(node, now));
+      hotCollections.keySet().forEach(coll -> lastCollectionEvent.put(coll, now));
+      hotShards.keySet().forEach(coll -> lastCollectionEvent.put(coll, now));
+      hotReplicas.forEach(r -> lastCollectionEvent.put(r.getCollection(), now));
     }
+  }
+
+  private boolean waitForElapsed(String name, long now, Map<String, Long> lastEventMap) {
+    Long lastTime = lastEventMap.computeIfAbsent(name, s -> now);
+    long elapsed = TimeUnit.SECONDS.convert(now - lastTime, TimeUnit.NANOSECONDS);
+    log.info("name=" + name + ", lastTime=" + lastTime + ", elapsed=" + elapsed);
+    if (TimeUnit.SECONDS.convert(now - lastTime, TimeUnit.NANOSECONDS) < getWaitForSecond()) {
+      return false;
+    }
+    return true;
   }
 
   public static class SearchRateEvent extends TriggerEvent {
