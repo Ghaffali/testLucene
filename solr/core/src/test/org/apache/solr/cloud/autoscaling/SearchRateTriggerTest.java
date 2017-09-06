@@ -91,7 +91,7 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
       cluster.stopJettySolrRunner(1);
       events.clear();
       SolrParams query = params(CommonParams.Q, "*:*");
-      for (int i = 0; i < 200; i++) {
+      for (int i = 0; i < 500; i++) {
         solrClient.query(COLL1, query);
       }
       Thread.sleep(waitForSeconds * 1000 + 2000);
@@ -111,7 +111,7 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
       }
       Thread.sleep(waitForSeconds * 1000 + 2000);
       trigger.run();
-      // should generate node and collection event
+      // should generate node and collection event but not for COLL2 because of waitFor
       assertEquals(1, events.size());
       event = events.get(0);
       Map<String, Double> hotNodes = (Map<String, Double>)event.getProperty(AutoScalingParams.NODE);
@@ -121,10 +121,8 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
       assertEquals(2, hotCollections.size());
       Rate = hotCollections.get(COLL1);
       assertNotNull(Rate);
-      assertTrue(Rate > rate);
       Rate = hotCollections.get(COLL2);
       assertNotNull(Rate);
-      assertTrue(Rate > rate);
 
       events.clear();
       // assert that waitFor prevents new events from being generated
@@ -136,6 +134,15 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
       trigger.run();
       // should generate node and collection event
       assertEquals(1, events.size());
+      hotCollections = (Map<String, Double>)event.getProperty(AutoScalingParams.COLLECTION);
+      assertEquals(2, hotCollections.size());
+      Rate = hotCollections.get(COLL1);
+      assertNotNull(Rate);
+      Rate = hotCollections.get(COLL2);
+      assertNotNull(Rate);
+      hotNodes = (Map<String, Double>)event.getProperty(AutoScalingParams.NODE);
+      assertEquals(3, hotNodes.size());
+      hotNodes.forEach((n, r) -> assertTrue(n, r > rate));
     }
   }
 

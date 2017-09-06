@@ -53,7 +53,7 @@ public class SearchRateTrigger extends TriggerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final TimeSource timeSource;
-  private final CloudSolrClient cloudSolrClient;
+  private final CoreContainer container;
   private final String handler;
   private final String collection;
   private final String shard;
@@ -61,16 +61,18 @@ public class SearchRateTrigger extends TriggerBase {
   private final double rate;
   private final Map<String, Long> lastCollectionEvent = new ConcurrentHashMap<>();
   private final Map<String, Long> lastNodeEvent = new ConcurrentHashMap<>();
+  private final Map<String, Long> lastShardEvent = new ConcurrentHashMap<>();
+  private final Map<String, Long> lastReplicaEvent = new ConcurrentHashMap<>();
   private final Map<String, Object> state = new HashMap<>();
 
   public SearchRateTrigger(String name, Map<String, Object> properties, CoreContainer container) {
     super(TriggerEventType.SEARCHRATE, name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
     this.timeSource = TimeSource.CURRENT_TIME;
-    this.cloudSolrClient = new CloudSolrClient.Builder()
-        .withClusterStateProvider(new ZkClientClusterStateProvider(container.getZkController().getZkStateReader()))
-        .build();
+    this.container = container;
     this.state.put("lastCollectionEvent", lastCollectionEvent);
     this.state.put("lastNodeEvent", lastNodeEvent);
+    this.state.put("lastShardEvent", lastShardEvent);
+    this.state.put("lastReplicaEvent", lastReplicaEvent);
 
     // parse config options
     collection = (String)properties.getOrDefault(AutoScalingParams.COLLECTION, Policy.ANY);
@@ -93,14 +95,6 @@ public class SearchRateTrigger extends TriggerBase {
   }
 
   @Override
-  public void close() throws IOException {
-    super.close();
-    if (cloudSolrClient != null) {
-      IOUtils.closeQuietly(cloudSolrClient);
-    }
-  }
-
-  @Override
   protected Map<String, Object> getState() {
     return state;
   }
@@ -109,6 +103,8 @@ public class SearchRateTrigger extends TriggerBase {
   protected void setState(Map<String, Object> state) {
     lastCollectionEvent.clear();
     lastNodeEvent.clear();
+    lastShardEvent.clear();
+    lastReplicaEvent.clear();
     Map<String, Long> collTimes = (Map<String, Long>)state.get("lastCollectionEvent");
     if (collTimes != null) {
       lastCollectionEvent.putAll(collTimes);
@@ -116,6 +112,14 @@ public class SearchRateTrigger extends TriggerBase {
     Map<String, Long> nodeTimes = (Map<String, Long>)state.get("lastNodeEvent");
     if (nodeTimes != null) {
       lastNodeEvent.putAll(nodeTimes);
+    }
+    Map<String, Long> shardTimes = (Map<String, Long>)state.get("lastShardEvent");
+    if (shardTimes != null) {
+      lastShardEvent.putAll(shardTimes);
+    }
+    Map<String, Long> replicaTimes = (Map<String, Long>)state.get("lastReplicaEvent");
+    if (replicaTimes != null) {
+      lastReplicaEvent.putAll(replicaTimes);
     }
   }
 
@@ -127,8 +131,12 @@ public class SearchRateTrigger extends TriggerBase {
       assert this.name.equals(that.name);
       this.lastCollectionEvent.clear();
       this.lastNodeEvent.clear();
+      this.lastShardEvent.clear();
+      this.lastReplicaEvent.clear();
       this.lastCollectionEvent.putAll(that.lastCollectionEvent);
       this.lastNodeEvent.putAll(that.lastNodeEvent);
+      this.lastShardEvent.putAll(that.lastShardEvent);
+      this.lastReplicaEvent.putAll(that.lastReplicaEvent);
     } else {
       throw new SolrException(SolrException.ErrorCode.INVALID_STATE,
           "Unable to restore state from an unknown type of trigger");
@@ -143,51 +151,60 @@ public class SearchRateTrigger extends TriggerBase {
       return;
     }
 
-    SolrClientDataProvider dataProvider = new SolrClientDataProvider(cloudSolrClient);
-
     Map<String, Map<String, List<ReplicaInfo>>> collectionRates = new HashMap<>();
     Map<String, AtomicDouble> nodeRates = new HashMap<>();
-    for (String node : dataProvider.getNodes()) {
-      Map<String, ReplicaInfo> metricTags = new HashMap<>();
-      // coll, shard, replica
-      Map<String, Map<String, List<ReplicaInfo>>> infos = dataProvider.getReplicaInfo(node, Collections.emptyList());
-      infos.forEach((coll, shards) -> {
-        shards.forEach((sh, replicas) -> {
-          replicas.forEach(replica -> {
-            // we have to translate to the metrics registry name, which uses "_replica_nN" as suffix
-            String replicaName = SolrCoreMetricManager.parseReplicaName(coll, replica.getCore());
-            if (replicaName == null) { // should never happen???
-              replicaName = replica.getName(); // which is actually coreNode name...
-            }
-            String registry = SolrCoreMetricManager.createRegistryName(true, coll, sh, replicaName, null);
-            String tag = "metrics:" + registry
-                + ":QUERY." + handler + ".requestTimes:1minRate";
-            metricTags.put(tag, replica);
+
+    try (CloudSolrClient cloudSolrClient = new CloudSolrClient.Builder()
+        .withClusterStateProvider(new ZkClientClusterStateProvider(container.getZkController().getZkStateReader()))
+        .build()) {
+
+      SolrClientDataProvider dataProvider = new SolrClientDataProvider(cloudSolrClient);
+
+      for (String node : dataProvider.getNodes()) {
+        Map<String, ReplicaInfo> metricTags = new HashMap<>();
+        // coll, shard, replica
+        Map<String, Map<String, List<ReplicaInfo>>> infos = dataProvider.getReplicaInfo(node, Collections.emptyList());
+        infos.forEach((coll, shards) -> {
+          shards.forEach((sh, replicas) -> {
+            replicas.forEach(replica -> {
+              // we have to translate to the metrics registry name, which uses "_replica_nN" as suffix
+              String replicaName = SolrCoreMetricManager.parseReplicaName(coll, replica.getCore());
+              if (replicaName == null) { // should never happen???
+                replicaName = replica.getName(); // which is actually coreNode name...
+              }
+              String registry = SolrCoreMetricManager.createRegistryName(true, coll, sh, replicaName, null);
+              String tag = "metrics:" + registry
+                  + ":QUERY." + handler + ".requestTimes:1minRate";
+              metricTags.put(tag, replica);
+            });
           });
         });
-      });
-      Map<String, Object> rates = dataProvider.getNodeValues(node, metricTags.keySet());
-      rates.forEach((tag, rate) -> {
-        ReplicaInfo info = metricTags.get(tag);
-        if (info == null) {
-          log.warn("Missing replica info for response tag " + tag);
-        } else {
-          Map<String, List<ReplicaInfo>> perCollection = collectionRates.computeIfAbsent(info.getCollection(), s -> new HashMap<>());
-          List<ReplicaInfo> perShard = perCollection.computeIfAbsent(info.getShard(), s -> new ArrayList<>());
-          info.getVariables().put(AutoScalingParams.RATE, rate);
-          perShard.add(info);
-          AtomicDouble perNode = nodeRates.computeIfAbsent(node, s -> new AtomicDouble());
-          perNode.addAndGet((Double)rate);
-        }
-      });
+        Map<String, Object> rates = dataProvider.getNodeValues(node, metricTags.keySet());
+        rates.forEach((tag, rate) -> {
+          ReplicaInfo info = metricTags.get(tag);
+          if (info == null) {
+            log.warn("Missing replica info for response tag " + tag);
+          } else {
+            Map<String, List<ReplicaInfo>> perCollection = collectionRates.computeIfAbsent(info.getCollection(), s -> new HashMap<>());
+            List<ReplicaInfo> perShard = perCollection.computeIfAbsent(info.getShard(), s -> new ArrayList<>());
+            info.getVariables().put(AutoScalingParams.RATE, rate);
+            perShard.add(info);
+            AtomicDouble perNode = nodeRates.computeIfAbsent(node, s -> new AtomicDouble());
+            perNode.addAndGet((Double)rate);
+          }
+        });
+      }
+    } catch (IOException e) {
+      log.warn("Exception getting node values", e);
+      return;
     }
 
     long now = timeSource.getTime();
     // check for exceeded rates and filter out those with less than waitFor from previous events
     Map<String, Double> hotNodes = nodeRates.entrySet().stream()
         .filter(entry -> node.equals(Policy.ANY) || node.equals(entry.getKey()))
-        .filter(entry -> entry.getValue().get() > rate)
         .filter(entry -> waitForElapsed(entry.getKey(), now, lastNodeEvent))
+        .filter(entry -> entry.getValue().get() > rate)
         .collect(Collectors.toMap(entry -> entry.getKey(), entry -> entry.getValue().get()));
 
     Map<String, Map<String, Double>> hotShards = new HashMap<>();
@@ -196,16 +213,17 @@ public class SearchRateTrigger extends TriggerBase {
       shardRates.forEach((sh, replicaRates) -> {
         double shardRate = replicaRates.stream()
             .map(r -> {
-              if ((Double)r.getVariable(AutoScalingParams.RATE) > rate) {
+              if (waitForElapsed(r.getCollection() + "." + r.getCore(), now, lastReplicaEvent) &&
+                  ((Double)r.getVariable(AutoScalingParams.RATE) > rate)) {
                 hotReplicas.add(r);
               }
               return r;
             })
             .mapToDouble(r -> (Double)r.getVariable(AutoScalingParams.RATE)).sum();
-        if (shardRate > rate &&
+        if (waitForElapsed(coll + "." + sh, now, lastShardEvent) &&
+            (shardRate > rate) &&
             (collection.equals(Policy.ANY) || collection.equals(coll)) &&
-            (shard.equals(Policy.ANY) || shard.equals(sh)) &&
-            waitForElapsed(coll, now, lastCollectionEvent)) {
+            (shard.equals(Policy.ANY) || shard.equals(sh))) {
           hotShards.computeIfAbsent(coll, s -> new HashMap<>()).put(sh, shardRate);
         }
       });
@@ -216,9 +234,9 @@ public class SearchRateTrigger extends TriggerBase {
       double total = shardRates.entrySet().stream()
           .mapToDouble(e -> e.getValue().stream()
               .mapToDouble(r -> (Double)r.getVariable(AutoScalingParams.RATE)).sum()).sum();
-      if (total > rate &&
-          (collection.equals(Policy.ANY) || collection.equals(coll)) &&
-          waitForElapsed(coll, now, lastCollectionEvent)) {
+      if (waitForElapsed(coll, now, lastCollectionEvent) &&
+          (total > rate) &&
+          (collection.equals(Policy.ANY) || collection.equals(coll))) {
         hotCollections.put(coll, total);
       }
     });
@@ -233,8 +251,9 @@ public class SearchRateTrigger extends TriggerBase {
       // update lastEvent times
       hotNodes.keySet().forEach(node -> lastNodeEvent.put(node, now));
       hotCollections.keySet().forEach(coll -> lastCollectionEvent.put(coll, now));
-      hotShards.keySet().forEach(coll -> lastCollectionEvent.put(coll, now));
-      hotReplicas.forEach(r -> lastCollectionEvent.put(r.getCollection(), now));
+      hotShards.entrySet().forEach(e -> e.getValue()
+          .forEach((sh, rate) -> lastShardEvent.put(e.getKey() + "." + sh, now)));
+      hotReplicas.forEach(r -> lastReplicaEvent.put(r.getCollection() + "." + r.getCore(), now));
     }
   }
 
