@@ -66,7 +66,7 @@ public class FacetStream extends TupleStream implements Expressible  {
   private List<Tuple> tuples = new ArrayList<Tuple>();
   private int index;
   private String zkHost;
-  private SolrParams params;
+  private ModifiableSolrParams params;
   private String collection;
   protected transient SolrClientCache cache;
   protected transient CloudSolrClient cloudSolrClient;
@@ -216,7 +216,7 @@ public class FacetStream extends TupleStream implements Expressible  {
 
   private void init(String collection, SolrParams params, Bucket[] buckets, FieldComparator[] bucketSorts, Metric[] metrics, int bucketSizeLimit, String zkHost) throws IOException {
     this.zkHost  = zkHost;
-    this.params = params;
+    this.params = new ModifiableSolrParams(params);
     this.buckets = buckets;
     this.metrics = metrics;
     this.bucketSizeLimit   = bucketSizeLimit;
@@ -242,11 +242,11 @@ public class FacetStream extends TupleStream implements Expressible  {
     expression.addParameter(collection);
     
     // parameters
-    ModifiableSolrParams tmpParams = new ModifiableSolrParams(params);
 
-    for (Entry<String, String[]> param : tmpParams.getMap().entrySet()) {
-      expression.addParameter(new StreamExpressionNamedParameter(param.getKey(),
-          String.join(",", param.getValue())));
+    for (Entry<String, String[]> param : params.getMap().entrySet()) {
+      for (String val : param.getValue()) {
+        expression.addParameter(new StreamExpressionNamedParameter(param.getKey(), val));
+      }
     }
     
     // buckets
@@ -495,11 +495,15 @@ public class FacetStream extends TupleStream implements Expressible  {
         for(Metric metric : _metrics) {
           String identifier = metric.getIdentifier();
           if(!identifier.startsWith("count(")) {
-            double d = (double)bucket.get("facet_"+m);
+            Number d = ((Number)bucket.get("facet_"+m));
             if(metric.outputLong) {
-              t.put(identifier, Math.round(d));
+              if (d instanceof Long || d instanceof Integer) {
+                t.put(identifier, d.longValue());
+              } else {
+                t.put(identifier, Math.round(d.doubleValue()));
+              }
             } else {
-              t.put(identifier, d);
+              t.put(identifier, d.doubleValue());
             }
             ++m;
           } else {
