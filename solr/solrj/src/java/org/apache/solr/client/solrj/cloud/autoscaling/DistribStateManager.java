@@ -14,50 +14,54 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.NoSuchElementException;
 
-import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.client.solrj.SolrResponse;
-import org.apache.solr.client.solrj.cloud.DistributedQueue;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.Op;
 import org.apache.zookeeper.OpResult;
 import org.apache.zookeeper.Watcher;
 
 /**
- * This interface abstracts the access to a SolrCloud cluster, including interactions with Zookeeper, Solr
- * and generic HTTP calls.
+ * Represents a distributed state repository.
  */
-public interface SolrCloudDataProvider extends Closeable {
+public interface DistribStateManager {
 
-  ClusterDataProvider getClusterDataProvider();
+  class VersionedData {
+    public final int version;
+    public final byte[] data;
 
-  DistribStateManager getDistribStateManager();
-
-  interface DistributedQueueFactory {
-    DistributedQueue makeQueue(String path) throws IOException;
-    void removeQueue(String path) throws IOException;
+    public VersionedData(int version, byte[] data) {
+      this.version = version;
+      this.data = data;
+    }
   }
 
-  DistributedQueueFactory getDistributedQueueFactory();
+  // state accessors
 
-  // Solr-like methods
+  boolean hasData(String path) throws IOException;
 
-  SolrResponse request(SolrRequest req) throws IOException;
+  List<String> listData(String path) throws NoSuchElementException, IOException;
 
-  byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException;
+  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException;
 
-  // distributed queue implementation
-
-  @Override
-  default void close() {
-
+  default VersionedData getData(String path) throws NoSuchElementException, IOException {
+    return getData(path, null);
   }
+
+  // state mutators
+
+  void makePath(String path) throws IOException;
+
+  void createData(String path, byte[] data, CreateMode mode) throws IOException;
+
+  void removeData(String path, int version) throws NoSuchElementException, IOException;
+
+  void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException;
+
+  List<OpResult> multi(final Iterable<Op> ops) throws IOException;
+
 }

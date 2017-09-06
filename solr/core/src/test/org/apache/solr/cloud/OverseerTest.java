@@ -38,6 +38,11 @@ import com.codahale.metrics.Timer;
 import org.apache.lucene.util.LuceneTestCase.Slow;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
+import org.apache.solr.client.solrj.impl.SolrClientCloudDataProvider;
+import org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider;
+import org.apache.solr.cloud.autoscaling.ZkDistributedQueueFactory;
 import org.apache.solr.cloud.overseer.OverseerAction;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -1202,6 +1207,11 @@ public class OverseerTest extends SolrTestCaseJ4 {
     when(zkController.getCoreContainer()).thenReturn(mockAlwaysUpCoreContainer);
     when(zkController.getZkClient()).thenReturn(zkClient);
     when(zkController.getZkStateReader()).thenReturn(reader);
+    CloudSolrClient client = new CloudSolrClient.Builder()
+        .withClusterStateProvider(new ZkClientClusterStateProvider(reader))
+        .build();
+    SolrCloudDataProvider dataProvider = new SolrClientCloudDataProvider(new ZkDistributedQueueFactory(zkClient), client);
+    when(zkController.getSolrCloudDataProvider()).thenReturn(dataProvider);
     return zkController;
   }
 

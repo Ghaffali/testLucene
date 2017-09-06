@@ -28,6 +28,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.lucene.util.IOUtils;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -46,6 +47,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
 
   protected final String name;
   protected final SolrCloudDataProvider dataProvider;
+  protected final DistribStateManager stateManager;
   protected final Map<String, Object> properties = new HashMap<>();
   protected final TriggerEventType eventType;
   protected final int waitForSecond;
@@ -62,6 +64,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
       this.properties.putAll(properties);
     }
     this.dataProvider = dataProvider;
+    this.stateManager = dataProvider.getDistribStateManager();
     this.enabled = Boolean.parseBoolean(String.valueOf(this.properties.getOrDefault("enabled", "true")));
     this.eventType = TriggerEventType.valueOf(this.properties.getOrDefault("event", TriggerEventType.INVALID.toString()).toString().toUpperCase(Locale.ROOT));
     this.waitForSecond = ((Long) this.properties.getOrDefault("waitFor", -1L)).intValue();
@@ -77,8 +80,8 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     }
 
     try {
-      if (!dataProvider.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
-        dataProvider.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
+      if (!stateManager.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
+        stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
       }
     } catch (IOException e) {
       LOG.warn("Exception checking ZK path " + ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, e);
@@ -190,12 +193,12 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     byte[] data = Utils.toJSON(state);
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
-      if (dataProvider.hasData(path)) {
+      if (stateManager.hasData(path)) {
         // update
-        dataProvider.setData(path, data, -1);
+        stateManager.setData(path, data, -1);
       } else {
         // create
-        dataProvider.createData(path, data, CreateMode.PERSISTENT);
+        stateManager.createData(path, data, CreateMode.PERSISTENT);
       }
       lastState = state;
     } catch (IOException e) {
@@ -208,8 +211,8 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     byte[] data = null;
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
-      if (dataProvider.hasData(path)) {
-        SolrCloudDataProvider.VersionedData versionedData = dataProvider.getData(path);
+      if (stateManager.hasData(path)) {
+        DistribStateManager.VersionedData versionedData = stateManager.getData(path);
         data = versionedData.data;
       }
     } catch (Exception e) {

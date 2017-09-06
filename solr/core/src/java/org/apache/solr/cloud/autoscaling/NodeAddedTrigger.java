@@ -65,7 +65,7 @@ public class NodeAddedTrigger extends TriggerBase {
     super.init();
     // pick up added nodes for which marker paths were created
     try {
-      List<String> added = dataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
+      List<String> added = stateManager.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
       added.forEach(n -> {
         // don't add nodes that have since gone away
         if (lastLiveNodes.contains(n)) {
@@ -186,8 +186,8 @@ public class NodeAddedTrigger extends TriggerBase {
   private void removeMarker(String nodeName) {
     String path = ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + nodeName;
     try {
-      if (dataProvider.hasData(path)) {
-        dataProvider.removeData(path, -1);
+      if (stateManager.hasData(path)) {
+        stateManager.removeData(path, -1);
       }
     } catch (NoSuchElementException e) {
       // ignore

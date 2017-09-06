@@ -40,6 +40,7 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -59,7 +60,7 @@ public class SolrClientCloudDataProvider implements SolrCloudDataProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final CloudSolrClient solrClient;
-  private final SolrClientClusterDataProvider clusterDataProvider;
+  private final ZkDistribStateManager stateManager;
   private final DistributedQueueFactory queueFactory;
   private final ZkStateReader zkStateReader;
   private final SolrZkClient zkClient;
@@ -67,87 +68,19 @@ public class SolrClientCloudDataProvider implements SolrCloudDataProvider {
   public SolrClientCloudDataProvider(DistributedQueueFactory queueFactory, CloudSolrClient solrClient) {
     this.queueFactory = queueFactory;
     this.solrClient = solrClient;
-    this.clusterDataProvider = new SolrClientClusterDataProvider(solrClient);
     this.zkStateReader = solrClient.getZkStateReader();
     this.zkClient = zkStateReader.getZkClient();
+    this.stateManager = new ZkDistribStateManager(zkClient);
   }
 
   @Override
   public ClusterDataProvider getClusterDataProvider() {
-    return clusterDataProvider;
+    return new SolrClientClusterDataProvider(solrClient);
   }
 
   @Override
-  public boolean hasData(String path) throws IOException {
-    try {
-      return zkClient.exists(path, true);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
-  }
-
-  @Override
-  public List<String> listData(String path) throws NoSuchElementException, IOException {
-    try {
-      return zkClient.getChildren(path, null, true);
-    } catch (KeeperException.NoNodeException e) {
-      throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
-  }
-
-  @Override
-  public VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException {
-    Stat stat = new Stat();
-    try {
-      byte[] bytes = zkClient.getData(path, watcher, stat, true);
-      return new VersionedData(stat.getVersion(), bytes);
-    } catch (KeeperException.NoNodeException e) {
-      throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
-  }
-
-  @Override
-  public void makePath(String path) throws IOException {
-    try {
-      zkClient.makePath(path, true);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
-  }
-
-  @Override
-  public void createData(String path, byte[] data, CreateMode mode) throws IOException {
-    try {
-      zkClient.create(path, data, mode, true);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
-  }
-
-  @Override
-  public void removeData(String path, int version) throws NoSuchElementException, IOException {
-    try {
-      zkClient.delete(path, version, true);
-    } catch (KeeperException.NoNodeException e) {
-      throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
-  }
-
-  @Override
-  public void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException {
-    try {
-      zkClient.setData(path, data, version, true);
-    } catch (KeeperException.NoNodeException e) {
-      throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
+  public DistribStateManager getDistribStateManager() {
+    return stateManager;
   }
 
   @Override
@@ -212,15 +145,6 @@ public class SolrClientCloudDataProvider implements SolrCloudDataProvider {
       return EntityUtils.toByteArray(responseEntity);
     } else {
       return EMPTY;
-    }
-  }
-
-  @Override
-  public List<OpResult> multi(Iterable<Op> ops) throws IOException {
-    try {
-      return zkClient.multi(ops, true);
-    } catch (Exception e) {
-      throw new IOException(e);
     }
   }
 

@@ -41,6 +41,7 @@ import java.util.stream.Collectors;
 
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.cloud.ActionThrottle;
@@ -86,6 +87,8 @@ public class ScheduledTriggers implements Closeable {
 
   private final SolrCloudDataProvider dataProvider;
 
+  private final DistribStateManager stateManager;
+
   private final SolrResourceLoader loader;
 
   private final Overseer.Stats queueStats;
@@ -108,6 +111,7 @@ public class ScheduledTriggers implements Closeable {
     // todo make the wait time configurable
     actionThrottle = new ActionThrottle("action", DEFAULT_MIN_MS_BETWEEN_ACTIONS);
     this.dataProvider = dataProvider;
+    this.stateManager = dataProvider.getDistribStateManager();
     this.loader = loader;
     queueStats = new Overseer.Stats();
     listeners = new TriggerListeners();
@@ -248,21 +252,21 @@ public class ScheduledTriggers implements Closeable {
     String statePath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + triggerName;
     String eventsPath = ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName;
     try {
-      if (dataProvider.hasData(statePath)) {
-        dataProvider.removeData(statePath, -1);
+      if (stateManager.hasData(statePath)) {
+        stateManager.removeData(statePath, -1);
       }
     } catch (Exception e) {
       log.warn("Failed to remove state for removed trigger " + statePath, e);
     }
     try {
-      if (dataProvider.hasData(eventsPath)) {
-        List<String> events = dataProvider.listData(eventsPath);
+      if (stateManager.hasData(eventsPath)) {
+        List<String> events = stateManager.listData(eventsPath);
         List<Op> ops = new ArrayList<>(events.size() + 1);
         events.forEach(ev -> {
           ops.add(Op.delete(eventsPath + "/" + ev, -1));
         });
         ops.add(Op.delete(eventsPath, -1));
-        dataProvider.multi(ops);
+        stateManager.multi(ops);
       }
     } catch (Exception e) {
       log.warn("Failed to remove events for removed trigger " + eventsPath, e);

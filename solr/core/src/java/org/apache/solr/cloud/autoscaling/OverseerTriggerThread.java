@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -187,10 +188,11 @@ public class OverseerTriggerThread implements Runnable, Closeable {
           throw new IllegalStateException("Caught AlreadyClosedException from ScheduledTriggers, but we're not closed yet!", e);
         }
       }
+      DistribStateManager stateManager = dataProvider.getDistribStateManager();
       if (cleanOldNodeLostMarkers) {
         log.debug("-- clean old nodeLost markers");
         try {
-          List<String> markers = dataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
+          List<String> markers = stateManager.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
           markers.forEach(n -> {
             removeNodeMarker(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH, n);
           });
@@ -203,7 +205,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
       if (cleanOldNodeAddedMarkers) {
         log.debug("-- clean old nodeAdded markers");
         try {
-          List<String> markers = dataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
+          List<String> markers = stateManager.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
           markers.forEach(n -> {
             removeNodeMarker(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH, n);
           });
@@ -220,7 +222,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
   private void removeNodeMarker(String path, String nodeName) {
     path = path + "/" + nodeName;
     try {
-      dataProvider.removeData(path, -1);
+      dataProvider.getDistribStateManager().removeData(path, -1);
       log.debug("  -- deleted " + path);
     } catch (NoSuchElementException e) {
       // ignore

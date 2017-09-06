@@ -64,7 +64,7 @@ public class NodeLostTrigger extends TriggerBase {
     super.init();
     // pick up lost nodes for which marker paths were created
     try {
-      List<String> lost = dataProvider.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
+      List<String> lost = stateManager.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
       lost.forEach(n -> {
         // don't add nodes that have since came back
         if (!lastLiveNodes.contains(n)) {
@@ -190,8 +190,8 @@ public class NodeLostTrigger extends TriggerBase {
   private void removeMarker(String nodeName) {
     String path = ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + nodeName;
     try {
-      if (dataProvider.hasData(path)) {
-        dataProvider.removeData(path, -1);
+      if (stateManager.hasData(path)) {
+        stateManager.removeData(path, -1);
       }
     } catch (NoSuchElementException e) {
       // ignore
