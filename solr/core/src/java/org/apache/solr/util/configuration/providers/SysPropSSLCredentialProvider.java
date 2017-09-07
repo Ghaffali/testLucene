@@ -14,24 +14,25 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.search;
 
-import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.request.SolrQueryRequest;
+package org.apache.solr.util.configuration.providers;
+
+import java.util.EnumMap;
 
 /**
- * Parse Solr's variant of Lucene QueryParser syntax, including the
- * deprecated sort specification after the query.
- * <br>Example: <code>{!lucenePlusSort}myfield:foo +bar -baz;price asc</code>
- *
- * @deprecated This class should have been removed a long time ago, it will be removed in Solr 8.0
+ * System property based SSL configuration provider
  */
-@Deprecated
-public class OldLuceneQParserPlugin extends QParserPlugin {
-  public static final String NAME = "lucenePlusSort";
-
+public class SysPropSSLCredentialProvider extends AbstractSSLCredentialProvider {
   @Override
-  public QParser createParser(String qstr, SolrParams localParams, SolrParams params, SolrQueryRequest req) {
-    return new OldLuceneQParser(qstr, localParams, params, req);
+  protected EnumMap<CredentialType, String> getCredentialKeyMap() {
+    return DEFAULT_CREDENTIAL_KEY_MAP;
+  }
+
+  protected String getCredential(String syspropKey) {
+    if (System.getProperty(syspropKey) != null) {
+      return System.getProperty(syspropKey);
+    } else {
+      return null;
+    }
   }
 }
