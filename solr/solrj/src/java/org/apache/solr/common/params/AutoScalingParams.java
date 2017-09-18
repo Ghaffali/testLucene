@@ -37,6 +37,13 @@ public interface AutoScalingParams {
   String BEFORE_ACTION = "beforeAction";
   String AFTER_ACTION = "afterAction";
   String TIMEOUT = "timeout";
+  String COLLECTION = "collection";
+  String SHARD = "shard";
+  String REPLICA = "replica";
+  String NODE = "node";
+  String WARM_SHARD = "warmShard";
+  String HANDLER = "handler";
+  String RATE = "rate";
   String REMOVE_LISTENERS = "removeListeners";
   String ZK_VERSION = "zkVersion";
 

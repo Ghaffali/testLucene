@@ -30,8 +30,10 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
+import org.apache.solr.common.util.Pair;
 import org.apache.solr.common.util.Utils;
 
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICA;
@@ -66,6 +68,11 @@ public class PolicyHelper {
         }
 
         @Override
+        public ClusterState getClusterState() {
+          return delegate.getClusterState();
+        }
+
+        @Override
         public String getPolicyNameByCollection(String coll) {
           return policyMapping.get() != null && policyMapping.get().containsKey(coll) ?
               optionalPolicyMapping.get(coll) :
@@ -89,9 +96,8 @@ public class PolicyHelper {
         for (Map.Entry<Replica.Type, Integer> e : typeVsCount.entrySet()) {
           for (int i = 0; i < e.getValue(); i++) {
             Policy.Suggester suggester = session.getSuggester(ADDREPLICA)
-                .hint(Hint.COLL, collName)
                 .hint(Hint.REPLICATYPE, e.getKey())
-                .hint(Hint.SHARD, shardName);
+                .hint(Hint.COLL_SHARD, new Pair<>(collName, shardName));
             if (nodesList != null) {
               for (String nodeName : nodesList) {
                 suggester = suggester.hint(Hint.TARGET_NODE, nodeName);
