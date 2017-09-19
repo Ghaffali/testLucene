@@ -81,16 +81,13 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
         Map<String, Map<String, List<ReplicaInfo>>> nodeData = data.computeIfAbsent(replica.getNodeName(), k -> new HashMap<>());
         Map<String, List<ReplicaInfo>> collData = nodeData.computeIfAbsent(collName, k -> new HashMap<>());
         List<ReplicaInfo> replicas = collData.computeIfAbsent(shard, k -> new ArrayList<>());
-        replicas.add(new ReplicaInfo(replica.getName(), collName, shard, replica.getType(), new HashMap<>()));
+        replicas.add(new ReplicaInfo(replica.getName(), collName, shard, replica.getType(), replica.getProperties()));
       });
     });
   }
 
-  @Override
-  public void writeMap(EntryWriter ew) throws IOException {
-    ew.put("liveNodes", zkStateReader.getClusterState().getLiveNodes());
-    ew.put("replicaInfo", Utils.getDeepCopy(data, 5));
-    ew.put("nodeValues", nodeVsTags);
+  public Collection<String> getLiveNodes() {
+    return zkStateReader.getClusterState().getLiveNodes();
   }
 
   @Override
@@ -114,11 +111,6 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
   }
 
   @Override
-  public Collection<String> getLiveNodes() {
-    return solrClient.getZkStateReader().getClusterState().getLiveNodes();
-  }
-
-  @Override
   public Map<String, Object> getClusterProperties() {
     return zkStateReader.getClusterProperties();
   }
@@ -126,6 +118,12 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
   @Override
   public ClusterState getClusterState() {
     return zkStateReader.getClusterState();
+  }
+
+  public void writeMap(EntryWriter ew) throws IOException {
+    ew.put("clusterState", zkStateReader.getClusterState());
+    ew.put("replicaInfo", Utils.getDeepCopy(data, 5));
+    ew.put("nodeValues", nodeVsTags);
   }
 
   @Override

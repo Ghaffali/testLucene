@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.util.Pair;
@@ -51,6 +52,11 @@ public class PolicyHelper {
     List<ReplicaPosition> positions = new ArrayList<>();
       final ClusterDataProvider delegate = cdp;
       cdp = new DelegatingClusterDataProvider(delegate) {
+        @Override
+        public ClusterState getClusterState() {
+          return delegate.getClusterState();
+        }
+
         @Override
         public String getPolicyNameByCollection(String coll) {
           return policyMapping.get() != null && policyMapping.get().containsKey(coll) ?

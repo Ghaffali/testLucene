@@ -53,7 +53,7 @@ public class NodeLostTrigger extends TriggerBase {
   public NodeLostTrigger(String name, Map<String, Object> properties,
                          SolrResourceLoader loader,
                          SolrCloudDataProvider dataProvider) {
-    super(name, properties, loader, dataProvider);
+    super(TriggerEventType.NODELOST, name, properties, loader, dataProvider);
     this.timeSource = TimeSource.CURRENT_TIME;
     lastLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
@@ -78,11 +78,6 @@ public class NodeLostTrigger extends TriggerBase {
     } catch (Exception e) {
       log.warn("Exception retrieving nodeLost markers", e);
     }
-  }
-
-  @Override
-  public List<TriggerAction> getActions() {
-    return actions;
   }
 
   @Override

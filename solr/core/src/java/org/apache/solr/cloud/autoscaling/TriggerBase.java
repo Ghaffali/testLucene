@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
@@ -31,6 +30,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
+
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
@@ -58,16 +58,16 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   protected boolean isClosed;
 
 
-  protected TriggerBase(String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+    this.eventType = eventType;
     this.name = name;
+    this.dataProvider = dataProvider;
+    this.stateManager = dataProvider.getDistribStateManager();
     if (properties != null) {
       this.properties.putAll(properties);
     }
-    this.dataProvider = dataProvider;
-    this.stateManager = dataProvider.getDistribStateManager();
     this.enabled = Boolean.parseBoolean(String.valueOf(this.properties.getOrDefault("enabled", "true")));
-    this.eventType = TriggerEventType.valueOf(this.properties.getOrDefault("event", TriggerEventType.INVALID.toString()).toString().toUpperCase(Locale.ROOT));
-    this.waitForSecond = ((Long) this.properties.getOrDefault("waitFor", -1L)).intValue();
+    this.waitForSecond = ((Number) this.properties.getOrDefault("waitFor", -1L)).intValue();
     List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
     if (o != null && !o.isEmpty()) {
       actions = new ArrayList<>(3);
@@ -145,6 +145,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
       return isClosed;
     }
   }
+
   @Override
   public void close() throws IOException {
     synchronized (this) {

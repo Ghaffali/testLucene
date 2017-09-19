@@ -30,6 +30,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -53,7 +54,7 @@ public class NodeAddedTrigger extends TriggerBase {
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           SolrResourceLoader loader,
                           SolrCloudDataProvider dataProvider) {
-    super(name, properties, loader, dataProvider);
+    super(TriggerEventType.NODEADDED, name, properties, loader, dataProvider);
     this.timeSource = TimeSource.CURRENT_TIME;
     lastLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
