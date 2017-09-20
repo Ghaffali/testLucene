@@ -16,6 +16,7 @@
  */
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
+import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
@@ -28,7 +29,7 @@ import org.apache.zookeeper.Watcher;
 /**
  * Represents a distributed state repository.
  */
-public interface DistribStateManager {
+public interface DistribStateManager extends Closeable {
 
   class VersionedData {
     public final int version;
@@ -38,6 +39,10 @@ public interface DistribStateManager {
       this.version = version;
       this.data = data;
     }
+  }
+
+  default void close() throws IOException {
+
   }
 
   // state accessors

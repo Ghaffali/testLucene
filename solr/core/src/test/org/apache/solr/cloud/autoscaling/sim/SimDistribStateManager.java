@@ -1,12 +1,31 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package org.apache.solr.cloud.autoscaling.sim;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
@@ -14,6 +33,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import org.apache.jute.Record;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.cloud.ActionThrottle;
+import org.apache.solr.util.IdUtils;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Op;
@@ -27,15 +47,18 @@ import org.apache.zookeeper.proto.DeleteRequest;
 import org.apache.zookeeper.proto.SetDataRequest;
 
 /**
- *
+ * Simulated {@link DistribStateManager} that keeps all data locally in a static structure. Instances of this
+ * class are identified by their id in order to simulate the deletion of ephemeral nodes when {@link #close()} is
+ * invoked.
  */
 public class SimDistribStateManager implements DistribStateManager {
 
-  private static final class Node {
+  public static final class Node {
     ReentrantLock dataLock = new ReentrantLock();
-    private int version = 0;
+    private int version = -1;
     private int seq = 0;
     private final CreateMode mode;
+    private final String clientId;
     private final String path;
     private final String name;
     private final Node parent;
@@ -44,17 +67,32 @@ public class SimDistribStateManager implements DistribStateManager {
     List<Watcher> dataWatches = new ArrayList<>();
     List<Watcher> childrenWatches = new ArrayList<>();
 
-    Node(Node parent, String name, String path, CreateMode mode) {
+    Node(Node parent, String name, String path, CreateMode mode, String clientId) {
       this.parent = parent;
       this.name = name;
       this.path = path;
       this.mode = mode;
+      this.clientId = clientId;
     }
 
-    void setData(byte[] data, int version) throws IOException {
+    public void clear() {
       dataLock.lock();
       try {
-        if (version != -1 && version <= this.version) {
+        children.clear();
+        version = 0;
+        seq = 0;
+        dataWatches.clear();
+        childrenWatches.clear();
+        data = null;
+      } finally {
+        dataLock.unlock();
+      }
+    }
+
+    public void setData(byte[] data, int version) throws IOException {
+      dataLock.lock();
+      try {
+        if (version != -1 && version != this.version) {
           throw new IOException("Version mismatch, existing=" + this.version + ", expected=" + version);
         }
         if (data != null) {
@@ -62,11 +100,7 @@ public class SimDistribStateManager implements DistribStateManager {
         } else {
           this.data = null;
         }
-        if (version == -1) {
-          this.version++;
-        } else {
-          this.version = version;
-        }
+        this.version++;
         for (Watcher w : dataWatches) {
           w.process(new WatchedEvent(Watcher.Event.EventType.NodeDataChanged, Watcher.Event.KeeperState.SyncConnected, path));
         }
@@ -76,7 +110,7 @@ public class SimDistribStateManager implements DistribStateManager {
       }
     }
 
-    VersionedData getData(Watcher w) {
+    public VersionedData getData(Watcher w) {
       dataLock.lock();
       try {
         VersionedData res = new VersionedData(version, data);
@@ -89,7 +123,7 @@ public class SimDistribStateManager implements DistribStateManager {
       }
     }
 
-    void setChild(String name, Node child) {
+    public void setChild(String name, Node child) {
       assert child.name.equals(name);
       dataLock.lock();
       try {
@@ -103,7 +137,7 @@ public class SimDistribStateManager implements DistribStateManager {
       }
     }
 
-    void removeChild(String name, int version) throws NoSuchElementException, IOException {
+    public void removeChild(String name, int version) throws NoSuchElementException, IOException {
       Node n = children.get(name);
       if (n == null) {
         throw new NoSuchElementException(path + "/" + name);
@@ -111,13 +145,34 @@ public class SimDistribStateManager implements DistribStateManager {
       if (version != -1 && version != n.version) {
         throw new IOException("Version mismatch, existing=" + this.version + ", expected=" + version);
       }
+      children.remove(name);
       for (Watcher w : childrenWatches) {
         w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
       }
       for (Watcher w : n.dataWatches) {
         w.process(new WatchedEvent(Watcher.Event.EventType.NodeDeleted, Watcher.Event.KeeperState.SyncConnected, n.path));
       }
-      // TODO: recurse and fire watches???
+      // TODO: not sure if it's correct to recurse and fire watches???
+      Set<String> kids = new HashSet<>(n.children.keySet());
+      for (String kid : kids) {
+        n.removeChild(kid, -1);
+      }
+    }
+
+    public void removeEphemeralChildren(String id) throws NoSuchElementException, IOException {
+      Set<String> kids = new HashSet<>(children.keySet());
+      for (String kid : kids) {
+        Node n = children.get(kid);
+        if (n == null) {
+          continue;
+        }
+        if ((CreateMode.EPHEMERAL == n.mode || CreateMode.EPHEMERAL_SEQUENTIAL == n.mode) &&
+            id.equals(n.clientId)) {
+          removeChild(n.name, -1);
+        } else {
+          n.removeEphemeralChildren(id);
+        }
+      }
     }
 
   }
@@ -126,20 +181,48 @@ public class SimDistribStateManager implements DistribStateManager {
     boolean shouldFail(String path);
   }
 
-  private final Node root = new Node(null, "", "/", CreateMode.PERSISTENT);
+  // shared state across all instances
+  private static Node sharedRoot = createNewRootNode();
+  private static final ReentrantLock multiLock = new ReentrantLock();
 
-  private final ReentrantLock multiLock = new ReentrantLock();
+  public static Node createNewRootNode() {
+    return new Node(null, "", "/", CreateMode.PERSISTENT, "__root__");
+  }
 
   private final AtomicReference<ActionThrottle> throttleRef = new AtomicReference<>();
   private final AtomicReference<ActionError> errorRef = new AtomicReference<>();
+  private final String id;
+  private final Node root;
 
   public SimDistribStateManager() {
+    this(null);
+  }
 
+  /**
+   * Construct new state manager that uses provided root node for storing data.
+   * @param root if null then a static shared root will be used.
+   */
+  public SimDistribStateManager(Node root) {
+    this.id = IdUtils.timeRandomId();
+    if (root != null) {
+      this.root = root;
+    } else {
+      this.root = sharedRoot;
+    }
   }
 
   public SimDistribStateManager(ActionThrottle actionThrottle, ActionError actionError) {
+    this(null, actionThrottle, actionError);
+  }
+
+  public SimDistribStateManager(Node root, ActionThrottle actionThrottle, ActionError actionError) {
+    this(root);
     this.throttleRef.set(actionThrottle);
     this.errorRef.set(actionError);
+  }
+
+  public void clear() {
+    root.clear();
   }
 
   private void throttleOrError(String path) throws IOException {
@@ -167,21 +250,43 @@ public class SimDistribStateManager implements DistribStateManager {
     Node parentNode = root;
     Node n = null;
     for (int i = 0; i < elements.length; i++) {
-      String currentName = elements[1];
+      String currentName = elements[i];
       currentPath.append('/');
-      currentPath.append(currentName);
       n = parentNode.children.get(currentName);
       if (n == null) {
         if (create) {
-          n = new Node(parentNode, currentName, currentPath.toString(), mode);
+          if ((parentNode.mode == CreateMode.EPHEMERAL || parentNode.mode == CreateMode.EPHEMERAL_SEQUENTIAL) &&
+              (mode == CreateMode.EPHEMERAL || mode == CreateMode.EPHEMERAL_SEQUENTIAL)) {
+            throw new IOException("NoChildrenEphemerals for " + parentNode.path);
+          }
+          if (CreateMode.PERSISTENT_SEQUENTIAL == mode || CreateMode.EPHEMERAL_SEQUENTIAL == mode) {
+            currentName = currentName + String.format("%010d", parentNode.seq);
+            parentNode.seq++;
+          }
+          currentPath.append(currentName);
+          n = new Node(parentNode, currentName, currentPath.toString(), mode, id);
           parentNode.setChild(currentName, n);
         } else {
           break;
         }
+      } else {
+        currentPath.append(currentName);
       }
       parentNode = n;
     }
     return n;
+  }
+
+  @Override
+  public void close() throws IOException {
+    multiLock.lock();
+    try {
+      // remove all my ephemeral nodes
+      root.removeEphemeralChildren(id);
+    } finally {
+      multiLock.unlock();
+    }
+
   }
 
   @Override
@@ -235,12 +340,25 @@ public class SimDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void createData(String path, byte[] data, CreateMode mode) throws IOException {
+  public void createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, IOException {
+    if ((CreateMode.EPHEMERAL == mode || CreateMode.PERSISTENT == mode) && hasData(path)) {
+      throw new IOException("Path " + path + " already exists.");
+    }
+    // check if parent exists
+    String relPath = path.charAt(0) == '/' ? path.substring(1) : path;
+    if (relPath.length() > 0) { // non-root path - check if parent exists
+      String[] elements = relPath.split("/");
+      StringBuilder sb = new StringBuilder();
+      for (int i = 0; i < elements.length - 1; i++) {
+        sb.append('/');
+        sb.append(elements[i]);
+      }
+      if (!hasData(sb.toString())) {
+        throw new NoSuchElementException(sb.toString());
+      }
+    }
     multiLock.lock();
     try {
-      if (mode != CreateMode.PERSISTENT) {
-        throw new UnsupportedOperationException("Mode " + mode + " not supported yet");
-      }
       Node n = traverse(path, true, mode);
       n.setData(data, -1);
     } finally {

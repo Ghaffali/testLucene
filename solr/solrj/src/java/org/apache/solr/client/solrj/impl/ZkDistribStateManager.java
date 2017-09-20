@@ -45,6 +45,8 @@ public class ZkDistribStateManager implements DistribStateManager {
   public boolean hasData(String path) throws IOException {
     try {
       return zkClient.exists(path, true);
+    } catch (KeeperException.NoNodeException e) {
+      return false;
     } catch (KeeperException | InterruptedException e) {
       throw new IOException(e);
     }
@@ -84,9 +86,11 @@ public class ZkDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void createData(String path, byte[] data, CreateMode mode) throws IOException {
+  public void createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, IOException {
     try {
       zkClient.create(path, data, mode, true);
+    } catch (KeeperException.NoNodeException e) {
+      throw new NoSuchElementException(path);
     } catch (KeeperException | InterruptedException e) {
       throw new IOException(e);
     }
