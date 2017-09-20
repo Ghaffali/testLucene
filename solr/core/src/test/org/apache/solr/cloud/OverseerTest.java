@@ -1207,12 +1207,15 @@ public class OverseerTest extends SolrTestCaseJ4 {
     when(zkController.getCoreContainer()).thenReturn(mockAlwaysUpCoreContainer);
     when(zkController.getZkClient()).thenReturn(zkClient);
     when(zkController.getZkStateReader()).thenReturn(reader);
+    when(zkController.getSolrCloudDataProvider()).thenReturn(getCloudDataProvider(zkClient,reader));
+    return zkController;
+  }
+
+  private SolrCloudDataProvider getCloudDataProvider(SolrZkClient zkClient, ZkStateReader reader) {
     CloudSolrClient client = new CloudSolrClient.Builder()
         .withClusterStateProvider(new ZkClientClusterStateProvider(reader))
         .build();
-    SolrCloudDataProvider dataProvider = new SolrClientCloudDataProvider(new ZkDistributedQueueFactory(zkClient), client);
-    when(zkController.getSolrCloudDataProvider()).thenReturn(dataProvider);
-    return zkController;
+    return new SolrClientCloudDataProvider(new ZkDistributedQueueFactory(zkClient), client);
   }
 
   @Test
