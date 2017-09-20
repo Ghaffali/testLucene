@@ -975,7 +975,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
-      public ClusterState getClusterState() {
+      public ClusterState getClusterState() throws IOException {
         return clusterDataProvider.getClusterState();
       }
 
@@ -1118,7 +1118,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
       }
 
       @Override
-      public ClusterState getClusterState() {
+      public ClusterState getClusterState() throws IOException {
         return clusterDataProvider.getClusterState();
       }
 

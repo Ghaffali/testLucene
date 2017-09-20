@@ -18,6 +18,7 @@
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.EnumMap;
@@ -53,7 +54,7 @@ public class PolicyHelper {
       final ClusterDataProvider delegate = cdp;
       cdp = new DelegatingClusterDataProvider(delegate) {
         @Override
-        public ClusterState getClusterState() {
+        public ClusterState getClusterState() throws IOException {
           return delegate.getClusterState();
         }
 
