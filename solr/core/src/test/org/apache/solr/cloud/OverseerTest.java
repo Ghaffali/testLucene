@@ -55,6 +55,7 @@ import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.handler.component.HttpShardHandlerFactory;
 import org.apache.solr.update.UpdateShardHandler;
 import org.apache.solr.update.UpdateShardHandlerConfig;
@@ -89,6 +90,7 @@ public class OverseerTest extends SolrTestCaseJ4 {
   private List<ZkStateReader> readers = new ArrayList<>();
   private List<HttpShardHandlerFactory> httpShardHandlerFactorys = new ArrayList<>();
   private List<UpdateShardHandler> updateShardHandlers = new ArrayList<>();
+  private List<CloudSolrClient> solrClients = new ArrayList<>();
 
   private static final String COLLECTION = SolrTestCaseJ4.DEFAULT_TEST_COLLECTION_NAME;
   
@@ -264,6 +266,10 @@ public class OverseerTest extends SolrTestCaseJ4 {
       updateShardHandler.close();
     }
     updateShardHandlers.clear();
+    for (CloudSolrClient client : solrClients) {
+      client.close();
+    }
+    solrClients.clear();
   }
 
   @Test
@@ -1203,6 +1209,7 @@ public class OverseerTest extends SolrTestCaseJ4 {
     CoreContainer mockAlwaysUpCoreContainer = mock(CoreContainer.class,
         Mockito.withSettings().defaultAnswer(Mockito.CALLS_REAL_METHODS));
     when(mockAlwaysUpCoreContainer.isShutDown()).thenReturn(Boolean.FALSE);  // Allow retry on session expiry
+    when(mockAlwaysUpCoreContainer.getResourceLoader()).thenReturn(new SolrResourceLoader());
     MockZkController zkController = mock(MockZkController.class,
         Mockito.withSettings().defaultAnswer(Mockito.CALLS_REAL_METHODS));
     when(zkController.getCoreContainer()).thenReturn(mockAlwaysUpCoreContainer);
@@ -1217,6 +1224,7 @@ public class OverseerTest extends SolrTestCaseJ4 {
     CloudSolrClient client = new CloudSolrClient.Builder()
         .withClusterStateProvider(new ZkClientClusterStateProvider(reader))
         .build();
+    solrClients.add(client);
     return new SolrClientCloudDataProvider(new ZkDistributedQueueFactory(zkClient), client);
   }
 
