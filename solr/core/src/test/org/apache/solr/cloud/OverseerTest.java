@@ -74,6 +74,7 @@ import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import static org.apache.solr.cloud.AbstractDistribZkTestBase.verifyReplicaStatus;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -1207,7 +1208,8 @@ public class OverseerTest extends SolrTestCaseJ4 {
     when(zkController.getCoreContainer()).thenReturn(mockAlwaysUpCoreContainer);
     when(zkController.getZkClient()).thenReturn(zkClient);
     when(zkController.getZkStateReader()).thenReturn(reader);
-    when(zkController.getSolrCloudDataProvider()).thenReturn(getCloudDataProvider(zkClient,reader));
+    doReturn(getCloudDataProvider(zkClient,reader))
+        .when(zkController).getSolrCloudDataProvider();
     return zkController;
   }
 
