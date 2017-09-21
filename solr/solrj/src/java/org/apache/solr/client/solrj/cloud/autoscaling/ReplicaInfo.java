@@ -22,12 +22,12 @@ import java.util.Map;
 
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.cloud.Replica;
+import org.apache.solr.common.cloud.ZkStateReader;
 
 
 public class ReplicaInfo implements MapWriter {
   final String name;
   String core, collection, shard;
-  Replica.Type type;
   Map<String, Object> variables;
 
   public ReplicaInfo(String name, String coll, String shard, Replica.Type type, Map<String, Object> vals) {
@@ -35,7 +35,6 @@ public class ReplicaInfo implements MapWriter {
     this.variables = vals;
     this.collection = coll;
     this.shard = shard;
-    this.type = type;
     this.core = (String)vals.get("core");
   }
 
@@ -47,7 +46,6 @@ public class ReplicaInfo implements MapWriter {
           ew1.put(e.getKey(), e.getValue());
         }
       }
-      if (type != null) ew1.put("type", type.toString());
     });
   }
 
@@ -67,6 +65,20 @@ public class ReplicaInfo implements MapWriter {
     return shard;
   }
 
+  public Replica.Type getType() {
+    return Replica.Type.get((String) variables.get(ZkStateReader.REPLICA_TYPE));
+  }
+
+  public Replica.State getState() {
+    if (variables.get(ZkStateReader.STATE_PROP) != null) {
+      return Replica.State.getState((String) variables.get(ZkStateReader.STATE_PROP));
+    } else {
+      // default to ACTIVE
+      variables.put(ZkStateReader.STATE_PROP, Replica.State.ACTIVE.toString());
+      return Replica.State.ACTIVE;
+    }
+  }
+
   public Map<String, Object> getVariables() {
     return variables;
   }
@@ -81,7 +93,6 @@ public class ReplicaInfo implements MapWriter {
         "name='" + name + '\'' +
         ", collection='" + collection + '\'' +
         ", shard='" + shard + '\'' +
-        ", type=" + type +
         ", variables=" + variables +
         '}';
   }

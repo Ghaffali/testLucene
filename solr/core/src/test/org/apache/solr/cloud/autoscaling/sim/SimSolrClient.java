@@ -17,8 +17,25 @@
 
 package org.apache.solr.cloud.autoscaling.sim;
 
+import java.io.IOException;
+
+import org.apache.solr.client.solrj.SolrClient;
+import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.common.util.NamedList;
+
 /**
  *
  */
-public class SimSolrServer {
+public class SimSolrClient extends SolrClient {
+
+  @Override
+  public NamedList<Object> request(SolrRequest request, String collection) throws SolrServerException, IOException {
+    return null;
+  }
+
+  @Override
+  public void close() throws IOException {
+
+  }
 }

@@ -86,9 +86,9 @@ public class ZkDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, IOException {
+  public String createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, IOException {
     try {
-      zkClient.create(path, data, mode, true);
+      return zkClient.create(path, data, mode, true);
     } catch (KeeperException.NoNodeException e) {
       throw new NoSuchElementException(path);
     } catch (KeeperException | InterruptedException e) {

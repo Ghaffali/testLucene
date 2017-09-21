@@ -115,7 +115,7 @@ public class Row implements MapWriter {
     int idx = -1;
     for (int i = 0; i < r.size(); i++) {
       ReplicaInfo info = r.get(i);
-      if (type == null || info.type == type) {
+      if (type == null || info.getType() == type) {
         idx = i;
         break;
       }

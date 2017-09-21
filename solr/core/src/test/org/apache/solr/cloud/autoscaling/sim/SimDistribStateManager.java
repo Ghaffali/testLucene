@@ -340,7 +340,7 @@ public class SimDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, IOException {
+  public String createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, IOException {
     if ((CreateMode.EPHEMERAL == mode || CreateMode.PERSISTENT == mode) && hasData(path)) {
       throw new IOException("Path " + path + " already exists.");
     }
@@ -361,6 +361,7 @@ public class SimDistribStateManager implements DistribStateManager {
     try {
       Node n = traverse(path, true, mode);
       n.setData(data, -1);
+      return n.path;
     } finally {
       multiLock.unlock();
     }

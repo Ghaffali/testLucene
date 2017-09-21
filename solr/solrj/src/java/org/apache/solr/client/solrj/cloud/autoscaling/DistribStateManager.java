@@ -61,7 +61,16 @@ public interface DistribStateManager extends Closeable {
 
   void makePath(String path) throws IOException;
 
-  void createData(String path, byte[] data, CreateMode mode) throws IOException;
+  /**
+   * Create data (leaf) node at specified path.
+   * @param path base path name of the node.
+   * @param data data to be stored.
+   * @param mode creation mode.
+   * @return actual path of the node - in case of sequential nodes this will differ from the base path because
+   * of the appended sequence number.
+   * @throws IOException
+   */
+  String createData(String path, byte[] data, CreateMode mode) throws IOException;
 
   void removeData(String path, int version) throws NoSuchElementException, IOException;
 
