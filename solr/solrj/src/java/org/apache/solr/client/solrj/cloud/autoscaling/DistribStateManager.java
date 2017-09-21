@@ -56,7 +56,7 @@ public interface DistribStateManager {
 
   void makePath(String path) throws IOException;
 
-  void createData(String path, byte[] data, CreateMode mode) throws IOException;
+  String createData(String path, byte[] data, CreateMode mode) throws IOException;
 
   void removeData(String path, int version) throws NoSuchElementException, IOException;
 

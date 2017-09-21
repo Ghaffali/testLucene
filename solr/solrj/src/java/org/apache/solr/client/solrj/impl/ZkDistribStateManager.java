@@ -84,9 +84,9 @@ public class ZkDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void createData(String path, byte[] data, CreateMode mode) throws IOException {
+  public String createData(String path, byte[] data, CreateMode mode) throws IOException {
     try {
-      zkClient.create(path, data, mode, true);
+      return zkClient.create(path, data, mode, true);
     } catch (KeeperException | InterruptedException e) {
       throw new IOException(e);
     }

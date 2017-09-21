@@ -25,6 +25,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.cloud.Overseer.LeaderStatus;
 import org.apache.solr.cloud.OverseerTaskQueue.QueueEvent;
 import org.apache.solr.common.cloud.ClusterState;
@@ -65,6 +67,10 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
   private static final String CONFIG_NAME = "myconfig";
   
   private static OverseerTaskQueue workQueueMock;
+  private static Overseer overseerMock;
+  private static ZkController zkControllerMock;
+  private static SolrCloudDataProvider cloudDataProviderMock;
+  private static ClusterDataProvider clusterDataProviderMock;
   private static DistributedMap runningMapMock;
   private static DistributedMap completedMapMock;
   private static DistributedMap failureMapMock;
@@ -93,9 +99,10 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
         String myId, ShardHandlerFactory shardHandlerFactory,
         String adminPath,
         OverseerTaskQueue workQueue, DistributedMap runningMap,
+        Overseer overseer,
         DistributedMap completedMap,
         DistributedMap failureMap) {
-      super(zkStateReader, myId, shardHandlerFactory, adminPath, new Overseer.Stats(), null, new OverseerNodePrioritizer(zkStateReader, adminPath, shardHandlerFactory), workQueue, runningMap, completedMap, failureMap);
+      super(zkStateReader, myId, shardHandlerFactory, adminPath, new Overseer.Stats(), overseer, new OverseerNodePrioritizer(zkStateReader, adminPath, shardHandlerFactory), workQueue, runningMap, completedMap, failureMap);
     }
     
     @Override
@@ -116,6 +123,10 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     zkStateReaderMock = mock(ZkStateReader.class);
     clusterStateMock = mock(ClusterState.class);
     solrZkClientMock = mock(SolrZkClient.class);
+    overseerMock = mock(Overseer.class);
+    zkControllerMock = mock(ZkController.class);
+    cloudDataProviderMock = mock(SolrCloudDataProvider.class);
+    clusterDataProviderMock = mock(ClusterDataProvider.class);
   }
   
   @AfterClass
@@ -129,6 +140,10 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     zkStateReaderMock = null;
     clusterStateMock = null;
     solrZkClientMock = null;
+    overseerMock = null;
+    zkControllerMock = null;
+    cloudDataProviderMock = null;
+    clusterDataProviderMock = null;
   }
   
   @Before
@@ -144,6 +159,10 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     reset(zkStateReaderMock);
     reset(clusterStateMock);
     reset(solrZkClientMock);
+    reset(overseerMock);
+    reset(zkControllerMock);
+    reset(cloudDataProviderMock);
+    reset(clusterDataProviderMock);
 
     zkMap.clear();
     collectionsSet.clear();
@@ -259,7 +278,14 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
       String key = invocation.getArgument(0);
       return zkMap.containsKey(key);
     });
-    
+
+    when(overseerMock.getZkController()).thenReturn(zkControllerMock);
+    when(overseerMock.getSolrCloudDataProvider()).thenReturn(cloudDataProviderMock);
+    when(zkControllerMock.getSolrCloudDataProvider()).thenReturn(cloudDataProviderMock);
+    when(cloudDataProviderMock.getClusterDataProvider()).thenReturn(clusterDataProviderMock);
+    when(clusterDataProviderMock.getClusterState()).thenReturn(clusterStateMock);
+    when(clusterDataProviderMock.getAutoScalingConfig()).thenReturn(autoScalingConfig);
+
     zkMap.put("/configs/myconfig", null);
     
     return liveNodes;
@@ -490,7 +516,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
 
     underTest = new OverseerCollectionConfigSetProcessorToBeTested(zkStateReaderMock,
         "1234", shardHandlerFactoryMock, ADMIN_PATH, workQueueMock, runningMapMock,
-        completedMapMock, failureMapMock);
+        overseerMock, completedMapMock, failureMapMock);
 
 
     log.info("clusterstate " + clusterStateMock.hashCode());
