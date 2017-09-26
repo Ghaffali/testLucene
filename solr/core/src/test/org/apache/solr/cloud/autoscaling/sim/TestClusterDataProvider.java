@@ -4,8 +4,10 @@ import java.lang.invoke.MethodHandles;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
@@ -52,7 +54,7 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
   @BeforeClass
   public static void setupCluster() throws Exception {
     simulated = random().nextBoolean();
-    simulated = true;
+    //simulated = true;
 
     configureCluster(NODE_COUNT)
         .addConfig("conf", configset("cloud-minimal"))
@@ -103,41 +105,51 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
         simProvider.simSetCollectionProperties(name, docColl.getProperties());
       });
       ClusterState simState = simProvider.getClusterState();
-      assertEquals(realState.getLiveNodes(), simState.getLiveNodes());
-      assertEquals(realState.getCollectionsMap().keySet(), simState.getCollectionsMap().keySet());
-      DocCollection realColl = realState.getCollection(CollectionAdminParams.SYSTEM_COLL);
-      DocCollection simColl = simState.getCollection(CollectionAdminParams.SYSTEM_COLL);
-      Map<String, Slice> realSlices = realColl.getSlicesMap();
-      Map<String, Slice> simSlices = simColl.getSlicesMap();
-      assertEquals(realSlices.keySet(), simSlices.keySet());
-      realSlices.forEach((s, slice) -> {
-        Slice sim = simSlices.get(s);
-        for (Replica r : slice.getReplicas()) {
-          Replica sr = sim.getReplica(r.getName());
-          assertNotNull(sr);
-          assertEquals(r, sr);
-        }
-      });
+      assertClusterStateEquals(realState, simState);
+      // test the other constructor
+      ClusterDataProvider anotherProvider = new SimClusterDataProvider(realState, autoScalingConfig, nodeValues);
+      assertClusterStateEquals(realState, anotherProvider.getClusterState());
       clusterDataProvider = simProvider;
     } else {
       clusterDataProvider = realProvider;
     }
   }
 
-  private void addNode() throws Exception {
+  private static void assertClusterStateEquals(ClusterState one, ClusterState two) {
+    assertEquals(one.getLiveNodes(), two.getLiveNodes());
+    assertEquals(one.getCollectionsMap().keySet(), two.getCollectionsMap().keySet());
+    one.forEachCollection(oneColl -> {
+      DocCollection twoColl = two.getCollection(oneColl.getName());
+      Map<String, Slice> oneSlices = oneColl.getSlicesMap();
+      Map<String, Slice> twoSlices = twoColl.getSlicesMap();
+      assertEquals(oneSlices.keySet(), twoSlices.keySet());
+      oneSlices.forEach((s, slice) -> {
+        Slice sTwo = twoSlices.get(s);
+        for (Replica oneReplica : slice.getReplicas()) {
+          Replica twoReplica = sTwo.getReplica(oneReplica.getName());
+          assertNotNull(twoReplica);
+          assertEquals(oneReplica, twoReplica);
+        }
+      });
+    });
+  }
+
+  private String addNode() throws Exception {
     JettySolrRunner solr = cluster.startJettySolrRunner();
     String nodeId = solr.getNodeName();
     if (simulated) {
       ((SimClusterDataProvider)clusterDataProvider).simAddNode(nodeId);
     }
+    return nodeId;
   }
 
-  private void deleteNode() throws Exception {
+  private String deleteNode() throws Exception {
     String nodeId = cluster.getJettySolrRunner(0).getNodeName();
     cluster.stopJettySolrRunner(0);
     if (simulated) {
       ((SimClusterDataProvider)clusterDataProvider).simRemoveNode(nodeId);
     }
+    return nodeId;
   }
 
   private void setAutoScalingConfig(AutoScalingConfig cfg) throws Exception {
@@ -146,6 +158,19 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
     if (simulated) {
       ((SimClusterDataProvider)clusterDataProvider).simSetAutoScalingConfig(cfg);
     }
+  }
+
+  @Test
+  public void testAddRemoveNode() throws Exception {
+    Set<String> lastNodes = new HashSet<>(clusterDataProvider.getLiveNodes());
+    String node = addNode();
+    Thread.sleep(2000);
+    assertFalse(lastNodes.contains(node));
+    assertTrue(clusterDataProvider.getLiveNodes().contains(node));
+    node = deleteNode();
+    Thread.sleep(2000);
+    assertTrue(lastNodes.contains(node));
+    assertFalse(clusterDataProvider.getLiveNodes().contains(node));
   }
 
   @Test

@@ -53,6 +53,45 @@ public class SimClusterDataProvider implements ClusterDataProvider {
   private Map<String, Map<String, Object>> collProperties = new ConcurrentHashMap<>();
   private Map<String, Map<String, Map<String, Object>>> sliceProperties = new ConcurrentHashMap<>();
 
+  /**
+   * Zero-arg constructor. The instance needs to be initialized using the <code>sim*</code> methods in order
+   * to ensure proper behavior, otherwise it will behave as a cluster with zero live nodes and zero replicas.
+   */
+  public SimClusterDataProvider() {
+
+  }
+
+  /**
+   * Construct simulated instance using initial cluster data.
+   * @param initialState cluster state
+   * @param autoScalingConfig autoscaling config
+   * @param nodeValues per-node values (eg. metrics)
+   */
+  public SimClusterDataProvider(ClusterState initialState, AutoScalingConfig autoScalingConfig, Map<String, Map<String, Object>> nodeValues) {
+    Collection<String> liveNodes = initialState.getLiveNodes();
+    if (nodeValues != null) {
+      nodeValues.entrySet().stream()
+          .filter(e -> liveNodes.contains(e.getKey()))
+          .forEach(e -> nodeValues.put(e.getKey(), e.getValue()));
+    }
+    if (autoScalingConfig != null) {
+      this.autoScalingConfig = (AutoScalingConfig)autoScalingConfig.clone();
+    }
+    initialState.forEachCollection(dc -> {
+      collProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>()).putAll(dc.getProperties());
+      dc.getSlices().forEach(s -> {
+        sliceProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>())
+            .computeIfAbsent(s.getName(), name -> new HashMap<>()).putAll(s.getProperties());
+        s.getReplicas().forEach(r -> {
+          ReplicaInfo ri = new ReplicaInfo(r.getName(), dc.getName(), s.getName(), r.getType(), r.getProperties());
+          if (liveNodes.contains(r.getNodeName())) {
+            nodes.computeIfAbsent(r.getNodeName(), rn -> new ArrayList<>()).add(ri);
+          }
+        });
+      });
+    });
+  }
+
   // ============== SIMULATOR SETUP METHODS ====================
 
   public void simAddNodes(Collection<String> nodeIds) {
