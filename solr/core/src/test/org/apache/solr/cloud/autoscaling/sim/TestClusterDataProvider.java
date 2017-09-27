@@ -82,28 +82,10 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
       // initialize simulated provider
       SimClusterDataProvider simProvider = new SimClusterDataProvider();
       simProvider.simSetAutoScalingConfig(autoScalingConfig);
-      simProvider.simSetClusterProperties(clusterProperties);
-      simProvider.simAddNodes(liveNodes);
-      realState.getCollectionsMap().forEach((coll, dc) -> {
-        dc.getSlices().forEach(slice -> {
-          simProvider.setSliceProperties(coll, slice.getName(), slice.getProperties());
-        });
-      });
-      replicas.forEach((n, infos) -> {
-        infos.forEach((coll, shardInfos) -> {
-          shardInfos.forEach((shard, replicaInfos) -> {
-            replicaInfos.forEach(ri -> {
-              simProvider.simAddReplica(n, ri);
-            });
-          });
-        });
-      });
       nodeValues.forEach((n, values) -> {
         simProvider.simSetNodeValues(n, values);
       });
-      realState.getCollectionsMap().forEach((name, docColl) -> {
-        simProvider.simSetCollectionProperties(name, docColl.getProperties());
-      });
+      simProvider.simSetClusterState(realState);
       ClusterState simState = simProvider.getClusterState();
       assertClusterStateEquals(realState, simState);
       // test the other constructor

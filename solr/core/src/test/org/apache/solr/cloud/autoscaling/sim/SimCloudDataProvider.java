@@ -27,25 +27,29 @@ import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.request.CollectionAdminRequest;
+import org.apache.solr.client.solrj.response.SolrResponseBase;
 
 /**
  * Simulated {@link SolrCloudDataProvider}.
  */
 public class SimCloudDataProvider implements SolrCloudDataProvider {
 
-  private final DistribStateManager stateManager;
-  private final ClusterDataProvider dataProvider;
-  private final DistributedQueueFactory queueFactory;
-  private final SolrClient solrClient;
+  private final SimDistribStateManager stateManager;
+  private final SimClusterDataProvider dataProvider;
+  private final SimDistributedQueueFactory queueFactory;
+  private SolrClient solrClient;
   private final SimHttpServer httpServer;
 
-  public SimCloudDataProvider(DistribStateManager stateManager, ClusterDataProvider dataProvider,
-                              DistributedQueueFactory queueFactory, SolrClient solrClient) {
-    this.stateManager = stateManager;
-    this.dataProvider = dataProvider;
-    this.queueFactory = queueFactory;
-    this.solrClient = solrClient;
+  public SimCloudDataProvider() {
+    this.stateManager = new SimDistribStateManager();
+    this.dataProvider = new SimClusterDataProvider();
+    this.queueFactory = new SimDistributedQueueFactory();
     this.httpServer = new SimHttpServer();
+  }
+
+  public void setSolrClient(SolrClient solrClient) {
+    this.solrClient = solrClient;
   }
 
   @Override
@@ -65,10 +69,14 @@ public class SimCloudDataProvider implements SolrCloudDataProvider {
 
   @Override
   public SolrResponse request(SolrRequest req) throws IOException {
-    try {
-      return req.process(solrClient);
-    } catch (SolrServerException e) {
-      throw new IOException(e);
+    if (solrClient != null) {
+      try {
+        return req.process(solrClient);
+      } catch (SolrServerException e) {
+        throw new IOException(e);
+      }
+    } else {
+      return dataProvider.simHandleSolrRequest(req);
     }
   }
 

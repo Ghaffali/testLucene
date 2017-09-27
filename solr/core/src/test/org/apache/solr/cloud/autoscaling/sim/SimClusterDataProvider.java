@@ -18,6 +18,7 @@
 package org.apache.solr.cloud.autoscaling.sim;
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,31 +28,45 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
+import org.apache.solr.client.solrj.request.CollectionAdminRequest;
+import org.apache.solr.client.solrj.response.SolrResponseBase;
+import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.DocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CollectionParams;
+import org.apache.solr.common.params.CoreAdminParams;
+import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.handler.admin.CollectionsHandler;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  *
  */
 public class SimClusterDataProvider implements ClusterDataProvider {
+  private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, List<ReplicaInfo>> nodes = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Object>> nodeValues = new ConcurrentHashMap<>();
 
+  private final List<Watcher> autoscalingWatchers = new ArrayList<>();
+  private final Map<String, Object> clusterProperties = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Object>> collProperties = new ConcurrentHashMap<>();
+  private final Map<String, Map<String, Map<String, Object>>> sliceProperties = new ConcurrentHashMap<>();
+
   private AutoScalingConfig autoScalingConfig = new AutoScalingConfig(Collections.emptyMap());
-  private List<Watcher> autoscalingWatchers = new ArrayList<>();
-  private Map<String, Object> clusterProperties = new ConcurrentHashMap<>();
-  private Map<String, Map<String, Object>> collProperties = new ConcurrentHashMap<>();
-  private Map<String, Map<String, Map<String, Object>>> sliceProperties = new ConcurrentHashMap<>();
+  private SimDistribStateManager distribStateManager;
 
   /**
    * Zero-arg constructor. The instance needs to be initialized using the <code>sim*</code> methods in order
@@ -68,15 +83,22 @@ public class SimClusterDataProvider implements ClusterDataProvider {
    * @param nodeValues per-node values (eg. metrics)
    */
   public SimClusterDataProvider(ClusterState initialState, AutoScalingConfig autoScalingConfig, Map<String, Map<String, Object>> nodeValues) {
-    Collection<String> liveNodes = initialState.getLiveNodes();
     if (nodeValues != null) {
-      nodeValues.entrySet().stream()
-          .filter(e -> liveNodes.contains(e.getKey()))
-          .forEach(e -> nodeValues.put(e.getKey(), e.getValue()));
+      this.nodeValues.putAll(nodeValues);
     }
     if (autoScalingConfig != null) {
       this.autoScalingConfig = (AutoScalingConfig)autoScalingConfig.clone();
     }
+    simSetClusterState(initialState);
+  }
+
+  // ============== SIMULATOR SETUP METHODS ====================
+
+  public void simSetClusterState(ClusterState initialState) {
+    collProperties.clear();
+    sliceProperties.clear();
+    nodes.clear();
+    Collection<String> liveNodes = initialState.getLiveNodes();
     initialState.forEachCollection(dc -> {
       collProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>()).putAll(dc.getProperties());
       dc.getSlices().forEach(s -> {
@@ -90,42 +112,56 @@ public class SimClusterDataProvider implements ClusterDataProvider {
         });
       });
     });
+    nodeValues.keySet().retainAll(liveNodes);
   }
 
-  // ============== SIMULATOR SETUP METHODS ====================
+  public void simSetDistribStateManager(SimDistribStateManager simDistribStateManager) {
+    this.distribStateManager = simDistribStateManager;
+  }
 
-  public void simAddNodes(Collection<String> nodeIds) {
+  public void simAddNodes(Collection<String> nodeIds) throws Exception {
+    for (String node : nodeIds) {
+      if (nodes.containsKey(node)) {
+        throw new Exception("Node " + node + " already exists");
+      }
+    }
     for (String node : nodeIds) {
       simAddNode(node);
     }
   }
+
   // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
-  public void simAddNode(String nodeId) {
-    nodes.putIfAbsent(nodeId, new ArrayList<>());
+  public boolean simAddNode(String nodeId) throws Exception {
+    if (nodes.containsKey(nodeId)) {
+      throw new Exception("Node " + nodeId + " already exists");
+    }
+    return nodes.putIfAbsent(nodeId, new ArrayList<>()) == null;
   }
 
   // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
-  public void simRemoveNode(String nodeId) {
+  public boolean simRemoveNode(String nodeId) {
     nodes.remove(nodeId);
-    nodeValues.remove(nodeId);
+    return nodeValues.remove(nodeId) != null;
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
-  public void simAddReplica(String nodeId, ReplicaInfo replicaInfo) {
-    List<ReplicaInfo> replicas = nodes.computeIfAbsent(nodeId, n -> new ArrayList<>());
-    // make sure coreNodeName is unique
-    for (ReplicaInfo ri : replicas) {
-      if (ri.getCore().equals(replicaInfo.getCore())) {
-        throw new RuntimeException("Duplicate coreNodeName for existing=" + ri + " and new=" + replicaInfo);
+  public void simAddReplica(String nodeId, ReplicaInfo replicaInfo) throws Exception {
+    // make sure coreNodeName is unique across cluster
+    for (Map.Entry<String, List<ReplicaInfo>> e : nodes.entrySet()) {
+      for (ReplicaInfo ri : e.getValue()) {
+        if (ri.getCore().equals(replicaInfo.getCore())) {
+          throw new Exception("Duplicate coreNodeName for existing=" + ri + " on node " + e.getKey() + " and new=" + replicaInfo);
+        }
       }
     }
+    List<ReplicaInfo> replicas = nodes.computeIfAbsent(nodeId, n -> new ArrayList<>());
     replicas.add(replicaInfo);
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
-  public void simRemoveReplica(String nodeId, String coreNodeName) throws IOException {
+  public void simRemoveReplica(String nodeId, String coreNodeName) throws Exception {
     List<ReplicaInfo> replicas = nodes.computeIfAbsent(nodeId, n -> new ArrayList<>());
     for (int i = 0; i < replicas.size(); i++) {
       if (coreNodeName.equals(replicas.get(i).getCore())) {
@@ -133,7 +169,7 @@ public class SimClusterDataProvider implements ClusterDataProvider {
         return;
       }
     }
-    throw new IOException("Replica " + coreNodeName + " not found on node " + nodeId);
+    throw new Exception("Replica " + coreNodeName + " not found on node " + nodeId);
   }
 
   public void simSetNodeValues(String node, Map<String, Object> values) {
@@ -196,6 +232,68 @@ public class SimClusterDataProvider implements ClusterDataProvider {
       w.process(ev);
     }
     autoscalingWatchers.clear();
+  }
+
+  public SolrResponse simHandleSolrRequest(SolrRequest req) throws IOException {
+    // support only a specific subset of collection admin ops
+    if (!(req instanceof CollectionAdminRequest)) {
+      throw new UnsupportedOperationException("Only CollectionAdminRequest-s are supported: " + req.getClass().getName());
+    }
+    SolrParams params = req.getParams();
+    String a = params.get(CoreAdminParams.ACTION);
+    SolrResponse rsp = new SolrResponseBase();
+    if (a != null) {
+      CollectionParams.CollectionAction action = CollectionParams.CollectionAction.get(a);
+      if (action == null) {
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown action: " + a);
+      }
+      switch (action) {
+        case ADDREPLICA:
+          break;
+        case ADDREPLICAPROP:
+          break;
+        case CREATE:
+          break;
+        case CLUSTERPROP:
+          break;
+        case CREATESHARD:
+          break;
+        case DELETE:
+          break;
+        case DELETENODE:
+          break;
+        case DELETEREPLICA:
+          break;
+        case DELETEREPLICAPROP:
+          break;
+        case DELETESHARD:
+          break;
+        case FORCELEADER:
+          break;
+        case LIST:
+          break;
+        case MODIFYCOLLECTION:
+          break;
+        case MOVEREPLICA:
+          break;
+        case REBALANCELEADERS:
+          break;
+        case RELOAD:
+          break;
+        case REPLACENODE:
+          break;
+        case SPLITSHARD:
+          break;
+        default:
+          throw new UnsupportedOperationException("Unsupported collection admin action=" + action);
+      }
+      LOG.info("Invoked Collection Action :{} with params {}", action.toLower(), req.getParams().toQueryString());
+    } else {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "action is a required param");
+    }
+
+    return rsp;
+
   }
 
   // interface methods
