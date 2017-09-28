@@ -130,11 +130,13 @@ public class ZkDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException, InterruptedException {
+  public void setData(String path, byte[] data, int version) throws BadVersionException, NoSuchElementException, IOException, InterruptedException {
     try {
       zkClient.setData(path, data, version, true);
     } catch (KeeperException.NoNodeException e) {
       throw new NoSuchElementException(path);
+    } catch (KeeperException.BadVersionException e) {
+      throw new BadVersionException(version, path);
     } catch (KeeperException e) {
       throw new IOException(e);
     } catch (InterruptedException e) {
@@ -151,7 +153,7 @@ public class ZkDistribStateManager implements DistribStateManager {
     } catch (KeeperException.NodeExistsException e) {
       throw new AlreadyExistsException(ops.toString());
     } catch (KeeperException.BadVersionException e) {
-      throw new BadVersionException(ops.toString());
+      throw new BadVersionException(-1, ops.toString());
     } catch (KeeperException e) {
       throw new IOException(e);
     } catch (InterruptedException e) {

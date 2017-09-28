@@ -90,7 +90,7 @@ public class Assign {
 
     while (true) {
       try {
-        int version = -1;
+        int version = 0;
         int currentId = 0;
         VersionedData data = stateManager.getData(path, null);
         if (data != null) {

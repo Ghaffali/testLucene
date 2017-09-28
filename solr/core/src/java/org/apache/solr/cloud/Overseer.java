@@ -282,7 +282,7 @@ public class Overseer implements Closeable {
         // ZooKeeper in which case another Overseer should take over
         // TODO: if ordering for the message is not important, we could
         // track retries and put it back on the end of the queue
-        log.error("Overseer could not process the current clusterstate state update message, skipping the message.", e);
+        log.error("Overseer could not process the current clusterstate state update message, skipping the message: " + message, e);
         stats.error(operation);
       } finally {
         timerContext.stop();

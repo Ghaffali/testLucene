@@ -318,7 +318,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
       public Void answer(InvocationOnMock invocation) throws Throwable {
         VersionedData d = (VersionedData)zkMap.get(invocation.getArgument(0));
         if (d != null && d.getVersion() != (Integer)invocation.getArgument(2)) {
-          throw new BadVersionException(invocation.getArgument(0));
+          throw new BadVersionException(invocation.getArgument(2), invocation.getArgument(0));
         }
         int version = (Integer)invocation.getArgument(2) + 1;
         zkMap.put(invocation.getArgument(0), new VersionedData(version, invocation.getArgument(1), "test"));
