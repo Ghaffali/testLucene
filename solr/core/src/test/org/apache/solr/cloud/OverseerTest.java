@@ -918,15 +918,15 @@ public class OverseerTest extends SolrTestCaseJ4 {
       printTimingStats(t);
 
       Overseer overseer = overseers.get(0);
-      Overseer.Stats stats = overseer.getStats();
+      Stats stats = overseer.getStats();
 
       String[] interestingOps = {"state", "update_state", "am_i_leader", ""};
       Arrays.sort(interestingOps);
-      for (Map.Entry<String, Overseer.Stat> entry : stats.getStats().entrySet()) {
+      for (Map.Entry<String, Stats.Stat> entry : stats.getStats().entrySet()) {
         String op = entry.getKey();
         if (Arrays.binarySearch(interestingOps, op) < 0)
           continue;
-        Overseer.Stat stat = entry.getValue();
+        Stats.Stat stat = entry.getValue();
         log.info("op: {}, success: {}, failure: {}", op, stat.success.get(), stat.errors.get());
         Timer timer = stat.requestTime;
         printTimingStats(timer);
@@ -984,7 +984,7 @@ public class OverseerTest extends SolrTestCaseJ4 {
       reader = new ZkStateReader(zkClient);
       reader.createClusterStateWatchersAndUpdate();
       //prepopulate work queue with some items to emulate previous overseer died before persisting state
-      DistributedQueue queue = Overseer.getInternalWorkQueue(zkClient, new Overseer.Stats());
+      DistributedQueue queue = Overseer.getInternalWorkQueue(zkClient, new Stats());
 
       ZkNodeProps m = new ZkNodeProps(Overseer.QUEUE_OPERATION, CollectionParams.CollectionAction.CREATE.toLower(),
           "name", COLLECTION,

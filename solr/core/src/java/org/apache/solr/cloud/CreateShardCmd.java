@@ -124,7 +124,7 @@ public class CreateShardCmd implements Cmd {
       countDownLatch = new CountDownLatch(totalReplicas);
       for (ReplicaPosition position : positions) {
         String nodeName = position.node;
-        String coreName = Assign.buildCoreName(ocmh.zkStateReader.getZkClient(), collection, sliceName, position.type);
+        String coreName = Assign.buildCoreName(ocmh.overseer.getSolrCloudDataProvider().getDistribStateManager(), collection, sliceName, position.type);
         log.info("Creating replica " + coreName + " as part of slice " + sliceName + " of collection " + collectionName
             + " on " + nodeName);
 

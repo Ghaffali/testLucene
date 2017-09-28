@@ -14,34 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.client.solrj.cloud;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.function.Predicate;
-
-import org.apache.solr.common.util.Pair;
+package org.apache.solr.client.solrj.cloud.autoscaling;
 
 /**
  *
  */
-public interface DistributedQueue {
-  byte[] peek() throws Exception;
+public class AlreadyExistsException extends Exception {
 
-  byte[] peek(boolean block) throws Exception;
+  private final String path;
 
-  byte[] peek(long wait) throws Exception;
+  public AlreadyExistsException(String path) {
+    super("Path already exists: " + path);
+    this.path = path;
+  }
 
-  byte[] poll() throws Exception;
-
-  byte[] remove() throws Exception;
-
-  byte[] take() throws Exception;
-
-  void offer(byte[] data) throws Exception;
-
-  Map<String, Object> getStats();
-
-  Collection<Pair<String, byte[]>> peekElements(int max, long waitMillis, Predicate<String> acceptFilter) throws Exception;
+  public String getPath() {
+    return path;
+  }
 
 }

@@ -21,7 +21,10 @@ import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -42,84 +45,110 @@ public class ZkDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public boolean hasData(String path) throws IOException {
+  public boolean hasData(String path) throws IOException, InterruptedException {
     try {
       return zkClient.exists(path, true);
-    } catch (KeeperException | InterruptedException e) {
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 
   @Override
-  public List<String> listData(String path) throws NoSuchElementException, IOException {
+  public List<String> listData(String path) throws NoSuchElementException, IOException, InterruptedException {
     try {
       return zkClient.getChildren(path, null, true);
     } catch (KeeperException.NoNodeException e) {
       throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 
   @Override
-  public DistribStateManager.VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException {
+  public VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException, InterruptedException {
     Stat stat = new Stat();
     try {
       byte[] bytes = zkClient.getData(path, watcher, stat, true);
-      return new DistribStateManager.VersionedData(stat.getVersion(), bytes);
+      return new VersionedData(stat.getVersion(), bytes, String.valueOf(stat.getEphemeralOwner()));
     } catch (KeeperException.NoNodeException e) {
       throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 
   @Override
-  public void makePath(String path) throws IOException {
+  public void makePath(String path) throws IOException, InterruptedException {
     try {
       zkClient.makePath(path, true);
-    } catch (KeeperException | InterruptedException e) {
+    } catch (KeeperException.NodeExistsException e) {
+      // ignore - someone beat it to it
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 
   @Override
-  public String createData(String path, byte[] data, CreateMode mode) throws IOException {
+  public String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, InterruptedException {
     try {
       return zkClient.create(path, data, mode, true);
-    } catch (KeeperException | InterruptedException e) {
+    } catch (KeeperException.NodeExistsException e) {
+      throw new AlreadyExistsException(path);
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 
   @Override
-  public void removeData(String path, int version) throws NoSuchElementException, IOException {
+  public void removeData(String path, int version) throws NoSuchElementException, IOException, InterruptedException {
     try {
       zkClient.delete(path, version, true);
     } catch (KeeperException.NoNodeException e) {
       throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 
   @Override
-  public void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException {
+  public void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException, InterruptedException {
     try {
       zkClient.setData(path, data, version, true);
     } catch (KeeperException.NoNodeException e) {
       throw new NoSuchElementException(path);
-    } catch (KeeperException | InterruptedException e) {
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 
   @Override
-  public List<OpResult> multi(Iterable<Op> ops) throws IOException {
+  public List<OpResult> multi(Iterable<Op> ops) throws BadVersionException, AlreadyExistsException, NoSuchElementException, IOException, InterruptedException {
     try {
       return zkClient.multi(ops, true);
-    } catch (Exception e) {
+    } catch (KeeperException.NoNodeException e) {
+      throw new NoSuchElementException(ops.toString());
+    } catch (KeeperException.NodeExistsException e) {
+      throw new AlreadyExistsException(ops.toString());
+    } catch (KeeperException.BadVersionException e) {
+      throw new BadVersionException(ops.toString());
+    } catch (KeeperException e) {
       throw new IOException(e);
+    } catch (InterruptedException e) {
+      throw e;
     }
   }
 

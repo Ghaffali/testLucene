@@ -31,8 +31,12 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.ImmutableMap;
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.client.solrj.impl.SolrClientCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.cloud.rule.ReplicaAssigner;
@@ -43,17 +47,14 @@ import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.Slice;
-import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
 import org.apache.solr.util.NumberUtils;
 import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.apache.zookeeper.data.Stat;
 
 import static org.apache.solr.client.solrj.cloud.autoscaling.Policy.POLICY;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.CREATE_NODE_SET;
@@ -66,43 +67,38 @@ import static org.apache.solr.common.cloud.ZkStateReader.CORE_NAME_PROP;
 public class Assign {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  public static int incAndGetId(SolrZkClient zkClient, String collection, int defaultValue) {
+  public static int incAndGetId(DistribStateManager stateManager, String collection, int defaultValue) {
     String path = "/collections/"+collection;
     try {
-      if (!zkClient.exists(path, true)) {
-        try {
-          zkClient.makePath(path, true);
-        } catch (KeeperException.NodeExistsException e) {
-          // it's okay if another beats us creating the node
-        }
+      if (!stateManager.hasData(path)) {
+        stateManager.makePath(path);
       }
       path += "/counter";
-      if (!zkClient.exists(path, true)) {
+      if (!stateManager.hasData(path)) {
         try {
-          zkClient.create(path, NumberUtils.intToBytes(defaultValue), CreateMode.PERSISTENT, true);
-        } catch (KeeperException.NodeExistsException e) {
+          stateManager.createData(path, NumberUtils.intToBytes(defaultValue), CreateMode.PERSISTENT);
+        } catch (AlreadyExistsException e) {
           // it's okay if another beats us creating the node
         }
       }
     } catch (InterruptedException e) {
       Thread.interrupted();
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error creating counter node in Zookeeper for collection:" + collection, e);
-    } catch (KeeperException e) {
+    } catch (IOException e) {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error creating counter node in Zookeeper for collection:" + collection, e);
     }
 
     while (true) {
-      Stat stat = new Stat();
       try {
-        byte[] data = zkClient.getData(path, null, stat, true);
-        int currentId = NumberUtils.bytesToInt(data);
-        data = NumberUtils.intToBytes(++currentId);
-        zkClient.setData(path, data, stat.getVersion(), true);
+        VersionedData data = stateManager.getData(path, null);
+        int currentId = NumberUtils.bytesToInt(data.getData());
+        byte[] bytes = NumberUtils.intToBytes(++currentId);
+        stateManager.setData(path, bytes, data.getVersion());
         return currentId;
-      } catch (KeeperException e) {
-        if (e.code() != KeeperException.Code.BADVERSION) {
-          throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error inc and get counter from Zookeeper for collection:"+collection, e);
-        }
+      } catch (BadVersionException e) {
+        continue;
+      } catch (IOException e) {
+        throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error inc and get counter from Zookeeper for collection:"+collection, e);
       } catch (InterruptedException e) {
         Thread.interrupted();
         throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error inc and get counter from Zookeeper for collection:" + collection, e);
@@ -110,14 +106,14 @@ public class Assign {
     }
   }
 
-  public static String assignNode(SolrZkClient client, DocCollection collection) {
+  public static String assignNode(DistribStateManager stateManager, DocCollection collection) {
     // for backward compatibility;
     int defaultValue = defaultCounterValue(collection, false);
-    String coreNodeName = "core_node" + incAndGetId(client, collection.getName(), defaultValue);
+    String coreNodeName = "core_node" + incAndGetId(stateManager, collection.getName(), defaultValue);
     while (collection.getReplica(coreNodeName) != null) {
       // there is wee chance that, the new coreNodeName id not totally unique,
       // but this will be guaranteed unique for new collections
-      coreNodeName = "core_node" + incAndGetId(client, collection.getName(), defaultValue);
+      coreNodeName = "core_node" + incAndGetId(stateManager, collection.getName(), defaultValue);
     }
     return coreNodeName;
   }
@@ -183,20 +179,20 @@ public class Assign {
     return defaultValue * 20;
   }
 
-  public static String buildCoreName(SolrZkClient zkClient, DocCollection collection, String shard, Replica.Type type, boolean newCollection) {
+  public static String buildCoreName(DistribStateManager stateManager, DocCollection collection, String shard, Replica.Type type, boolean newCollection) {
     Slice slice = collection.getSlice(shard);
     int defaultValue = defaultCounterValue(collection, newCollection);
-    int replicaNum = incAndGetId(zkClient, collection.getName(), defaultValue);
+    int replicaNum = incAndGetId(stateManager, collection.getName(), defaultValue);
     String coreName = buildCoreName(collection.getName(), shard, type, replicaNum);
     while (existCoreName(coreName, slice)) {
-      replicaNum = incAndGetId(zkClient, collection.getName(), defaultValue);
+      replicaNum = incAndGetId(stateManager, collection.getName(), defaultValue);
       coreName = buildCoreName(collection.getName(), shard, type, replicaNum);
     }
     return coreName;
   }
 
-  public static String buildCoreName(SolrZkClient zkClient, DocCollection collection, String shard, Replica.Type type) {
-    return buildCoreName(zkClient, collection, shard, type, false);
+  public static String buildCoreName(DistribStateManager stateManager, DocCollection collection, String shard, Replica.Type type) {
+    return buildCoreName(stateManager, collection, shard, type, false);
   }
 
   private static boolean existCoreName(String coreName, Slice slice) {

@@ -145,7 +145,7 @@ public class OverseerCollectionMessageHandler implements OverseerMessageHandler 
   String adminPath;
   ZkStateReader zkStateReader;
   String myId;
-  Overseer.Stats stats;
+  Stats stats;
 
   // Set that tracks collections that are currently being processed by a running task.
   // This is used for handling mutual exclusion of the tasks.
@@ -172,7 +172,7 @@ public class OverseerCollectionMessageHandler implements OverseerMessageHandler 
   public OverseerCollectionMessageHandler(ZkStateReader zkStateReader, String myId,
                                         final ShardHandlerFactory shardHandlerFactory,
                                         String adminPath,
-                                        Overseer.Stats stats,
+                                        Stats stats,
                                         Overseer overseer,
                                         OverseerNodePrioritizer overseerPrioritizer) {
     this.zkStateReader = zkStateReader;

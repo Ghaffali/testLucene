@@ -14,34 +14,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.client.solrj.cloud;
-
-import java.util.Collection;
-import java.util.Map;
-import java.util.function.Predicate;
-
-import org.apache.solr.common.util.Pair;
+package org.apache.solr.client.solrj.cloud.autoscaling;
 
 /**
  *
  */
-public interface DistributedQueue {
-  byte[] peek() throws Exception;
+public class VersionedData {
+  private final int version;
+  private final byte[] data;
+  private final String owner;
 
-  byte[] peek(boolean block) throws Exception;
+  public VersionedData(int version, byte[] data, String owner) {
+    this.version = version;
+    this.data = data;
+    this.owner = owner;
+  }
 
-  byte[] peek(long wait) throws Exception;
+  public int getVersion() {
+    return version;
+  }
 
-  byte[] poll() throws Exception;
+  public byte[] getData() {
+    return data;
+  }
 
-  byte[] remove() throws Exception;
-
-  byte[] take() throws Exception;
-
-  void offer(byte[] data) throws Exception;
-
-  Map<String, Object> getStats();
-
-  Collection<Pair<String, byte[]>> peekElements(int max, long waitMillis, Predicate<String> acceptFilter) throws Exception;
-
+  public String getOwner() {
+    return owner;
+  }
 }

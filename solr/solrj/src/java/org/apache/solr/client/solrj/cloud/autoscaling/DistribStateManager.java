@@ -30,38 +30,28 @@ import org.apache.zookeeper.Watcher;
  */
 public interface DistribStateManager {
 
-  class VersionedData {
-    public final int version;
-    public final byte[] data;
-
-    public VersionedData(int version, byte[] data) {
-      this.version = version;
-      this.data = data;
-    }
-  }
-
   // state accessors
 
-  boolean hasData(String path) throws IOException;
+  boolean hasData(String path) throws IOException, InterruptedException;
 
-  List<String> listData(String path) throws NoSuchElementException, IOException;
+  List<String> listData(String path) throws NoSuchElementException, IOException, InterruptedException;
 
-  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException;
+  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException, InterruptedException;
 
-  default VersionedData getData(String path) throws NoSuchElementException, IOException {
+  default VersionedData getData(String path) throws NoSuchElementException, IOException, InterruptedException {
     return getData(path, null);
   }
 
   // state mutators
 
-  void makePath(String path) throws IOException;
+  void makePath(String path) throws IOException, InterruptedException;
 
-  String createData(String path, byte[] data, CreateMode mode) throws IOException;
+  String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, InterruptedException;
 
-  void removeData(String path, int version) throws NoSuchElementException, IOException;
+  void removeData(String path, int version) throws NoSuchElementException, IOException, InterruptedException;
 
-  void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException;
+  void setData(String path, byte[] data, int version) throws BadVersionException, NoSuchElementException, IOException, InterruptedException;
 
-  List<OpResult> multi(final Iterable<Op> ops) throws IOException;
+  List<OpResult> multi(final Iterable<Op> ops) throws BadVersionException, NoSuchElementException, AlreadyExistsException, IOException, InterruptedException;
 
 }

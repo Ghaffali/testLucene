@@ -19,7 +19,10 @@ package org.apache.solr.cloud;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
@@ -68,7 +71,7 @@ public class ZkDistributedQueue implements DistributedQueue {
 
   final SolrZkClient zookeeper;
 
-  final Overseer.Stats stats;
+  final Stats stats;
 
   /**
    * A lock that guards all of the mutable state that follows.
@@ -94,10 +97,10 @@ public class ZkDistributedQueue implements DistributedQueue {
   private int watcherCount = 0;
 
   public ZkDistributedQueue(SolrZkClient zookeeper, String dir) {
-    this(zookeeper, dir, new Overseer.Stats());
+    this(zookeeper, dir, new Stats());
   }
 
-  public ZkDistributedQueue(SolrZkClient zookeeper, String dir, Overseer.Stats stats) {
+  public ZkDistributedQueue(SolrZkClient zookeeper, String dir, Stats stats) {
     this.dir = dir;
 
     ZkCmdExecutor cmdExecutor = new ZkCmdExecutor(zookeeper.getZkClientTimeout());
@@ -262,8 +265,33 @@ public class ZkDistributedQueue implements DistributedQueue {
     }
   }
 
-  public Overseer.Stats getStats() {
+  public Stats getZkStats() {
     return stats;
+  }
+
+  @Override
+  public Map<String, Object> getStats() {
+    if (stats == null) {
+      return Collections.emptyMap();
+    }
+    Map<String, Object> res = new HashMap<>();
+    res.put("queueLength", stats.getQueueLength());
+    final Map<String, Object> statsMap = new HashMap<>();
+    res.put("stats", statsMap);
+    stats.getStats().forEach((op, stat) -> {
+      final Map<String, Object> statMap = new HashMap<>();
+      statMap.put("success", stat.success.get());
+      statMap.put("errors", stat.errors.get());
+      final List<Map<String, Object>> failed = new ArrayList<>(stat.failureDetails.size());
+      statMap.put("failureDetails", failed);
+      stat.failureDetails.forEach(failedOp -> {
+        Map<String, Object> fo = new HashMap<>();
+        fo.put("req", failedOp.req);
+        fo.put("resp", failedOp.resp);
+      });
+      statsMap.put(op, statMap);
+    });
+    return res;
   }
 
   /**

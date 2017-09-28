@@ -45,7 +45,7 @@ import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.cloud.ActionThrottle;
-import org.apache.solr.cloud.Overseer;
+import org.apache.solr.cloud.Stats;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.ExecutorUtil;
@@ -91,7 +91,7 @@ public class ScheduledTriggers implements Closeable {
 
   private final SolrResourceLoader loader;
 
-  private final Overseer.Stats queueStats;
+  private final Stats queueStats;
 
   private final TriggerListeners listeners;
 
@@ -113,7 +113,7 @@ public class ScheduledTriggers implements Closeable {
     this.dataProvider = dataProvider;
     this.stateManager = dataProvider.getDistribStateManager();
     this.loader = loader;
-    queueStats = new Overseer.Stats();
+    queueStats = new Stats();
     listeners = new TriggerListeners();
   }
 
@@ -305,7 +305,7 @@ public class ScheduledTriggers implements Closeable {
     boolean replay;
     volatile boolean isClosed;
 
-    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudDataProvider dataProvider, Overseer.Stats stats) throws IOException {
+    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudDataProvider dataProvider, Stats stats) throws IOException {
       this.trigger = trigger;
       this.queue = new TriggerEventQueue(dataProvider, trigger.getName(), stats);
       this.replay = true;

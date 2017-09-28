@@ -128,7 +128,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Node: " + node + " is not live");
     }
     if (coreName == null) {
-      coreName = Assign.buildCoreName(ocmh.zkStateReader.getZkClient(), coll, shard, replicaType);
+      coreName = Assign.buildCoreName(ocmh.overseer.getSolrCloudDataProvider().getDistribStateManager(), coll, shard, replicaType);
     } else if (!skipCreateReplicaInClusterState) {
       //Validate that the core name is unique in that collection
       for (Slice slice : coll.getSlices()) {
