@@ -26,6 +26,7 @@ import com.google.common.base.Preconditions;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 
 public class AutoScaling {
@@ -162,11 +163,10 @@ public class AutoScaling {
   }
 
   public static final String AUTO_ADD_REPLICAS_TRIGGER_DSL =
-      "{" +
-      "    'set-trigger' : {" +
+      "    {" +
       "        'name' : '.auto_add_replicas'," +
       "        'event' : 'nodeLost'," +
-      "        'waitFor' : '{{waitFor}}s'," +
+      "        'waitFor' : -1," +
       "        'enabled' : true," +
       "        'actions' : [" +
       "            {" +
@@ -178,6 +178,7 @@ public class AutoScaling {
       "                'class':'solr.ExecutePlanAction'" +
       "            }" +
       "        ]" +
-      "    }" +
-      "}";
+      "    }";
+
+  public static final Map<String, Object> AUTO_ADD_REPLICAS_TRIGGER_PROPS = (Map) Utils.fromJSONString(AUTO_ADD_REPLICAS_TRIGGER_DSL);
 }

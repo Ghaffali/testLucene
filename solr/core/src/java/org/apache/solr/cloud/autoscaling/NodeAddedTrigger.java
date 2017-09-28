@@ -63,7 +63,13 @@ public class NodeAddedTrigger extends TriggerBase {
 
   @Override
   public void init() {
-    super.init();
+    List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
+    if (o != null && !o.isEmpty()) {
+      for (int i = 0; i < o.size(); i++) {
+        Map<String, String> map = o.get(i);
+        actions.get(i).init(map);
+      }
+    }
     // pick up added nodes for which marker paths were created
     try {
       List<String> added = stateManager.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
@@ -178,7 +184,7 @@ public class NodeAddedTrigger extends TriggerBase {
           });
         }
       }
-      lastLiveNodes = new HashSet(newLiveNodes);
+      lastLiveNodes = new HashSet<>(newLiveNodes);
     } catch (RuntimeException e) {
       log.error("Unexpected exception in NodeAddedTrigger", e);
     }

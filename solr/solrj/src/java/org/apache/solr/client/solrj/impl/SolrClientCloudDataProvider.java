@@ -64,6 +64,7 @@ public class SolrClientCloudDataProvider implements SolrCloudDataProvider {
   private final DistributedQueueFactory queueFactory;
   private final ZkStateReader zkStateReader;
   private final SolrZkClient zkClient;
+  private volatile boolean isClosed;
 
   public SolrClientCloudDataProvider(DistributedQueueFactory queueFactory, CloudSolrClient solrClient) {
     this.queueFactory = queueFactory;
@@ -71,6 +72,17 @@ public class SolrClientCloudDataProvider implements SolrCloudDataProvider {
     this.zkStateReader = solrClient.getZkStateReader();
     this.zkClient = zkStateReader.getZkClient();
     this.stateManager = new ZkDistribStateManager(zkClient);
+    this.isClosed = false;
+  }
+
+  @Override
+  public void close() {
+    isClosed = true;
+  }
+
+  @Override
+  public boolean isClosed() {
+    return isClosed;
   }
 
   @Override

@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.common.cloud.ClusterState;
-import org.apache.zookeeper.Watcher;
 
 /**
  * This interface abstracts the access to cluster data.
