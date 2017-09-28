@@ -103,7 +103,7 @@ public class CreateShardCmd implements Cmd {
             numPullReplicas);
       } else {
         List<Assign.ReplicaCount> sortedNodeList = getNodesForNewReplicas(clusterState, collectionName, sliceName, totalReplicas,
-            createNodeSetStr, ocmh.overseer.getSolrCloudDataProvider().getClusterDataProvider(), ocmh.overseer.getCoreContainer());
+            createNodeSetStr, ocmh.overseer.getSolrCloudDataProvider(), ocmh.overseer.getCoreContainer());
         int i = 0;
         positions = new ArrayList<>();
         for (Map.Entry<Replica.Type, Integer> e : ImmutableMap.of(Replica.Type.NRT, numNrtReplicas,
@@ -174,7 +174,7 @@ public class CreateShardCmd implements Cmd {
 
   static boolean usePolicyFramework(DocCollection collection, OverseerCollectionMessageHandler ocmh)
       throws IOException, InterruptedException {
-    AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudDataProvider().getClusterDataProvider().getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudDataProvider().getDistribStateManager().getAutoScalingConfig();
     return !autoScalingConfig.isEmpty() || collection.getPolicyName() != null;
   }
 }

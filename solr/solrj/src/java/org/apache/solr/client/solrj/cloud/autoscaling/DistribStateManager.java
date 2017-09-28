@@ -54,4 +54,10 @@ public interface DistribStateManager {
 
   List<OpResult> multi(final Iterable<Op> ops) throws BadVersionException, NoSuchElementException, AlreadyExistsException, IOException, InterruptedException;
 
+  AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws InterruptedException, IOException;
+
+  default AutoScalingConfig getAutoScalingConfig() throws InterruptedException, IOException {
+    return getAutoScalingConfig(null);
+  }
+
 }

@@ -43,7 +43,7 @@ import static org.apache.solr.common.params.CoreAdminParams.NODE;
 public class PolicyHelper {
   private static ThreadLocal<Map<String, String>> policyMapping = new ThreadLocal<>();
   public static List<ReplicaPosition> getReplicaLocations(String collName, AutoScalingConfig autoScalingConfig,
-                                                          ClusterDataProvider cdp,
+                                                          SolrCloudDataProvider dataProvider,
                                                           Map<String, String> optionalPolicyMapping,
                                                           List<String> shardNames,
                                                           int nrtReplicas,
@@ -51,8 +51,8 @@ public class PolicyHelper {
                                                           int pullReplicas,
                                                           List<String> nodesList) {
     List<ReplicaPosition> positions = new ArrayList<>();
-      final ClusterDataProvider delegate = cdp;
-      cdp = new DelegatingClusterDataProvider(delegate) {
+      final ClusterDataProvider delegate = dataProvider.getClusterDataProvider();
+      ClusterDataProvider cdp = new DelegatingClusterDataProvider(delegate) {
         @Override
         public ClusterState getClusterState() throws IOException {
           return delegate.getClusterState();

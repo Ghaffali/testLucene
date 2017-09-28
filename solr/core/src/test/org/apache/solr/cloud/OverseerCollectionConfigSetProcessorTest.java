@@ -25,8 +25,11 @@ import java.util.concurrent.TimeUnit;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.cloud.Overseer.LeaderStatus;
 import org.apache.solr.cloud.OverseerTaskQueue.QueueEvent;
 import org.apache.solr.common.cloud.ClusterState;
@@ -47,12 +50,15 @@ import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.handler.component.ShardHandlerFactory;
 import org.apache.solr.handler.component.ShardRequest;
 import org.apache.solr.util.TimeOut;
+import org.apache.zookeeper.CreateMode;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.invocation.InvocationOnMock;
+import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,6 +85,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
   private static ZkStateReader zkStateReaderMock;
   private static ClusterState clusterStateMock;
   private static SolrZkClient solrZkClientMock;
+  private static DistribStateManager stateManagerMock;
   private static AutoScalingConfig autoScalingConfig = new AutoScalingConfig(Collections.emptyMap());
   private final Map zkMap = new HashMap();
   private final Map<String, ClusterState.CollectionRef> collectionsSet = new HashMap<>();
@@ -127,6 +134,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     zkControllerMock = mock(ZkController.class);
     cloudDataProviderMock = mock(SolrCloudDataProvider.class);
     clusterDataProviderMock = mock(ClusterDataProvider.class);
+    stateManagerMock = mock(DistribStateManager.class);
   }
   
   @AfterClass
@@ -163,6 +171,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     reset(zkControllerMock);
     reset(cloudDataProviderMock);
     reset(clusterDataProviderMock);
+    reset(stateManagerMock);
 
     zkMap.clear();
     collectionsSet.clear();
@@ -284,7 +293,39 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     when(zkControllerMock.getSolrCloudDataProvider()).thenReturn(cloudDataProviderMock);
     when(cloudDataProviderMock.getClusterDataProvider()).thenReturn(clusterDataProviderMock);
     when(clusterDataProviderMock.getClusterState()).thenReturn(clusterStateMock);
-    when(clusterDataProviderMock.getAutoScalingConfig()).thenReturn(autoScalingConfig);
+    when(cloudDataProviderMock.getDistribStateManager()).thenReturn(stateManagerMock);
+    when(stateManagerMock.hasData(anyString())).thenAnswer(invocation -> zkMap.containsKey(invocation.getArgument(0)));
+    when(stateManagerMock.getAutoScalingConfig()).thenReturn(autoScalingConfig);
+    doAnswer(new Answer<Void>() {
+      @Override
+      public Void answer(InvocationOnMock invocation) throws Throwable {
+        if (!zkMap.containsKey(invocation.getArgument(0))) {
+          zkMap.put(invocation.getArgument(0), "");
+        }
+        return null;
+      }
+    }).when(stateManagerMock).makePath(anyString());
+    doAnswer(new Answer<Void>() {
+      @Override
+      public Void answer(InvocationOnMock invocation) throws Throwable {
+        VersionedData d = new VersionedData(0, invocation.getArgument(1), "test");
+        zkMap.put(invocation.getArgument(0), d);
+        return null;
+      }
+    }).when(stateManagerMock).createData(anyString(), any(byte[].class), any(CreateMode.class));
+    doAnswer(new Answer<Void>() {
+      @Override
+      public Void answer(InvocationOnMock invocation) throws Throwable {
+        VersionedData d = (VersionedData)zkMap.get(invocation.getArgument(0));
+        if (d != null && d.getVersion() != (Integer)invocation.getArgument(2)) {
+          throw new BadVersionException(invocation.getArgument(0));
+        }
+        int version = (Integer)invocation.getArgument(2) + 1;
+        zkMap.put(invocation.getArgument(0), new VersionedData(version, invocation.getArgument(1), "test"));
+        return null;
+      }
+    }).when(stateManagerMock).setData(anyString(), any(byte[].class), anyInt());
+    when(stateManagerMock.getData(anyString(), any())).thenAnswer(invocation -> zkMap.get(invocation.getArgument(0)));
 
     zkMap.put("/configs/myconfig", null);
     

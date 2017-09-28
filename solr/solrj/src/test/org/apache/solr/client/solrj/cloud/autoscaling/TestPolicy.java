@@ -31,6 +31,7 @@ import java.util.Map;
 import com.google.common.collect.ImmutableList;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.Clause.Violation;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
@@ -870,7 +871,34 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "}");
     AutoScalingConfig config = new AutoScalingConfig(policies);
 
-    List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations("c", config, provider, null,
+    SolrCloudDataProvider dataProvider = new SolrCloudDataProvider() {
+      @Override
+      public ClusterDataProvider getClusterDataProvider() {
+        return provider;
+      }
+
+      @Override
+      public DistribStateManager getDistribStateManager() {
+        return null;
+      }
+
+      @Override
+      public DistributedQueueFactory getDistributedQueueFactory() {
+        return null;
+      }
+
+      @Override
+      public SolrResponse request(SolrRequest req) throws IOException {
+        return null;
+      }
+
+      @Override
+      public byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException {
+        return new byte[0];
+      }
+    };
+
+    List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations("c", config, dataProvider, null,
         Arrays.asList("s1", "s2"), 1, 0, 0,
         null);
 
@@ -884,7 +912,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
     ref1Copy.decref(sessionRefVersion);
     PolicyHelper.SESSION_REF.set(ref1);
     AutoScalingConfig config2 = new AutoScalingConfig(policies);
-    locations = PolicyHelper.getReplicaLocations("c2", config2, provider, null, Arrays.asList("s1", "s2"), 1, 0, 0,
+    locations = PolicyHelper.getReplicaLocations("c2", config2, dataProvider, null, Arrays.asList("s1", "s2"), 1, 0, 0,
         null);
     sessionRefVersion =  PolicyHelper.REF_VERSION.get();
     ref1Copy = PolicyHelper.SESSION_REF.get();
@@ -898,7 +926,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
     ref1.decref(sessionRefVersion);//decref 1
     ref1.decref(sessionRefVersion);//decref 2
     PolicyHelper.SESSION_REF.set(ref1);
-    locations = PolicyHelper.getReplicaLocations("c3", config2, provider, null, Arrays.asList("s1", "s2"), 1, 0, 0,
+    locations = PolicyHelper.getReplicaLocations("c3", config2, dataProvider, null, Arrays.asList("s1", "s2"), 1, 0, 0,
         null);
     sessionRefVersion =  PolicyHelper.REF_VERSION.get();
     ref1Copy = PolicyHelper.SESSION_REF.get();
@@ -1179,7 +1207,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "    '127.0.0.1:50096_solr':{" +
         "      'cores':0," +
         "      'port':'50096'}}");
-    ClusterDataProvider dataProvider = new DelegatingClusterDataProvider(null) {
+    ClusterDataProvider provider = new DelegatingClusterDataProvider(null) {
       @Override
       public Map<String, Object> getNodeValues(String node, Collection<String> keys) {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -1207,6 +1235,32 @@ public class TestPolicy extends SolrTestCaseJ4 {
         throw new UnsupportedOperationException("getClusterState");
       }
 
+    };
+    SolrCloudDataProvider dataProvider = new SolrCloudDataProvider() {
+      @Override
+      public ClusterDataProvider getClusterDataProvider() {
+        return provider;
+      }
+
+      @Override
+      public DistribStateManager getDistribStateManager() {
+        return null;
+      }
+
+      @Override
+      public DistributedQueueFactory getDistributedQueueFactory() {
+        return null;
+      }
+
+      @Override
+      public SolrResponse request(SolrRequest req) throws IOException {
+        return null;
+      }
+
+      @Override
+      public byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException {
+        return new byte[0];
+      }
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
         "newColl", new AutoScalingConfig((Map<String, Object>)Utils.fromJSONString(autoScaleJson)),
@@ -1242,7 +1296,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "node4:{cores:0, freedisk: 900, heap:16900, nodeRole:overseer, sysprop.rack:rack2}" +
         "}");
 
-    ClusterDataProvider dataProvider = new DelegatingClusterDataProvider(null) {
+    ClusterDataProvider provider = new DelegatingClusterDataProvider(null) {
       @Override
       public Map<String, Object> getNodeValues(String node, Collection<String> keys) {
         Map<String, Object> result = new LinkedHashMap<>();
@@ -1270,6 +1324,32 @@ public class TestPolicy extends SolrTestCaseJ4 {
         throw new UnsupportedOperationException("getClusterState");
       }
 
+    };
+    SolrCloudDataProvider dataProvider = new SolrCloudDataProvider() {
+      @Override
+      public ClusterDataProvider getClusterDataProvider() {
+        return provider;
+      }
+
+      @Override
+      public DistribStateManager getDistribStateManager() {
+        return null;
+      }
+
+      @Override
+      public DistributedQueueFactory getDistributedQueueFactory() {
+        return null;
+      }
+
+      @Override
+      public SolrResponse request(SolrRequest req) throws IOException {
+        return null;
+      }
+
+      @Override
+      public byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException {
+        return new byte[0];
+      }
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
         "newColl", new AutoScalingConfig((Map<String, Object>) Utils.fromJSONString(autoScaleJson)),

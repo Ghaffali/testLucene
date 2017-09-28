@@ -31,7 +31,6 @@ import java.util.Set;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.request.GenericSolrRequest;
@@ -51,7 +50,6 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -124,15 +122,6 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
     ew.put("clusterState", zkStateReader.getClusterState());
     ew.put("replicaInfo", Utils.getDeepCopy(data, 5));
     ew.put("nodeValues", nodeVsTags);
-  }
-
-  @Override
-  public AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws IOException {
-    try {
-      return zkStateReader.getAutoScalingConfig(watcher);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
   }
 
   static class ClientSnitchCtx

@@ -63,12 +63,6 @@ public interface ClusterDataProvider extends Closeable {
     return value;
   }
 
-  AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws InterruptedException, IOException;
-
-  default AutoScalingConfig getAutoScalingConfig() throws InterruptedException, IOException {
-    return getAutoScalingConfig(null);
-  }
-
   /**
    * Get the collection-specific policy
    */

@@ -260,7 +260,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
       if (isClosed) {
         return;
       }
-      AutoScalingConfig currentConfig = dataProvider.getClusterDataProvider().getAutoScalingConfig(watcher);
+      AutoScalingConfig currentConfig = dataProvider.getDistribStateManager().getAutoScalingConfig(watcher);
       log.debug("Refreshing {} with znode version {}", ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, currentConfig.getZkVersion());
       if (znodeVersion >= currentConfig.getZkVersion()) {
         // protect against reordered watcher fires by ensuring that we only move forward

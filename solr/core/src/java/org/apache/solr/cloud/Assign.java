@@ -33,9 +33,9 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
 import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.client.solrj.impl.SolrClientCloudDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
@@ -90,10 +90,15 @@ public class Assign {
 
     while (true) {
       try {
+        int version = -1;
+        int currentId = 0;
         VersionedData data = stateManager.getData(path, null);
-        int currentId = NumberUtils.bytesToInt(data.getData());
+        if (data != null) {
+          currentId = NumberUtils.bytesToInt(data.getData());
+          version = data.getVersion();
+        }
         byte[] bytes = NumberUtils.intToBytes(++currentId);
-        stateManager.setData(path, bytes, data.getVersion());
+        stateManager.setData(path, bytes, version);
         return currentId;
       } catch (BadVersionException e) {
         continue;
@@ -240,7 +245,7 @@ public class Assign {
                                                     int numPullReplicas) throws IOException, InterruptedException {
     List<Map> rulesMap = (List) message.get("rule");
     String policyName = message.getStr(POLICY);
-    AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudDataProvider().getClusterDataProvider().getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudDataProvider().getDistribStateManager().getAutoScalingConfig();
 
     if (rulesMap == null && policyName == null && autoScalingConfig.isEmpty()) {
       log.debug("Identify nodes using default");
@@ -289,7 +294,7 @@ public class Assign {
         PolicyHelper.SESSION_REF.set(ocmh.policySessionRef);
         try {
           return getPositionsUsingPolicy(collectionName,
-              shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas, policyName, ocmh.overseer.getSolrCloudDataProvider().getClusterDataProvider(), nodeList);
+              shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas, policyName, ocmh.overseer.getSolrCloudDataProvider(), nodeList);
         } finally {
           PolicyHelper.SESSION_REF.remove();
         }
@@ -318,7 +323,7 @@ public class Assign {
   // could be created on live nodes given maxShardsPerNode, Replication factor (if from createShard) etc.
   public static List<ReplicaCount> getNodesForNewReplicas(ClusterState clusterState, String collectionName,
                                                           String shard, int nrtReplicas,
-                                                          Object createNodeSet, ClusterDataProvider cdp, CoreContainer cc) throws IOException, InterruptedException {
+                                                          Object createNodeSet, SolrCloudDataProvider dataProvider, CoreContainer cc) throws IOException, InterruptedException {
     log.debug("getNodesForNewReplicas() shard: {} , replicas : {} , createNodeSet {}", shard, nrtReplicas, createNodeSet );
     DocCollection coll = clusterState.getCollection(collectionName);
     Integer maxShardsPerNode = coll.getMaxShardsPerNode();
@@ -354,10 +359,10 @@ public class Assign {
       replicaPositions = getNodesViaRules(clusterState, shard, nrtReplicas, cc, coll, createNodeList, l);
     }
     String policyName = coll.getStr(POLICY);
-    AutoScalingConfig autoScalingConfig = cdp.getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = dataProvider.getDistribStateManager().getAutoScalingConfig();
     if (policyName != null || !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       replicaPositions = Assign.getPositionsUsingPolicy(collectionName, Collections.singletonList(shard), nrtReplicas, 0, 0,
-          policyName, cdp, createNodeList);
+          policyName, dataProvider, createNodeList);
     }
 
     if(replicaPositions != null){
@@ -378,18 +383,18 @@ public class Assign {
                                                               int nrtReplicas,
                                                               int tlogReplicas,
                                                               int pullReplicas,
-                                                              String policyName, ClusterDataProvider cdp,
+                                                              String policyName, SolrCloudDataProvider dataProvider,
                                                               List<String> nodesList) throws IOException, InterruptedException {
     log.debug("shardnames {} NRT {} TLOG {} PULL {} , policy {}, nodeList {}", shardNames, nrtReplicas, tlogReplicas, pullReplicas, policyName, nodesList);
     SolrClientCloudDataProvider clientDataProvider = null;
     List<ReplicaPosition> replicaPositions = null;
-    AutoScalingConfig autoScalingConfig = cdp.getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = dataProvider.getDistribStateManager().getAutoScalingConfig();
     try {
       Map<String, String> kvMap = Collections.singletonMap(collName, policyName);
       replicaPositions = PolicyHelper.getReplicaLocations(
           collName,
           autoScalingConfig,
-          cdp,
+          dataProvider,
           kvMap,
           shardNames,
           nrtReplicas,

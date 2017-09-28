@@ -54,7 +54,7 @@ public class ComputePlanAction extends TriggerActionBase {
     log.debug("-- processing event: {} with context properties: {}", event, context.getProperties());
     SolrCloudDataProvider dataProvider = context.getDataProvider();
     try {
-      AutoScalingConfig autoScalingConf = dataProvider.getClusterDataProvider().getAutoScalingConfig();
+      AutoScalingConfig autoScalingConf = dataProvider.getDistribStateManager().getAutoScalingConfig();
       if (autoScalingConf.isEmpty()) {
         log.error("Action: " + getName() + " executed but no policy is configured");
         return;
