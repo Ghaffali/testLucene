@@ -65,41 +65,36 @@ public class ExecutePlanAction extends TriggerActionBase {
       for (SolrRequest operation : operations) {
         log.info("Executing operation: {}", operation.getParams());
         try {
-          SolrResponse response = dataProvider.request(operation);
-          // nocommit
-//=======
-//    try (CloudSolrClient cloudSolrClient = new CloudSolrClient.Builder()
-//        .withZkHost(container.getZkController().getZkServerAddress())
-//        .withHttpClient(container.getUpdateShardHandler().getHttpClient())
-//        .build()) {
-//      int counter = 0;
-//      for (SolrRequest operation : operations) {
-//        log.info("Executing operation: {}", operation.getParams());
-//        try {
-//          SolrResponse response = null;
-//          if (operation instanceof CollectionAdminRequest.AsyncCollectionAdminRequest) {
-//            CollectionAdminRequest.AsyncCollectionAdminRequest req = (CollectionAdminRequest.AsyncCollectionAdminRequest) operation;
-//            String asyncId = event.getSource() + '/' + event.getId() + '/' + counter;
-//            String znode = saveAsyncId(event, context, asyncId);
-//            log.debug("Saved requestId: {} in znode: {}", asyncId, znode);
-//            asyncId = req.processAsync(asyncId, cloudSolrClient);
-//            CollectionAdminRequest.RequestStatusResponse statusResponse = waitForTaskToFinish(cloudSolrClient, asyncId,
-//                DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
-//            if (statusResponse != null) {
-//              RequestStatusState state = statusResponse.getRequestStatus();
-//              if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {
-//                try {
-//                  zkClient.delete(znode, -1, true);
-//                } catch (KeeperException e) {
-//                  log.warn("Unexpected exception while trying to delete znode: " + znode, e);
-//                }
-//              }
-//              response = statusResponse;
-//            }
-//          } else {
-//            response = operation.process(cloudSolrClient);
-//          }
-//>>>>>>> feature/autoscaling
+          SolrResponse response = null;
+          int counter = 0;
+          if (operation instanceof CollectionAdminRequest.AsyncCollectionAdminRequest) {
+            CollectionAdminRequest.AsyncCollectionAdminRequest req = (CollectionAdminRequest.AsyncCollectionAdminRequest) operation;
+            String asyncId = event.getSource() + '/' + event.getId() + '/' + counter;
+            String znode = saveAsyncId(dataProvider.getDistribStateManager(), event, asyncId);
+            log.debug("Saved requestId: {} in znode: {}", asyncId, znode);
+            // nocommit - make sure the async logic below is correct when using dataProvider API !!!
+            req.setAsyncId(asyncId);
+            SolrResponse asyncResponse = dataProvider.request(req);
+            if (asyncResponse.getResponse().get("error") != null) {
+              throw new IOException("" + asyncResponse.getResponse().get("error"));
+            }
+            asyncId = (String)asyncResponse.getResponse().get("requestid");
+            CollectionAdminRequest.RequestStatusResponse statusResponse = waitForTaskToFinish(dataProvider, asyncId,
+                DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            if (statusResponse != null) {
+              RequestStatusState state = statusResponse.getRequestStatus();
+              if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {
+                try {
+                  dataProvider.getDistribStateManager().removeData(znode, -1);
+                } catch (Exception e) {
+                  log.warn("Unexpected exception while trying to delete znode: " + znode, e);
+                }
+              }
+              response = statusResponse;
+            }
+          } else {
+            response = dataProvider.request(operation);
+          }
           NamedList<Object> result = response.getResponse();
           context.getProperties().compute("responses", (s, o) -> {
             List<NamedList<Object>> responses = (List<NamedList<Object>>) o;
@@ -168,8 +163,8 @@ public class ExecutePlanAction extends TriggerActionBase {
    *
    * @return the path of the newly created node in ZooKeeper
    */
-  private String saveAsyncId(DistribStateManager stateManager, TriggerEvent event, ActionContext context, String asyncId) throws InterruptedException, AlreadyExistsException, IOException {
-    String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + context.getSource().getName() + "/" + getName();
+  private String saveAsyncId(DistribStateManager stateManager, TriggerEvent event, String asyncId) throws InterruptedException, AlreadyExistsException, IOException {
+    String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + event.getSource() + "/" + getName();
     stateManager.makePath(parentPath);
     return stateManager.createData(parentPath + "/" + PREFIX, Utils.toJSON(Collections.singletonMap("requestid", asyncId)), CreateMode.PERSISTENT_SEQUENTIAL);
   }

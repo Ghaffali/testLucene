@@ -61,7 +61,7 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
   private static final int NODE_COUNT = 1;
   private static CountDownLatch triggerFiredLatch = new CountDownLatch(1);
   private static final AtomicReference<Map> actionContextPropsRef = new AtomicReference<>();
-  private static final AtomicReference<TriggerEvent> eventRef = new AtomicReference<>();o
+  private static final AtomicReference<TriggerEvent> eventRef = new AtomicReference<>();
 
   @BeforeClass
   public static void setupCluster() throws Exception {

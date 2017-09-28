@@ -71,6 +71,9 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
     this.solrClient = solrClient;
     this.zkStateReader = solrClient.getZkStateReader();
     ClusterState clusterState = zkStateReader.getClusterState();
+    if (clusterState == null) { // zkStateReader still initializing
+      return;
+    }
     Map<String, ClusterState.CollectionRef> all = clusterState.getCollectionStates();
     all.forEach((collName, ref) -> {
       DocCollection coll = ref.get();
@@ -85,7 +88,12 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
   }
 
   public Collection<String> getLiveNodes() {
-    return zkStateReader.getClusterState().getLiveNodes();
+    ClusterState clusterState = zkStateReader.getClusterState();
+    if (clusterState == null) { // zkStateReader still initializing
+      return Collections.emptySet();
+    } else {
+      return clusterState.getLiveNodes();
+    }
   }
 
   @Override
