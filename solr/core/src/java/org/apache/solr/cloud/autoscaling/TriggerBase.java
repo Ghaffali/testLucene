@@ -38,6 +38,7 @@ import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -86,7 +87,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
       if (!stateManager.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
         stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
       }
-    } catch (InterruptedException | IOException e) {
+    } catch (InterruptedException | KeeperException | IOException e) {
       LOG.warn("Exception checking ZK path " + ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, e);
     }
   }
@@ -205,7 +206,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
         stateManager.createData(path, data, CreateMode.PERSISTENT);
       }
       lastState = state;
-    } catch (InterruptedException | BadVersionException | AlreadyExistsException | IOException e) {
+    } catch (InterruptedException | BadVersionException | AlreadyExistsException | IOException | KeeperException e) {
       LOG.warn("Exception updating trigger state '" + path + "'", e);
     }
   }

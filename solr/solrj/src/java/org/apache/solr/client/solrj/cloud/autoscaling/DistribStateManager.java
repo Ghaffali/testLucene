@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Op;
 import org.apache.zookeeper.OpResult;
 import org.apache.zookeeper.Watcher;
@@ -32,27 +33,27 @@ public interface DistribStateManager {
 
   // state accessors
 
-  boolean hasData(String path) throws IOException, InterruptedException;
+  boolean hasData(String path) throws IOException, KeeperException, InterruptedException;
 
-  List<String> listData(String path) throws NoSuchElementException, IOException, InterruptedException;
+  List<String> listData(String path) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException, InterruptedException;
+  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  default VersionedData getData(String path) throws NoSuchElementException, IOException, InterruptedException {
+  default VersionedData getData(String path) throws NoSuchElementException, IOException, KeeperException, InterruptedException {
     return getData(path, null);
   }
 
   // state mutators
 
-  void makePath(String path) throws IOException, InterruptedException;
+  void makePath(String path) throws IOException, KeeperException, InterruptedException;
 
-  String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, InterruptedException;
+  String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
-  void removeData(String path, int version) throws NoSuchElementException, IOException, InterruptedException;
+  void removeData(String path, int version) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  void setData(String path, byte[] data, int version) throws BadVersionException, NoSuchElementException, IOException, InterruptedException;
+  void setData(String path, byte[] data, int version) throws BadVersionException, NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  List<OpResult> multi(final Iterable<Op> ops) throws BadVersionException, NoSuchElementException, AlreadyExistsException, IOException, InterruptedException;
+  List<OpResult> multi(final Iterable<Op> ops) throws BadVersionException, NoSuchElementException, AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
   AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws InterruptedException, IOException;
 

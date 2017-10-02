@@ -41,6 +41,7 @@ import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.SolrResourceLoader;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
@@ -121,7 +122,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
         Thread.currentThread().interrupt();
         log.warn("Interrupted", e);
         break;
-      } catch (IOException e) {
+      } catch (IOException | KeeperException e) {
         log.error("A ZK error has occurred", e);
       }
     }
