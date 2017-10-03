@@ -119,7 +119,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
         }
       } else {
         node = getNodesForNewReplicas(clusterState, collection, shard, 1, node,
-            ocmh.overseer.getSolrCloudDataProvider(), ocmh.overseer.getCoreContainer()).get(0).nodeName;// TODO: use replica type in this logic too
+            ocmh.overseer.getSolrCloudManager(), ocmh.overseer.getCoreContainer()).get(0).nodeName;// TODO: use replica type in this logic too
       }
     }
     log.info("Node Identified {} for creating new replica", node);
@@ -128,7 +128,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Node: " + node + " is not live");
     }
     if (coreName == null) {
-      coreName = Assign.buildCoreName(ocmh.overseer.getSolrCloudDataProvider().getDistribStateManager(), coll, shard, replicaType);
+      coreName = Assign.buildCoreName(ocmh.overseer.getSolrCloudManager().getDistribStateManager(), coll, shard, replicaType);
     } else if (!skipCreateReplicaInClusterState) {
       //Validate that the core name is unique in that collection
       for (Slice slice : coll.getSlices()) {

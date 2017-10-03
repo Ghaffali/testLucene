@@ -29,7 +29,7 @@ import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.cloud.Assign;
 import org.apache.solr.cloud.Overseer;
@@ -42,7 +42,6 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Utils;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,10 +53,10 @@ import static org.apache.solr.common.params.CommonParams.NAME;
 public class ReplicaMutator {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  protected final SolrCloudDataProvider dataProvider;
+  protected final SolrCloudManager dataProvider;
   protected final DistribStateManager stateManager;
 
-  public ReplicaMutator(SolrCloudDataProvider dataProvider) {
+  public ReplicaMutator(SolrCloudManager dataProvider) {
     this.dataProvider = dataProvider;
     this.stateManager = dataProvider.getDistribStateManager();
   }
@@ -202,7 +201,7 @@ public class ReplicaMutator {
   }
 
   public ZkWriteCommand setState(ClusterState clusterState, ZkNodeProps message) {
-    if (Overseer.isLegacy(dataProvider.getClusterDataProvider())) {
+    if (Overseer.isLegacy(dataProvider.getClusterStateProvider())) {
       return updateState(clusterState, message);
     } else {
       return updateStateNew(clusterState, message);

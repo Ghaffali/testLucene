@@ -27,7 +27,7 @@ import java.util.Map;
 import java.util.Set;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.cloud.Assign;
 import org.apache.solr.cloud.Overseer;
 import org.apache.solr.common.cloud.ClusterState;
@@ -50,10 +50,10 @@ public class SliceMutator {
 
   public static final Set<String> SLICE_UNIQUE_BOOLEAN_PROPERTIES = ImmutableSet.of(PREFERRED_LEADER_PROP);
 
-  protected final SolrCloudDataProvider dataProvider;
+  protected final SolrCloudManager dataProvider;
   protected final DistribStateManager stateManager;
 
-  public SliceMutator(SolrCloudDataProvider dataProvider) {
+  public SliceMutator(SolrCloudManager dataProvider) {
     this.dataProvider = dataProvider;
     this.stateManager = dataProvider.getDistribStateManager();
   }

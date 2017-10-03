@@ -44,10 +44,9 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest.RequestStatusResponse;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.cloud.ActionThrottle;
@@ -60,7 +59,6 @@ import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.zookeeper.Op;
-import org.apache.zookeeper.OpResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -95,7 +93,7 @@ public class ScheduledTriggers implements Closeable {
 
   private final ActionThrottle actionThrottle;
 
-  private final SolrCloudDataProvider dataProvider;
+  private final SolrCloudManager dataProvider;
 
   private final DistribStateManager stateManager;
 
@@ -107,7 +105,7 @@ public class ScheduledTriggers implements Closeable {
 
   private AutoScalingConfig autoScalingConfig;
 
-  public ScheduledTriggers(SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+  public ScheduledTriggers(SolrResourceLoader loader, SolrCloudManager dataProvider) {
     // todo make the core pool size configurable
     // it is important to use more than one because a time taking trigger can starve other scheduled triggers
     // ideally we should have as many core threads as the number of triggers but firstly, we don't know beforehand
@@ -385,7 +383,7 @@ public class ScheduledTriggers implements Closeable {
     boolean replay;
     volatile boolean isClosed;
 
-    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudDataProvider dataProvider, Stats stats) throws IOException {
+    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudManager dataProvider, Stats stats) throws IOException {
       this.trigger = trigger;
       this.queue = new TriggerEventQueue(dataProvider, trigger.getName(), stats);
       this.replay = true;

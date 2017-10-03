@@ -20,37 +20,39 @@ import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.common.cloud.ClusterState;
 
 /**
  *
  */
-public class DelegatingClusterDataProvider implements ClusterDataProvider {
-  protected ClusterDataProvider delegate;
+public class DelegatingClusterStateProvider implements ClusterStateProvider {
+  protected ClusterStateProvider delegate;
 
-  public DelegatingClusterDataProvider(ClusterDataProvider delegate) {
+  public DelegatingClusterStateProvider(ClusterStateProvider delegate) {
     this.delegate = delegate;
   }
 
   @Override
-  public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-    return delegate.getNodeValues(node, tags);
+  public ClusterState.CollectionRef getState(String collection) {
+    return delegate.getState(collection);
   }
 
   @Override
-  public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-    return delegate.getReplicaInfo(node, keys);
-  }
-
-  @Override
-  public Collection<String> getLiveNodes() {
+  public Set<String> getLiveNodes() {
     return delegate.getLiveNodes();
   }
 
   @Override
-  public Map<String, Object> getClusterProperties() {
-    return delegate.getClusterProperties();
+  public String getAlias(String alias) {
+    return delegate.getAlias(alias);
+  }
+
+  @Override
+  public String getCollectionName(String name) {
+    return delegate.getCollectionName(name);
   }
 
   @Override
@@ -59,8 +61,22 @@ public class DelegatingClusterDataProvider implements ClusterDataProvider {
   }
 
   @Override
+  public Map<String, Object> getClusterProperties() {
+    return delegate.getClusterProperties();
+  }
+
+  @Override
   public String getPolicyNameByCollection(String coll) {
     return delegate.getPolicyNameByCollection(coll);
   }
 
+  @Override
+  public void connect() {
+    delegate.connect();
+  }
+
+  @Override
+  public void close() throws IOException {
+    delegate.close();
+  }
 }

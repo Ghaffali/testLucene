@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
@@ -42,7 +43,7 @@ import static org.apache.solr.common.params.CoreAdminParams.NODE;
 public class PolicyHelper {
   private static ThreadLocal<Map<String, String>> policyMapping = new ThreadLocal<>();
   public static List<ReplicaPosition> getReplicaLocations(String collName, AutoScalingConfig autoScalingConfig,
-                                                          SolrCloudDataProvider dataProvider,
+                                                          SolrCloudManager cloudManager,
                                                           Map<String, String> optionalPolicyMapping,
                                                           List<String> shardNames,
                                                           int nrtReplicas,
@@ -50,13 +51,8 @@ public class PolicyHelper {
                                                           int pullReplicas,
                                                           List<String> nodesList) {
     List<ReplicaPosition> positions = new ArrayList<>();
-      final ClusterDataProvider delegate = dataProvider.getClusterDataProvider();
-      ClusterDataProvider cdp = new DelegatingClusterDataProvider(delegate) {
-        @Override
-        public ClusterState getClusterState() throws IOException {
-          return delegate.getClusterState();
-        }
-
+    final ClusterStateProvider delegate = cloudManager.getClusterStateProvider();
+    ClusterStateProvider cdp = new DelegatingClusterStateProvider(delegate) {
         @Override
         public String getPolicyNameByCollection(String coll) {
           return policyMapping.get() != null && policyMapping.get().containsKey(coll) ?
@@ -69,8 +65,8 @@ public class PolicyHelper {
     Policy.Session session = null;
     try {
       session = SESSION_REF.get() != null ?
-          SESSION_REF.get().initOrGet(cdp, autoScalingConfig.getPolicy()) :
-          autoScalingConfig.getPolicy().createSession(cdp);
+          SESSION_REF.get().initOrGet(cloudManager, autoScalingConfig.getPolicy()) :
+          autoScalingConfig.getPolicy().createSession(cloudManager);
 
       Map<Replica.Type, Integer> typeVsCount = new EnumMap<>(Replica.Type.class);
       typeVsCount.put(Replica.Type.NRT, nrtReplicas);
@@ -152,11 +148,11 @@ public class PolicyHelper {
       }
     }
 
-    public Policy.Session initOrGet(ClusterDataProvider cdp, Policy policy) {
+    public Policy.Session initOrGet(SolrCloudManager cloudManager, Policy policy) {
       synchronized (SessionRef.class) {
         Policy.Session session = get();
         if (session != null) return session;
-        this.session = policy.createSession(cdp);
+        this.session = policy.createSession(cloudManager);
         myVersion.incrementAndGet();
         lastUsedTime = System.nanoTime();
         REF_VERSION.set(myVersion.get());

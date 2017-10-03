@@ -24,7 +24,7 @@ import java.util.Map;
 
 import com.google.common.base.Preconditions;
 import org.apache.lucene.store.AlreadyClosedException;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
@@ -133,10 +133,10 @@ public class AutoScaling {
    */
   public static class TriggerFactoryImpl extends TriggerFactory {
 
-    private final SolrCloudDataProvider dataProvider;
+    private final SolrCloudManager dataProvider;
     private final SolrResourceLoader loader;
 
-    public TriggerFactoryImpl(SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+    public TriggerFactoryImpl(SolrResourceLoader loader, SolrCloudManager dataProvider) {
       Preconditions.checkNotNull(dataProvider);
       Preconditions.checkNotNull(loader);
       this.dataProvider = dataProvider;

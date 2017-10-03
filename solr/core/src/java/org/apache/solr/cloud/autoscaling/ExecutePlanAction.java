@@ -30,11 +30,10 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
@@ -56,7 +55,7 @@ public class ExecutePlanAction extends TriggerActionBase {
   @Override
   public void process(TriggerEvent event, ActionContext context) {
     log.debug("-- processing event: {} with context properties: {}", event, context.getProperties());
-    SolrCloudDataProvider dataProvider = context.getDataProvider();
+    SolrCloudManager dataProvider = context.getCloudManager();
     List<SolrRequest> operations = (List<SolrRequest>) context.getProperty("operations");
     if (operations == null || operations.isEmpty()) {
       log.info("No operations to execute for event: {}", event);
@@ -122,7 +121,7 @@ public class ExecutePlanAction extends TriggerActionBase {
   }
 
 
-  static CollectionAdminRequest.RequestStatusResponse waitForTaskToFinish(SolrCloudDataProvider dataProvider, String requestId, long duration, TimeUnit timeUnit) throws IOException, InterruptedException {
+  static CollectionAdminRequest.RequestStatusResponse waitForTaskToFinish(SolrCloudManager dataProvider, String requestId, long duration, TimeUnit timeUnit) throws IOException, InterruptedException {
     long timeoutSeconds = timeUnit.toSeconds(duration);
     RequestStatusState state = RequestStatusState.NOT_FOUND;
     CollectionAdminRequest.RequestStatusResponse statusResponse = null;

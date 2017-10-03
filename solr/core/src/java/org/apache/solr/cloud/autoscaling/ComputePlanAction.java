@@ -25,9 +25,8 @@ import java.util.Map;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.common.params.CollectionParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,16 +44,16 @@ public class ComputePlanAction extends TriggerActionBase {
   @Override
   public void process(TriggerEvent event, ActionContext context) {
     log.debug("-- processing event: {} with context properties: {}", event, context.getProperties());
-    SolrCloudDataProvider dataProvider = context.getDataProvider();
+    SolrCloudManager cloudManager = context.getCloudManager();
     try {
-      AutoScalingConfig autoScalingConf = dataProvider.getDistribStateManager().getAutoScalingConfig();
+      AutoScalingConfig autoScalingConf = cloudManager.getDistribStateManager().getAutoScalingConfig();
       if (autoScalingConf.isEmpty()) {
         log.error("Action: " + getName() + " executed but no policy is configured");
         return;
       }
       Policy policy = autoScalingConf.getPolicy();
-      Policy.Session session = policy.createSession(dataProvider.getClusterDataProvider());
-      Policy.Suggester suggester = getSuggester(session, event, dataProvider.getClusterDataProvider());
+      Policy.Session session = policy.createSession(cloudManager);
+      Policy.Suggester suggester = getSuggester(session, event, cloudManager);
       while (true) {
         SolrRequest operation = suggester.getOperation();
         if (operation == null) break;
@@ -67,7 +66,7 @@ public class ComputePlanAction extends TriggerActionBase {
           return operations;
         });
         session = suggester.getSession();
-        suggester = getSuggester(session, event, dataProvider.getClusterDataProvider());
+        suggester = getSuggester(session, event, cloudManager);
       }
     } catch (IOException e) {
       log.error("IOException while processing event: " + event, e);
@@ -76,7 +75,7 @@ public class ComputePlanAction extends TriggerActionBase {
     }
   }
 
-  protected Policy.Suggester getSuggester(Policy.Session session, TriggerEvent event, ClusterDataProvider cdp) {
+  protected Policy.Suggester getSuggester(Policy.Session session, TriggerEvent event, SolrCloudManager cloudManager) {
     Policy.Suggester suggester;
     switch (event.getEventType()) {
       case NODEADDED:

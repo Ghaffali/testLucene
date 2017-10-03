@@ -30,7 +30,7 @@ import org.apache.lucene.util.IOUtils;
 import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
 import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
@@ -50,7 +50,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   protected final String name;
-  protected final SolrCloudDataProvider dataProvider;
+  protected final SolrCloudManager dataProvider;
   protected final DistribStateManager stateManager;
   protected final Map<String, Object> properties = new HashMap<>();
   protected final TriggerEventType eventType;
@@ -62,7 +62,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   protected boolean isClosed;
 
 
-  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudManager dataProvider) {
     this.eventType = eventType;
     this.name = name;
     this.dataProvider = dataProvider;

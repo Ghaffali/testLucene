@@ -24,14 +24,17 @@ import java.util.Map;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 
 /**
  * This interface abstracts the access to a SolrCloud cluster, including interactions with Zookeeper, Solr
  * and generic HTTP calls.
  */
-public interface SolrCloudDataProvider extends Closeable {
+public interface SolrCloudManager extends Closeable {
 
-  ClusterDataProvider getClusterDataProvider();
+  ClusterStateProvider getClusterStateProvider();
+
+  NodeStateProvider getNodeStateProvider();
 
   DistribStateManager getDistribStateManager();
 

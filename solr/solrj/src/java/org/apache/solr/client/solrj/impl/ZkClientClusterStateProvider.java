@@ -66,7 +66,7 @@ public class ZkClientClusterStateProvider implements ClusterStateProvider {
   }
 
   @Override
-  public Set<String> liveNodes() {
+  public Set<String> getLiveNodes() {
     return zkStateReader.getClusterState().getLiveNodes();
   }
 
@@ -84,10 +84,10 @@ public class ZkClientClusterStateProvider implements ClusterStateProvider {
   }
 
   @Override
-  public Object getClusterProperty(String propertyName, String def) {
+  public <T> T getClusterProperty(String propertyName, T def) {
     Map<String, Object> props = zkStateReader.getClusterProperties();
     if (props.containsKey(propertyName)) {
-      return props.get(propertyName);
+      return (T)props.get(propertyName);
     }
     return def;
   }
@@ -103,6 +103,23 @@ public class ZkClientClusterStateProvider implements ClusterStateProvider {
     }
     return name;
   }
+
+  @Override
+  public ClusterState getClusterState() throws IOException {
+    return zkStateReader.getClusterState();
+  }
+
+  @Override
+  public Map<String, Object> getClusterProperties() {
+    return zkStateReader.getClusterProperties();
+  }
+
+  @Override
+  public String getPolicyNameByCollection(String coll) {
+    ClusterState.CollectionRef state = getState(coll);
+    return state == null || state.get() == null ? null : (String) state.get().getProperties().get("policy");
+  }
+
   /**
    * Download a named config from Zookeeper to a location on the filesystem
    * @param configName    the name of the config

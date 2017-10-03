@@ -14,21 +14,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.solr.common.cloud.ClusterState;
-
 /**
- * This interface abstracts the access to cluster data.
+ * This interface models access to node and replica information.
  */
-public interface ClusterDataProvider extends Closeable {
+public interface NodeStateProvider {
   /**
    * Get the value of each tag for a given node
    *
@@ -45,30 +40,4 @@ public interface ClusterDataProvider extends Closeable {
    * the format is {collection:shard :[{replicadetails}]}
    */
   Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys);
-
-  /**
-   * Get the current set of live nodes.
-   */
-  Collection<String> getLiveNodes();
-
-  ClusterState getClusterState() throws IOException;
-
-  Map<String, Object> getClusterProperties();
-
-  default <T> T getClusterProperty(String key, T defaultValue) {
-    T value = (T) getClusterProperties().get(key);
-    if (value == null)
-      return defaultValue;
-    return value;
-  }
-
-  /**
-   * Get the collection-specific policy
-   */
-  String getPolicyNameByCollection(String coll);
-
-  @Override
-  default void close() throws IOException {
-  }
-
 }

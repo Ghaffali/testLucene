@@ -25,8 +25,8 @@ import java.util.Map;
 
 import com.codahale.metrics.Timer;
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.cloud.autoscaling.OverseerTriggerThread;
 import org.apache.solr.cloud.overseer.ClusterStateMutator;
 import org.apache.solr.cloud.overseer.CollectionMutator;
@@ -333,19 +333,19 @@ public class Overseer implements Closeable {
       if (collectionAction != null) {
         switch (collectionAction) {
           case CREATE:
-            return Collections.singletonList(new ClusterStateMutator(getSolrCloudDataProvider()).createCollection(clusterState, message));
+            return Collections.singletonList(new ClusterStateMutator(getSolrCloudManager()).createCollection(clusterState, message));
           case DELETE:
-            return Collections.singletonList(new ClusterStateMutator(getSolrCloudDataProvider()).deleteCollection(clusterState, message));
+            return Collections.singletonList(new ClusterStateMutator(getSolrCloudManager()).deleteCollection(clusterState, message));
           case CREATESHARD:
-            return Collections.singletonList(new CollectionMutator(getSolrCloudDataProvider()).createShard(clusterState, message));
+            return Collections.singletonList(new CollectionMutator(getSolrCloudManager()).createShard(clusterState, message));
           case DELETESHARD:
-            return Collections.singletonList(new CollectionMutator(getSolrCloudDataProvider()).deleteShard(clusterState, message));
+            return Collections.singletonList(new CollectionMutator(getSolrCloudManager()).deleteShard(clusterState, message));
           case ADDREPLICA:
-            return Collections.singletonList(new SliceMutator(getSolrCloudDataProvider()).addReplica(clusterState, message));
+            return Collections.singletonList(new SliceMutator(getSolrCloudManager()).addReplica(clusterState, message));
           case ADDREPLICAPROP:
-            return Collections.singletonList(new ReplicaMutator(getSolrCloudDataProvider()).addReplicaProperty(clusterState, message));
+            return Collections.singletonList(new ReplicaMutator(getSolrCloudManager()).addReplicaProperty(clusterState, message));
           case DELETEREPLICAPROP:
-            return Collections.singletonList(new ReplicaMutator(getSolrCloudDataProvider()).deleteReplicaProperty(clusterState, message));
+            return Collections.singletonList(new ReplicaMutator(getSolrCloudManager()).deleteReplicaProperty(clusterState, message));
           case BALANCESHARDUNIQUE:
             ExclusiveSliceProperty dProp = new ExclusiveSliceProperty(clusterState, message);
             if (dProp.balanceProperty()) {
@@ -355,9 +355,9 @@ public class Overseer implements Closeable {
             break;
           case MODIFYCOLLECTION:
             CollectionsHandler.verifyRuleParams(zkController.getCoreContainer() ,message.getProperties());
-            return Collections.singletonList(new CollectionMutator(getSolrCloudDataProvider()).modifyCollection(clusterState,message));
+            return Collections.singletonList(new CollectionMutator(getSolrCloudManager()).modifyCollection(clusterState,message));
           case MIGRATESTATEFORMAT:
-            return Collections.singletonList(new ClusterStateMutator(getSolrCloudDataProvider()).migrateStateFormat(clusterState, message));
+            return Collections.singletonList(new ClusterStateMutator(getSolrCloudManager()).migrateStateFormat(clusterState, message));
           default:
             throw new RuntimeException("unknown operation:" + operation
                 + " contents:" + message.getProperties());
@@ -369,17 +369,17 @@ public class Overseer implements Closeable {
         }
         switch (overseerAction) {
           case STATE:
-            return Collections.singletonList(new ReplicaMutator(getSolrCloudDataProvider()).setState(clusterState, message));
+            return Collections.singletonList(new ReplicaMutator(getSolrCloudManager()).setState(clusterState, message));
           case LEADER:
-            return Collections.singletonList(new SliceMutator(getSolrCloudDataProvider()).setShardLeader(clusterState, message));
+            return Collections.singletonList(new SliceMutator(getSolrCloudManager()).setShardLeader(clusterState, message));
           case DELETECORE:
-            return Collections.singletonList(new SliceMutator(getSolrCloudDataProvider()).removeReplica(clusterState, message));
+            return Collections.singletonList(new SliceMutator(getSolrCloudManager()).removeReplica(clusterState, message));
           case ADDROUTINGRULE:
-            return Collections.singletonList(new SliceMutator(getSolrCloudDataProvider()).addRoutingRule(clusterState, message));
+            return Collections.singletonList(new SliceMutator(getSolrCloudManager()).addRoutingRule(clusterState, message));
           case REMOVEROUTINGRULE:
-            return Collections.singletonList(new SliceMutator(getSolrCloudDataProvider()).removeRoutingRule(clusterState, message));
+            return Collections.singletonList(new SliceMutator(getSolrCloudManager()).removeRoutingRule(clusterState, message));
           case UPDATESHARDSTATE:
-            return Collections.singletonList(new SliceMutator(getSolrCloudDataProvider()).updateShardState(clusterState, message));
+            return Collections.singletonList(new SliceMutator(getSolrCloudManager()).updateShardState(clusterState, message));
           case QUIT:
             if (myId.equals(message.get(ID))) {
               log.info("Quit command received {} {}", message, LeaderElector.getNodeName(myId));
@@ -523,7 +523,7 @@ public class Overseer implements Closeable {
 
     ThreadGroup triggerThreadGroup = new ThreadGroup("Overseer autoscaling triggers");
     OverseerTriggerThread trigger = new OverseerTriggerThread(zkController.getCoreContainer().getResourceLoader(),
-        zkController.getSolrCloudDataProvider(), config);
+        zkController.getSolrCloudManager(), config);
     triggerThread = new OverseerThread(triggerThreadGroup, trigger, "OverseerAutoScalingTriggerThread-" + id);
 
     updaterThread.start();
@@ -544,8 +544,8 @@ public class Overseer implements Closeable {
     return zkController.getCoreContainer();
   }
 
-  public SolrCloudDataProvider getSolrCloudDataProvider() {
-    return zkController.getSolrCloudDataProvider();
+  public SolrCloudManager getSolrCloudManager() {
+    return zkController.getSolrCloudManager();
   }
 
   /**
@@ -776,8 +776,8 @@ public class Overseer implements Closeable {
     return "true".equals(legacyProperty);
   }
 
-  public static boolean isLegacy(ClusterDataProvider clusterDataProvider) {
-    String legacyProperty = clusterDataProvider.getClusterProperty(ZkStateReader.LEGACY_CLOUD, "false");
+  public static boolean isLegacy(ClusterStateProvider clusterStateProvider) {
+    String legacyProperty = clusterStateProvider.getClusterProperty(ZkStateReader.LEGACY_CLOUD, "false");
     return "true".equals(legacyProperty);
   }
 

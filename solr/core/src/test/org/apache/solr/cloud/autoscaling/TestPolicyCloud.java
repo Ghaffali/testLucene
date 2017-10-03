@@ -28,11 +28,11 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientClusterDataProvider;
+import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.OverseerTaskProcessor;
 import org.apache.solr.cloud.SolrCloudTestCase;
@@ -169,10 +169,11 @@ public class TestPolicyCloud extends SolrCloudTestCase {
     CollectionAdminRequest.createCollection("metricsTest", "conf", 1, 1)
         .process(cluster.getSolrClient());
     DocCollection collection = getCollectionState("metricsTest");
-    ClusterDataProvider provider = new SolrClientClusterDataProvider(solrClient);
+    SolrCloudManager.DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(cluster.getZkClient());
+    SolrCloudManager provider = new SolrClientCloudManager(queueFactory, solrClient);
     List<String> tags = Arrays.asList("metrics:solr.node:ADMIN./admin/authorization.clientErrors:count",
         "metrics:solr.jvm:buffers.direct.Count");
-    Map<String, Object> val = provider.getNodeValues(collection .getReplicas().get(0).getNodeName(), tags);
+    Map<String, Object> val = provider.getNodeStateProvider().getNodeValues(collection .getReplicas().get(0).getNodeName(), tags);
     for (String tag : tags) {
       assertNotNull( "missing : "+ tag , val.get(tag));
     }
@@ -269,8 +270,9 @@ public class TestPolicyCloud extends SolrCloudTestCase {
     CollectionAdminRequest.createCollectionWithImplicitRouter("policiesTest", "conf", "shard1", 2)
         .process(cluster.getSolrClient());
     DocCollection rulesCollection = getCollectionState("policiesTest");
-    ClusterDataProvider provider = new SolrClientClusterDataProvider(cluster.getSolrClient());
-    Map<String, Object> val = provider.getNodeValues(rulesCollection.getReplicas().get(0).getNodeName(), Arrays.asList(
+
+    SolrCloudManager cloudManager = new SolrClientCloudManager(new ZkDistributedQueueFactory(cluster.getZkClient()), cluster.getSolrClient());
+    Map<String, Object> val = cloudManager.getNodeStateProvider().getNodeValues(rulesCollection.getReplicas().get(0).getNodeName(), Arrays.asList(
         "freedisk",
         "cores",
         "heapUsage",
@@ -294,7 +296,7 @@ public class TestPolicyCloud extends SolrCloudTestCase {
       }
       Thread.sleep(100);
     }
-    val = provider.getNodeValues(overseerNode, Arrays.asList(
+    val = cloudManager.getNodeStateProvider().getNodeValues(overseerNode, Arrays.asList(
         "nodeRole",
         "ip_1", "ip_2", "ip_3", "ip_4",
         "sysprop.java.version",

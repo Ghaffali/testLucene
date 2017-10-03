@@ -20,7 +20,7 @@ import java.util.Collections;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.ImplicitDocRouter;
@@ -34,7 +34,7 @@ public class TestClusterStateMutator extends SolrTestCaseJ4 {
   public void testCreateCollection() throws Exception {
     ClusterState clusterState = new ClusterState(-1, Collections.<String>emptySet(), Collections.<String, DocCollection>emptyMap());
     DistribStateManager mockStateManager = mock(DistribStateManager.class);
-    SolrCloudDataProvider dataProvider = mock(SolrCloudDataProvider.class);
+    SolrCloudManager dataProvider = mock(SolrCloudManager.class);
     when(dataProvider.getDistribStateManager()).thenReturn(mockStateManager);
 
     ClusterStateMutator mutator = new ClusterStateMutator(dataProvider);

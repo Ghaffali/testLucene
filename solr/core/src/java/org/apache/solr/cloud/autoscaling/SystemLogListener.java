@@ -31,7 +31,7 @@ import java.util.StringJoiner;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.common.SolrException;
@@ -72,7 +72,7 @@ public class SystemLogListener extends TriggerListenerBase {
   private boolean enabled = true;
 
   @Override
-  public void init(SolrCloudDataProvider dataProvider, AutoScalingConfig.TriggerListenerConfig config) {
+  public void init(SolrCloudManager dataProvider, AutoScalingConfig.TriggerListenerConfig config) {
     super.init(dataProvider, config);
     collection = (String)config.properties.getOrDefault(CollectionAdminParams.COLLECTION, CollectionAdminParams.SYSTEM_COLL);
     enabled = Boolean.parseBoolean(String.valueOf(config.properties.getOrDefault("enabled", true)));

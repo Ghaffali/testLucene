@@ -25,7 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
@@ -44,10 +44,10 @@ import static org.apache.solr.common.params.CommonParams.NAME;
 public class ClusterStateMutator {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  protected final SolrCloudDataProvider dataProvider;
+  protected final SolrCloudManager dataProvider;
   protected final DistribStateManager stateManager;
 
-  public ClusterStateMutator(SolrCloudDataProvider dataProvider) {
+  public ClusterStateMutator(SolrCloudManager dataProvider) {
     this.dataProvider = dataProvider;
     this.stateManager = dataProvider.getDistribStateManager();
   }

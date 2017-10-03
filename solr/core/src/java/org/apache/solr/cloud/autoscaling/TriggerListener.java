@@ -19,7 +19,7 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.Closeable;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 
 /**
@@ -28,7 +28,7 @@ import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage
  */
 public interface TriggerListener extends Closeable {
 
-  void init(SolrCloudDataProvider dataProvider, AutoScalingConfig.TriggerListenerConfig config) throws Exception;
+  void init(SolrCloudManager dataProvider, AutoScalingConfig.TriggerListenerConfig config) throws Exception;
 
   AutoScalingConfig.TriggerListenerConfig getConfig();
 

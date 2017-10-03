@@ -29,7 +29,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.SolrException;
@@ -53,10 +53,10 @@ public class NodeAddedTrigger extends TriggerBase {
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           SolrResourceLoader loader,
-                          SolrCloudDataProvider dataProvider) {
+                          SolrCloudManager dataProvider) {
     super(TriggerEventType.NODEADDED, name, properties, loader, dataProvider);
     this.timeSource = TimeSource.CURRENT_TIME;
-    lastLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
+    lastLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     log.debug("NodeAddedTrigger {} instantiated with properties: {}", name, properties);
   }
@@ -136,7 +136,7 @@ public class NodeAddedTrigger extends TriggerBase {
       }
       log.debug("Running NodeAddedTrigger {}", name);
 
-      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
+      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
       log.debug("Found livenodes: {}", newLiveNodes);
 
       // have any nodes that we were tracking been removed from the cluster?

@@ -5,7 +5,7 @@ import java.lang.invoke.MethodHandles;
 import java.util.Map;
 
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.cloud.Stats;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -27,7 +27,7 @@ public class TriggerEventQueue {
   private final TimeSource timeSource;
   private final DistributedQueue delegate;
 
-  public TriggerEventQueue(SolrCloudDataProvider dataProvider, String triggerName, Stats stats) throws IOException {
+  public TriggerEventQueue(SolrCloudManager dataProvider, String triggerName, Stats stats) throws IOException {
     // TODO: collect stats
     this.delegate = dataProvider.getDistributedQueueFactory().makeQueue(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName);
     this.triggerName = triggerName;

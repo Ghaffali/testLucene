@@ -34,7 +34,7 @@ import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.IOUtils;
@@ -57,7 +57,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private final SolrCloudDataProvider dataProvider;
+  private final SolrCloudManager dataProvider;
 
   private final CloudConfig cloudConfig;
 
@@ -80,7 +80,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
 
   private AutoScalingConfig autoScalingConfig;
 
-  public OverseerTriggerThread(SolrResourceLoader loader, SolrCloudDataProvider dataProvider, CloudConfig cloudConfig) {
+  public OverseerTriggerThread(SolrResourceLoader loader, SolrCloudManager dataProvider, CloudConfig cloudConfig) {
     this.dataProvider = dataProvider;
     this.cloudConfig = cloudConfig;
     scheduledTriggers = new ScheduledTriggers(loader, dataProvider);
