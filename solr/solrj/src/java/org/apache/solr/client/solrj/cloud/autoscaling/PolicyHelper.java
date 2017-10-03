@@ -51,8 +51,7 @@ public class PolicyHelper {
                                                           int pullReplicas,
                                                           List<String> nodesList) {
     List<ReplicaPosition> positions = new ArrayList<>();
-    final ClusterStateProvider delegate = cloudManager.getClusterStateProvider();
-    ClusterStateProvider cdp = new DelegatingClusterStateProvider(delegate) {
+    ClusterStateProvider stateProvider = new DelegatingClusterStateProvider(cloudManager.getClusterStateProvider()) {
         @Override
         public String getPolicyNameByCollection(String coll) {
           return policyMapping.get() != null && policyMapping.get().containsKey(coll) ?
@@ -60,13 +59,19 @@ public class PolicyHelper {
               delegate.getPolicyNameByCollection(coll);
         }
       };
+    SolrCloudManager delegatingManager = new DelegatingCloudManager(cloudManager) {
+      @Override
+      public ClusterStateProvider getClusterStateProvider() {
+        return stateProvider;
+      }
+    };
 
     policyMapping.set(optionalPolicyMapping);
     Policy.Session session = null;
     try {
       session = SESSION_REF.get() != null ?
-          SESSION_REF.get().initOrGet(cloudManager, autoScalingConfig.getPolicy()) :
-          autoScalingConfig.getPolicy().createSession(cloudManager);
+          SESSION_REF.get().initOrGet(delegatingManager, autoScalingConfig.getPolicy()) :
+          autoScalingConfig.getPolicy().createSession(delegatingManager);
 
       Map<Replica.Type, Integer> typeVsCount = new EnumMap<>(Replica.Type.class);
       typeVsCount.put(Replica.Type.NRT, nrtReplicas);

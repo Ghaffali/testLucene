@@ -37,7 +37,6 @@ import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
-import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.cloud.rule.ReplicaAssigner;
 import org.apache.solr.cloud.rule.Rule;
@@ -324,7 +323,7 @@ public class Assign {
   // could be created on live nodes given maxShardsPerNode, Replication factor (if from createShard) etc.
   public static List<ReplicaCount> getNodesForNewReplicas(ClusterState clusterState, String collectionName,
                                                           String shard, int nrtReplicas,
-                                                          Object createNodeSet, SolrCloudManager dataProvider, CoreContainer cc) throws IOException, InterruptedException {
+                                                          Object createNodeSet, SolrCloudManager cloudManager, CoreContainer cc) throws IOException, InterruptedException {
     log.debug("getNodesForNewReplicas() shard: {} , replicas : {} , createNodeSet {}", shard, nrtReplicas, createNodeSet );
     DocCollection coll = clusterState.getCollection(collectionName);
     Integer maxShardsPerNode = coll.getMaxShardsPerNode();
@@ -360,10 +359,10 @@ public class Assign {
       replicaPositions = getNodesViaRules(clusterState, shard, nrtReplicas, cc, coll, createNodeList, l);
     }
     String policyName = coll.getStr(POLICY);
-    AutoScalingConfig autoScalingConfig = dataProvider.getDistribStateManager().getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = cloudManager.getDistribStateManager().getAutoScalingConfig();
     if (policyName != null || !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       replicaPositions = Assign.getPositionsUsingPolicy(collectionName, Collections.singletonList(shard), nrtReplicas, 0, 0,
-          policyName, dataProvider, createNodeList);
+          policyName, cloudManager, createNodeList);
     }
 
     if(replicaPositions != null){
@@ -384,18 +383,17 @@ public class Assign {
                                                               int nrtReplicas,
                                                               int tlogReplicas,
                                                               int pullReplicas,
-                                                              String policyName, SolrCloudManager dataProvider,
+                                                              String policyName, SolrCloudManager cloudManager,
                                                               List<String> nodesList) throws IOException, InterruptedException {
     log.debug("shardnames {} NRT {} TLOG {} PULL {} , policy {}, nodeList {}", shardNames, nrtReplicas, tlogReplicas, pullReplicas, policyName, nodesList);
-    SolrClientCloudManager clientDataProvider = null;
     List<ReplicaPosition> replicaPositions = null;
-    AutoScalingConfig autoScalingConfig = dataProvider.getDistribStateManager().getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = cloudManager.getDistribStateManager().getAutoScalingConfig();
     try {
       Map<String, String> kvMap = Collections.singletonMap(collName, policyName);
       replicaPositions = PolicyHelper.getReplicaLocations(
           collName,
           autoScalingConfig,
-          dataProvider,
+          cloudManager,
           kvMap,
           shardNames,
           nrtReplicas,
@@ -407,7 +405,6 @@ public class Assign {
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error closing CloudSolrClient",e);
     } finally {
       if (log.isTraceEnabled()) {
-        if (clientDataProvider != null) log.trace("CLUSTER_DATA_PROVIDER: " + Utils.toJSONString(clientDataProvider));
         if (replicaPositions != null)
           log.trace("REPLICA_POSITIONS: " + Utils.toJSONString(Utils.getDeepCopy(replicaPositions, 7, true)));
         log.trace("AUTOSCALING_CONF: " + Utils.toJSONString(autoScalingConfig));
