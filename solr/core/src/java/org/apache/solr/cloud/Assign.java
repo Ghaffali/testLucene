@@ -71,7 +71,11 @@ public class Assign {
     String path = "/collections/"+collection;
     try {
       if (!stateManager.hasData(path)) {
-        stateManager.makePath(path);
+        try {
+          stateManager.makePath(path);
+        } catch (AlreadyExistsException e) {
+          // it's okay if another beats us creating the node
+        }
       }
       path += "/counter";
       if (!stateManager.hasData(path)) {
@@ -247,7 +251,7 @@ public class Assign {
     String policyName = message.getStr(POLICY);
     AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudManager().getDistribStateManager().getAutoScalingConfig();
 
-    if (rulesMap == null && policyName == null && autoScalingConfig.isEmpty()) {
+    if (rulesMap == null && policyName == null && autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       log.debug("Identify nodes using default");
       int i = 0;
       List<ReplicaPosition> result = new ArrayList<>();

@@ -45,7 +45,7 @@ public interface DistribStateManager {
 
   // state mutators
 
-  void makePath(String path) throws IOException, KeeperException, InterruptedException;
+  void makePath(String path) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
   String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 

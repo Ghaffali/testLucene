@@ -85,11 +85,11 @@ public class ZkDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void makePath(String path) throws IOException, KeeperException, InterruptedException {
+  public void makePath(String path) throws AlreadyExistsException, IOException, KeeperException, InterruptedException {
     try {
       zkClient.makePath(path, true);
     } catch (KeeperException.NodeExistsException e) {
-      // ignore - someone beat us to it
+      throw new AlreadyExistsException(path);
     } catch (InterruptedException e) {
       throw e;
     }

@@ -87,6 +87,8 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
       if (!stateManager.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
         stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
       }
+    } catch (AlreadyExistsException e) {
+      // ignore
     } catch (InterruptedException | KeeperException | IOException e) {
       LOG.warn("Exception checking ZK path " + ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, e);
     }
