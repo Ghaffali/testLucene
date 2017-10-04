@@ -114,7 +114,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
           if (!node_name.equals(node)) return;
           Map<String, List<ReplicaInfo>> shardVsReplicaStats = result.computeIfAbsent(collName, k -> new HashMap<>());
           List<ReplicaInfo> replicaInfos = shardVsReplicaStats.computeIfAbsent(shard, k -> new ArrayList<>());
-          replicaInfos.add(new ReplicaInfo(replicaName, collName, shard, Replica.Type.get((String) r.get(ZkStateReader.REPLICA_TYPE)), new HashMap<>()));
+          replicaInfos.add(new ReplicaInfo(replicaName, collName, shard, r));
         });
       });
     });
@@ -424,7 +424,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
             Object o = l3.get(i);
             Map m3 = (Map) o;
             l3.set(i, new ReplicaInfo(m3.keySet().iterator().next().toString()
-                ,coll.toString(), shard.toString(), Replica.Type.get((String)m3.get("type")), new HashMap<>()));
+                ,coll.toString(), shard.toString(), m3));
           }
         });
 
@@ -1005,8 +1005,8 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "      {'core_node2':{}}]}}}");
     Map m = (Map) Utils.getObjectByPath(replicaInfoMap, false, "127.0.0.1:60089_solr/compute_plan_action_test");
     m.put("shard1", Arrays.asList(
-        new ReplicaInfo("core_node1", "compute_plan_action_test", "shard1", Replica.Type.NRT, Collections.emptyMap()),
-        new ReplicaInfo("core_node2", "compute_plan_action_test", "shard1", Replica.Type.NRT, Collections.emptyMap())
+        new ReplicaInfo("core_node1", "compute_plan_action_test", "shard1", Collections.singletonMap(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT)),
+        new ReplicaInfo("core_node2", "compute_plan_action_test", "shard1", Collections.singletonMap(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT))
     ));
 
     Map<String, Map<String, Object>> tagsMap = (Map) Utils.fromJSONString("{" +

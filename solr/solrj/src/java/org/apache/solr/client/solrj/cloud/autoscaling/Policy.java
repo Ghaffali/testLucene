@@ -129,11 +129,27 @@ public class Policy implements MapWriter {
   }
 
   public Policy withClusterPreferences(List<Preference> clusterPreferences) {
-    return new Policy(policies, clusterPolicy, clusterPreferences, params);
+    // modify existing params
+    List<String> newParams = new ArrayList<>(params);
+    this.clusterPreferences.forEach(p -> newParams.remove(p.name.toString()));
+    clusterPreferences.forEach(p -> {
+      if (!newParams.contains(p.name.toString())) {
+        newParams.add(p.name.toString());
+      }
+    });
+    return new Policy(policies, clusterPolicy, clusterPreferences, newParams);
   }
 
   public Policy withClusterPolicy(List<Clause> clusterPolicy) {
-    return new Policy(policies, clusterPolicy, clusterPreferences, params);
+    // modify existing params
+    Set<String> paramsToRemove = new HashSet<>();
+    this.clusterPolicy.forEach(c -> {
+      c.addTags(paramsToRemove);
+    });
+    List<String> newParams = new ArrayList<>(params);
+    newParams.removeAll(paramsToRemove);
+    clusterPolicy.forEach(c -> c.addTags(newParams));
+    return new Policy(policies, clusterPolicy, clusterPreferences, newParams);
   }
 
   public Policy withParams(List<String> params) {
