@@ -30,7 +30,7 @@ public class ReplicaInfo implements MapWriter {
   String core, collection, shard;
   Map<String, Object> variables;
 
-  public ReplicaInfo(String name, String coll, String shard, Replica.Type type, Map<String, Object> vals) {
+  public ReplicaInfo(String name, String coll, String shard, Map<String, Object> vals) {
     this.name = name;
     this.variables = vals;
     this.collection = coll;
@@ -51,10 +51,6 @@ public class ReplicaInfo implements MapWriter {
 
   public String getCore() {
     return core;
-  }
-
-  public String getName() {
-    return name;
   }
 
   public String getCollection() {

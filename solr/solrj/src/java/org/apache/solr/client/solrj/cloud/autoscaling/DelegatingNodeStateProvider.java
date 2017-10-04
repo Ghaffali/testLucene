@@ -14,34 +14,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.cloud.autoscaling;
 
-import java.io.IOException;
+package org.apache.solr.client.solrj.cloud.autoscaling;
 
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Base class for implementations of {@link TriggerListener}.
+ *
  */
-public abstract class TriggerListenerBase implements TriggerListener {
+public class DelegatingNodeStateProvider implements NodeStateProvider {
+  private final NodeStateProvider delegate;
 
-  protected AutoScalingConfig.TriggerListenerConfig config;
-  protected SolrCloudManager dataProvider;
-
-  @Override
-  public void init(SolrCloudManager dataProvider, AutoScalingConfig.TriggerListenerConfig config) {
-    this.dataProvider = dataProvider;
-    this.config = config;
+  public DelegatingNodeStateProvider(NodeStateProvider delegate) {
+    this.delegate = delegate;
   }
 
   @Override
-  public AutoScalingConfig.TriggerListenerConfig getConfig() {
-    return config;
+  public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+    return delegate.getNodeValues(node, tags);
   }
 
   @Override
-  public void close() throws IOException {
-
+  public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+    return delegate.getReplicaInfo(node, keys);
   }
 }

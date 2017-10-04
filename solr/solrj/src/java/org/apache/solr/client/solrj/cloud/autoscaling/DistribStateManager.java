@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Op;
 import org.apache.zookeeper.OpResult;
 import org.apache.zookeeper.Watcher;
@@ -31,35 +32,21 @@ import org.apache.zookeeper.Watcher;
  */
 public interface DistribStateManager extends Closeable {
 
-  class VersionedData {
-    public final int version;
-    public final byte[] data;
-
-    public VersionedData(int version, byte[] data) {
-      this.version = version;
-      this.data = data;
-    }
-  }
-
-  default void close() throws IOException {
-
-  }
-
   // state accessors
 
-  boolean hasData(String path) throws IOException;
+  boolean hasData(String path) throws IOException, KeeperException, InterruptedException;
 
-  List<String> listData(String path) throws NoSuchElementException, IOException;
+  List<String> listData(String path) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException;
+  VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  default VersionedData getData(String path) throws NoSuchElementException, IOException {
+  default VersionedData getData(String path) throws NoSuchElementException, IOException, KeeperException, InterruptedException {
     return getData(path, null);
   }
 
   // state mutators
 
-  void makePath(String path) throws IOException;
+  void makePath(String path) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
   /**
    * Create data (leaf) node at specified path.
@@ -70,12 +57,23 @@ public interface DistribStateManager extends Closeable {
    * of the appended sequence number.
    * @throws IOException
    */
-  String createData(String path, byte[] data, CreateMode mode) throws IOException;
+  String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
-  void removeData(String path, int version) throws NoSuchElementException, IOException;
+  void removeData(String path, int version) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException;
+  void setData(String path, byte[] data, int version) throws BadVersionException, NoSuchElementException, IOException, KeeperException, InterruptedException;
 
-  List<OpResult> multi(final Iterable<Op> ops) throws IOException;
+  List<OpResult> multi(final Iterable<Op> ops) throws BadVersionException, NoSuchElementException, AlreadyExistsException, IOException, KeeperException, InterruptedException;
+
+  AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws InterruptedException, IOException;
+
+  default AutoScalingConfig getAutoScalingConfig() throws InterruptedException, IOException {
+    return getAutoScalingConfig(null);
+  }
+
+  @Override
+  default void close() {
+
+  }
 
 }

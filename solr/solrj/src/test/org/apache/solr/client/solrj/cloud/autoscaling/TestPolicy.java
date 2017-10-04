@@ -19,35 +19,43 @@ package org.apache.solr.client.solrj.cloud.autoscaling;
 
 
 import java.io.IOException;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import com.google.common.collect.ImmutableList;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.Clause.Violation;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
-import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.Pair;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.common.util.ValidatingJsonMap;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICA;
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.MOVEREPLICA;
 
 public class TestPolicy extends SolrTestCaseJ4 {
+  private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   public static String clusterState = "{'gettingstarted':{" +
       "    'router':{'name':'compositeId'}," +
@@ -264,7 +272,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "           'precision':100}]}";
 
     Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(autoScalingjson));
-    Policy.Session session = policy.createSession(dataProviderWithData(dataproviderdata));
+    Policy.Session session = policy.createSession(cloudManagerWithData(dataproviderdata));
     SolrRequest op = session.getSuggester(MOVEREPLICA).hint(Hint.SRC_NODE, "127.0.0.1:65427_solr").getOperation();
     assertNotNull(op);
     assertEquals( "127.0.0.1:65434_solr",op.getParams().get("targetNode") );
@@ -286,7 +294,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "      'freedisk':884.7097854614258}," +
         "}";
 
-    ClusterDataProvider provider = getClusterDataProvider((Map<String, Map>) Utils.fromJSONString(nodeValues), clusterState);
+    SolrCloudManager provider = getSolrCloudManager((Map<String, Map>) Utils.fromJSONString(nodeValues), clusterState);
     Map policies = (Map) Utils.fromJSONString("{" +
         "  'cluster-preferences': [" +
         "    { 'maximize': 'freedisk', 'precision': 50}," +
@@ -403,7 +411,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
     assertEquals("r1", operation.getParams().get("replica"));
   }
 
-  private static ClusterDataProvider dataProviderWithData(String data){
+  private static SolrCloudManager cloudManagerWithData(String data) {
     final Map m = (Map) Utils.fromJSONString(data);
     Map replicaInfo = (Map) m.get("replicaInfo");
     replicaInfo.forEach((node, val) -> {
@@ -423,34 +431,32 @@ public class TestPolicy extends SolrTestCaseJ4 {
       });
 
     });
-    return new DelegatingClusterDataProvider(null) {
+    return new DelegatingCloudManager(null) {
       @Override
-      public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-        return (Map<String, Object>) Utils.getObjectByPath(m,false, Arrays.asList("nodeValues", node));
+      public ClusterStateProvider getClusterStateProvider() {
+        return new DelegatingClusterStateProvider(null) {
+          @Override
+          public Set<String> getLiveNodes() {
+            return new HashSet<>((Collection<String>) m.get("liveNodes"));
+          }
+        };
       }
 
       @Override
-      public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-        return (Map<String, Map<String, List<ReplicaInfo>>>) Utils.getObjectByPath(m,false, Arrays.asList("replicaInfo", node));
-      }
+      public NodeStateProvider getNodeStateProvider() {
+        return new DelegatingNodeStateProvider(null) {
+          @Override
+          public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+            return (Map<String, Object>) Utils.getObjectByPath(m,false, Arrays.asList("nodeValues", node));
+          }
 
-      @Override
-      public Collection<String> getLiveNodes() {
-        return (Collection<String>) m.get("liveNodes");
-      }
-
-      @Override
-      public ClusterState getClusterState() {
-        throw new UnsupportedOperationException("getClusterState");
-      }
-
-      @Override
-      public String getPolicyNameByCollection(String coll) {
-        return null;
+          @Override
+          public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+            return (Map<String, Map<String, List<ReplicaInfo>>>) Utils.getObjectByPath(m,false, Arrays.asList("replicaInfo", node));
+          }
+        };
       }
     };
-
-
   }
 
   public void testPolicyWithReplicaType() {
@@ -473,7 +479,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "node4:{cores:8, freedisk: 375, heapUsage:16900, nodeRole:overseer, rack: rack1}" +
         "}");
     Policy policy = new Policy(policies);
-    Policy.Suggester suggester = policy.createSession(getClusterDataProvider(nodeValues, clusterState))
+    Policy.Suggester suggester = policy.createSession(getSolrCloudManager(nodeValues, clusterState))
         .getSuggester(ADDREPLICA)
         .hint(Hint.COLL_SHARD, new Pair("newColl", "shard1"))
         .hint(Hint.REPLICATYPE, Replica.Type.PULL);
@@ -613,7 +619,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "  'tlogReplicas':'0'}\n" +
         "}";
     Policy policy = new Policy(new HashMap<>());
-    Policy.Suggester suggester = policy.createSession(getClusterDataProvider(nodeValues, clusterState))
+    Policy.Suggester suggester = policy.createSession(getSolrCloudManager(nodeValues, clusterState))
         .getSuggester(MOVEREPLICA)
         .hint(Hint.COLL, "collection1")
         .hint(Hint.COLL, "collection2")
@@ -669,7 +675,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "node4:{cores:8, freedisk: 375, heapUsage:16900, nodeRole:overseer, rack: rack1}" +
         "}");
     Policy policy = new Policy(policies);
-    Policy.Suggester suggester = policy.createSession(getClusterDataProvider(nodeValues, clusterState))
+    Policy.Suggester suggester = policy.createSession(getSolrCloudManager(nodeValues, clusterState))
         .getSuggester(ADDREPLICA)
         .hint(Hint.REPLICATYPE, Replica.Type.PULL)
         .hint(Hint.COLL_SHARD, new Pair<>("newColl", "shard1"))
@@ -797,7 +803,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
 
     Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(rules));
     Policy.Session session;
-    session = policy.createSession(getClusterDataProvider(nodeValues, clusterState));
+    session = policy.createSession(getSolrCloudManager(nodeValues, clusterState));
 
     List<Row> l = session.getSorted();
     assertEquals("node1", l.get(0).node);
@@ -824,7 +830,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "node5:{cores:0, freedisk: 895, heapUsage:17834}," +
         "node4:{cores:8, freedisk: 375, heapUsage:16900, nodeRole:overseer}" +
         "}");
-    session = policy.createSession(getClusterDataProvider(nodeValues, clusterState));
+    session = policy.createSession(getSolrCloudManager(nodeValues, clusterState));
     SolrRequest opReq = session.getSuggester(MOVEREPLICA)
         .hint(Hint.TARGET_NODE, "node5")
         .getOperation();
@@ -857,7 +863,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "      'freedisk':884.7097854614258}," +
         "}";
 
-    ClusterDataProvider provider = getClusterDataProvider((Map<String, Map>) Utils.fromJSONString(nodeValues), clusterState);
+    SolrCloudManager provider = getSolrCloudManager((Map<String, Map>) Utils.fromJSONString(nodeValues), clusterState);
     Map policies = (Map) Utils.fromJSONString("{" +
         "  'cluster-preferences': [" +
         "    { 'maximize': 'freedisk', 'precision': 50}," +
@@ -925,8 +931,8 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "node4:{cores:8, freedisk: 375, heapUsage:16900, nodeRole:overseer, rack: rack1}" +
         "}");
     Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(autoscaleJson));
-    ClusterDataProvider clusterDataProvider = getClusterDataProvider(nodeValues, clusterState);
-    Policy.Session session = policy.createSession(clusterDataProvider);
+    SolrCloudManager cloudManager = getSolrCloudManager(nodeValues, clusterState);
+    Policy.Session session = policy.createSession(cloudManager);
     for (int i = 0; i < 3; i++) {
       Policy.Suggester suggester = session.getSuggester(ADDREPLICA);
       SolrRequest op = suggester
@@ -957,34 +963,8 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "}");
 
     Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(autoscaleJson));
-    ClusterDataProvider clusterDataProvider = getClusterDataProvider(nodeValues, clusterState);
-    ClusterDataProvider cdp = new DelegatingClusterDataProvider(null) {
-      @Override
-      public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-        return clusterDataProvider.getNodeValues(node, tags);
-      }
-
-      @Override
-      public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-        return clusterDataProvider.getReplicaInfo(node, keys);
-      }
-
-      @Override
-      public Collection<String> getLiveNodes() {
-        return clusterDataProvider.getLiveNodes();
-      }
-
-      @Override
-      public ClusterState getClusterState() throws IOException {
-        return clusterDataProvider.getClusterState();
-      }
-
-      @Override
-      public String getPolicyNameByCollection(String coll) {
-        return null;
-      }
-    };
-    Policy.Session session = policy.createSession(cdp);
+    SolrCloudManager cloudManager = getSolrCloudManager(nodeValues, clusterState);
+    Policy.Session session = policy.createSession(cloudManager);
     Policy.Suggester suggester = session.getSuggester(ADDREPLICA);
     SolrRequest op = suggester
         .hint(Hint.COLL_SHARD, new Pair<>("newColl", "shard1"))
@@ -1038,33 +1018,33 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "            'freedisk':918005641216}}}");
 
     Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(autoscaleJson));
-    Policy.Session session = policy.createSession(new DelegatingClusterDataProvider(null) {
+    Policy.Session session = policy.createSession(new DelegatingCloudManager(null) {
       @Override
-      public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-        return tagsMap.get(node);
+      public ClusterStateProvider getClusterStateProvider() {
+        return new DelegatingClusterStateProvider(null) {
+          @Override
+          public Set<String> getLiveNodes() {
+            return replicaInfoMap.keySet();
+          }
+
+        };
       }
 
       @Override
-      public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-        return (Map<String, Map<String, List<ReplicaInfo>>>) replicaInfoMap.get(node);
-      }
+      public NodeStateProvider getNodeStateProvider() {
+        return new DelegatingNodeStateProvider(null) {
+          @Override
+          public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+            return tagsMap.get(node);
+          }
 
-      @Override
-      public Collection<String> getLiveNodes() {
-        return replicaInfoMap.keySet();
-      }
-
-      @Override
-      public ClusterState getClusterState() {
-        throw new UnsupportedOperationException("getClusterState");
-      }
-
-      @Override
-      public String getPolicyNameByCollection(String coll) {
-        return null;
+          @Override
+          public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+            return (Map<String, Map<String, List<ReplicaInfo>>>) replicaInfoMap.get(node);
+          }
+        };
       }
     });
-
     Policy.Suggester suggester = session.getSuggester(MOVEREPLICA)
         .hint(Hint.TARGET_NODE, "127.0.0.1:60099_solr");
     SolrRequest op = suggester.getOperation();
@@ -1100,32 +1080,39 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "node4:{cores:8, freedisk: 375, heapUsage:16900, nodeRole:overseer, sysprop.rack: rack1}" +
         "}");
     Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(rules));
-    ClusterDataProvider clusterDataProvider = getClusterDataProvider(nodeValues, clusterState);
-    ClusterDataProvider cdp = new DelegatingClusterDataProvider(null) {
+    SolrCloudManager cloudManager = getSolrCloudManager(nodeValues, clusterState);
+    SolrCloudManager cdp = new DelegatingCloudManager(null) {
       @Override
-      public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-        return clusterDataProvider.getNodeValues(node, tags);
+      public NodeStateProvider getNodeStateProvider() {
+        return new DelegatingNodeStateProvider(null) {
+          @Override
+          public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+            return cloudManager.getNodeStateProvider().getNodeValues(node, tags);
+          }
+
+          @Override
+          public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+            return cloudManager.getNodeStateProvider().getReplicaInfo(node, keys);
+          }
+        };
       }
 
       @Override
-      public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-        return clusterDataProvider.getReplicaInfo(node, keys);
+      public ClusterStateProvider getClusterStateProvider() {
+        return new DelegatingClusterStateProvider(null) {
+          @Override
+          public Set<String> getLiveNodes() {
+            return cloudManager.getClusterStateProvider().getLiveNodes();
+          }
+
+          @Override
+          public String getPolicyNameByCollection(String coll) {
+            return "p1";
+          }
+        };
       }
 
-      @Override
-      public Collection<String> getLiveNodes() {
-        return clusterDataProvider.getLiveNodes();
-      }
 
-      @Override
-      public ClusterState getClusterState() throws IOException {
-        return clusterDataProvider.getClusterState();
-      }
-
-      @Override
-      public String getPolicyNameByCollection(String coll) {
-        return "p1";
-      }
     };
     Policy.Session session = policy.createSession(cdp);
 
@@ -1136,37 +1123,58 @@ public class TestPolicy extends SolrTestCaseJ4 {
     assertEquals("node2", op.getNode());
   }
 
-  private ClusterDataProvider getClusterDataProvider(final Map<String, Map> nodeValues, String clusterState) {
-    return new DelegatingClusterDataProvider(null) {
+  private SolrCloudManager getSolrCloudManager(final Map<String, Map> nodeValues, String clusterState) {
+    return new SolrCloudManager() {
       @Override
-      public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        tags.stream().forEach(s -> result.put(s, nodeValues.get(node).get(s)));
-        return result;
+      public ClusterStateProvider getClusterStateProvider() {
+        return new DelegatingClusterStateProvider(null) {
+          @Override
+          public Set<String> getLiveNodes() {
+            return nodeValues.keySet();
+          }
+
+        };
       }
 
       @Override
-      public Collection<String> getLiveNodes() {
-        return nodeValues.keySet();
+      public NodeStateProvider getNodeStateProvider() {
+        return new DelegatingNodeStateProvider(null) {
+          @Override
+          public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            tags.stream().forEach(s -> result.put(s, nodeValues.get(node).get(s)));
+            return result;
+          }
+
+          @Override
+          public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+            return getReplicaDetails(node, clusterState);
+          }
+        };
       }
 
       @Override
-      public ClusterState getClusterState() {
-        throw new UnsupportedOperationException("getClusterState");
-      }
-
-      @Override
-      public String getPolicyNameByCollection(String coll) {
+      public DistribStateManager getDistribStateManager() {
         return null;
       }
 
       @Override
-      public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-        return getReplicaDetails(node, clusterState);
+      public DistributedQueueFactory getDistributedQueueFactory() {
+        return null;
       }
 
+      @Override
+      public SolrResponse request(SolrRequest req) throws IOException {
+        return null;
+      }
+
+      @Override
+      public byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException {
+        return new byte[0];
+      }
     };
   }
+
   public void testEmptyClusterState(){
     String autoScaleJson =  " {'policies':{'c1':[{" +
         "        'replica':1," +
@@ -1179,34 +1187,33 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "    '127.0.0.1:50096_solr':{" +
         "      'cores':0," +
         "      'port':'50096'}}");
-    ClusterDataProvider dataProvider = new DelegatingClusterDataProvider(null) {
+    SolrCloudManager dataProvider = new DelegatingCloudManager(null) {
       @Override
-      public Map<String, Object> getNodeValues(String node, Collection<String> keys) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        keys.stream().forEach(s -> result.put(s, nodeValues.get(node).get(s)));
-        return result;
+      public ClusterStateProvider getClusterStateProvider() {
+        return new DelegatingClusterStateProvider(null) {
+          @Override
+          public Set<String> getLiveNodes() {
+            return new HashSet<>(Arrays.asList( "127.0.0.1:50097_solr", "127.0.0.1:50096_solr"));
+          }
+        };
       }
 
       @Override
-      public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-        return getReplicaDetails(node, clusterState);
-      }
+      public NodeStateProvider getNodeStateProvider() {
+        return new DelegatingNodeStateProvider(null) {
+          @Override
+          public Map<String, Object> getNodeValues(String node, Collection<String> keys) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            keys.stream().forEach(s -> result.put(s, nodeValues.get(node).get(s)));
+            return result;
+          }
 
-      @Override
-      public String getPolicyNameByCollection(String coll) {
-        return null;
+          @Override
+          public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+            return getReplicaDetails(node, clusterState);
+          }
+        };
       }
-
-      @Override
-      public Collection<String> getLiveNodes() {
-        return Arrays.asList( "127.0.0.1:50097_solr", "127.0.0.1:50096_solr");
-      }
-
-      @Override
-      public ClusterState getClusterState() {
-        throw new UnsupportedOperationException("getClusterState");
-      }
-
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
         "newColl", new AutoScalingConfig((Map<String, Object>)Utils.fromJSONString(autoScaleJson)),
@@ -1217,19 +1224,19 @@ public class TestPolicy extends SolrTestCaseJ4 {
 
   public void testMultiReplicaPlacement() {
     String autoScaleJson = "{" +
-        "  'cluster-preferences': [" +
+        "  cluster-preferences: [" +
         "    { maximize : freedisk , precision: 50}," +
         "    { minimize : cores, precision: 2}" +
         "  ]," +
-        "  'cluster-policy': [" +
-        "    { replica : '0' , 'nodeRole': 'overseer'}," +
-        "    { 'replica': '<2', 'shard': '#ANY', 'node': '#ANY'" +
+        "  cluster-policy: [" +
+        "    { replica : '0' , nodeRole: overseer}," +
+        "    { replica: '<2', shard: '#ANY', node: '#ANY'" +
         "    }" +
         "  ]," +
-        "  'policies': {" +
-        "    'policy1': [" +
-        "      { 'replica': '<2', 'shard': '#EACH', 'node': '#ANY'}," +
-        "      { 'replica': '<2', 'shard': '#EACH', 'sysprop.rack': 'rack1'}" +
+        "  policies: {" +
+        "    policy1: [" +
+        "      { replica: '<2', shard: '#EACH', node: '#ANY'}," +
+        "      { replica: '<2', shard: '#EACH', sysprop.rack: rack1}" +
         "    ]" +
         "  }" +
         "}";
@@ -1242,38 +1249,37 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "node4:{cores:0, freedisk: 900, heap:16900, nodeRole:overseer, sysprop.rack:rack2}" +
         "}");
 
-    ClusterDataProvider dataProvider = new DelegatingClusterDataProvider(null) {
+    SolrCloudManager cloudManager = new DelegatingCloudManager(null) {
       @Override
-      public Map<String, Object> getNodeValues(String node, Collection<String> keys) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        keys.stream().forEach(s -> result.put(s, nodeValues.get(node).get(s)));
-        return result;
+      public NodeStateProvider getNodeStateProvider() {
+        return new DelegatingNodeStateProvider(null) {
+          @Override
+          public Map<String, Object> getNodeValues(String node, Collection<String> keys) {
+            Map<String, Object> result = new LinkedHashMap<>();
+            keys.stream().forEach(s -> result.put(s, nodeValues.get(node).get(s)));
+            return result;
+          }
+
+          @Override
+          public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+            return getReplicaDetails(node, clusterState);
+          }
+        };
       }
 
       @Override
-      public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-        return getReplicaDetails(node, clusterState);
+      public ClusterStateProvider getClusterStateProvider() {
+        return new DelegatingClusterStateProvider(null) {
+          @Override
+          public Set<String> getLiveNodes() {
+            return new HashSet<>(Arrays.asList("node1", "node2", "node3", "node4"));
+          }
+        };
       }
-
-      @Override
-      public String getPolicyNameByCollection(String coll) {
-        return null;
-      }
-
-      @Override
-      public Collection<String> getLiveNodes() {
-        return Arrays.asList("node1", "node2", "node3", "node4");
-      }
-
-      @Override
-      public ClusterState getClusterState() {
-        throw new UnsupportedOperationException("getClusterState");
-      }
-
     };
     List<ReplicaPosition> locations = PolicyHelper.getReplicaLocations(
         "newColl", new AutoScalingConfig((Map<String, Object>) Utils.fromJSONString(autoScaleJson)),
-        dataProvider, Collections.singletonMap("newColl", "policy1"), Arrays.asList("shard1", "shard2"), 3,0,0, null);
+        cloudManager, Collections.singletonMap("newColl", "policy1"), Arrays.asList("shard1", "shard2"), 3,0,0, null);
     assertTrue(locations.stream().allMatch(it -> ImmutableList.of("node2", "node1", "node3").contains(it.node)) );
   }
 
@@ -1300,7 +1306,7 @@ public class TestPolicy extends SolrTestCaseJ4 {
         "    {      'nodeRole':'overseer','replica':0}]," +
         "  'cluster-preferences':[{'minimize':'cores'}]}";
     Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(autoScalingjson));
-    Policy.Session session = policy.createSession(dataProviderWithData(dataproviderdata));
+    Policy.Session session = policy.createSession(cloudManagerWithData(dataproviderdata));
     Policy.Suggester suggester = session.getSuggester(MOVEREPLICA).hint(Hint.TARGET_NODE, "10.0.0.6:7574_solr");
     SolrRequest op = suggester.getOperation();
     assertNotNull(op);
@@ -1308,6 +1314,43 @@ public class TestPolicy extends SolrTestCaseJ4 {
     op = suggester.getOperation();
     assertNull(op);
   }
+
+  public void testComputePlanAfterNodeAdded() {
+
+    String dataproviderdata = "{" +
+        "     liveNodes:[" +
+        "       '127.0.0.1:51078_solr'," +
+        "       '127.0.0.1:51147_solr']," +
+        "     replicaInfo:{" +
+        "       '127.0.0.1:51147_solr':{}," +
+        "       '127.0.0.1:51078_solr':{testNodeAdded:{shard1:[" +
+        "             { core_node3 : { type : NRT}}," +
+        "             { core_node4 : { type : NRT}}]}}}," +
+        "     nodeValues:{" +
+        "       '127.0.0.1:51147_solr':{" +
+        "         node:'127.0.0.1:51147_solr'," +
+        "         cores:0," +
+        "         freedisk : 880.5428657531738}," +
+        "       '127.0.0.1:51078_solr':{" +
+        "         node:'127.0.0.1:51078_solr'," +
+        "         cores:2," +
+        "         freedisk:880.5428695678711}}}";
+
+    String autoScalingjson = "cluster-preferences:[" +
+        "       {minimize : cores}," +
+        "       {'maximize':freedisk , precision:100}],    " +
+        " cluster-policy:[{cores:'<10',node:'#ANY'}," +
+        "       {replica:'<2', shard:'#EACH',node:'#ANY'}," +
+        "       { nodeRole:overseer,replica:0}]}";
+    Policy policy = new Policy((Map<String, Object>) Utils.fromJSONString(autoScalingjson));
+    Policy.Session session = policy.createSession(cloudManagerWithData(dataproviderdata));
+    Policy.Suggester suggester = session.getSuggester(CollectionParams.CollectionAction.MOVEREPLICA)
+        .hint(Hint.TARGET_NODE, "127.0.0.1:51147_solr");
+    SolrRequest op = suggester.getOperation();
+    log.info("" + op);
+    assertNotNull(op);
+  }
+   
 
 
 }

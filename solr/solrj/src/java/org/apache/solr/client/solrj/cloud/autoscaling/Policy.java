@@ -36,8 +36,10 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
+import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Clause.Violation;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.common.IteratorWriter;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.cloud.Replica;
@@ -188,44 +190,45 @@ public class Policy implements MapWriter {
      */
   public class Session implements MapWriter {
     final List<String> nodes;
-    final ClusterDataProvider dataProvider;
+    final SolrCloudManager cloudManager;
     final List<Row> matrix;
     Set<String> collections = new HashSet<>();
     List<Clause> expandedClauses;
     List<Violation> violations = new ArrayList<>();
 
-    private Session(List<String> nodes, ClusterDataProvider dataProvider,
+    private Session(List<String> nodes, SolrCloudManager cloudManager,
                     List<Row> matrix, List<Clause> expandedClauses) {
       this.nodes = nodes;
-      this.dataProvider = dataProvider;
+      this.cloudManager = cloudManager;
       this.matrix = matrix;
       this.expandedClauses = expandedClauses;
     }
 
-    Session(ClusterDataProvider dataProvider) {
-      this.nodes = new ArrayList<>(dataProvider.getLiveNodes());
-      this.dataProvider = dataProvider;
+    Session(SolrCloudManager cloudManager) {
+      this.nodes = new ArrayList<>(cloudManager.getClusterStateProvider().getLiveNodes());
+      this.cloudManager = cloudManager;
       for (String node : nodes) {
-        collections.addAll(dataProvider.getReplicaInfo(node, Collections.emptyList()).keySet());
+        collections.addAll(cloudManager.getNodeStateProvider().getReplicaInfo(node, Collections.emptyList()).keySet());
       }
 
       expandedClauses = clusterPolicy.stream()
           .filter(clause -> !clause.isPerCollectiontag())
           .collect(Collectors.toList());
 
+      ClusterStateProvider stateProvider = cloudManager.getClusterStateProvider();
       for (String c : collections) {
-        addClausesForCollection(dataProvider, c);
+        addClausesForCollection(stateProvider, c);
       }
 
       Collections.sort(expandedClauses);
 
       matrix = new ArrayList<>(nodes.size());
-      for (String node : nodes) matrix.add(new Row(node, params, dataProvider));
+      for (String node : nodes) matrix.add(new Row(node, params, cloudManager));
       applyRules();
     }
 
-    private void addClausesForCollection(ClusterDataProvider dataProvider, String c) {
-      String p = dataProvider.getPolicyNameByCollection(c);
+    private void addClausesForCollection(ClusterStateProvider stateProvider, String c) {
+      String p = stateProvider.getPolicyNameByCollection(c);
       if (p != null) {
         List<Clause> perCollPolicy = policies.get(p);
         if (perCollPolicy == null)
@@ -235,7 +238,7 @@ public class Policy implements MapWriter {
     }
 
     Session copy() {
-      return new Session(nodes, dataProvider, getMatrixCopy(), expandedClauses);
+      return new Session(nodes, cloudManager, getMatrixCopy(), expandedClauses);
     }
 
     List<Row> getMatrixCopy() {
@@ -253,26 +256,15 @@ public class Policy implements MapWriter {
      * Apply the preferences and conditions
      */
     private void applyRules() {
-      if (!clusterPreferences.isEmpty()) {
-        //this is to set the approximate value according to the precision
-        ArrayList<Row> tmpMatrix = new ArrayList<>(matrix);
-        for (Preference p : clusterPreferences) {
-          Collections.sort(tmpMatrix, (r1, r2) -> p.compare(r1, r2, false));
-          p.setApproxVal(tmpMatrix);
-        }
-        //approximate values are set now. Let's do recursive sorting
-        Collections.sort(matrix, (Row r1, Row r2) -> {
-          int result = clusterPreferences.get(0).compare(r1, r2, true);
-          if (result == 0) result = clusterPreferences.get(0).compare(r1, r2, false);
-          return result;
-        });
-      }
+      setApproxValuesAndSortNodes(clusterPreferences, matrix);
 
       for (Clause clause : expandedClauses) {
         List<Violation> errs = clause.test(matrix);
         violations.addAll(errs);
       }
     }
+
+
 
     public List<Violation> getViolations() {
       return violations;
@@ -303,9 +295,25 @@ public class Policy implements MapWriter {
     }
   }
 
+  static void setApproxValuesAndSortNodes(List<Preference> clusterPreferences, List<Row> matrix) {
+    if (!clusterPreferences.isEmpty()) {
+      //this is to set the approximate value according to the precision
+      ArrayList<Row> tmpMatrix = new ArrayList<>(matrix);
+      for (Preference p : clusterPreferences) {
+        Collections.sort(tmpMatrix, (r1, r2) -> p.compare(r1, r2, false));
+        p.setApproxVal(tmpMatrix);
+      }
+      //approximate values are set now. Let's do recursive sorting
+      Collections.sort(matrix, (Row r1, Row r2) -> {
+        int result = clusterPreferences.get(0).compare(r1, r2, true);
+        if (result == 0) result = clusterPreferences.get(0).compare(r1, r2, false);
+        return result;
+      });
+    }
+  }
 
-  public Session createSession(ClusterDataProvider dataProvider) {
-    return new Session(dataProvider);
+  public Session createSession(SolrCloudManager cloudManager) {
+    return new Session(cloudManager);
   }
 
   public enum SortParam {
@@ -382,11 +390,12 @@ public class Policy implements MapWriter {
         if (!collections.isEmpty() || !s.isEmpty()) {
           HashSet<Pair<String, String>> shards = new HashSet<>(s);
           collections.stream().forEach(c -> shards.add(new Pair<>(c, null)));
+          ClusterStateProvider stateProvider = session.cloudManager.getClusterStateProvider();
           for (Pair<String, String> shard : shards) {
             // if this is not a known collection from the existing clusterstate,
             // then add it
             if (session.matrix.stream().noneMatch(row -> row.collectionVsShardVsReplicas.containsKey(shard.first()))) {
-              session.addClausesForCollection(session.dataProvider, shard.first());
+              session.addClausesForCollection(stateProvider, shard.first());
             }
             for (Row row : session.matrix) {
               Map<String, List<ReplicaInfo>> shardInfo = row.collectionVsShardVsReplicas.computeIfAbsent(shard.first(), it -> new HashMap<>());
@@ -400,7 +409,7 @@ public class Policy implements MapWriter {
           // the source node is dead so live nodes may not have it
           for (String srcNode : srcNodes) {
             if(session.matrix.stream().noneMatch(row -> row.node.equals(srcNode)))
-            session.matrix.add(new Row(srcNode, session.getPolicy().params, session.dataProvider));
+            session.matrix.add(new Row(srcNode, session.getPolicy().params, session.cloudManager));
           }
         }
         session.applyRules();
@@ -470,7 +479,8 @@ public class Policy implements MapWriter {
       }
     }
 
-    protected List<Violation> testChangedMatrix(boolean strict, List<Row> rows) {
+    List<Violation> testChangedMatrix(boolean strict, List<Row> rows) {
+      setApproxValuesAndSortNodes(session.getPolicy().clusterPreferences,rows);
       List<Violation> errors = new ArrayList<>();
       for (Clause clause : session.expandedClauses) {
         if (strict || clause.strict) {
@@ -615,6 +625,6 @@ public class Policy implements MapWriter {
    * a value {@code 1} if  r1 is less loaded than r2
    */
   static int compareRows(Row r1, Row r2, Policy policy) {
-    return policy.clusterPreferences.get(0).compare(r1, r2, false);
+    return policy.clusterPreferences.get(0).compare(r1, r2, true);
   }
 }

@@ -31,12 +31,10 @@ import java.util.Set;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.request.GenericSolrRequest;
 import org.apache.solr.client.solrj.response.SimpleSolrResponse;
-import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -51,7 +49,6 @@ import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.Utils;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,8 +57,9 @@ import static org.apache.solr.client.solrj.cloud.autoscaling.Clause.METRICS_PREF
 /**
  *
  */
-public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWriter {
+public class SolrClientNodeStateProvider implements NodeStateProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
 
   private final CloudSolrClient solrClient;
   private final ZkStateReader zkStateReader;
@@ -69,10 +67,13 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
   private Map<String, Object> snitchSession = new HashMap<>();
   private Map<String, Map> nodeVsTags = new HashMap<>();
 
-  public SolrClientClusterDataProvider(CloudSolrClient solrClient) {
+  public SolrClientNodeStateProvider(CloudSolrClient solrClient) {
     this.solrClient = solrClient;
     this.zkStateReader = solrClient.getZkStateReader();
     ClusterState clusterState = zkStateReader.getClusterState();
+    if (clusterState == null) { // zkStateReader still initializing
+      return;
+    }
     Map<String, ClusterState.CollectionRef> all = clusterState.getCollectionStates();
     all.forEach((collName, ref) -> {
       DocCollection coll = ref.get();
@@ -81,19 +82,9 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
         Map<String, Map<String, List<ReplicaInfo>>> nodeData = data.computeIfAbsent(replica.getNodeName(), k -> new HashMap<>());
         Map<String, List<ReplicaInfo>> collData = nodeData.computeIfAbsent(collName, k -> new HashMap<>());
         List<ReplicaInfo> replicas = collData.computeIfAbsent(shard, k -> new ArrayList<>());
-        replicas.add(new ReplicaInfo(replica.getName(), collName, shard, replica.getType(), replica.getProperties()));
+        replicas.add(new ReplicaInfo(replica.getName(), collName, shard, replica.getType(), new HashMap<>()));
       });
     });
-  }
-
-  public Collection<String> getLiveNodes() {
-    return zkStateReader.getClusterState().getLiveNodes();
-  }
-
-  @Override
-  public String getPolicyNameByCollection(String coll) {
-    ClusterState.CollectionRef state = solrClient.getClusterStateProvider().getState(coll);
-    return state == null || state.get() == null ? null : (String) state.get().getProperties().get("policy");
   }
 
   @Override
@@ -105,77 +96,10 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
     return ctx.getTags();
   }
 
+
   @Override
   public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
     return data.computeIfAbsent(node, s -> Collections.emptyMap());//todo fill other details
-  }
-
-  @Override
-  public Map<String, Object> getClusterProperties() {
-    return zkStateReader.getClusterProperties();
-  }
-
-  @Override
-  public ClusterState getClusterState() {
-    return zkStateReader.getClusterState();
-  }
-
-  public void writeMap(EntryWriter ew) throws IOException {
-    ew.put("clusterState", zkStateReader.getClusterState());
-    ew.put("replicaInfo", Utils.getDeepCopy(data, 5));
-    ew.put("nodeValues", nodeVsTags);
-  }
-
-  @Override
-  public AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws IOException {
-    try {
-      return zkStateReader.getAutoScalingConfig(watcher);
-    } catch (KeeperException | InterruptedException e) {
-      throw new IOException(e);
-    }
-  }
-
-  static class ClientSnitchCtx
-      extends SnitchContext {
-    private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-
-    ZkClientClusterStateProvider zkClientClusterStateProvider;
-    CloudSolrClient solrClient;
-
-    public ClientSnitchCtx(SnitchInfo perSnitch,
-                           String node, Map<String, Object> session,
-                           CloudSolrClient solrClient) {
-      super(perSnitch, node, session);
-      this.solrClient = solrClient;
-      this.zkClientClusterStateProvider = (ZkClientClusterStateProvider) solrClient.getClusterStateProvider();
-    }
-
-
-    @Override
-    public Map getZkJson(String path) throws KeeperException, InterruptedException {
-      return Utils.getJson(zkClientClusterStateProvider.getZkStateReader().getZkClient(), path, true);
-    }
-
-    public void invokeRemote(String node, ModifiableSolrParams params, String klas, RemoteCallback callback) {
-
-    }
-
-    public SimpleSolrResponse invoke(String solrNode, String path, SolrParams params)
-        throws IOException, SolrServerException {
-      String url = zkClientClusterStateProvider.getZkStateReader().getBaseUrlForNodeName(solrNode);
-
-      GenericSolrRequest request = new GenericSolrRequest(SolrRequest.METHOD.GET, path, params);
-      try (HttpSolrClient client = new HttpSolrClient.Builder()
-          .withHttpClient(solrClient.getHttpClient())
-          .withBaseSolrUrl(url)
-          .withResponseParser(new BinaryResponseParser())
-          .build()) {
-        NamedList<Object> rsp = client.request(request);
-        request.response.nl = rsp;
-        return request.response;
-      }
-    }
-
   }
 
   //uses metrics API to get node information
@@ -256,5 +180,48 @@ public class SolrClientClusterDataProvider implements ClusterDataProvider, MapWr
         throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "", e);
       }
     }
+  }
+
+  static class ClientSnitchCtx
+      extends SnitchContext {
+    private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+
+    ZkClientClusterStateProvider zkClientClusterStateProvider;
+    CloudSolrClient solrClient;
+
+    public ClientSnitchCtx(SnitchInfo perSnitch,
+                           String node, Map<String, Object> session,
+                           CloudSolrClient solrClient) {
+      super(perSnitch, node, session);
+      this.solrClient = solrClient;
+      this.zkClientClusterStateProvider = (ZkClientClusterStateProvider) solrClient.getClusterStateProvider();
+    }
+
+
+    @Override
+    public Map getZkJson(String path) throws KeeperException, InterruptedException {
+      return Utils.getJson(zkClientClusterStateProvider.getZkStateReader().getZkClient(), path, true);
+    }
+
+    public void invokeRemote(String node, ModifiableSolrParams params, String klas, RemoteCallback callback) {
+
+    }
+
+    public SimpleSolrResponse invoke(String solrNode, String path, SolrParams params)
+        throws IOException, SolrServerException {
+      String url = zkClientClusterStateProvider.getZkStateReader().getBaseUrlForNodeName(solrNode);
+
+      GenericSolrRequest request = new GenericSolrRequest(SolrRequest.METHOD.GET, path, params);
+      try (HttpSolrClient client = new HttpSolrClient.Builder()
+          .withHttpClient(solrClient.getHttpClient())
+          .withBaseSolrUrl(url)
+          .withResponseParser(new BinaryResponseParser())
+          .build()) {
+        NamedList<Object> rsp = client.request(request);
+        request.response.nl = rsp;
+        return request.response;
+      }
+    }
+
   }
 }

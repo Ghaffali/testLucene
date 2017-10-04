@@ -17,6 +17,7 @@
 package org.apache.solr.client.solrj.cloud;
 
 import java.util.Collection;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import org.apache.solr.common.util.Pair;
@@ -38,6 +39,8 @@ public interface DistributedQueue {
   byte[] take() throws Exception;
 
   void offer(byte[] data) throws Exception;
+
+  Map<String, Object> getStats();
 
   Collection<Pair<String, byte[]>> peekElements(int max, long waitMillis, Predicate<String> acceptFilter) throws Exception;
 

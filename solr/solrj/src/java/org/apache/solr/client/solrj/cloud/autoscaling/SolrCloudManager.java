@@ -19,25 +19,22 @@ package org.apache.solr.client.solrj.cloud.autoscaling;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.Op;
-import org.apache.zookeeper.OpResult;
-import org.apache.zookeeper.Watcher;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 
 /**
  * This interface abstracts the access to a SolrCloud cluster, including interactions with Zookeeper, Solr
  * and generic HTTP calls.
  */
-public interface SolrCloudDataProvider extends Closeable {
+public interface SolrCloudManager extends Closeable {
 
-  ClusterDataProvider getClusterDataProvider();
+  ClusterStateProvider getClusterStateProvider();
+
+  NodeStateProvider getNodeStateProvider();
 
   DistribStateManager getDistribStateManager();
 
@@ -59,5 +56,9 @@ public interface SolrCloudDataProvider extends Closeable {
   @Override
   default void close() {
 
+  }
+
+  default boolean isClosed() {
+    return false;
   }
 }

@@ -20,7 +20,7 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.IOException;
 import java.util.Map;
 
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.common.MapWriter;
 
 /**
@@ -30,18 +30,18 @@ import org.apache.solr.common.MapWriter;
  */
 public class ActionContext implements MapWriter {
 
-  private final SolrCloudDataProvider dataProvider;
+  private final SolrCloudManager cloudManager;
   private final AutoScaling.Trigger source;
   private final Map<String, Object> properties;
 
-  public ActionContext(SolrCloudDataProvider dataProvider, AutoScaling.Trigger source, Map<String, Object> properties) {
-    this.dataProvider = dataProvider;
+  public ActionContext(SolrCloudManager cloudManager, AutoScaling.Trigger source, Map<String, Object> properties) {
+    this.cloudManager = cloudManager;
     this.source = source;
     this.properties = properties;
   }
 
-  public SolrCloudDataProvider getDataProvider() {
-    return dataProvider;
+  public SolrCloudManager getCloudManager() {
+    return cloudManager;
   }
 
   public AutoScaling.Trigger getSource() {

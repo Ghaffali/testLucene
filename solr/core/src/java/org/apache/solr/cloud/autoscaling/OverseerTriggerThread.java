@@ -32,16 +32,22 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.IOUtils;
+import org.apache.solr.common.util.Utils;
+import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.SolrResourceLoader;
+import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_PATH;
 
 /**
  * Overseer thread responsible for reading triggers from zookeeper and
@@ -51,7 +57,9 @@ public class OverseerTriggerThread implements Runnable, Closeable {
 
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private final SolrCloudDataProvider dataProvider;
+  private final SolrCloudManager dataProvider;
+
+  private final CloudConfig cloudConfig;
 
   private final ScheduledTriggers scheduledTriggers;
 
@@ -72,8 +80,9 @@ public class OverseerTriggerThread implements Runnable, Closeable {
 
   private AutoScalingConfig autoScalingConfig;
 
-  public OverseerTriggerThread(SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+  public OverseerTriggerThread(SolrResourceLoader loader, SolrCloudManager dataProvider, CloudConfig cloudConfig) {
     this.dataProvider = dataProvider;
+    this.cloudConfig = cloudConfig;
     scheduledTriggers = new ScheduledTriggers(loader, dataProvider);
     triggerFactory = new AutoScaling.TriggerFactoryImpl(loader, dataProvider);
   }
@@ -96,6 +105,29 @@ public class OverseerTriggerThread implements Runnable, Closeable {
   @Override
   public void run() {
     int lastZnodeVersion = znodeVersion;
+
+    // we automatically add a trigger for auto add replicas if it does not exists already
+    while (!isClosed)  {
+      try {
+        AutoScalingConfig autoScalingConfig = dataProvider.getDistribStateManager().getAutoScalingConfig();
+        AutoScalingConfig withAutoAddReplicasTrigger = withAutoAddReplicasTrigger(autoScalingConfig);
+        if (withAutoAddReplicasTrigger.equals(autoScalingConfig)) break;
+        log.debug("Adding .autoAddReplicas trigger");
+        dataProvider.getDistribStateManager().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(withAutoAddReplicasTrigger), withAutoAddReplicasTrigger.getZkVersion());
+        break;
+      } catch (BadVersionException bve) {
+        // somebody else has changed the configuration so we must retry
+      } catch (InterruptedException e) {
+        // Restore the interrupted status
+        Thread.currentThread().interrupt();
+        log.warn("Interrupted", e);
+        break;
+      } catch (IOException | KeeperException e) {
+        log.error("A ZK error has occurred", e);
+      }
+    }
+
+    if (isClosed || Thread.currentThread().isInterrupted())  return;
 
     try {
       refreshAutoScalingConf(new AutoScalingWatcher());
@@ -260,7 +292,7 @@ public class OverseerTriggerThread implements Runnable, Closeable {
       if (isClosed) {
         return;
       }
-      AutoScalingConfig currentConfig = dataProvider.getClusterDataProvider().getAutoScalingConfig(watcher);
+      AutoScalingConfig currentConfig = dataProvider.getDistribStateManager().getAutoScalingConfig(watcher);
       log.debug("Refreshing {} with znode version {}", ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, currentConfig.getZkVersion());
       if (znodeVersion >= currentConfig.getZkVersion()) {
         // protect against reordered watcher fires by ensuring that we only move forward
@@ -288,6 +320,25 @@ public class OverseerTriggerThread implements Runnable, Closeable {
     } finally {
       updateLock.unlock();
     }
+  }
+
+  private AutoScalingConfig withAutoAddReplicasTrigger(AutoScalingConfig autoScalingConfig) {
+    Map<String, Object> triggerProps = AutoScaling.AUTO_ADD_REPLICAS_TRIGGER_PROPS;
+    String triggerName = (String) triggerProps.get("name");
+    Map<String, AutoScalingConfig.TriggerConfig> configs = autoScalingConfig.getTriggerConfigs();
+    for (AutoScalingConfig.TriggerConfig cfg : configs.values()) {
+      if (triggerName.equals(cfg.name)) {
+        // already has this trigger
+        return autoScalingConfig;
+      }
+    }
+    // need to add
+    triggerProps.computeIfPresent("waitFor", (k, v) -> (long) (cloudConfig.getAutoReplicaFailoverWaitAfterExpiration() / 1000));
+    AutoScalingConfig.TriggerConfig config = new AutoScalingConfig.TriggerConfig(triggerName, triggerProps);
+    autoScalingConfig = autoScalingConfig.withTriggerConfig(config);
+    // need to add SystemLogListener explicitly here
+    autoScalingConfig = AutoScalingHandler.withSystemLogListener(autoScalingConfig, triggerName);
+    return autoScalingConfig;
   }
 
   private static Map<String, AutoScaling.Trigger> loadTriggers(AutoScaling.TriggerFactory triggerFactory, AutoScalingConfig autoScalingConfig) {

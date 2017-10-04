@@ -18,9 +18,7 @@
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
 
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
@@ -30,8 +28,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.util.Pair;
@@ -43,7 +41,7 @@ import static org.apache.solr.common.params.CoreAdminParams.NODE;
 public class PolicyHelper {
   private static ThreadLocal<Map<String, String>> policyMapping = new ThreadLocal<>();
   public static List<ReplicaPosition> getReplicaLocations(String collName, AutoScalingConfig autoScalingConfig,
-                                                          ClusterDataProvider cdp,
+                                                          SolrCloudManager cloudManager,
                                                           Map<String, String> optionalPolicyMapping,
                                                           List<String> shardNames,
                                                           int nrtReplicas,
@@ -51,13 +49,7 @@ public class PolicyHelper {
                                                           int pullReplicas,
                                                           List<String> nodesList) {
     List<ReplicaPosition> positions = new ArrayList<>();
-      final ClusterDataProvider delegate = cdp;
-      cdp = new DelegatingClusterDataProvider(delegate) {
-        @Override
-        public ClusterState getClusterState() throws IOException {
-          return delegate.getClusterState();
-        }
-
+    ClusterStateProvider stateProvider = new DelegatingClusterStateProvider(cloudManager.getClusterStateProvider()) {
         @Override
         public String getPolicyNameByCollection(String coll) {
           return policyMapping.get() != null && policyMapping.get().containsKey(coll) ?
@@ -65,13 +57,19 @@ public class PolicyHelper {
               delegate.getPolicyNameByCollection(coll);
         }
       };
+    SolrCloudManager delegatingManager = new DelegatingCloudManager(cloudManager) {
+      @Override
+      public ClusterStateProvider getClusterStateProvider() {
+        return stateProvider;
+      }
+    };
 
     policyMapping.set(optionalPolicyMapping);
     Policy.Session session = null;
     try {
       session = SESSION_REF.get() != null ?
-          SESSION_REF.get().initOrGet(cdp, autoScalingConfig.getPolicy()) :
-          autoScalingConfig.getPolicy().createSession(cdp);
+          SESSION_REF.get().initOrGet(delegatingManager, autoScalingConfig.getPolicy()) :
+          autoScalingConfig.getPolicy().createSession(delegatingManager);
 
       Map<Replica.Type, Integer> typeVsCount = new EnumMap<>(Replica.Type.class);
       typeVsCount.put(Replica.Type.NRT, nrtReplicas);
@@ -153,11 +151,11 @@ public class PolicyHelper {
       }
     }
 
-    public Policy.Session initOrGet(ClusterDataProvider cdp, Policy policy) {
+    public Policy.Session initOrGet(SolrCloudManager cloudManager, Policy policy) {
       synchronized (SessionRef.class) {
         Policy.Session session = get();
         if (session != null) return session;
-        this.session = policy.createSession(cdp);
+        this.session = policy.createSession(cloudManager);
         myVersion.incrementAndGet();
         lastUsedTime = System.nanoTime();
         REF_VERSION.set(myVersion.get());

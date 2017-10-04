@@ -21,8 +21,10 @@ import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
+import com.google.common.collect.Lists;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
@@ -33,6 +35,7 @@ import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkNodeProps;
+import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.LogLevel;
@@ -105,18 +108,48 @@ public class ExecutePlanActionTest extends SolrCloudTestCase {
 
     try (ExecutePlanAction action = new ExecutePlanAction()) {
       action.init(Collections.singletonMap("name", "execute_plan"));
-      CollectionAdminRequest.MoveReplica moveReplica = new CollectionAdminRequest.MoveReplica(collectionName, replicas.get(0).getName(), survivor.getNodeName());
-      List<SolrRequest> operations = Collections.singletonList(moveReplica);
+
+      // used to signal if we found that ExecutePlanAction did in fact create the right znode before executing the operation
+      AtomicBoolean znodeCreated = new AtomicBoolean(false);
+
+      CollectionAdminRequest.AsyncCollectionAdminRequest moveReplica = new CollectionAdminRequest.MoveReplica(collectionName, replicas.get(0).getName(), survivor.getNodeName());
+      CollectionAdminRequest.AsyncCollectionAdminRequest mockRequest = new CollectionAdminRequest.AsyncCollectionAdminRequest(CollectionParams.CollectionAction.OVERSEERSTATUS) {
+        // nocommit: this doesn't work because async requests are now processed differently in ExecutePlanAction
+//
+//        @Override
+//        public String processAsync(String asyncId, SolrClient client) throws IOException, SolrServerException {
+//          String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/xyz/execute_plan";
+//          try {
+//            if (zkClient().exists(parentPath, true)) {
+//              java.util.List<String> children = zkClient().getChildren(parentPath, null, true);
+//              if (!children.isEmpty()) {
+//                String child = children.get(0);
+//                byte[] data = zkClient().getData(parentPath + "/" + child, null, null, true);
+//                Map m = (Map) Utils.fromJSON(data);
+//                if (m.containsKey("requestid")) {
+//                  znodeCreated.set(m.get("requestid").equals(asyncId));
+//                }
+//              }
+//            }
+//          } catch (Exception e) {
+//            throw new RuntimeException(e);
+//          }
+//          super.processAsync(asyncId, client);
+//          return asyncId;
+//        }
+      };
+      List<CollectionAdminRequest.AsyncCollectionAdminRequest> operations = Lists.asList(moveReplica, new CollectionAdminRequest.AsyncCollectionAdminRequest[]{mockRequest});
       NodeLostTrigger.NodeLostEvent nodeLostEvent = new NodeLostTrigger.NodeLostEvent(TriggerEventType.NODELOST,
           "mock_trigger_name", Collections.singletonList(TimeSource.CURRENT_TIME.getTime()),
           Collections.singletonList(sourceNodeName));
-      ActionContext actionContext = new ActionContext(survivor.getCoreContainer().getZkController().getSolrCloudDataProvider(), null,
+      ActionContext actionContext = new ActionContext(survivor.getCoreContainer().getZkController().getSolrCloudManager(), null,
           new HashMap<>(Collections.singletonMap("operations", operations)));
       action.process(nodeLostEvent, actionContext);
 
+//      assertTrue("ExecutePlanAction should have stored the requestid in ZK before executing the request", znodeCreated.get());
       List<NamedList<Object>> responses = (List<NamedList<Object>>) actionContext.getProperty("responses");
       assertNotNull(responses);
-      assertEquals(1, responses.size());
+      assertEquals(2, responses.size());
       NamedList<Object> response = responses.get(0);
       assertNull(response.get("failure"));
       assertNotNull(response.get("success"));

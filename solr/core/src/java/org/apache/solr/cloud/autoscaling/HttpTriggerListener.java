@@ -25,7 +25,7 @@ import java.util.StringJoiner;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.client.solrj.impl.HttpClientUtil;
 import org.apache.solr.common.util.Utils;
@@ -66,7 +66,7 @@ public class HttpTriggerListener extends TriggerListenerBase {
   private boolean followRedirects;
 
   @Override
-  public void init(SolrCloudDataProvider dataProvider, AutoScalingConfig.TriggerListenerConfig config) {
+  public void init(SolrCloudManager dataProvider, AutoScalingConfig.TriggerListenerConfig config) {
     super.init(dataProvider, config);
     urlTemplate = (String)config.properties.get("url");
     payloadTemplate = (String)config.properties.get("payload");

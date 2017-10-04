@@ -35,26 +35,34 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
+import org.apache.solr.client.solrj.request.CollectionAdminRequest.RequestStatusResponse;
+import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.cloud.ActionThrottle;
-import org.apache.solr.cloud.Overseer;
+import org.apache.solr.cloud.Stats;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.zookeeper.Op;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.cloud.autoscaling.ExecutePlanAction.waitForTaskToFinish;
 
 /**
  * Responsible for scheduling active triggers, starting and stopping them and
@@ -85,19 +93,19 @@ public class ScheduledTriggers implements Closeable {
 
   private final ActionThrottle actionThrottle;
 
-  private final SolrCloudDataProvider dataProvider;
+  private final SolrCloudManager dataProvider;
 
   private final DistribStateManager stateManager;
 
   private final SolrResourceLoader loader;
 
-  private final Overseer.Stats queueStats;
+  private final Stats queueStats;
 
   private final TriggerListeners listeners;
 
   private AutoScalingConfig autoScalingConfig;
 
-  public ScheduledTriggers(SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+  public ScheduledTriggers(SolrResourceLoader loader, SolrCloudManager dataProvider) {
     // todo make the core pool size configurable
     // it is important to use more than one because a time taking trigger can starve other scheduled triggers
     // ideally we should have as many core threads as the number of triggers but firstly, we don't know beforehand
@@ -113,7 +121,7 @@ public class ScheduledTriggers implements Closeable {
     this.dataProvider = dataProvider;
     this.stateManager = dataProvider.getDistribStateManager();
     this.loader = loader;
-    queueStats = new Overseer.Stats();
+    queueStats = new Stats();
     listeners = new TriggerListeners();
   }
 
@@ -157,6 +165,12 @@ public class ScheduledTriggers implements Closeable {
       scheduledTriggers.replace(newTrigger.getName(), scheduledTrigger);
     }
     newTrigger.setProcessor(event -> {
+      if (dataProvider.isClosed()) {
+        String msg = String.format(Locale.ROOT, "Ignoring autoscaling event %s because Solr has been shutdown.", event.toString());
+        log.warn(msg);
+        listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.ABORTED, msg);
+        return false;
+      }
       ScheduledTrigger scheduledSource = scheduledTriggers.get(event.getSource());
       if (scheduledSource == null) {
         String msg = String.format(Locale.ROOT, "Ignoring autoscaling event %s because the source trigger: %s doesn't exist.", event.toString(), event.getSource());
@@ -174,13 +188,14 @@ public class ScheduledTriggers implements Closeable {
         return false;
       }
       if (hasPendingActions.compareAndSet(false, true)) {
-        listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.STARTED);
         final boolean enqueued;
         if (replaying) {
           enqueued = false;
         } else {
           enqueued = scheduledTrigger.enqueue(event);
         }
+        // fire STARTED event listeners after enqueuing the event is successful
+        listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.STARTED);
         List<TriggerAction> actions = source.getActions();
         if (actions != null) {
           actionExecutor.submit(() -> {
@@ -190,6 +205,11 @@ public class ScheduledTriggers implements Closeable {
               // let the action executor thread wait instead of the trigger thread so we use the throttle here
               actionThrottle.minimumWaitBetweenActions();
               actionThrottle.markAttemptingAction();
+
+              // in future, we could wait for pending tasks in a different thread and re-enqueue
+              // this event so that we continue processing other events and not block this action executor
+              waitForPendingTasks(newTrigger, actions);
+
               ActionContext actionContext = new ActionContext(dataProvider, newTrigger, new HashMap<>());
               for (TriggerAction action : actions) {
                 List<String> beforeActions = (List<String>)actionContext.getProperties().computeIfAbsent(TriggerEventProcessorStage.BEFORE_ACTION.toString(), k -> new ArrayList<String>());
@@ -236,6 +256,65 @@ public class ScheduledTriggers implements Closeable {
     scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(scheduledTrigger, 0, DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS, TimeUnit.SECONDS);
   }
 
+  private void waitForPendingTasks(AutoScaling.Trigger newTrigger, List<TriggerAction> actions) throws AlreadyClosedException {
+    DistribStateManager stateManager = dataProvider.getDistribStateManager();
+    try {
+
+      for (TriggerAction action : actions) {
+        if (action instanceof ExecutePlanAction) {
+          String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + newTrigger.getName() + "/" + action.getName();
+          if (!stateManager.hasData(parentPath))  {
+            break;
+          }
+          List<String> children = stateManager.listData(parentPath);
+          if (children != null) {
+            for (String child : children) {
+              String path = parentPath + '/' + child;
+              VersionedData data = stateManager.getData(path, null);
+              if (data != null) {
+                Map map = (Map) Utils.fromJSON(data.getData());
+                String requestid = (String) map.get("requestid");
+                try {
+                  log.debug("Found pending task with requestid={}", requestid);
+                  RequestStatusResponse statusResponse = waitForTaskToFinish(dataProvider, requestid,
+                      ExecutePlanAction.DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                  if (statusResponse != null) {
+                    RequestStatusState state = statusResponse.getRequestStatus();
+                    if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {
+                      stateManager.removeData(path, -1);
+                    }
+                  }
+                } catch (Exception e) {
+                  if (dataProvider.isClosed())  {
+                    throw e; // propagate the abort to the caller
+                  }
+                  Throwable rootCause = ExceptionUtils.getRootCause(e);
+                  if (rootCause instanceof IllegalStateException && rootCause.getMessage().contains("Connection pool shut down")) {
+                    throw e;
+                  }
+                  if (rootCause instanceof TimeoutException && rootCause.getMessage().contains("Could not connect to ZooKeeper")) {
+                    throw e;
+                  }
+                  log.error("Unexpected exception while waiting for pending task with requestid: " + requestid + " to finish", e);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Thread interrupted", e);
+    } catch (Exception e) {
+      if (dataProvider.isClosed())  {
+        throw new AlreadyClosedException("The Solr instance has been shutdown");
+      }
+      // we catch but don't rethrow because a failure to wait for pending tasks
+      // should not keep the actions from executing
+      log.error("Unexpected exception while waiting for pending tasks to finish", e);
+    }
+  }
+
   /**
    * Removes and stops the trigger with the given name. Also cleans up any leftover
    * state / events in ZK.
@@ -273,7 +352,6 @@ public class ScheduledTriggers implements Closeable {
     }
   }
 
-
   /**
    * @return an unmodifiable set of names of all triggers being managed by this class
    */
@@ -305,7 +383,7 @@ public class ScheduledTriggers implements Closeable {
     boolean replay;
     volatile boolean isClosed;
 
-    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudDataProvider dataProvider, Overseer.Stats stats) throws IOException {
+    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudManager dataProvider, Stats stats) throws IOException {
       this.trigger = trigger;
       this.queue = new TriggerEventQueue(dataProvider, trigger.getName(), stats);
       this.replay = true;

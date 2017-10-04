@@ -20,9 +20,7 @@ package org.apache.solr.client.solrj.impl;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
-import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -39,24 +37,18 @@ import org.apache.http.util.EntityUtils;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
-import org.apache.zookeeper.CreateMode;
-import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.Op;
-import org.apache.zookeeper.OpResult;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Class that implements {@link SolrCloudDataProvider} using a SolrClient
+ * Class that implements {@link SolrCloudManager} using a SolrClient
  */
-public class SolrClientCloudDataProvider implements SolrCloudDataProvider {
+public class SolrClientCloudManager implements SolrCloudManager {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final CloudSolrClient solrClient;
@@ -64,18 +56,35 @@ public class SolrClientCloudDataProvider implements SolrCloudDataProvider {
   private final DistributedQueueFactory queueFactory;
   private final ZkStateReader zkStateReader;
   private final SolrZkClient zkClient;
+  private volatile boolean isClosed;
 
-  public SolrClientCloudDataProvider(DistributedQueueFactory queueFactory, CloudSolrClient solrClient) {
+  public SolrClientCloudManager(DistributedQueueFactory queueFactory, CloudSolrClient solrClient) {
     this.queueFactory = queueFactory;
     this.solrClient = solrClient;
     this.zkStateReader = solrClient.getZkStateReader();
     this.zkClient = zkStateReader.getZkClient();
     this.stateManager = new ZkDistribStateManager(zkClient);
+    this.isClosed = false;
   }
 
   @Override
-  public ClusterDataProvider getClusterDataProvider() {
-    return new SolrClientClusterDataProvider(solrClient);
+  public void close() {
+    isClosed = true;
+  }
+
+  @Override
+  public boolean isClosed() {
+    return isClosed;
+  }
+
+  @Override
+  public ClusterStateProvider getClusterStateProvider() {
+    return solrClient.getClusterStateProvider();
+  }
+
+  @Override
+  public NodeStateProvider getNodeStateProvider() {
+    return new SolrClientNodeStateProvider(solrClient);
   }
 
   @Override

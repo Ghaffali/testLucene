@@ -42,12 +42,14 @@ import org.apache.solr.client.solrj.cloud.autoscaling.Clause;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.Preference;
 import org.apache.solr.client.solrj.cloud.autoscaling.Row;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientClusterDataProvider;
+import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.params.CollectionAdminParams;
@@ -214,7 +216,8 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     try (CloudSolrClient build = new CloudSolrClient.Builder()
         .withHttpClient(container.getUpdateShardHandler().getHttpClient())
         .withZkHost(container.getZkController().getZkServerAddress()).build()) {
-      Policy.Session session = policy.createSession(new SolrClientClusterDataProvider(build));
+      SolrCloudManager.DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
+      Policy.Session session = policy.createSession(new SolrClientCloudManager(queueFactory, build));
       List<Row> sorted = session.getSorted();
       List<Clause.Violation> violations = session.getViolations();
 
@@ -459,7 +462,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     if (op.hasError()) return currentConfig;
 
     // validate that we can load the listener class
-    // todo nocommit -- what about MemClassLoader?
+    // todo allow creation from blobstore
     try {
       container.getResourceLoader().findClass(listenerClass, TriggerListener.class);
     } catch (Exception e) {
@@ -518,7 +521,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     }
 
     // validate that we can load all the actions
-    // todo nocommit -- what about MemClassLoader?
+    // todo allow creation from blobstore
     for (Map<String, String> action : actions) {
       if (!action.containsKey(NAME) || !action.containsKey(CLASS)) {
         op.addError("No 'name' or 'class' specified for action: " + action);
@@ -542,7 +545,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
   private static String fullName = SystemLogListener.class.getName();
   private static String solrName = "solr." + SystemLogListener.class.getSimpleName();
 
-  private static AutoScalingConfig withSystemLogListener(AutoScalingConfig autoScalingConfig, String triggerName) {
+  static AutoScalingConfig withSystemLogListener(AutoScalingConfig autoScalingConfig, String triggerName) {
     Map<String, AutoScalingConfig.TriggerListenerConfig> configs = autoScalingConfig.getTriggerListenerConfigs();
     for (AutoScalingConfig.TriggerListenerConfig cfg : configs.values()) {
       if (triggerName.equals(cfg.trigger)) {
@@ -638,8 +641,9 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     try (CloudSolrClient build = new CloudSolrClient.Builder()
         .withHttpClient(container.getUpdateShardHandler().getHttpClient())
         .withZkHost(container.getZkController().getZkServerAddress()).build()) {
+      SolrCloudManager.DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
       Policy.Session session = autoScalingConf.getPolicy()
-          .createSession(new SolrClientClusterDataProvider(build));
+          .createSession(new SolrClientCloudManager(queueFactory, build));
       log.debug("Verified autoscaling configuration");
     }
   }

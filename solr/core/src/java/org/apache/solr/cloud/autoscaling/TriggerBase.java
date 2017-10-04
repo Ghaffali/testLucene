@@ -27,14 +27,18 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.lucene.util.IOUtils;
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,7 +50,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   protected final String name;
-  protected final SolrCloudDataProvider dataProvider;
+  protected final SolrCloudManager dataProvider;
   protected final DistribStateManager stateManager;
   protected final Map<String, Object> properties = new HashMap<>();
   protected final TriggerEventType eventType;
@@ -58,7 +62,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   protected boolean isClosed;
 
 
-  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudDataProvider dataProvider) {
+  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudManager dataProvider) {
     this.eventType = eventType;
     this.name = name;
     this.dataProvider = dataProvider;
@@ -83,7 +87,9 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
       if (!stateManager.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
         stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
       }
-    } catch (IOException e) {
+    } catch (AlreadyExistsException e) {
+      // ignore
+    } catch (InterruptedException | KeeperException | IOException e) {
       LOG.warn("Exception checking ZK path " + ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, e);
     }
   }
@@ -202,7 +208,7 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
         stateManager.createData(path, data, CreateMode.PERSISTENT);
       }
       lastState = state;
-    } catch (IOException e) {
+    } catch (InterruptedException | BadVersionException | AlreadyExistsException | IOException | KeeperException e) {
       LOG.warn("Exception updating trigger state '" + path + "'", e);
     }
   }
@@ -213,8 +219,8 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
       if (stateManager.hasData(path)) {
-        DistribStateManager.VersionedData versionedData = stateManager.getData(path);
-        data = versionedData.data;
+        VersionedData versionedData = stateManager.getData(path);
+        data = versionedData.getData();
       }
     } catch (Exception e) {
       LOG.warn("Exception getting trigger state '" + path + "'", e);

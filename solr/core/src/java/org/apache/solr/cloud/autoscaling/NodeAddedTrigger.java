@@ -29,7 +29,7 @@ import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.SolrException;
@@ -53,17 +53,23 @@ public class NodeAddedTrigger extends TriggerBase {
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           SolrResourceLoader loader,
-                          SolrCloudDataProvider dataProvider) {
+                          SolrCloudManager dataProvider) {
     super(TriggerEventType.NODEADDED, name, properties, loader, dataProvider);
     this.timeSource = TimeSource.CURRENT_TIME;
-    lastLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
+    lastLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     log.debug("NodeAddedTrigger {} instantiated with properties: {}", name, properties);
   }
 
   @Override
   public void init() {
-    super.init();
+    List<Map<String, String>> o = (List<Map<String, String>>) properties.get("actions");
+    if (o != null && !o.isEmpty()) {
+      for (int i = 0; i < o.size(); i++) {
+        Map<String, String> map = o.get(i);
+        actions.get(i).init(map);
+      }
+    }
     // pick up added nodes for which marker paths were created
     try {
       List<String> added = stateManager.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
@@ -130,7 +136,7 @@ public class NodeAddedTrigger extends TriggerBase {
       }
       log.debug("Running NodeAddedTrigger {}", name);
 
-      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterDataProvider().getLiveNodes());
+      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
       log.debug("Found livenodes: {}", newLiveNodes);
 
       // have any nodes that we were tracking been removed from the cluster?
@@ -178,7 +184,7 @@ public class NodeAddedTrigger extends TriggerBase {
           });
         }
       }
-      lastLiveNodes = new HashSet(newLiveNodes);
+      lastLiveNodes = new HashSet<>(newLiveNodes);
     } catch (RuntimeException e) {
       log.error("Unexpected exception in NodeAddedTrigger", e);
     }
