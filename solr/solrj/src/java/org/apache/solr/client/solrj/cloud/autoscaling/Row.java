@@ -28,6 +28,7 @@ import java.util.Random;
 import org.apache.solr.common.IteratorWriter;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.cloud.Replica;
+import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Pair;
 import org.apache.solr.common.util.Utils;
 
@@ -97,7 +98,7 @@ public class Row implements MapWriter {
     Row row = copy();
     Map<String, List<ReplicaInfo>> c = row.collectionVsShardVsReplicas.computeIfAbsent(coll, k -> new HashMap<>());
     List<ReplicaInfo> replicas = c.computeIfAbsent(shard, k -> new ArrayList<>());
-    replicas.add(new ReplicaInfo("" + new Random().nextInt(1000) + 1000, coll, shard, type, new HashMap<>()));
+    replicas.add(new ReplicaInfo("" + new Random().nextInt(1000) + 1000, coll, shard, Collections.singletonMap(ZkStateReader.REPLICA_TYPE, type.toString())));
     for (Cell cell : row.cells) {
       if (cell.name.equals("cores")) {
         cell.val = cell.val == null ? 0 : ((Number) cell.val).longValue() + 1;

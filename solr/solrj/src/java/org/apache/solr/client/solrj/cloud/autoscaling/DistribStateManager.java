@@ -72,7 +72,7 @@ public interface DistribStateManager extends Closeable {
   }
 
   @Override
-  default void close() {
+  default void close() throws IOException {
 
   }
 

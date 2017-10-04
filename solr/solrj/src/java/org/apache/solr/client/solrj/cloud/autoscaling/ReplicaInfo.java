@@ -49,6 +49,10 @@ public class ReplicaInfo implements MapWriter {
     });
   }
 
+  public String getName() {
+    return name;
+  }
+
   public String getCore() {
     return core;
   }
