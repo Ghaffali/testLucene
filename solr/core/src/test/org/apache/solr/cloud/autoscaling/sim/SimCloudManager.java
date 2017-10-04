@@ -24,26 +24,27 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.SolrServerException;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudDataProvider;
-import org.apache.solr.client.solrj.request.CollectionAdminRequest;
-import org.apache.solr.client.solrj.response.SolrResponseBase;
+import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
+import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 
 /**
- * Simulated {@link SolrCloudDataProvider}.
+ * Simulated {@link SolrCloudManager}.
  */
-public class SimCloudDataProvider implements SolrCloudDataProvider {
+public class SimCloudManager implements SolrCloudManager {
 
   private final SimDistribStateManager stateManager;
-  private final SimClusterDataProvider dataProvider;
+  private final SimClusterStateProvider clusterStateProvider;
+  private final SimNodeStateProvider nodeStateProvider;
   private final SimDistributedQueueFactory queueFactory;
   private SolrClient solrClient;
   private final SimHttpServer httpServer;
 
-  public SimCloudDataProvider() {
+  public SimCloudManager() {
     this.stateManager = new SimDistribStateManager();
-    this.dataProvider = new SimClusterDataProvider();
+    this.clusterStateProvider = new SimClusterStateProvider();
+    this.nodeStateProvider = new SimNodeStateProvider(this.clusterStateProvider, null);
     this.queueFactory = new SimDistributedQueueFactory();
     this.httpServer = new SimHttpServer();
   }
@@ -52,9 +53,33 @@ public class SimCloudDataProvider implements SolrCloudDataProvider {
     this.solrClient = solrClient;
   }
 
+  // ---------- type-safe methods to obtain simulator components ----------
+  public SimClusterStateProvider getSimClusterStateProvider() {
+    return clusterStateProvider;
+  }
+
+  public SimNodeStateProvider getSimNodeStateProvider() {
+    return nodeStateProvider;
+  }
+
+  public SimDistribStateManager getSimDistribStateManager() {
+    return stateManager;
+  }
+
+  public SimDistributedQueueFactory getSimDistributedQueueFactory() {
+    return queueFactory;
+  }
+
+  // --------- interface methods -----------
+
   @Override
-  public ClusterDataProvider getClusterDataProvider() {
-    return dataProvider;
+  public ClusterStateProvider getClusterStateProvider() {
+    return clusterStateProvider;
+  }
+
+  @Override
+  public NodeStateProvider getNodeStateProvider() {
+    return nodeStateProvider;
   }
 
   @Override
@@ -76,7 +101,7 @@ public class SimCloudDataProvider implements SolrCloudDataProvider {
         throw new IOException(e);
       }
     } else {
-      return dataProvider.simHandleSolrRequest(req);
+      return clusterStateProvider.simHandleSolrRequest(req);
     }
   }
 

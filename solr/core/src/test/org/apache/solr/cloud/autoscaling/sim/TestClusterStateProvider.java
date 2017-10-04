@@ -12,9 +12,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.ClusterDataProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.Preference;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.SolrCloudTestCase;
@@ -35,13 +35,13 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-public class TestClusterDataProvider extends SolrCloudTestCase {
+public class TestClusterStateProvider extends SolrCloudTestCase {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static int NODE_COUNT = 3;
   private static boolean simulated;
 
-  private static ClusterDataProvider clusterDataProvider;
+  private static SolrCloudManager cloudManager;
 
   private static Collection<String> liveNodes;
   private static Map<String, Object> clusterProperties;
@@ -65,35 +65,33 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
   }
 
   private static void init() throws Exception {
-    ClusterDataProvider realProvider = cluster.getJettySolrRunner(cluster.getJettySolrRunners().size() - 1).getCoreContainer()
-        .getZkController().getSolrCloudDataProvider().getClusterDataProvider();
-    liveNodes = realProvider.getLiveNodes();
-    clusterProperties = realProvider.getClusterProperties();
-    autoScalingConfig = realProvider.getAutoScalingConfig();
+    SolrCloudManager realManager = cluster.getJettySolrRunner(cluster.getJettySolrRunners().size() - 1).getCoreContainer()
+        .getZkController().getSolrCloudManager();
+    liveNodes = realManager.getClusterStateProvider().getLiveNodes();
+    clusterProperties = realManager.getClusterStateProvider().getClusterProperties();
+    autoScalingConfig = realManager.getDistribStateManager().getAutoScalingConfig();
     replicas = new HashMap<>();
     nodeValues = new HashMap<>();
-    realProvider.getLiveNodes().forEach(n -> {
-      replicas.put(n, realProvider.getReplicaInfo(n, Collections.emptySet()));
-      nodeValues.put(n, realProvider.getNodeValues(n, ImplicitSnitch.tags));
+    liveNodes.forEach(n -> {
+      replicas.put(n, realManager.getNodeStateProvider().getReplicaInfo(n, Collections.emptySet()));
+      nodeValues.put(n, realManager.getNodeStateProvider().getNodeValues(n, ImplicitSnitch.tags));
     });
-    realState = realProvider.getClusterState();
+    realState = realManager.getClusterStateProvider().getClusterState();
 
     if (simulated) {
       // initialize simulated provider
-      SimClusterDataProvider simProvider = new SimClusterDataProvider();
-      simProvider.simSetAutoScalingConfig(autoScalingConfig);
+      SimCloudManager simCloudManager = new SimCloudManager();
+      simCloudManager.getSimClusterStateProvider().simSetClusterProperties(clusterProperties);
+      simCloudManager.getSimDistribStateManager().simSetAutoScalingConfig(autoScalingConfig);
       nodeValues.forEach((n, values) -> {
-        simProvider.simSetNodeValues(n, values);
+        simCloudManager.getSimNodeStateProvider().simSetNodeValues(n, values);
       });
-      simProvider.simSetClusterState(realState);
-      ClusterState simState = simProvider.getClusterState();
+      simCloudManager.getSimClusterStateProvider().simSetClusterState(realState);
+      ClusterState simState = simCloudManager.getClusterStateProvider().getClusterState();
       assertClusterStateEquals(realState, simState);
-      // test the other constructor
-      ClusterDataProvider anotherProvider = new SimClusterDataProvider(realState, autoScalingConfig, nodeValues);
-      assertClusterStateEquals(realState, anotherProvider.getClusterState());
-      clusterDataProvider = simProvider;
+      cloudManager = simCloudManager;
     } else {
-      clusterDataProvider = realProvider;
+      cloudManager = realManager;
     }
   }
 
@@ -120,7 +118,7 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
     JettySolrRunner solr = cluster.startJettySolrRunner();
     String nodeId = solr.getNodeName();
     if (simulated) {
-      ((SimClusterDataProvider)clusterDataProvider).simAddNode(nodeId);
+      ((SimCloudManager) cloudManager).getSimClusterStateProvider().simAddNode(nodeId);
     }
     return nodeId;
   }
@@ -129,7 +127,7 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
     String nodeId = cluster.getJettySolrRunner(0).getNodeName();
     cluster.stopJettySolrRunner(0);
     if (simulated) {
-      ((SimClusterDataProvider)clusterDataProvider).simRemoveNode(nodeId);
+      ((SimCloudManager) cloudManager).getSimClusterStateProvider().simRemoveNode(nodeId);
     }
     return nodeId;
   }
@@ -138,21 +136,21 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
     cluster.getJettySolrRunner(0).getCoreContainer().getZkController().getZkClient().setData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH,
         Utils.toJSON(cfg), -1, true);
     if (simulated) {
-      ((SimClusterDataProvider)clusterDataProvider).simSetAutoScalingConfig(cfg);
+      ((SimCloudManager) cloudManager).getSimDistribStateManager().simSetAutoScalingConfig(cfg);
     }
   }
 
   @Test
   public void testAddRemoveNode() throws Exception {
-    Set<String> lastNodes = new HashSet<>(clusterDataProvider.getLiveNodes());
+    Set<String> lastNodes = new HashSet<>(cloudManager.getClusterStateProvider().getLiveNodes());
     String node = addNode();
     Thread.sleep(2000);
     assertFalse(lastNodes.contains(node));
-    assertTrue(clusterDataProvider.getLiveNodes().contains(node));
+    assertTrue(cloudManager.getClusterStateProvider().getLiveNodes().contains(node));
     node = deleteNode();
     Thread.sleep(2000);
     assertTrue(lastNodes.contains(node));
-    assertFalse(clusterDataProvider.getLiveNodes().contains(node));
+    assertFalse(cloudManager.getClusterStateProvider().getLiveNodes().contains(node));
   }
 
   @Test
@@ -164,7 +162,7 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
       }
       triggered.countDown();
     };
-    AutoScalingConfig cfg = clusterDataProvider.getAutoScalingConfig(w);
+    AutoScalingConfig cfg = cloudManager.getDistribStateManager().getAutoScalingConfig(w);
     assertEquals(autoScalingConfig, cfg);
     Preference p = new Preference(Collections.singletonMap("maximize", "freedisk"));
     cfg = cfg.withPolicy(cfg.getPolicy().withClusterPreferences(Collections.singletonList(p)));
@@ -172,12 +170,12 @@ public class TestClusterDataProvider extends SolrCloudTestCase {
     if (!triggered.await(10, TimeUnit.SECONDS)) {
       fail("Watch should be triggered on update!");
     }
-    AutoScalingConfig cfg1 = clusterDataProvider.getAutoScalingConfig(null);
+    AutoScalingConfig cfg1 = cloudManager.getDistribStateManager().getAutoScalingConfig(null);
     assertEquals(cfg, cfg1);
 
     // restore
     setAutoScalingConfig(autoScalingConfig);
-    cfg1 = clusterDataProvider.getAutoScalingConfig(null);
+    cfg1 = cloudManager.getDistribStateManager().getAutoScalingConfig(null);
     assertEquals(autoScalingConfig, cfg1);
   }
 }

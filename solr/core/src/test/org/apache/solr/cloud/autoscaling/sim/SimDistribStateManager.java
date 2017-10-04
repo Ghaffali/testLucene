@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -31,8 +32,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.jute.Record;
+import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.cloud.ActionThrottle;
+import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.AutoScalingParams;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.IdUtils;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -113,7 +119,7 @@ public class SimDistribStateManager implements DistribStateManager {
     public VersionedData getData(Watcher w) {
       dataLock.lock();
       try {
-        VersionedData res = new VersionedData(version, data);
+        VersionedData res = new VersionedData(version, data, clientId);
         if (w != null && !dataWatches.contains(w)) {
           dataWatches.add(w);
         }
@@ -433,7 +439,7 @@ public class SimDistribStateManager implements DistribStateManager {
             setData(rr.getPath(), rr.getData(), rr.getVersion());
             VersionedData vd = getData(rr.getPath());
             Stat s = new Stat();
-            s.setVersion(vd.version);
+            s.setVersion(vd.getVersion());
             res.add(new OpResult.SetDataResult(s));
           } else {
             throw new Exception("Unknown Op: " + op);
@@ -446,5 +452,32 @@ public class SimDistribStateManager implements DistribStateManager {
       multiLock.unlock();
     }
     return res;
+  }
+
+  @Override
+  public AutoScalingConfig getAutoScalingConfig(Watcher watcher) throws InterruptedException, IOException {
+    Map<String, Object> map = new HashMap<>();
+    int version = -1;
+    try {
+      VersionedData data = getData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, watcher);
+      if (data != null && data.getData() != null && data.getData().length > 0) {
+        map = (Map<String, Object>) Utils.fromJSON(data.getData());
+      }
+    } catch (NoSuchElementException e) {
+      // ignore
+    }
+    map.put(AutoScalingParams.ZK_VERSION, version);
+    return new AutoScalingConfig(map);
+  }
+
+  // ------------ simulator methods --------------
+
+  public void simSetAutoScalingConfig(AutoScalingConfig cfg) throws Exception {
+    try {
+      makePath(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH);
+    } catch (Exception e) {
+      // ignore
+    }
+    setData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(cfg), -1);
   }
 }

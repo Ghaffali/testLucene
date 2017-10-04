@@ -166,7 +166,7 @@ public class TestSimDistributedQueue extends SolrTestCaseJ4 {
 
 
   protected DistributedQueue makeDistributedQueue(String dqZNode) throws Exception {
-    return new SimDistributedQueueFactory.SimDistributedQueue();
+    return new SimDistributedQueueFactory.SimDistributedQueue(dqZNode);
   }
 
   private static class QueueChangerThread extends Thread {

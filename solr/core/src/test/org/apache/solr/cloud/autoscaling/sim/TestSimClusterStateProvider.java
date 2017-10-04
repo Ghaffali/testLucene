@@ -15,9 +15,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 /**
  *
  */
-public class TestSimClusterDataProvider extends SolrTestCaseJ4 {
+public class TestSimClusterStateProvider extends SolrTestCaseJ4 {
 
-  private SimClusterDataProvider dataProvider;
+  private SimClusterStateProvider dataProvider;
 
   private static final String COLL = "gettingstarted";
   private static final Set<String> initialLiveNodes = ImmutableSet.of("192.168.1.108:7574_solr", "192.168.1.108:8983_solr");
@@ -64,7 +64,8 @@ public class TestSimClusterDataProvider extends SolrTestCaseJ4 {
   public void setup() throws Exception {
     ClusterState cs = ClusterState.load(1, coll1State.getBytes(UTF_8),
         initialLiveNodes, "/collections/gettingstarted/state.json");
-    dataProvider = new SimClusterDataProvider(cs, null, null);
+    dataProvider = new SimClusterStateProvider();
+    dataProvider.simSetClusterState(cs);
   }
 
   @Test

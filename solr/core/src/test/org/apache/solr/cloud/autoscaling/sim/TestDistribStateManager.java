@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.client.solrj.impl.ZkDistribStateManager;
 import org.apache.solr.cloud.ZkTestServer;
 import org.apache.solr.common.cloud.SolrZkClient;
@@ -223,10 +224,10 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     stateManager.makePath("/getData");
     stateManager.createData("/getData/persistentData", firstData, CreateMode.PERSISTENT);
     OnceWatcher nodeWatcher = new OnceWatcher();
-    DistribStateManager.VersionedData vd = stateManager.getData("/getData/persistentData", nodeWatcher);
+    VersionedData vd = stateManager.getData("/getData/persistentData", nodeWatcher);
     assertNotNull(vd);
-    assertEquals(0, vd.version);
-    assertTrue(Arrays.equals(firstData, vd.data));
+    assertEquals(0, vd.getVersion());
+    assertTrue(Arrays.equals(firstData, vd.getData()));
 
     // update data, test versioning
     try {
@@ -259,7 +260,7 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     vd = stateManager.getData("/getData/persistentData", nodeWatcher);
     // try wrong version
     try {
-      stateManager.removeData("/getData/persistentData", vd.version - 1);
+      stateManager.removeData("/getData/persistentData", vd.getVersion() - 1);
       fail("should have failed");
     } catch (IOException e) {
       // expected
@@ -267,7 +268,7 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     // watch should not have fired
     assertEquals(1, nodeWatcher.triggered.getCount());
 
-    stateManager.removeData("/getData/persistentData", vd.version);
+    stateManager.removeData("/getData/persistentData", vd.getVersion());
     if (!nodeWatcher.triggered.await(5, TimeUnit.SECONDS)) {
       fail("Node watch should have fired!");
     }
