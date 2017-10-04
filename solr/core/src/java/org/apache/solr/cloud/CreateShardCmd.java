@@ -175,6 +175,6 @@ public class CreateShardCmd implements Cmd {
   static boolean usePolicyFramework(DocCollection collection, OverseerCollectionMessageHandler ocmh)
       throws IOException, InterruptedException {
     AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudManager().getDistribStateManager().getAutoScalingConfig();
-    return !autoScalingConfig.isEmpty() || collection.getPolicyName() != null;
+    return !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty() || collection.getPolicyName() != null;
   }
 }

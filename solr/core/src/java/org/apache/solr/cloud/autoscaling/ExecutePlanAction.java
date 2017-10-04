@@ -165,7 +165,11 @@ public class ExecutePlanAction extends TriggerActionBase {
    */
   private String saveAsyncId(DistribStateManager stateManager, TriggerEvent event, String asyncId) throws InterruptedException, AlreadyExistsException, IOException, KeeperException {
     String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + event.getSource() + "/" + getName();
-    stateManager.makePath(parentPath);
+    try {
+      stateManager.makePath(parentPath);
+    } catch (AlreadyExistsException e) {
+      // ignore
+    }
     return stateManager.createData(parentPath + "/" + PREFIX, Utils.toJSON(Collections.singletonMap("requestid", asyncId)), CreateMode.PERSISTENT_SEQUENTIAL);
   }
 

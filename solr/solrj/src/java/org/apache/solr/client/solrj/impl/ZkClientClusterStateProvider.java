@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.nio.file.Path;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
@@ -59,7 +60,12 @@ public class ZkClientClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public ClusterState.CollectionRef getState(String collection) {
-    return zkStateReader.getClusterState().getCollectionRef(collection);
+    ClusterState clusterState = zkStateReader.getClusterState();
+    if (clusterState != null) {
+      return clusterState.getCollectionRef(collection);
+    } else {
+      return null;
+    }
   }
   public ZkStateReader getZkStateReader(){
     return zkStateReader;
@@ -67,7 +73,12 @@ public class ZkClientClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public Set<String> getLiveNodes() {
-    return zkStateReader.getClusterState().getLiveNodes();
+    ClusterState clusterState = zkStateReader.getClusterState();
+    if (clusterState != null) {
+      return clusterState.getLiveNodes();
+    } else {
+      return Collections.emptySet();
+    }
   }
 
 
