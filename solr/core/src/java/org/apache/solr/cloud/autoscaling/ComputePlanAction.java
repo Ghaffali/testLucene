@@ -21,22 +21,16 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.NoneSuggester;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
-import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
 import org.apache.solr.common.cloud.ZkStateReader;
-import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.common.util.Pair;
 import org.apache.solr.core.CoreContainer;
 import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
@@ -68,7 +62,11 @@ public class ComputePlanAction extends TriggerActionBase {
           return;
         }
         Policy policy = autoScalingConf.getPolicy();
-        Policy.Session session = policy.createSession(new SolrClientDataProvider(cloudSolrClient));
+        SolrClientDataProvider dataProvider = new SolrClientDataProvider(cloudSolrClient);
+        if (log.isDebugEnabled()) {
+          log.debug("Cluster data provider: {}", dataProvider.toMap(new HashMap<>()));
+        }
+        Policy.Session session = policy.createSession(dataProvider);
         Policy.Suggester suggester = getSuggester(session, event, zkStateReader);
         while (true) {
           SolrRequest operation = suggester.getOperation();
@@ -108,49 +106,6 @@ public class ComputePlanAction extends TriggerActionBase {
         suggester = session.getSuggester(CollectionParams.CollectionAction.MOVEREPLICA)
             .hint(Policy.Suggester.Hint.SRC_NODE, event.getProperty(TriggerEvent.NODE_NAMES));
         log.debug("Created suggester with srcNode: {}", event.getProperty(TriggerEvent.NODE_NAMES));
-        break;
-      case SEARCHRATE:
-        Map<String, Map<String, Double>> hotShards = (Map<String, Map<String, Double>>)event.getProperty(AutoScalingParams.SHARD);
-        Map<String, Double> hotCollections = (Map<String, Double>)event.getProperty(AutoScalingParams.COLLECTION);
-        List<ReplicaInfo> hotReplicas = (List<ReplicaInfo>)event.getProperty(AutoScalingParams.REPLICA);
-        Map<String, Double> hotNodes = (Map<String, Double>)event.getProperty(AutoScalingParams.NODE);
-
-        if (hotShards.isEmpty() && hotCollections.isEmpty() && hotReplicas.isEmpty()) {
-          // node -> MOVEREPLICA
-          if (hotNodes.isEmpty()) {
-            log.warn("Neither hot replicas / collection nor nodes are reported in event: " + event);
-            return NoneSuggester.INSTANCE;
-          }
-          suggester = session.getSuggester(CollectionParams.CollectionAction.MOVEREPLICA);
-          for (String node : hotNodes.keySet()) {
-            suggester = suggester.hint(Policy.Suggester.Hint.SRC_NODE, node);
-          }
-        } else {
-          // collection || shard || replica -> ADDREPLICA
-          suggester = session.getSuggester(CollectionParams.CollectionAction.ADDREPLICA);
-          Map<String, Set<String>> collShards = new HashMap<>();
-          // AddReplicaSuggester needs a list of Pair(coll, shard)
-          hotReplicas.forEach(r -> collShards.computeIfAbsent(r.getCollection(), c -> new HashSet<>()).add(r.getShard()));
-          hotShards.forEach((coll, shards) -> collShards.computeIfAbsent(coll, c -> new HashSet<>()).addAll(shards.keySet()));
-          // if we only have hotCollections then use warmShards to pick ones to replicate
-          Map<String, String> warmShards = (Map<String, String>)event.getProperty(AutoScalingParams.WARM_SHARD);
-          hotCollections.forEach((coll, rate) -> {
-            Set<String> shards = collShards.get(coll);
-            if (shards == null || shards.isEmpty()) {
-              String warmShard = warmShards.get(coll);
-              if (warmShard == null) {
-                log.warn("Got hot collection '" + coll + "' but no warm shard! Ignoring...");
-                return;
-              }
-              collShards.computeIfAbsent(coll, s -> new HashSet<>()).add(warmShard);
-            }
-          });
-          for (Map.Entry<String, Set<String>> e : collShards.entrySet()) {
-            for (String shard : e.getValue()) {
-              suggester = suggester.hint(Policy.Suggester.Hint.COLL_SHARD, new Pair<>(e.getKey(), shard));
-            }
-          }
-        }
         break;
       default:
         throw new UnsupportedOperationException("No support for events other than nodeAdded and nodeLost, received: " + event.getEventType());

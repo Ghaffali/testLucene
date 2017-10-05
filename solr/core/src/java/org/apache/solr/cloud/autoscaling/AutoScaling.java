@@ -21,11 +21,13 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import com.google.common.base.Preconditions;
 import org.apache.lucene.store.AlreadyClosedException;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.cloud.ZkController;
 
 public class AutoScaling {
 
@@ -47,7 +49,7 @@ public class AutoScaling {
   /**
    * Interface for a Solr trigger. Each trigger implements Runnable and Closeable interface. A trigger
    * is scheduled using a {@link java.util.concurrent.ScheduledExecutorService} so it is executed as
-   * per a configured schedule to check whether the trigger is ready to fire. The {@link Trigger#setProcessor(TriggerEventProcessor)}
+   * per a configured schedule to check whether the trigger is ready to fire. The {@link AutoScaling.Trigger#setProcessor(AutoScaling.TriggerEventProcessor)}
    * method should be used to set a processor which is used by implementation of this class whenever
    * ready.
    * <p>
@@ -113,12 +115,15 @@ public class AutoScaling {
   public static class TriggerFactory implements Closeable {
 
     private final CoreContainer coreContainer;
+    private final ZkController zkController;
 
     private boolean isClosed = false;
 
-    public TriggerFactory(CoreContainer coreContainer) {
-      Preconditions.checkNotNull(coreContainer);
+    public TriggerFactory(CoreContainer coreContainer, ZkController zkController) {
+      Objects.requireNonNull(coreContainer);
+      Objects.requireNonNull(zkController);
       this.coreContainer = coreContainer;
+      this.zkController = zkController;
     }
 
     public synchronized Trigger create(TriggerEventType type, String name, Map<String, Object> props) {
@@ -127,11 +132,9 @@ public class AutoScaling {
       }
       switch (type) {
         case NODEADDED:
-          return new NodeAddedTrigger(name, props, coreContainer);
+          return new NodeAddedTrigger(name, props, coreContainer, zkController);
         case NODELOST:
-          return new NodeLostTrigger(name, props, coreContainer);
-        case SEARCHRATE:
-          return new SearchRateTrigger(name, props, coreContainer);
+          return new NodeLostTrigger(name, props, coreContainer, zkController);
         default:
           throw new IllegalArgumentException("Unknown event type: " + type + " in trigger: " + name);
       }
@@ -146,11 +149,10 @@ public class AutoScaling {
   }
 
   public static final String AUTO_ADD_REPLICAS_TRIGGER_DSL =
-      "{" +
-      "    'set-trigger' : {" +
+      "    {" +
       "        'name' : '.auto_add_replicas'," +
       "        'event' : 'nodeLost'," +
-      "        'waitFor' : '{{waitFor}}s'," +
+      "        'waitFor' : -1," +
       "        'enabled' : true," +
       "        'actions' : [" +
       "            {" +
@@ -162,6 +164,7 @@ public class AutoScaling {
       "                'class':'solr.ExecutePlanAction'" +
       "            }" +
       "        ]" +
-      "    }" +
-      "}";
+      "    }";
+
+  public static final Map<String, Object> AUTO_ADD_REPLICAS_TRIGGER_PROPS = (Map) Utils.fromJSONString(AUTO_ADD_REPLICAS_TRIGGER_DSL);
 }

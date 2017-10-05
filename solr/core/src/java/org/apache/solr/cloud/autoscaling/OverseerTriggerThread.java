@@ -37,12 +37,15 @@ import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.ZooKeeperException;
 import org.apache.solr.common.util.IOUtils;
+import org.apache.solr.common.util.Utils;
+import org.apache.solr.core.CloudConfig;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_PATH;
 
 /**
  * Overseer thread responsible for reading triggers from zookeeper and
@@ -53,6 +56,8 @@ public class OverseerTriggerThread implements Runnable, Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final ZkController zkController;
+
+  private final CloudConfig cloudConfig;
 
   private final ZkStateReader zkStateReader;
 
@@ -77,12 +82,13 @@ public class OverseerTriggerThread implements Runnable, Closeable {
 
   private AutoScalingConfig autoScalingConfig;
 
-  public OverseerTriggerThread(ZkController zkController) {
+  public OverseerTriggerThread(ZkController zkController, CloudConfig cloudConfig) {
     this.zkController = zkController;
+    this.cloudConfig = cloudConfig;
     zkStateReader = zkController.getZkStateReader();
     zkClient = zkController.getZkClient();
     scheduledTriggers = new ScheduledTriggers(zkController);
-    triggerFactory = new AutoScaling.TriggerFactory(zkController.getCoreContainer());
+    triggerFactory = new AutoScaling.TriggerFactory(zkController.getCoreContainer(), zkController);
   }
 
   @Override
@@ -103,6 +109,29 @@ public class OverseerTriggerThread implements Runnable, Closeable {
   @Override
   public void run() {
     int lastZnodeVersion = znodeVersion;
+
+    // we automatically add a trigger for auto add replicas if it does not exists already
+    while (!isClosed)  {
+      try {
+        AutoScalingConfig autoScalingConfig = zkStateReader.getAutoScalingConfig();
+        AutoScalingConfig withAutoAddReplicasTrigger = withAutoAddReplicasTrigger(autoScalingConfig);
+        if (withAutoAddReplicasTrigger.equals(autoScalingConfig)) break;
+        log.debug("Adding .autoAddReplicas trigger");
+        zkClient.setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(withAutoAddReplicasTrigger), withAutoAddReplicasTrigger.getZkVersion(), true);
+        break;
+      } catch (KeeperException.BadVersionException bve) {
+        // somebody else has changed the configuration so we must retry
+      } catch (InterruptedException e) {
+        // Restore the interrupted status
+        Thread.currentThread().interrupt();
+        log.warn("Interrupted", e);
+        break;
+      } catch (KeeperException e) {
+        log.error("A ZK error has occurred", e);
+      }
+    }
+
+    if (isClosed || Thread.currentThread().isInterrupted())  return;
 
     try {
       refreshAutoScalingConf(new AutoScalingWatcher());
@@ -300,6 +329,25 @@ public class OverseerTriggerThread implements Runnable, Closeable {
     } finally {
       updateLock.unlock();
     }
+  }
+
+  private AutoScalingConfig withAutoAddReplicasTrigger(AutoScalingConfig autoScalingConfig) {
+    Map<String, Object> triggerProps = AutoScaling.AUTO_ADD_REPLICAS_TRIGGER_PROPS;
+    String triggerName = (String) triggerProps.get("name");
+    Map<String, AutoScalingConfig.TriggerConfig> configs = autoScalingConfig.getTriggerConfigs();
+    for (AutoScalingConfig.TriggerConfig cfg : configs.values()) {
+      if (triggerName.equals(cfg.name)) {
+        // already has this trigger
+        return autoScalingConfig;
+      }
+    }
+    // need to add
+    triggerProps.computeIfPresent("waitFor", (k, v) -> (long) (cloudConfig.getAutoReplicaFailoverWaitAfterExpiration() / 1000));
+    AutoScalingConfig.TriggerConfig config = new AutoScalingConfig.TriggerConfig(triggerName, triggerProps);
+    autoScalingConfig = autoScalingConfig.withTriggerConfig(config);
+    // need to add SystemLogListener explicitly here
+    autoScalingConfig = AutoScalingHandler.withSystemLogListener(autoScalingConfig, triggerName);
+    return autoScalingConfig;
   }
 
   private static Map<String, AutoScaling.Trigger> loadTriggers(AutoScaling.TriggerFactory triggerFactory, AutoScalingConfig autoScalingConfig) {

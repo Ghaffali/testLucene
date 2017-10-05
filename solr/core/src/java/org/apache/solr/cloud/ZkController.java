@@ -138,7 +138,7 @@ public class ZkController {
 
   private final boolean SKIP_AUTO_RECOVERY = Boolean.getBoolean("solrcloud.skip.autorecovery");
 
-  private final DistributedQueue overseerJobQueue;
+  private final ZkDistributedQueue overseerJobQueue;
   private final OverseerTaskQueue overseerCollectionQueue;
   private final OverseerTaskQueue overseerConfigSetQueue;
 
@@ -1053,7 +1053,7 @@ public class ZkController {
         if (isTlogReplicaAndNotLeader) {
           String commitVersion = ReplicateFromLeader.getCommitVersion(core);
           if (commitVersion != null) {
-            ulog.copyOverOldUpdates(Long.parseLong(commitVersion), true);
+            ulog.copyOverOldUpdates(Long.parseLong(commitVersion));
           }
         }
         // we will call register again after zk expiration and on reload
@@ -1536,7 +1536,7 @@ public class ZkController {
     return coreNodeName;
   }
 
-  public void preRegister(CoreDescriptor cd) {
+  public void preRegister(CoreDescriptor cd, boolean publishState) {
 
     String coreNodeName = getCoreNodeName(cd);
 
@@ -1552,7 +1552,10 @@ public class ZkController {
         cloudDesc.setCoreNodeName(coreNodeName);
       }
 
-      publish(cd, Replica.State.DOWN, false, true);
+      // publishState == false on startup
+      if (publishState || isPublishAsDownOnStartup(cloudDesc)) {
+        publish(cd, Replica.State.DOWN, false, true);
+      }
       String collectionName = cd.getCloudDescriptor().getCollectionName();
       DocCollection collection = zkStateReader.getClusterState().getCollectionOrNull(collectionName);
       log.debug(collection == null ?
@@ -1569,13 +1572,26 @@ public class ZkController {
       throw new ZooKeeperException(SolrException.ErrorCode.SERVER_ERROR, "", e);
     }
 
-    if (cd.getCloudDescriptor().getShardId() == null && needsToBeAssignedShardId(cd, zkStateReader.getClusterState(), coreNodeName)) {
-      doGetShardIdAndNodeNameProcess(cd);
-    } else {
-      // still wait till we see us in local state
-      doGetShardIdAndNodeNameProcess(cd);
-    }
+    doGetShardIdAndNodeNameProcess(cd);
 
+  }
+
+  /**
+   * On startup, the node already published all of its replicas as DOWN,
+   * so in case of legacyCloud=false ( the replica must already present on Zk )
+   * we can skip publish the replica as down
+   * @return Should publish the replica as down on startup
+   */
+  private boolean isPublishAsDownOnStartup(CloudDescriptor cloudDesc) {
+    if (!Overseer.isLegacy(zkStateReader)) {
+      Replica replica = zkStateReader.getClusterState().getCollection(cloudDesc.getCollectionName())
+          .getSlice(cloudDesc.getShardId())
+          .getReplica(cloudDesc.getCoreNodeName());
+      if (replica.getNodeName().equals(getNodeName())) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private void checkStateInZk(CoreDescriptor cd) throws InterruptedException {
@@ -1803,7 +1819,7 @@ public class ZkController {
     }
   }
 
-  public DistributedQueue getOverseerJobQueue() {
+  public ZkDistributedQueue getOverseerJobQueue() {
     return overseerJobQueue;
   }
 

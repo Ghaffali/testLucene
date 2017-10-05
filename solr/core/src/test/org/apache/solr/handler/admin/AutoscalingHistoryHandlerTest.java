@@ -1,3 +1,19 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.solr.handler.admin;
 
 import java.lang.invoke.MethodHandles;
@@ -25,6 +41,7 @@ import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.util.LogLevel;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -33,9 +50,7 @@ import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest.createAutoScalingRequest;
 
-/**
- *
- */
+@LogLevel("org.apache.solr.cloud.autoscaling=DEBUG;org.apache.solr.cloud.Overseer=DEBUG;org.apache.solr.cloud.overseer=DEBUG;")
 public class AutoscalingHistoryHandlerTest extends SolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -160,12 +175,22 @@ public class AutoscalingHistoryHandlerTest extends SolrCloudTestCase {
 
   @Test
   public void testHistory() throws Exception {
+    waitForState("Timed out wait for collection be active", PREFIX + "_collection",
+        clusterShape(1, 3));
+    waitForState("Timed out wait for collection be active", CollectionAdminParams.SYSTEM_COLL,
+        clusterShape(1, 3));
+    // todo remove this workaround after SOLR-9440
+    cluster.getSolrClient().getZkStateReader().registerCore(".system");
+    cluster.getSolrClient().getZkStateReader().registerCore(PREFIX + "_collection");
+
     JettySolrRunner jetty = cluster.startJettySolrRunner();
     String nodeAddedName = jetty.getNodeName();
     boolean await = actionFiredLatch.await(60, TimeUnit.SECONDS);
     assertTrue("action did not execute", await);
     // commit on the history collection
+    Thread.sleep(2000);
     solrClient.commit(CollectionAdminParams.SYSTEM_COLL);
+    Thread.sleep(2000);
     // verify that new docs exist
     ModifiableSolrParams query = params(CommonParams.Q, "type:" + SystemLogListener.DOC_TYPE,
       CommonParams.FQ, "event.source_s:" + PREFIX + "_node_added_trigger");
@@ -175,7 +200,14 @@ public class AutoscalingHistoryHandlerTest extends SolrCloudTestCase {
 
     query = params(CommonParams.QT, CommonParams.AUTOSCALING_HISTORY_PATH,
       AutoscalingHistoryHandler.TRIGGER_PARAM, PREFIX + "_node_added_trigger");
-    docs = solrClient.query(query).getResults();
+    QueryResponse rsp = solrClient.query(query);
+    docs = rsp.getResults();
+    if (docs.size() != 8) {
+      log.info("Cluster state: " + solrClient.getZkStateReader().getClusterState());
+      query = params(CommonParams.QT, CommonParams.AUTOSCALING_HISTORY_PATH);
+      log.info("Wrong response: ", rsp);
+      log.info("Full response: " + solrClient.query(query));
+    }
     assertEquals(8, docs.size());
 
     query = params(CommonParams.QT, CommonParams.AUTOSCALING_HISTORY_PATH,

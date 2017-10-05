@@ -26,7 +26,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import com.google.common.base.Charsets;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
@@ -38,7 +37,6 @@ import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.util.LogLevel;
@@ -48,14 +46,14 @@ import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest.createAutoScalingRequest;
-import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICA;
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.MOVEREPLICA;
 
 /**
  * Test for {@link ComputePlanAction}
  */
-@LogLevel("org.apache.solr.cloud.autoscaling=DEBUG")
+@LogLevel("org.apache.solr.cloud.autoscaling=DEBUG;org.apache.solr.cloud.Overseer=DEBUG;org.apache.solr.cloud.overseer=DEBUG;")
 public class ComputePlanActionTest extends SolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -81,7 +79,7 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
     actionContextPropsRef.set(null);
 
     // remove everything from autoscaling.json in ZK
-    zkClient().setData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, "{}".getBytes(Charsets.UTF_8), true);
+    zkClient().setData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, "{}".getBytes(UTF_8), true);
 
     if (cluster.getJettySolrRunners().size() > NODE_COUNT) {
       // stop some to get to original state
@@ -115,12 +113,6 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
       CollectionAdminRequest.deleteCollection("testNodeWithMultipleReplicasLost").process(solrClient);
     } catch (Exception e) {
       // expected if testNodeWithMultipleReplicasLost hasn't run already
-    }
-
-    try {
-      CollectionAdminRequest.deleteCollection("testSearchRate").process(solrClient);
-    } catch (Exception e) {
-      // expected if testSearchRate hasn't run already
     }
 
     String setClusterPolicyCommand = "{" +
@@ -349,51 +341,6 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
     assertEquals("Expected MOVEREPLICA action after adding node", MOVEREPLICA, CollectionParams.CollectionAction.get(params.get("action")));
     String nodeAdded = params.get("targetNode");
     assertEquals("Unexpected node in computed operation", runner.getNodeName(), nodeAdded);
-  }
-
-  @Test
-  public void testSearchRate() throws Exception {
-    // create an empty node
-    cluster.startJettySolrRunner();
-    CloudSolrClient solrClient = cluster.getSolrClient();
-    String setTriggerCommand = "{" +
-        "'set-trigger' : {" +
-        "'name' : 'search_rate_trigger'," +
-        "'event' : 'searchRate'," +
-        "'waitFor' : '1s'," +
-        "'enabled' : true," +
-        "'rate' : 1.0," +
-        "'actions' : [{'name':'compute_plan', 'class' : 'solr.ComputePlanAction'}," +
-        "{'name':'test','class':'" + ComputePlanActionTest.AssertingTriggerAction.class.getName() + "'}]" +
-        "}}";
-    SolrRequest req = createAutoScalingRequest(SolrRequest.METHOD.POST, setTriggerCommand);
-    NamedList<Object> response = solrClient.request(req);
-    assertEquals(response.get("result").toString(), "success");
-
-    CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection("testSearchRate",
-        "conf",1, 1);
-    create.process(solrClient);
-
-    waitForState("Timed out waiting for replicas of new collection to be active",
-        "testSearchRate", (liveNodes, collectionState) -> collectionState.getReplicas().stream().allMatch(replica -> replica.isActive(liveNodes)));
-
-    // generate some dummy traffic
-    SolrParams query = params(CommonParams.Q, "*:*");
-    for (int i = 0; i < 500; i++) {
-      solrClient.query("testSearchRate", query);
-    }
-
-    assertTrue("Trigger was not fired", triggerFiredLatch.await(10, TimeUnit.SECONDS));
-    assertTrue(fired.get());
-    Map context = actionContextPropsRef.get();
-    assertNotNull(context);
-    List<SolrRequest> operations = (List<SolrRequest>) context.get("operations");
-    assertNotNull("The operations computed by ComputePlanAction should not be null", operations);
-    assertEquals("ComputePlanAction should have computed exactly 1 operation", 1, operations.size());
-    SolrRequest request = operations.get(0);
-    SolrParams params = request.getParams();
-    assertEquals("Expected ADDREPLICA action after exceeding searchRate", ADDREPLICA, CollectionParams.CollectionAction.get(params.get("action")));
-
   }
 
   public static class AssertingTriggerAction implements TriggerAction {
