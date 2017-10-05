@@ -59,7 +59,7 @@ public interface DistribStateManager extends Closeable {
    */
   String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
-  void removeData(String path, int version) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
+  void removeData(String path, int version) throws NoSuchElementException, BadVersionException, IOException, KeeperException, InterruptedException;
 
   void setData(String path, byte[] data, int version) throws BadVersionException, NoSuchElementException, IOException, KeeperException, InterruptedException;
 

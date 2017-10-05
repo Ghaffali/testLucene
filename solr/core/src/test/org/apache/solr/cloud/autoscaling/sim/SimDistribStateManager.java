@@ -32,7 +32,9 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.jute.Record;
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.cloud.ActionThrottle;
@@ -95,11 +97,11 @@ public class SimDistribStateManager implements DistribStateManager {
       }
     }
 
-    public void setData(byte[] data, int version) throws IOException {
+    public void setData(byte[] data, int version) throws BadVersionException, IOException {
       dataLock.lock();
       try {
         if (version != -1 && version != this.version) {
-          throw new IOException("Version mismatch, existing=" + this.version + ", expected=" + version);
+          throw new BadVersionException(version, path);
         }
         if (data != null) {
           this.data = Arrays.copyOf(data, data.length);
@@ -143,13 +145,13 @@ public class SimDistribStateManager implements DistribStateManager {
       }
     }
 
-    public void removeChild(String name, int version) throws NoSuchElementException, IOException {
+    public void removeChild(String name, int version) throws NoSuchElementException, BadVersionException, IOException {
       Node n = children.get(name);
       if (n == null) {
         throw new NoSuchElementException(path + "/" + name);
       }
       if (version != -1 && version != n.version) {
-        throw new IOException("Version mismatch, existing=" + this.version + ", expected=" + version);
+        throw new BadVersionException(version, path);
       }
       children.remove(name);
       for (Watcher w : childrenWatches) {
@@ -165,7 +167,7 @@ public class SimDistribStateManager implements DistribStateManager {
       }
     }
 
-    public void removeEphemeralChildren(String id) throws NoSuchElementException, IOException {
+    public void removeEphemeralChildren(String id) throws NoSuchElementException, BadVersionException, IOException {
       Set<String> kids = new HashSet<>(children.keySet());
       for (String kid : kids) {
         Node n = children.get(kid);
@@ -289,6 +291,8 @@ public class SimDistribStateManager implements DistribStateManager {
     try {
       // remove all my ephemeral nodes
       root.removeEphemeralChildren(id);
+    } catch (BadVersionException e) {
+      // not happening
     } finally {
       multiLock.unlock();
     }
@@ -346,9 +350,9 @@ public class SimDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public String createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, IOException {
+  public String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, NoSuchElementException, IOException {
     if ((CreateMode.EPHEMERAL == mode || CreateMode.PERSISTENT == mode) && hasData(path)) {
-      throw new IOException("Path " + path + " already exists.");
+      throw new AlreadyExistsException(path);
     }
     // check if parent exists
     String relPath = path.charAt(0) == '/' ? path.substring(1) : path;
@@ -368,13 +372,16 @@ public class SimDistribStateManager implements DistribStateManager {
       Node n = traverse(path, true, mode);
       n.setData(data, -1);
       return n.path;
+    } catch (BadVersionException e) {
+      // not happening
+      return null;
     } finally {
       multiLock.unlock();
     }
   }
 
   @Override
-  public void removeData(String path, int version) throws NoSuchElementException, IOException {
+  public void removeData(String path, int version) throws NoSuchElementException, BadVersionException, IOException {
     multiLock.lock();
     try {
       Node n = traverse(path, false, CreateMode.PERSISTENT);
@@ -393,7 +400,7 @@ public class SimDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public void setData(String path, byte[] data, int version) throws NoSuchElementException, IOException {
+  public void setData(String path, byte[] data, int version) throws NoSuchElementException, BadVersionException, IOException {
     multiLock.lock();
     try {
       Node n = traverse(path, false, CreateMode.PERSISTENT);
@@ -408,7 +415,7 @@ public class SimDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public List<OpResult> multi(Iterable<Op> ops) throws IOException {
+  public List<OpResult> multi(Iterable<Op> ops) throws BadVersionException, NoSuchElementException, AlreadyExistsException, IOException, KeeperException, InterruptedException {
     multiLock.lock();
     List<OpResult> res = new ArrayList<>();
     try {

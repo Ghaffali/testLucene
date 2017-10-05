@@ -26,6 +26,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.SolrTestCaseJ4;
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.client.solrj.impl.ZkDistribStateManager;
@@ -144,7 +146,7 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     try {
       stateManager.createData("/listData/foo/bar", new byte[0], CreateMode.PERSISTENT);
       fail("should not succeed");
-    } catch (IOException e) {
+    } catch (AlreadyExistsException e) {
       // expected
     }
   }
@@ -233,7 +235,7 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     try {
       stateManager.setData("/getData/persistentData", secondData, 1);
       fail("should have failed");
-    } catch (IOException e) {
+    } catch (BadVersionException e) {
       // expected
     }
     // watch should not have fired
@@ -262,7 +264,7 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     try {
       stateManager.removeData("/getData/persistentData", vd.getVersion() - 1);
       fail("should have failed");
-    } catch (IOException e) {
+    } catch (BadVersionException e) {
       // expected
     }
     // watch should not have fired
