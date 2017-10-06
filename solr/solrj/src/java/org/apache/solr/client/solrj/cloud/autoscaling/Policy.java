@@ -36,7 +36,6 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Clause.Violation;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
@@ -115,45 +114,44 @@ public class Policy implements MapWriter {
 
   }
 
-  private Policy(Map<String, List<Clause>> policies, List<Clause> clusterPolicy, List<Preference> clusterPreferences,
-                 List<String> params) {
+  private Policy(Map<String, List<Clause>> policies, List<Clause> clusterPolicy, List<Preference> clusterPreferences) {
     this.policies = policies != null ? Collections.unmodifiableMap(policies) : Collections.emptyMap();
     this.clusterPolicy = clusterPolicy != null ? Collections.unmodifiableList(clusterPolicy) : Collections.emptyList();
     this.clusterPreferences = clusterPreferences != null ? Collections.unmodifiableList(clusterPreferences) :
         Collections.singletonList(DEFAULT_PREFERENCE);
-    this.params = params != null ? Collections.unmodifiableList(params) : Collections.emptyList();
+    this.params = Collections.unmodifiableList(buildParams(this.clusterPreferences, this.clusterPolicy, this.policies));
+  }
+
+  private List<String> buildParams(List<Preference> preferences, List<Clause> policy, Map<String, List<Clause>> policies) {
+    final SortedSet<String> paramsOfInterest = new TreeSet<>();
+    preferences.forEach(p -> {
+      if (paramsOfInterest.contains(p.name.name())) {
+        throw new RuntimeException(p.name + " is repeated");
+      }
+      paramsOfInterest.add(p.name.toString());
+    });
+    List<String> newParams = new ArrayList<>(paramsOfInterest);
+    policy.forEach(c -> {
+      c.addTags(newParams);
+    });
+    policies.values().forEach(clauses -> clauses.forEach(c -> c.addTags(newParams)));
+    return newParams;
   }
 
   public Policy withPolicies(Map<String, List<Clause>> policies) {
-    return new Policy(policies, clusterPolicy, clusterPreferences, params);
+    return new Policy(policies, clusterPolicy, clusterPreferences);
   }
 
   public Policy withClusterPreferences(List<Preference> clusterPreferences) {
-    // modify existing params
-    List<String> newParams = new ArrayList<>(params);
-    this.clusterPreferences.forEach(p -> newParams.remove(p.name.toString()));
-    clusterPreferences.forEach(p -> {
-      if (!newParams.contains(p.name.toString())) {
-        newParams.add(p.name.toString());
-      }
-    });
-    return new Policy(policies, clusterPolicy, clusterPreferences, newParams);
+    return new Policy(policies, clusterPolicy, clusterPreferences);
   }
 
   public Policy withClusterPolicy(List<Clause> clusterPolicy) {
-    // modify existing params
-    Set<String> paramsToRemove = new HashSet<>();
-    this.clusterPolicy.forEach(c -> {
-      c.addTags(paramsToRemove);
-    });
-    List<String> newParams = new ArrayList<>(params);
-    newParams.removeAll(paramsToRemove);
-    clusterPolicy.forEach(c -> c.addTags(newParams));
-    return new Policy(policies, clusterPolicy, clusterPreferences, newParams);
+    return new Policy(policies, clusterPolicy, clusterPreferences);
   }
 
   public Policy withParams(List<String> params) {
-    return new Policy(policies, clusterPolicy, clusterPreferences, params);
+    return new Policy(policies, clusterPolicy, clusterPreferences);
   }
 
   public List<Clause> getClusterPolicy() {

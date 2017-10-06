@@ -75,5 +75,4 @@ public interface DistribStateManager extends Closeable {
   default void close() throws IOException {
 
   }
-
 }

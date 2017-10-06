@@ -18,6 +18,7 @@ package org.apache.solr.client.solrj.cloud.autoscaling;
 
 import java.io.IOException;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -37,46 +38,78 @@ public class DelegatingClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public ClusterState.CollectionRef getState(String collection) {
-    return delegate.getState(collection);
+    if (delegate != null) {
+      return delegate.getState(collection);
+    } else {
+      return null;
+    }
   }
 
   @Override
   public Set<String> getLiveNodes() {
-    return delegate.getLiveNodes();
+    if (delegate != null) {
+      return delegate.getLiveNodes();
+    } else {
+      return Collections.emptySet();
+    }
   }
 
   @Override
   public String getAlias(String alias) {
-    return delegate.getAlias(alias);
+    if (delegate != null) {
+      return delegate.getAlias(alias);
+    } else {
+      return null;
+    }
   }
 
   @Override
   public String getCollectionName(String name) {
-    return delegate.getCollectionName(name);
+    if (delegate != null) {
+      return delegate.getCollectionName(name);
+    } else {
+      return null;
+    }
   }
 
   @Override
   public ClusterState getClusterState() throws IOException {
-    return delegate.getClusterState();
+    if (delegate != null) {
+      return delegate.getClusterState();
+    } else {
+      return null;
+    }
   }
 
   @Override
   public Map<String, Object> getClusterProperties() {
-    return delegate.getClusterProperties();
+    if (delegate != null) {
+      return delegate.getClusterProperties();
+    } else {
+      return Collections.emptyMap();
+    }
   }
 
   @Override
   public String getPolicyNameByCollection(String coll) {
-    return delegate.getPolicyNameByCollection(coll);
+    if (delegate != null) {
+      return delegate.getPolicyNameByCollection(coll);
+    } else {
+      return null;
+    }
   }
 
   @Override
   public void connect() {
-    delegate.connect();
+    if (delegate != null) {
+      delegate.connect();
+    }
   }
 
   @Override
   public void close() throws IOException {
-    delegate.close();
+    if (delegate != null) {
+      delegate.close();
+    }
   }
 }
