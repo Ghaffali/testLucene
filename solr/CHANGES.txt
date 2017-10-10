@@ -129,6 +129,8 @@ New Features
   setting spatialContextFactory="Geo3D".  Furthermore, this is the first time Solr has out of the box
   support for polygons. (David Smiley)
 
+* SOLR-11076: New /autoscaling/history API to return past cluster events and actions. (ab)
+
 Bug Fixes
 ----------------------
 
