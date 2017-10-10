@@ -120,6 +120,9 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
    */
   public abstract static class AsyncCollectionAdminRequest extends CollectionAdminRequest<CollectionAdminResponse> {
 
+    protected String asyncId = null;
+    protected boolean waitForFinalState = false;
+
     public AsyncCollectionAdminRequest(CollectionAction action) {
       super(action);
     }
@@ -133,10 +136,12 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
       return UUID.randomUUID().toString();
     }
 
-    protected String asyncId = null;
-
     public String getAsyncId() {
       return asyncId;
+    }
+
+    public void setWaitForFinalState(boolean waitForFinalState) {
+      this.waitForFinalState = waitForFinalState;
     }
 
     /**
@@ -196,6 +201,7 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
       if (asyncId != null) {
         params.set(CommonAdminParams.ASYNC, asyncId);
       }
+      params.set(CommonAdminParams.WAIT_FOR_FINAL_STATE, waitForFinalState);
       return params;
     }
   }
