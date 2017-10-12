@@ -14,7 +14,7 @@ Getting Started
 You need a Java 1.8 VM or later installed.
 In this release, there is an example Solr server including a bundled 
 servlet container in the directory named "example".
-See the Quick Start guide at http://lucene.apache.org/solr/quickstart.html
+See the Solr tutorial at https://lucene.apache.org/solr/guide/solr-tutorial.html
 
 ==================  8.0.0 ==================
 
@@ -31,6 +31,23 @@ Jetty 9.3.20.v20170531
 
 
 (No Changes)
+
+==================  7.2.0 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.20.v20170531
+
+
+(No Changes)
+
 
 ==================  7.1.0 ==================
 
@@ -72,6 +89,9 @@ Upgrade Notes
   robust structure. This simplifies and condenses the code required to implement a new Evaluator and
   makes it much easier for evaluators to handle differing data types (primitives, objects, arrays,
   lists, and so forth). (Dennis Gove)
+
+* SOLR-10962: in the ReplicationHandler the master.commitReserveDuration sub-element is deprecated. Instead
+  please configure a direct commitReserveDuration element for use in all modes (master, slave, cloud).
 
 New Features
 ----------------------
@@ -119,8 +139,58 @@ New Features
 * SOLR-11316: JSON Facet API: min/max aggregations are now supported on single-valued date fields.
   (yonik)
 
+* SOLR-10962: Make ReplicationHandler's commitReserveDuration configurable in SolrCloud mode.
+  (Ramsey Haddad, Christine Poerschke, hossman)
+
+* SOLR-11382: Lucene's Geo3D (surface of sphere & ellipsoid) is now supported on spatial RPT fields by
+  setting spatialContextFactory="Geo3D".  Furthermore, this is the first time Solr has out of the box
+  support for polygons. (David Smiley)
+
+* SOLR-11160: Add normalDistribution, uniformDistribution, sample and kolmogorovSmirnov Stream Evaluators
+  (Joel Bernstein)
+
+* SOLR-11225: Add cumulativeProbability Stream Evaluator (Joel Bernstein)
+
+* SOLR-11241: Add discrete counting and probability Stream Evaluators (Joel Bernstein)
+
+* SOLR-11321: Add ebeAdd, ebeSubtract, ebeDivide, ebeMultiply, dotProduct and cosineSimilarity Stream Evaluators
+  (Joel Bernstein)
+
+* SOLR-11338: Add Kendall's Tau-b rank and Spearmans rank correlation Stream Evaluators (Joel Bernstein)
+
+* SOLR-11339: Add Canberra, Chebyshev, Earth Movers and Manhattan Distance Stream Evaluators (Joel Bernstein)
+
+* SOLR-11342: Add sumDifference and meanDifference Stream Evaluators (Joel Bernstein)
+
+* SOLR-11350: Add primes Stream Evaluator (Joel Bernstein)
+
+* SOLR-11354: Add factorial and movingMedian Stream Evaluators (Joel Bernstein)
+
+* SOLR-11377: Add expMovingAverage (exponential moving average) and binomialCoefficient Stream Evaluators
+  (Mathew Skaria, Joel Bernstein)
+
+* SOLR-11388: Add monteCarlo Stream Evaluator to support Monte Carlo simulations (Joel Bernstein)
+
+* SOLR-11398: Add weibullDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11400: Add logNormalDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11401: Add zipFDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11414: Add gammaDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11415: Add betaDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11436: Add polyfit and polyfitDerivative Stream Evaluators (Joel Bernstein)
+
+* SOLR-11439: Add harmonicFit Stream Evaluator (Joel Bernstein)
+
+* SOLR-11076: New /autoscaling/history API to return past cluster events and actions. (ab)
+
 Bug Fixes
 ----------------------
+
+* SOLR-11423: Overseer queue needs a hard cap (maximum size) that clients respect (Scott Blum, Joshua Humphries, Noble Paul)
 
 * SOLR-10602: Triggers should be able to restore state from old instances when taking over. (shalin)
 
@@ -166,7 +236,7 @@ Bug Fixes
 
 * SOLR-11278: Stopping CDCR should cancel a running bootstrap operation. (Amrit Sarkar, shalin)
 
-* SOLR-11293: Potential data loss in TLOG replicas after replication failures (noble)
+* SOLR-11293: Potential data loss in TLOG replicas when masterVersion equals zero (noble, Cao Manh Dat)
 
 * SOLR-10101: TestLazyCores hangs (Erick Erickson)
 
@@ -178,6 +248,21 @@ Bug Fixes
   were double counted. (Hossman, yonik)
 
 * SOLR-11085: Improve resiliency of autoscaling actions against overseer restarts and operation failures. (shalin)
+
+* SOLR-11297: Message "Lock held by this virtual machine" during startup.  Solr is trying to start some cores twice.
+  (Luiz Armesto, Shawn Heisey, Erick Erickson)
+
+* SOLR-11399: The UnifiedHighlighter was ignoring the hl.fragsize parameter when hl.bs.type=SEPARATOR
+  (Marc Morissette via David Smiley)
+
+* SOLR-11224: SolrStream.close can hit an NPE (Erick Erickson)
+
+* SOLR-11278: Fix a race condition in the CDCR bootstrap process which could lead to bootstraps cancelling itself
+  (Amrit Sarkar, shalin, Varun Thacker)
+
+* SOLR-11425: SolrClientBuilder does not allow infinite timeout (value 0). (Peter Szantai-Kis via Mark Miller)
+
+* SOLR-11449: MoveReplicaCmd mistakenly called registerCollectionStateWatcher on failure. (ab)
 
 Optimizations
 ----------------------
@@ -196,6 +281,10 @@ Optimizations
 * SOLR-11314: FastCharStream: re-use the READ_PAST_EOF exception. (Michael Braun via David Smiley)
 
 * SOLR-8344: Decide default when requested fields are both column and row stored. (Cao Manh Dat, David Smiley)
+
+* SOLR-10285: Skip LEADER messages when there are leader only shards (Cao Manh Dat, Joshua Humphries)
+
+* SOLR-11424: When legacyCloud=false, cores should not publish itself as DOWN on startup. (Cao Manh Dat)
 
 Other Changes
 ----------------------
@@ -222,7 +311,7 @@ Other Changes
 
 * SOLR-10338: Configure SecureRandom non blocking for tests. (Mihaly Toth, hossman, Ishan Chattopadhyaya, via Mark Miller)
 
-* SOLR-10916: Convert tests that extend LuceneTestCase and use MiniSolrCloudCluster 
+* SOLR-10916: Convert tests that extend LuceneTestCase and use MiniSolrCloudCluster
   to instead extend SolrCloudTestCase. (Steve Rowe)
 
 * SOLR-11131: Document 'assert' as a command option in bin/solr, and bin/solr.cmd scripts.
@@ -272,7 +361,31 @@ Other Changes
 * SOLR-11351: Make LTRScoringModel model more extensible. (Christine Poerschke)
 
 * SOLR-10451: Remove contrib/ltr/lib from lib includes in the techproducts example config (sungjunyoung via janhoy)
-   
+
+* SOLR-11306: Fix inaccurate comments on docValues and StrField in the example schemas
+  (Tom Burton-West, Jason Gerlowski, Varun Thacker)
+
+==================  7.0.1 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.14.v20161028
+
+Bug Fixes
+----------------------
+
+* SOLR-11297: Message "Lock held by this virtual machine" during startup.  Solr is trying to start some cores twice.
+  (Luiz Armesto, Shawn Heisey, Erick Erickson)
+
+* SOLR-11406: Solr 7.0 cannot read indexes from 6.x versions. (Shawn Heisey, Steve Rowe)
+
 ==================  7.0.0 ==================
 
 Versions of Major Components
@@ -486,7 +599,7 @@ New Features
 * SOLR-10406: v2 API error messages list the URL request path as /solr/____v2/... when the original path was /v2/... (Cao Manh Dat, noble)
 
 * SOLR-10574: New _default config set replacing basic_configs and data_driven_schema_configs.
-  (Ishan Chattopadhyaya, noble, shalin, hossman, David Smiley, janhoy, Alexandre Rafalovich)
+  (Ishan Chattopadhyaya, noble, shalin, hossman, David Smiley, janhoy, Alexandre Rafalovitch)
 
 * SOLR-10272: Use _default config set if no collection.configName is specified with CREATE (Ishan Chattopadhyaya)
 
@@ -494,7 +607,7 @@ New Features
   to facilitate both search and faceting. AddSchemaFieldsUpdateProcessor now has the ability to add a "copyField" to
   the type mappings, with an optional maxChars limitation. You can also define one typeMappings as default.
   This also solves issues SOLR-8495, SOLR-6966, and SOLR-7058
-  (janhoy, Steve Rowe, hossman, Alexandre Rafalovich, Shawn Heisey, Cao Manh Dat)
+  (janhoy, Steve Rowe, hossman, Alexandre Rafalovitch, Shawn Heisey, Cao Manh Dat)
 
 * SOLR-10123: Upgraded the Analytics Component to version 2.0 which now supports distributed collections, expressions over
   multivalued fields, a new JSON request language, and more. DocValues are now required for any field used in the analytics
@@ -808,6 +921,8 @@ Other Changes
   (Christine Poerschke, Anshum Gupta)
 
 * SOLR-10713: Ignore .pid and .out files in solr working directory (Jason Gerlowski via Mike Drob)
+
+* SOLR-10764: AutoScalingHandler should validate policy and preferences before updating zookeeper. (shalin)
 
 * SOLR-10782: Improve error handling and tests for Snitch and subclasses and general cleanups. (Noble Paul, shalin)
 

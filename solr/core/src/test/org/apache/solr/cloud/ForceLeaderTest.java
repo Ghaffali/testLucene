@@ -205,7 +205,7 @@ public class ForceLeaderTest extends HttpPartitionTest {
   }
 
   protected void unsetLeader(String collection, String slice) throws Exception {
-    DistributedQueue inQueue = Overseer.getStateUpdateQueue(cloudClient.getZkStateReader().getZkClient());
+    ZkDistributedQueue inQueue = Overseer.getStateUpdateQueue(cloudClient.getZkStateReader().getZkClient());
     ZkStateReader zkStateReader = cloudClient.getZkStateReader();
 
     ZkNodeProps m = new ZkNodeProps(Overseer.QUEUE_OPERATION, OverseerAction.LEADER.toLower(),

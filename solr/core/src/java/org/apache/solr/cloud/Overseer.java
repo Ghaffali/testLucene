@@ -65,6 +65,7 @@ public class Overseer implements Closeable {
 
   public static final int STATE_UPDATE_DELAY = 2000;  // delay between cloud state updates
   public static final int STATE_UPDATE_BATCH_SIZE = 10000;
+  public static final int STATE_UPDATE_MAX_QUEUE = 20000;
 
   public static final int NUM_RESPONSES_TO_STORE = 10000;
   public static final String OVERSEER_ELECT = "/overseer_elect";
@@ -156,7 +157,15 @@ public class Overseer implements Closeable {
                 log.debug("processMessage: workQueueSize: {}, message = {}", workQueue.getZkStats().getQueueLength(), message);
                 // force flush to ZK after each message because there is no fallback if workQueue items
                 // are removed from workQueue but fail to be written to ZK
-                clusterState = processQueueItem(message, clusterState, zkStateWriter, false, null);
+                try {
+                  clusterState = processQueueItem(message, clusterState, zkStateWriter, false, null);
+                } catch (Exception e) {
+                  if (isBadMessage(e)) {
+                    log.warn("Exception when process message = {}, consider as bad message and poll out from the queue", message);
+                    workQueue.poll();
+                  }
+                  throw e;
+                }
                 workQueue.poll(); // poll-ing removes the element we got by peek-ing
                 data = workQueue.peek();
               }
@@ -164,33 +173,28 @@ public class Overseer implements Closeable {
               if (hadWorkItems) {
                 clusterState = zkStateWriter.writePendingUpdates();
               }
-            } catch (KeeperException e) {
-              if (e.code() == KeeperException.Code.SESSIONEXPIRED) {
-                log.warn("Solr cannot talk to ZK, exiting Overseer work queue loop", e);
-                return;
-              }
-              log.error("Exception in Overseer work queue loop", e);
+            } catch (KeeperException.SessionExpiredException e) {
+              log.warn("Solr cannot talk to ZK, exiting Overseer work queue loop", e);
+              return;
             } catch (InterruptedException e) {
               Thread.currentThread().interrupt();
               return;
             } catch (Exception e) {
-              log.error("Exception in Overseer work queue loop", e);
+              log.error("Exception in Overseer when process message from work queue, retrying", e);
+              refreshClusterState = true;
+              continue;
             }
           }
 
           byte[] head = null;
           try {
             head = stateUpdateQueue.peek(true);
-          } catch (KeeperException e) {
-            if (e.code() == KeeperException.Code.SESSIONEXPIRED) {
-              log.warn("Solr cannot talk to ZK, exiting Overseer main queue loop", e);
-              return;
-            }
-            log.error("Exception in Overseer main queue loop", e);
+          } catch (KeeperException.SessionExpiredException e) {
+            log.warn("Solr cannot talk to ZK, exiting Overseer main queue loop", e);
+            return;
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
-
           } catch (Exception e) {
             log.error("Exception in Overseer main queue loop", e);
           }
@@ -234,16 +238,9 @@ public class Overseer implements Closeable {
             // clean work queue
             while (workQueue.poll() != null);
 
-          } catch (KeeperException.BadVersionException bve) {
-            log.warn("Bad version writing to ZK using compare-and-set, will force refresh cluster state: {}", bve.getMessage());
-            refreshClusterState = true;
-          } catch (KeeperException e) {
-            if (e.code() == KeeperException.Code.SESSIONEXPIRED) {
-              log.warn("Solr cannot talk to ZK, exiting Overseer main queue loop", e);
-              return;
-            }
-            log.error("Exception in Overseer main queue loop", e);
-            refreshClusterState = true; // force refresh state in case of all errors
+          } catch (KeeperException.SessionExpiredException e) {
+            log.warn("Solr cannot talk to ZK, exiting Overseer main queue loop", e);
+            return;
           } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return;
@@ -257,6 +254,16 @@ public class Overseer implements Closeable {
         //do this in a separate thread because any wait is interrupted in this main thread
         new Thread(this::checkIfIamStillLeader, "OverseerExitThread").start();
       }
+    }
+
+    // Return true whenever the exception thrown by ZkStateWriter is correspond
+    // to a invalid state or 'bad' message (in this case, we should remove that message from queue)
+    private boolean isBadMessage(Exception e) {
+      if (e instanceof KeeperException) {
+        KeeperException ke = (KeeperException) e;
+        return ke.code() == KeeperException.Code.NONODE || ke.code() == KeeperException.Code.NODEEXISTS;
+      }
+      return !(e instanceof InterruptedException);
     }
 
     private ClusterState processQueueItem(ZkNodeProps message, ClusterState clusterState, ZkStateWriter zkStateWriter, boolean enableBatching, ZkStateWriter.ZkWriteCallback callback) throws Exception {
@@ -618,7 +625,7 @@ public class Overseer implements Closeable {
    * @param zkClient the {@link SolrZkClient} to be used for reading/writing to the queue
    * @return a {@link ZkDistributedQueue} object
    */
-  public static DistributedQueue getStateUpdateQueue(final SolrZkClient zkClient) {
+  public static ZkDistributedQueue getStateUpdateQueue(final SolrZkClient zkClient) {
     return getStateUpdateQueue(zkClient, new Stats());
   }
 
@@ -633,7 +640,7 @@ public class Overseer implements Closeable {
    */
   static ZkDistributedQueue getStateUpdateQueue(final SolrZkClient zkClient, Stats zkStats) {
     createOverseerNode(zkClient);
-    return new ZkDistributedQueue(zkClient, "/overseer/queue", zkStats);
+    return new ZkDistributedQueue(zkClient, "/overseer/queue", zkStats, STATE_UPDATE_MAX_QUEUE);
   }
 
   /**

@@ -59,6 +59,8 @@ import static org.apache.solr.client.solrj.cloud.autoscaling.Clause.METRICS_PREF
  */
 public class SolrClientNodeStateProvider implements NodeStateProvider {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
+  //only for debugging
+  public static SolrClientNodeStateProvider INST;
 
 
   private final CloudSolrClient solrClient;
@@ -85,6 +87,7 @@ public class SolrClientNodeStateProvider implements NodeStateProvider {
         replicas.add(new ReplicaInfo(replica.getName(), collName, shard, replica.getProperties()));
       });
     });
+    if(log.isDebugEnabled()) INST = this;
   }
 
   @Override

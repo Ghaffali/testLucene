@@ -327,6 +327,15 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     }).when(stateManagerMock).setData(anyString(), any(byte[].class), anyInt());
     when(stateManagerMock.getData(anyString(), any())).thenAnswer(invocation -> zkMap.get(invocation.getArgument(0)));
 
+//    when(solrZkClientMock.exists(any(String.class), isNull(), anyBoolean())).thenAnswer(invocation -> {
+//      String key = invocation.getArgument(0);
+//      if (zkMap.containsKey(key)) {
+//        return new Stat();
+//      } else {
+//        return null;
+//      }
+//    });
+
     zkMap.put("/configs/myconfig", null);
     
     return liveNodes;

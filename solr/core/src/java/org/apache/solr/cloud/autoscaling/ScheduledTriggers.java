@@ -147,12 +147,22 @@ public class ScheduledTriggers implements Closeable {
     if (isClosed) {
       throw new AlreadyClosedException("ScheduledTriggers has been closed and cannot be used anymore");
     }
-    ScheduledTrigger scheduledTrigger;
+    ScheduledTrigger st;
     try {
-      scheduledTrigger = new ScheduledTrigger(newTrigger, dataProvider, queueStats);
-    } catch (IOException e) {
-      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "exception creating scheduled trigger", e);
+      st = new ScheduledTrigger(newTrigger, dataProvider, queueStats);
+    } catch (Exception e) {
+      if (isClosed) {
+        throw new AlreadyClosedException("ScheduledTriggers has been closed and cannot be used anymore");
+      }
+      if (dataProvider.isClosed()) {
+        log.error("Failed to add trigger " + newTrigger.getName() + " - closing or disconnected from data provider", e);
+      } else {
+        log.error("Failed to add trigger " + newTrigger.getName(), e);
+      }
+      return;
     }
+    ScheduledTrigger scheduledTrigger = st;
+
     ScheduledTrigger old = scheduledTriggers.putIfAbsent(newTrigger.getName(), scheduledTrigger);
     if (old != null) {
       if (old.trigger.equals(newTrigger)) {
@@ -383,9 +393,9 @@ public class ScheduledTriggers implements Closeable {
     boolean replay;
     volatile boolean isClosed;
 
-    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudManager dataProvider, Stats stats) throws IOException {
+    ScheduledTrigger(AutoScaling.Trigger trigger, SolrCloudManager cloudManager, Stats stats) throws IOException {
       this.trigger = trigger;
-      this.queue = new TriggerEventQueue(dataProvider, trigger.getName(), stats);
+      this.queue = new TriggerEventQueue(cloudManager, trigger.getName(), stats);
       this.replay = true;
       this.isClosed = false;
     }
