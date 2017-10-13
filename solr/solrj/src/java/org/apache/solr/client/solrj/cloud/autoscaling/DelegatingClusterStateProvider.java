@@ -25,7 +25,7 @@ import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.common.cloud.ClusterState;
 
 /**
- *
+ * Base class for overriding some behavior of {@link ClusterStateProvider}
  */
 public class DelegatingClusterStateProvider implements ClusterStateProvider {
   protected ClusterStateProvider delegate;

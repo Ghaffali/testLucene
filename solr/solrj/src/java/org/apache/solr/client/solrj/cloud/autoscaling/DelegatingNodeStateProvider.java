@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- *
+ * Base class for overriding some behavior of {@link NodeStateProvider}.
  */
 public class DelegatingNodeStateProvider implements NodeStateProvider {
   private final NodeStateProvider delegate;

@@ -14,19 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.cloud.autoscaling;
+package org.apache.solr.cloud;
 
 import java.io.IOException;
 
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
-import org.apache.solr.cloud.ZkDistributedQueue;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.common.cloud.SolrZkClient;
 
 /**
- *
+ * Implementation of {@link DistributedQueueFactory} that uses ZooKeeper.
  */
-public class ZkDistributedQueueFactory implements SolrCloudManager.DistributedQueueFactory {
+public class ZkDistributedQueueFactory implements DistributedQueueFactory {
   private final SolrZkClient zkClient;
 
   public ZkDistributedQueueFactory(SolrZkClient zkClient) {

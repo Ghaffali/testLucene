@@ -28,6 +28,7 @@ import org.apache.lucene.util.Constants;
 import org.apache.lucene.util.LuceneTestCase;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
@@ -36,6 +37,7 @@ import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.OverseerTaskProcessor;
 import org.apache.solr.cloud.SolrCloudTestCase;
+import org.apache.solr.cloud.ZkDistributedQueueFactory;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -169,7 +171,7 @@ public class TestPolicyCloud extends SolrCloudTestCase {
     CollectionAdminRequest.createCollection("metricsTest", "conf", 1, 1)
         .process(cluster.getSolrClient());
     DocCollection collection = getCollectionState("metricsTest");
-    SolrCloudManager.DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(cluster.getZkClient());
+    DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(cluster.getZkClient());
     SolrCloudManager provider = new SolrClientCloudManager(queueFactory, solrClient);
     List<String> tags = Arrays.asList("metrics:solr.node:ADMIN./admin/authorization.clientErrors:count",
         "metrics:solr.jvm:buffers.direct.Count");

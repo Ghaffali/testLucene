@@ -14,37 +14,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.client.solrj.cloud.autoscaling;
+package org.apache.solr.client.solrj.cloud;
+
+import java.io.IOException;
 
 /**
- * Immutable representation of binary data with version.
+ *
  */
-public class VersionedData {
-  private final int version;
-  private final byte[] data;
-  private final String owner;
+public interface DistributedQueueFactory {
+  DistributedQueue makeQueue(String path) throws IOException;
 
-  /**
-   * Constructor.
-   * @param version version of the data, or -1 if unknown
-   * @param data binary data, or null.
-   * @param owner symbolic identifier of data owner / creator, or null.
-   */
-  public VersionedData(int version, byte[] data, String owner) {
-    this.version = version;
-    this.data = data;
-    this.owner = owner;
-  }
-
-  public int getVersion() {
-    return version;
-  }
-
-  public byte[] getData() {
-    return data;
-  }
-
-  public String getOwner() {
-    return owner;
-  }
+  void removeQueue(String path) throws IOException;
 }

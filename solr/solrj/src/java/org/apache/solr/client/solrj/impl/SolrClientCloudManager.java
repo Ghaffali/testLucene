@@ -37,6 +37,7 @@ import org.apache.http.util.EntityUtils;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;

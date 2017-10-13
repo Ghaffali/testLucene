@@ -28,7 +28,7 @@ import org.apache.zookeeper.OpResult;
 import org.apache.zookeeper.Watcher;
 
 /**
- * Represents a distributed state repository.
+ * This interface represents a distributed state repository.
  */
 public interface DistribStateManager extends Closeable {
 
