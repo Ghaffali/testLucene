@@ -49,8 +49,6 @@ public interface ClusterStateProvider extends Closeable {
 
   /**
    * Obtain the current cluster state.
-   * @return
-   * @throws IOException
    */
   ClusterState getClusterState() throws IOException;
 

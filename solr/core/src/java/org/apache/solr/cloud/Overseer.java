@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.codahale.metrics.Timer;
-import org.apache.solr.client.solrj.cloud.DistributedQueue;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.cloud.autoscaling.OverseerTriggerThread;
@@ -63,8 +62,9 @@ import static org.apache.solr.common.params.CommonParams.ID;
 public class Overseer implements Closeable {
   public static final String QUEUE_OPERATION = "operation";
 
-  public static final int STATE_UPDATE_DELAY = 2000;  // delay between cloud state updates
-  public static final int STATE_UPDATE_BATCH_SIZE = 10000;
+  // System properties are used in tests to make them run fast
+  public static final int STATE_UPDATE_DELAY = Integer.getInteger("solr.OverseerStateUpdateDelay", 2000);  // delay between cloud state updates
+  public static final int STATE_UPDATE_BATCH_SIZE = Integer.getInteger("solr.OverseerStateUpdateBatchSize", 10000);
   public static final int STATE_UPDATE_MAX_QUEUE = 20000;
 
   public static final int NUM_RESPONSES_TO_STORE = 10000;
@@ -285,9 +285,7 @@ public class Overseer implements Closeable {
         timerContext.stop();
       }
       if (zkWriteCommands != null) {
-        for (ZkWriteCommand zkWriteCommand : zkWriteCommands) {
-          clusterState = zkStateWriter.enqueueUpdate(clusterState, zkWriteCommand, callback);
-        }
+        clusterState = zkStateWriter.enqueueUpdate(clusterState, zkWriteCommands, callback);
         if (!enableBatching)  {
           clusterState = zkStateWriter.writePendingUpdates();
         }

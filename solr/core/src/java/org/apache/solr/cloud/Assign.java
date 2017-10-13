@@ -359,7 +359,7 @@ public class Assign {
     List l = (List) coll.get(DocCollection.RULE);
     List<ReplicaPosition> replicaPositions = null;
     if (l != null) {
-      // TODO nocommit: make it so that this method doesn't require access to CC
+      // TODO: make it so that this method doesn't require access to CC
       replicaPositions = getNodesViaRules(clusterState, shard, nrtReplicas, cc, coll, createNodeList, l);
     }
     String policyName = coll.getStr(POLICY);

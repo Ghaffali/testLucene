@@ -72,7 +72,7 @@ public class ExecutePlanAction extends TriggerActionBase {
             String asyncId = event.getSource() + '/' + event.getId() + '/' + counter;
             String znode = saveAsyncId(dataProvider.getDistribStateManager(), event, asyncId);
             log.debug("Saved requestId: {} in znode: {}", asyncId, znode);
-            // nocommit - make sure the async logic below is correct when using dataProvider API !!!
+            // TODO: find a better way of using async calls using dataProvider API !!!
             req.setAsyncId(asyncId);
             SolrResponse asyncResponse = dataProvider.request(req);
             if (asyncResponse.getResponse().get("error") != null) {

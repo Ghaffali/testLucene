@@ -17,8 +17,6 @@
 
 package org.apache.solr.client.solrj.impl;
 
-
-import java.io.IOException;
 import java.net.ConnectException;
 import java.net.SocketException;
 import java.util.Collections;
