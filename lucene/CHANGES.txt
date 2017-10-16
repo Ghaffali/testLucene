@@ -13,9 +13,41 @@ Changes in Runtime Behavior
 
 
 
+======================= Lucene 7.2.0 =======================
+(No Changes)
+
 ======================= Lucene 7.1.0 =======================
 
+Changes in Runtime Behavior
+
+* Resolving of external entities in queryparser/xml/CoreParser is disallowed
+  by default. See SOLR-11477 for details.
+
 New Features
+
+* LUCENE-7970: Add a shape to Geo3D that consists of multiple planes that
+  approximate a true circle, rather than an ellipse, for non-spherical planet models.
+  (Karl Wright, Ignacio Vera)
+  
+* LUCENE-7955: Add support for the concept of "nearest distance" to Geo3D's
+  GeoPath abstraction, which is the distance along the path to the point that is
+  closest to the provided point. (Karl Wright)
+  
+* LUCENE-7906: Add spatial relationships between all currently-defined Geo shapes.
+  (Ignacio Vera)
+
+* LUCENE-7955: Add support for zero-width paths. (Karl Wright)
+
+* LUCENE-7936: Add serialization and deserialization support to Geo3D. (Karl Wright,
+  Ignacio Vera)
+
+* LUCENE-7942: Distance computations now have the ability to accurately aggregate
+  distances, rather than just doing sums. (Karl Wright)
+
+* LUCENE-7934: Add a planet model interface. (Karl Wright)
+
+* LUCENE-7918: Revamp the API for composites so that it's generic and can be used
+  for many kinds of shapes. (Ignacio Vera)
 
 * LUCENE-7621: Add CoveringQuery, a query whose required number of matching
   clauses can be defined per document. (Adrien Grand)
@@ -72,6 +104,12 @@ Optimizations
 
 Bug Fixes
 
+* LUCENE-7967: The GeoDegeneratePoint isWithin() method needed allowance for
+   numerical precision. (Karl Wright)
+
+* LUCENE-7965: GeoBBoxFactory was constructing the wrong shape at the poles
+  if the longitude span was greater than 180 degrees. (Karl Wright)
+
 * LUCENE-7916: Prevent ArrayIndexOutOfBoundsException if ICUTokenizer is used
   with a different ICU JAR version than it is compiled against. Note, this is
   not recommended, lucene-analyzers-icu contains binary data structures
@@ -90,6 +128,9 @@ Bug Fixes
 
 * LUCENE-7957: ConjunctionScorer.getChildren was failing to return all
   child scorers (Adrien Grand, Mike McCandless)
+
+* SOLR-11477: Disallow resolving of external entities in queryparser/xml/CoreParser
+  by default. (Michael Stepankin, Olga Barinova, Uwe Schindler, Christine Poerschke)
 
 Build
 
@@ -115,10 +156,16 @@ Other
 
 * LUCENE-7983: IndexWriter.IndexReaderWarmer is now a functional interface
   instead of an abstract class with a single method (Dawid Weiss)
+  
+* LUCENE-5753: Update TLDs recognized by UAX29URLEmailTokenizer. (Steve Rowe)
 
 
 ======================= Lucene 7.0.1 =======================
-(No Changes)
+
+Bug Fixes
+
+* LUCENE-7957: ConjunctionScorer.getChildren was failing to return all
+  child scorers (Adrien Grand, Mike McCandless)
 
 ======================= Lucene 7.0.0 =======================
 
@@ -338,6 +385,18 @@ Other
 * LUCENE-7876: Avoid calls to LeafReader.fields() and MultiFields.getFields()
   that are trivially replaced by LeafReader.terms() and MultiFields.getTerms()
   (David Smiley)
+
+======================= Lucene 6.6.2 =======================
+
+Changes in Runtime Behavior
+
+* Resolving of external entities in queryparser/xml/CoreParser is disallowed
+  by default. See SOLR-11477 for details.
+
+Bug Fixes
+
+* SOLR-11477: Disallow resolving of external entities in queryparser/xml/CoreParser
+  by default. (Michael Stepankin, Olga Barinova, Uwe Schindler, Christine Poerschke)
 
 ======================= Lucene 6.6.1 =======================
 
