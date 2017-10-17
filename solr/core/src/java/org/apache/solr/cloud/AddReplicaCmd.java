@@ -25,7 +25,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
@@ -35,7 +34,6 @@ import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
-import org.apache.solr.common.cloud.CollectionStateWatcher;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
@@ -230,9 +228,9 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
     };
 
     if (!parallel || waitForFinalState) {
-      CountDownLatch countDownLatch = new CountDownLatch(1);
       if (waitForFinalState) {
-        ActiveReplicaWatcher watcher = new ActiveReplicaWatcher(null, coreName, countDownLatch);
+        CountDownLatch countDownLatch = new CountDownLatch(1);
+        ActiveReplicaWatcher watcher = new ActiveReplicaWatcher(collection, null, Collections.singletonList(coreName), countDownLatch);
         try {
           zkStateReader.registerCollectionStateWatcher(collection, watcher);
           runnable.run();
@@ -258,54 +256,4 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
     );
   }
 
-  public static class ActiveReplicaWatcher implements CollectionStateWatcher {
-    String replicaId;
-    String solrCoreName;
-    CountDownLatch countDownLatch;
-
-    Replica activeReplica;
-
-    public ActiveReplicaWatcher(String replicaId, String solrCoreName, CountDownLatch countDownLatch) {
-      if (replicaId == null && solrCoreName == null) {
-        throw new IllegalArgumentException("Either replicaId or solrCoreName must be set.");
-      }
-      if (replicaId != null && solrCoreName != null) {
-        throw new IllegalArgumentException("Only one of replicaId or solrCoreNAme may be set.");
-      }
-      this.replicaId = replicaId;
-      this.solrCoreName = solrCoreName;
-      this.countDownLatch = countDownLatch;
-    }
-
-    public Replica getActiveReplica() {
-      return activeReplica;
-    }
-
-    @Override
-    public boolean onStateChanged(Set<String> liveNodes, DocCollection collectionState) {
-      if (collectionState == null) { // collection has been deleted - don't wait
-        countDownLatch.countDown();
-        return true;
-      }
-      log.info("-- onStateChanged: " + collectionState);
-      for (Slice slice : collectionState.getSlices()) {
-        for (Replica replica : slice.getReplicas()) {
-          if (replicaId != null && replica.getName().equals(replicaId)) {
-            if (replica.isActive(liveNodes)) {
-              activeReplica = replica;
-              countDownLatch.countDown();
-              return true;
-            }
-          } else if (solrCoreName != null && solrCoreName.equals(replica.getStr(ZkStateReader.CORE_NAME_PROP))) {
-            if (replica.isActive(liveNodes)) {
-              activeReplica = replica;
-              countDownLatch.countDown();
-              return true;
-            }
-          }
-        }
-      }
-      return false;
-    }
-  }
 }

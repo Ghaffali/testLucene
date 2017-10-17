@@ -205,7 +205,9 @@ public abstract class CollectionAdminRequest<T extends CollectionAdminResponse> 
       if (asyncId != null) {
         params.set(CommonAdminParams.ASYNC, asyncId);
       }
-      params.set(CommonAdminParams.WAIT_FOR_FINAL_STATE, waitForFinalState);
+      if (waitForFinalState) {
+        params.set(CommonAdminParams.WAIT_FOR_FINAL_STATE, waitForFinalState);
+      }
       return params;
     }
   }

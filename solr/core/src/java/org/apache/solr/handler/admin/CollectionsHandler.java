@@ -528,15 +528,15 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
     CREATESHARD_OP(CREATESHARD, (req, rsp, h) -> {
       Map<String, Object> map = req.getParams().required().getAll(null,
           COLLECTION_PROP,
-          SHARD_ID_PROP,
-          WAIT_FOR_FINAL_STATE);
+          SHARD_ID_PROP);
       ClusterState clusterState = h.coreContainer.getZkController().getClusterState();
       final String newShardName = SolrIdentifierValidator.validateShardName(req.getParams().get(SHARD_ID_PROP));
       if (!ImplicitDocRouter.NAME.equals(((Map) clusterState.getCollection(req.getParams().get(COLLECTION_PROP)).get(DOC_ROUTER)).get(NAME)))
         throw new SolrException(ErrorCode.BAD_REQUEST, "shards can be added only to 'implicit' collections");
       req.getParams().getAll(map,
           REPLICATION_FACTOR,
-          CREATE_NODE_SET);
+          CREATE_NODE_SET,
+          WAIT_FOR_FINAL_STATE);
       return copyPropertiesWithPrefix(req.getParams(), map, COLL_PROP_PREFIX);
     }),
     DELETEREPLICA_OP(DELETEREPLICA, (req, rsp, h) -> {

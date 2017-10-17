@@ -195,10 +195,9 @@ public class MoveReplicaCmd implements Cmd{
     if(async!=null) addReplicasProps.getProperties().put(ASYNC, async);
     NamedList addResult = new NamedList();
     CountDownLatch countDownLatch = new CountDownLatch(1);
-    ReplaceNodeCmd.RecoveryWatcher watcher = null;
+    ActiveReplicaWatcher watcher = null;
     if (replica.equals(slice.getLeader()) || waitForFinalState) {
-      watcher = new ReplaceNodeCmd.RecoveryWatcher(coll.getName(), slice.getName(),
-          replica.getName(), null, countDownLatch);
+      watcher = new ActiveReplicaWatcher(coll.getName(), Collections.singletonList(replica.getName()), null, countDownLatch);
       ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
     }
     ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
@@ -223,7 +222,7 @@ public class MoveReplicaCmd implements Cmd{
           results.add("failure", errorString);
           return;
         } else {
-          log.debug("Replica " + watcher.getRecoveredReplica() + " is active - deleting the source...");
+          log.debug("Replica " + watcher.getActiveReplicas() + " is active - deleting the source...");
         }
       } finally {
         ocmh.zkStateReader.removeCollectionStateWatcher(coll.getName(), watcher);
