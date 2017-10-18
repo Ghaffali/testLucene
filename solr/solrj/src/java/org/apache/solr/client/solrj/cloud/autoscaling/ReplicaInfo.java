@@ -18,45 +18,45 @@
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.cloud.Replica;
+import org.apache.solr.common.cloud.ZkStateReader;
 
 
 public class ReplicaInfo implements MapWriter {
   final String name;
-  String core, collection, shard;
-  Replica.Type type;
-  Map<String, Object> variables;
+  final String core, collection, shard;
+  final Map<String, Object> variables = new HashMap<>();
 
-  public ReplicaInfo(String name, String coll, String shard, Replica.Type type, Map<String, Object> vals) {
+  public ReplicaInfo(String name, String coreName, String coll, String shard, Map<String, Object> vals) {
     this.name = name;
-    this.variables = vals;
+    this.core = coreName == null ? (String) vals.get("core") : coreName;
+    if (vals != null) {
+      this.variables.putAll(vals);
+    }
     this.collection = coll;
     this.shard = shard;
-    this.type = type;
-    this.core = (String)vals.get("core");
   }
 
   @Override
   public void writeMap(EntryWriter ew) throws IOException {
     ew.put(name, (MapWriter) ew1 -> {
-      if (variables != null) {
-        for (Map.Entry<String, Object> e : variables.entrySet()) {
-          ew1.put(e.getKey(), e.getValue());
-        }
+      for (Map.Entry<String, Object> e : variables.entrySet()) {
+        ew1.put(e.getKey(), e.getValue());
       }
-      if (type != null) ew1.put("type", type.toString());
     });
-  }
-
-  public String getCore() {
-    return core;
   }
 
   public String getName() {
     return name;
+  }
+
+  public String getCore() {
+    return core;
   }
 
   public String getCollection() {
@@ -67,12 +67,36 @@ public class ReplicaInfo implements MapWriter {
     return shard;
   }
 
+  public Replica.Type getType() {
+    Object o = variables.get(ZkStateReader.REPLICA_TYPE);
+    if (o == null) {
+      variables.put(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT);
+      return Replica.Type.NRT;
+    } else if (o instanceof Replica.Type) {
+      return (Replica.Type)o;
+    } else {
+      Replica.Type type = Replica.Type.get(String.valueOf(o).toUpperCase(Locale.ROOT));
+      variables.put(ZkStateReader.REPLICA_TYPE, type);
+      return type;
+    }
+  }
+
+  public Replica.State getState() {
+    if (variables.get(ZkStateReader.STATE_PROP) != null) {
+      return Replica.State.getState((String) variables.get(ZkStateReader.STATE_PROP));
+    } else {
+      // default to ACTIVE
+      variables.put(ZkStateReader.STATE_PROP, Replica.State.ACTIVE.toString());
+      return Replica.State.ACTIVE;
+    }
+  }
+
   public Map<String, Object> getVariables() {
     return variables;
   }
 
   public Object getVariable(String name) {
-    return variables != null ? variables.get(name) : null;
+    return variables.get(name);
   }
 
   @Override
@@ -81,7 +105,6 @@ public class ReplicaInfo implements MapWriter {
         "name='" + name + '\'' +
         ", collection='" + collection + '\'' +
         ", shard='" + shard + '\'' +
-        ", type=" + type +
         ", variables=" + variables +
         '}';
   }

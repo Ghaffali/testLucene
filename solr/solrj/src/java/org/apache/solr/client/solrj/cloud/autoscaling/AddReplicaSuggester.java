@@ -17,13 +17,14 @@
 
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.common.cloud.Replica;
+import org.apache.solr.common.util.Pair;
 
 class AddReplicaSuggester extends Suggester {
 
@@ -34,25 +35,24 @@ class AddReplicaSuggester extends Suggester {
   }
 
   SolrRequest tryEachNode(boolean strict) {
-    Set<String> collections = (Set<String>) hints.get(Hint.COLL);
-    String shard = (String) hints.get(Hint.SHARD);
-    if (collections == null || shard == null) {
+    Set<Pair<String, String>> shards = (Set<Pair<String, String>>) hints.getOrDefault(Hint.COLL_SHARD, Collections.emptySet());
+    if (shards.isEmpty()) {
       throw new RuntimeException("add-replica requires 'collection' and 'shard'");
     } else if (collections != null && collections.size() > 1 && shard != null) {
       throw new RuntimeException("add-replica allows only one combination of 'collection' or 'shard'");
     }
-    for (String coll : collections) {
+    for (Pair<String,String> shard : shards) {
       Replica.Type type = Replica.Type.get((String) hints.get(Hint.REPLICATYPE));
       //iterate through elements and identify the least loaded
-      List<Clause.Violation> leastSeriousViolation = null;
+      List<Violation> leastSeriousViolation = null;
       Integer targetNodeIndex = null;
       for (int i = getMatrix().size() - 1; i >= 0; i--) {
         Row row = getMatrix().get(i);
         if (!row.isLive) continue;
         if (!isAllowed(row.node, Hint.TARGET_NODE)) continue;
-        Row tmpRow = row.addReplica(coll, shard, type);
+        Row tmpRow = row.addReplica(shard.first(), shard.second(), type);
 
-        List<Clause.Violation> errs = testChangedMatrix(strict, getModifiedMatrix(getMatrix(), tmpRow, i));
+        List<Violation> errs = testChangedMatrix(strict, getModifiedMatrix(getMatrix(), tmpRow, i));
         if (!containsNewErrors(errs)) {
           if (isLessSerious(errs, leastSeriousViolation)) {
             leastSeriousViolation = errs;
@@ -62,9 +62,9 @@ class AddReplicaSuggester extends Suggester {
       }
 
       if (targetNodeIndex != null) {// there are no rule violations
-        getMatrix().set(targetNodeIndex, getMatrix().get(targetNodeIndex).addReplica(coll, shard, type));
+        getMatrix().set(targetNodeIndex, getMatrix().get(targetNodeIndex).addReplica(shard.first(), shard.second(), type));
         return CollectionAdminRequest
-            .addReplicaToShard(coll, shard)
+            .addReplicaToShard(shard.first(), shard.second())
             .setType(type)
             .setNode(getMatrix().get(targetNodeIndex).node);
       }

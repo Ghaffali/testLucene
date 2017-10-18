@@ -19,25 +19,26 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.lucene.util.IOUtils;
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
+import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
-import org.apache.solr.common.cloud.SolrZkClient;
+
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,20 +50,23 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   protected final String name;
+  protected final SolrCloudManager dataProvider;
+  protected final DistribStateManager stateManager;
   protected final Map<String, Object> properties = new HashMap<>();
   protected final TriggerEventType eventType;
   protected final int waitForSecond;
-  protected SolrZkClient zkClient;
   protected Map<String,Object> lastState;
-  protected final List<TriggerAction> actions;
   protected final AtomicReference<AutoScaling.TriggerEventProcessor> processorRef = new AtomicReference<>();
+  protected final List<TriggerAction> actions;
   protected final boolean enabled;
   protected boolean isClosed;
 
-  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrZkClient zkClient) {
+
+  protected TriggerBase(TriggerEventType eventType, String name, Map<String, Object> properties, SolrResourceLoader loader, SolrCloudManager dataProvider) {
     this.eventType = eventType;
     this.name = name;
-    this.zkClient = zkClient;
+    this.dataProvider = dataProvider;
+    this.stateManager = dataProvider.getDistribStateManager();
     if (properties != null) {
       this.properties.putAll(properties);
     }
@@ -78,11 +82,14 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     } else {
       actions = Collections.emptyList();
     }
+
     try {
-      if (!zkClient.exists(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, true)) {
-        zkClient.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, false, true);
+      if (!stateManager.hasData(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH)) {
+        stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
       }
-    } catch (KeeperException | InterruptedException e) {
+    } catch (AlreadyExistsException e) {
+      // ignore
+    } catch (InterruptedException | KeeperException | IOException e) {
       LOG.warn("Exception checking ZK path " + ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH, e);
     }
   }
@@ -139,21 +146,10 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   }
 
   @Override
-  public boolean equals(Object obj) {
-    if (obj == null) {
-      return false;
+  public boolean isClosed() {
+    synchronized (this) {
+      return isClosed;
     }
-    if (obj.getClass().equals(this.getClass())) {
-      TriggerBase that = (TriggerBase) obj;
-      return this.name.equals(that.name)
-          && this.properties.equals(that.properties);
-    }
-    return false;
-  }
-
-  @Override
-  public int hashCode() {
-    return Objects.hash(name, properties);
   }
 
   @Override
@@ -165,10 +161,21 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
   }
 
   @Override
-  public boolean isClosed() {
-    synchronized (this) {
-      return isClosed;
+  public int hashCode() {
+    return Objects.hash(name, properties);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null) {
+      return false;
     }
+    if (obj.getClass().equals(this.getClass())) {
+      TriggerBase that = (TriggerBase) obj;
+      return this.name.equals(that.name)
+          && this.properties.equals(that.properties);
+    }
+    return false;
   }
 
   /**
@@ -193,15 +200,15 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     byte[] data = Utils.toJSON(state);
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
-      if (zkClient.exists(path, true)) {
+      if (stateManager.hasData(path)) {
         // update
-        zkClient.setData(path, data, -1, true);
+        stateManager.setData(path, data, -1);
       } else {
         // create
-        zkClient.create(path, data, CreateMode.PERSISTENT, true);
+        stateManager.createData(path, data, CreateMode.PERSISTENT);
       }
       lastState = state;
-    } catch (KeeperException | InterruptedException e) {
+    } catch (InterruptedException | BadVersionException | AlreadyExistsException | IOException | KeeperException e) {
       LOG.warn("Exception updating trigger state '" + path + "'", e);
     }
   }
@@ -211,10 +218,11 @@ public abstract class TriggerBase implements AutoScaling.Trigger {
     byte[] data = null;
     String path = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/" + getName();
     try {
-      if (zkClient.exists(path, true)) {
-        data = zkClient.getData(path, null, new Stat(), true);
+      if (stateManager.hasData(path)) {
+        VersionedData versionedData = stateManager.getData(path);
+        data = versionedData.getData();
       }
-    } catch (KeeperException | InterruptedException e) {
+    } catch (Exception e) {
       LOG.warn("Exception getting trigger state '" + path + "'", e);
     }
     if (data != null) {

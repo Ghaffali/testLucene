@@ -13,7 +13,77 @@ Changes in Runtime Behavior
 
 
 
+======================= Lucene 7.2.0 =======================
+
+Bug Fixes
+
+* LUCENE-7991: KNearestNeighborDocumentClassifier.knnSearch no longer applies
+  a previous boosted field's factor to subsequent unboosted fields.
+  (Christine Poerschke)
+
 ======================= Lucene 7.1.0 =======================
+
+Changes in Runtime Behavior
+
+* Resolving of external entities in queryparser/xml/CoreParser is disallowed
+  by default. See SOLR-11477 for details.
+
+New Features
+
+* LUCENE-7970: Add a shape to Geo3D that consists of multiple planes that
+  approximate a true circle, rather than an ellipse, for non-spherical planet models.
+  (Karl Wright, Ignacio Vera)
+  
+* LUCENE-7955: Add support for the concept of "nearest distance" to Geo3D's
+  GeoPath abstraction, which is the distance along the path to the point that is
+  closest to the provided point. (Karl Wright)
+  
+* LUCENE-7906: Add spatial relationships between all currently-defined Geo shapes.
+  (Ignacio Vera)
+
+* LUCENE-7955: Add support for zero-width paths. (Karl Wright)
+
+* LUCENE-7936: Add serialization and deserialization support to Geo3D. (Karl Wright,
+  Ignacio Vera)
+
+* LUCENE-7942: Distance computations now have the ability to accurately aggregate
+  distances, rather than just doing sums. (Karl Wright)
+
+* LUCENE-7934: Add a planet model interface. (Karl Wright)
+
+* LUCENE-7918: Revamp the API for composites so that it's generic and can be used
+  for many kinds of shapes. (Ignacio Vera)
+
+* LUCENE-7621: Add CoveringQuery, a query whose required number of matching
+  clauses can be defined per document. (Adrien Grand)
+
+* LUCENE-7927: Add LongValueFacetCounts, to compute facet counts for individual
+  numeric values (Mike McCandless)
+
+* LUCENE-7940: Add BengaliAnalyzer. (Md. Abdulla-Al-Sun via Robert Muir)
+
+* LUCENE-7392: Add point based LatLonBoundingBox as new RangeField Type.
+  (Nick Knize)
+
+* LUCENE-7951: Spatial-extras has much better Geo3d support by implementing Spatial4j
+  abstractions: SpatialContextFactory, ShapeFactory, BinaryCodec, DistanceCalculator.
+  (Ignacio Vera, David Smiley)
+
+* LUCENE-7973: Update dictionary version for Ukrainian analyzer to 3.9.0 (Andriy
+  Rysin via Dawid Weiss)
+  
+* LUCENE-7974: Add FloatPointNearestNeighbor, an N-dimensional FloatPoint
+  K-nearest-neighbor search implementation.  (Steve Rowe)
+
+* LUCENE-7975: Change the default taxonomy facets cache to a faster
+  byte[] (UTF-8) based cache.  (Mike McCandless)
+
+* LUCENE-7972: DirectoryTaxonomyReader, in Lucene's facet module, now
+  implements Accountable, so you can more easily track how much heap
+  it's using.  (Mike McCandless)
+
+* LUCENE-7982: A new NormsFieldExistsQuery matches documents that have
+  norms in a specified field (Colin Goodheart-Smithe via Mike McCandless)
 
 Optimizations
 
@@ -28,12 +98,79 @@ Optimizations
   than 8x greater than the cost of the lead iterator in order to use doc values.
   (Murali Krishna P via Adrien Grand)
 
+* LUCENE-7925: Collapse duplicate SHOULD or MUST clauses by summing up their
+  boosts. (Adrien Grand)
+
+* LUCENE-7939: MinShouldMatchSumScorer now leverages two-phase iteration in
+  order to be faster when used in conjunctions. (Adrien Grand)
+
+* LUCENE-7827: AnalyzingInfixSuggester doesn't create "textgrams" 
+  when minPrefixChar=0 (Mikhail Khludnev)
+
 Bug Fixes
+
+* LUCENE-7967: The GeoDegeneratePoint isWithin() method needed allowance for
+   numerical precision. (Karl Wright)
+
+* LUCENE-7965: GeoBBoxFactory was constructing the wrong shape at the poles
+  if the longitude span was greater than 180 degrees. (Karl Wright)
 
 * LUCENE-7916: Prevent ArrayIndexOutOfBoundsException if ICUTokenizer is used
   with a different ICU JAR version than it is compiled against. Note, this is
   not recommended, lucene-analyzers-icu contains binary data structures
   specific to ICU/Unicode versions it is built against. (Chris Koenig, Robert Muir)
+
+* LUCENE-7891: Lucene's taxonomy facets now uses a non-buggy LRU cache
+  by default.  (Jan-Willem van den Broek via Mike McCandless)
+
+* LUCENE-7959: Improve NativeFSLockFactory's exception message if it cannot create
+  write.lock for an empty index due to bad permissions/read-only filesystem/etc.
+  (Erick Erickson, Shawn Heisey, Robert Muir)
+
+* LUCENE-7968: AnalyzingSuggester would sometimes order suggestions incorrectly,
+  it did not properly break ties on the surface forms when both the weights and
+  the analyzed forms were equal. (Robert Muir)
+
+* LUCENE-7957: ConjunctionScorer.getChildren was failing to return all
+  child scorers (Adrien Grand, Mike McCandless)
+
+* SOLR-11477: Disallow resolving of external entities in queryparser/xml/CoreParser
+  by default. (Michael Stepankin, Olga Barinova, Uwe Schindler, Christine Poerschke)
+
+Build
+
+* SOLR-11181: Switch order of maven artifact publishing procedure: deploy first
+  instead of locally installing first, to workaround a double repository push of
+  *-sources.jar and *-javadoc.jar files.  (Lynn Monson via Steve Rowe)
+  
+* LUCENE-6673: Maven build fails for target javadoc:jar.  
+  (Ramkumar Aiyengar, Daniel Collins via Steve Rowe)
+
+* LUCENE-7985: Upgrade forbiddenapis to 2.4.1.  (Uwe Schindler)
+
+Other
+
+* LUCENE-7948, LUCENE-7937: Upgrade randomizedtesting to 2.5.3 (minor fixes 
+  in test filtering for IDEs). (Mike Sokolov, Dawid Weiss)
+
+* LUCENE-7933: LongBitSet now validates the numBits parameter (Won
+  Jonghoon, Mike McCandless)
+
+* LUCENE-7978: Add some more documentation about setting up build
+  environment.  (Anton R. Yuste via Uwe Schindler)
+
+* LUCENE-7983: IndexWriter.IndexReaderWarmer is now a functional interface
+  instead of an abstract class with a single method (Dawid Weiss)
+  
+* LUCENE-5753: Update TLDs recognized by UAX29URLEmailTokenizer. (Steve Rowe)
+
+
+======================= Lucene 7.0.1 =======================
+
+Bug Fixes
+
+* LUCENE-7957: ConjunctionScorer.getChildren was failing to return all
+  child scorers (Adrien Grand, Mike McCandless)
 
 ======================= Lucene 7.0.0 =======================
 
@@ -63,6 +200,9 @@ New Features
 * LUCENE-7823: Pure query based naive bayes classifier using BM25 scores (Tommaso Teofili)
 
 * LUCENE-7838: Knn classifier based on fuzzified term queries (Tommaso Teofili)
+
+* LUCENE-7855: Added advanced options of the Wikipedia tokenizer to its factory.
+  (Juan Pedro via Adrien Grand)
 
 API Changes
 
@@ -155,6 +295,16 @@ Bug Fixes
   functions (Operations.isFinite and Operations.topsortState) to prevent
   large automaton to overflow the stack (Robert Muir, Adrien Grand, Jim Ferenczi)
 
+* LUCENE-7864: IndexMergeTool is not using intermediate hard links (even
+  if possible). (Dawid Weiss)
+
+* LUCENE-7956: Fixed potential stack overflow error in ICUNormalizer2CharFilter.
+  (Adrien Grand)
+
+* LUCENE-7963: Remove useless getAttribute() in DefaultIndexingChain that
+  causes performance drop, introduced by LUCENE-7626.  (Daniel Mitterdorfer
+  via Uwe Schindler)
+
 Improvements
 
 * LUCENE-7489: Better storage of sparse doc-values fields with the default
@@ -165,6 +315,8 @@ Improvements
 
 * LUCENE-7901: Original Highlighter now eagerly throws an exception if you
   provide components that are null. (Jason Gerlowski, David Smiley)
+
+* LUCENE-7841: Normalize ґ to г in Ukrainian analyzer. (Andriy Rysin via Dawid Weiss)
 
 Optimizations
 
@@ -189,6 +341,10 @@ Optimizations
   the strategy is marked as pointsOnly, the results is a TermQuery. (David Smiley)
 
 * LUCENE-7874: DisjunctionMaxQuery rewrites to a BooleanQuery when tiebreaker is set to 1. (Jim Ferenczi)
+
+* LUCENE-7828: Speed up range queries on range fields by improving how we
+  compute the relation between the query and inner nodes of the BKD tree.
+  (Adrien Grand)
 
 Other
 
@@ -227,27 +383,7 @@ Other
 * LUCENE-7773: Remove unused/deprecated token types from StandardTokenizer.
   (Ahmet Arslan via Steve Rowe)
 
-======================= Lucene 6.7.0 =======================
-
-New Features
-
-* LUCENE-7855: Added advanced options of the Wikipedia tokenizer to its factory.
-  (Juan Pedro via Adrien Grand)
-
-Bug Fixes
-
-* LUCENE-7864: IndexMergeTool is not using intermediate hard links (even 
-  if possible). (Dawid Weiss)
-
-* LUCENE-7869: Changed MemoryIndex to sort 1d points. In case of 1d points, the PointInSetQuery.MergePointVisitor expects
-  that these points are visited in ascending order. The memory index doesn't do this and this can result in document
-  with multiple points that should match to not match. (Martijn van Groningen)
-
-* LUCENE-7878: Fix query builder to keep the SHOULD clause that wraps multi-word synonyms. (Jim Ferenczi)
-
-Other
-
-* LUCENE-7800: Remove code that potentially rethrows checked exceptions 
+* LUCENE-7800: Remove code that potentially rethrows checked exceptions
   from methods that don't declare them ("sneaky throw" hack). (Robert Muir,
   Uwe Schindler, Dawid Weiss)
 
@@ -255,15 +391,27 @@ Other
   that are trivially replaced by LeafReader.terms() and MultiFields.getTerms()
   (David Smiley)
 
-Improvements
+======================= Lucene 6.6.2 =======================
 
-* LUCENE-7841: Normalize ґ to г in Ukrainian analyzer. (Andriy Rysin via Dawid Weiss)
+Changes in Runtime Behavior
 
-Optimizations
+* Resolving of external entities in queryparser/xml/CoreParser is disallowed
+  by default. See SOLR-11477 for details.
 
-* LUCENE-7828: Speed up range queries on range fields by improving how we
-  compute the relation between the query and inner nodes of the BKD tree.
-  (Adrien Grand)
+Bug Fixes
+
+* SOLR-11477: Disallow resolving of external entities in queryparser/xml/CoreParser
+  by default. (Michael Stepankin, Olga Barinova, Uwe Schindler, Christine Poerschke)
+
+======================= Lucene 6.6.1 =======================
+
+Bug Fixes
+
+* LUCENE-7869: Changed MemoryIndex to sort 1d points. In case of 1d points, the PointInSetQuery.MergePointVisitor expects
+  that these points are visited in ascending order. The memory index doesn't do this and this can result in document
+  with multiple points that should match to not match. (Martijn van Groningen)
+
+* LUCENE-7878: Fix query builder to keep the SHOULD clause that wraps multi-word synonyms. (Jim Ferenczi)
 
 ======================= Lucene 6.6.0 =======================
 
@@ -1553,6 +1701,9 @@ Other
 
 * LUCENE-7095: Add point values support to the numeric field query time join.
   (Martijn van Groningen, Mike McCandless)
+
+======================= Lucene 5.5.5 =======================
+(No Changes)
 
 ======================= Lucene 5.5.4 =======================
 

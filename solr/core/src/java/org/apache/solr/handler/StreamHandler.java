@@ -16,9 +16,6 @@
  */
 package org.apache.solr.handler;
 
-import static org.apache.solr.common.params.CommonParams.ID;
-import static org.apache.solr.common.params.CommonParams.SORT;
-
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -69,6 +66,9 @@ import org.apache.solr.security.PermissionNameProvider;
 import org.apache.solr.util.plugin.SolrCoreAware;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.common.params.CommonParams.ID;
+import static org.apache.solr.common.params.CommonParams.SORT;
 
 public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, PermissionNameProvider {
 
@@ -197,11 +197,18 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
         .withFunctionName("array", ArrayEvaluator.class)
         .withFunctionName("col", ColumnEvaluator.class)
         .withFunctionName("conv", ConvolutionEvaluator.class)
-        .withFunctionName("copyOf", CopyOfEvaluator.class)
         .withFunctionName("copyOfRange", CopyOfRangeEvaluator.class)
+        .withFunctionName("copyOf", CopyOfEvaluator.class)
         .withFunctionName("cov", CovarianceEvaluator.class)
+        .withFunctionName("corr", CorrelationEvaluator.class)
+        .withFunctionName("kendallsCorr", KendallsCorrelationEvaluator.class)
+        .withFunctionName("spearmansCorr", SpearmansCorrelationEvaluator.class)
         .withFunctionName("describe", DescribeEvaluator.class)
-        .withFunctionName("distance", DistanceEvaluator.class)
+        .withFunctionName("distance", EuclideanDistanceEvaluator.class)
+        .withFunctionName("manhattanDistance", ManhattanDistanceEvaluator.class)
+        .withFunctionName("earthMoversDistance", EarthMoversDistanceEvaluator.class)
+        .withFunctionName("canberraDistance", CanberraDistanceEvaluator.class)
+        .withFunctionName("chebyshevDistance", ChebyshevDistanceEvaluator.class)
         .withFunctionName("empiricalDistribution", EmpiricalDistributionEvaluator.class)
         .withFunctionName("finddelay", FindDelayEvaluator.class)
         .withFunctionName("hist", HistogramEvaluator.class)
@@ -215,7 +222,8 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
         .withFunctionName("rev", ReverseEvaluator.class)
         .withFunctionName("scale", ScaleEvaluator.class)
         .withFunctionName("sequence", SequenceEvaluator.class)
-        .withFunctionName("addAll", AddAllEvaluator.class)
+        .withFunctionName("addAll", AppendEvaluator.class)
+        .withFunctionName("append", AppendEvaluator.class)
         .withFunctionName("residuals", ResidualsEvaluator.class)
         .withFunctionName("plot", PlotStream.class)
         .withFunctionName("normalDistribution", NormalDistributionEvaluator.class)
@@ -225,11 +233,43 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
         .withFunctionName("ks", KolmogorovSmirnovEvaluator.class)
         .withFunctionName("asc", AscEvaluator.class)
         .withFunctionName("cumulativeProbability", CumulativeProbabilityEvaluator.class)
+        .withFunctionName("ebeAdd", EBEAddEvaluator.class)
+        .withFunctionName("ebeSubtract", EBESubtractEvaluator.class)
+        .withFunctionName("ebeMultiply", EBEMultiplyEvaluator.class)
+        .withFunctionName("ebeDivide", EBEDivideEvaluator.class)
+        .withFunctionName("dotProduct", DotProductEvaluator.class)
+        .withFunctionName("cosineSimilarity", CosineSimilarityEvaluator.class)
+        .withFunctionName("freqTable", FrequencyTableEvaluator.class)
+        .withFunctionName("uniformIntegerDistribution", UniformIntegerDistributionEvaluator.class)
+        .withFunctionName("binomialDistribution", BinomialDistributionEvaluator.class)
+        .withFunctionName("poissonDistribution", PoissonDistributionEvaluator.class)
+        .withFunctionName("enumeratedDistribution", EnumeratedDistributionEvaluator.class)
+        .withFunctionName("probability", ProbabilityEvaluator.class)
+        .withFunctionName("sumDifference", SumDifferenceEvaluator.class)
+        .withFunctionName("meanDifference", MeanDifferenceEvaluator.class)
+        .withFunctionName("primes", PrimesEvaluator.class)
+        .withFunctionName("factorial", FactorialEvaluator.class)
+        .withFunctionName("movingMedian", MovingMedianEvaluator.class)
+        .withFunctionName("binomialCoefficient", BinomialCoefficientEvaluator.class)
+        .withFunctionName("expMovingAvg", ExponentialMovingAverageEvaluator.class)
+        .withFunctionName("monteCarlo", MonteCarloEvaluator.class)
+        .withFunctionName("constantDistribution", ConstantDistributionEvaluator.class)
+        .withFunctionName("weibullDistribution", WeibullDistributionEvaluator.class)
+        .withFunctionName("mean", MeanEvaluator.class)
+        .withFunctionName("mode", ModeEvaluator.class)
+        .withFunctionName("logNormalDistribution", LogNormalDistributionEvaluator.class)
+        .withFunctionName("zipFDistribution", ZipFDistributionEvaluator.class)
+        .withFunctionName("gammaDistribution", GammaDistributionEvaluator.class)
+        .withFunctionName("betaDistribution", BetaDistributionEvaluator.class)
+        .withFunctionName("polyfit", PolyFitEvaluator.class)
+        .withFunctionName("polyfitDerivative", PolyFitDerivativeEvaluator.class)
+        .withFunctionName("harmonicFit", HarmonicFitEvaluator.class)
 
         // Boolean Stream Evaluators
+
         .withFunctionName("and", AndEvaluator.class)
         .withFunctionName("eor", ExclusiveOrEvaluator.class)
-        .withFunctionName("eq", EqualsEvaluator.class)
+        .withFunctionName("eq", EqualToEvaluator.class)
         .withFunctionName("gt", GreaterThanEvaluator.class)
         .withFunctionName("gteq", GreaterThanEqualToEvaluator.class)
         .withFunctionName("lt", LessThanEvaluator.class)
@@ -275,7 +315,6 @@ public class StreamHandler extends RequestHandlerBase implements SolrCoreAware, 
         .withFunctionName("cbrt", CubedRootEvaluator.class)
         .withFunctionName("coalesce", CoalesceEvaluator.class)
         .withFunctionName("uuid", UuidEvaluator.class)
-        .withFunctionName("corr", CorrelationEvaluator.class)
 
         // Conditional Stream Evaluators
         .withFunctionName("if", IfThenElseEvaluator.class)

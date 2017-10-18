@@ -36,16 +36,17 @@ import java.util.stream.Stream;
 
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.Cell;
 import org.apache.solr.client.solrj.cloud.autoscaling.Clause;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
+import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.client.solrj.cloud.autoscaling.Preference;
-import org.apache.solr.client.solrj.cloud.autoscaling.Row;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
+import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
+import org.apache.solr.cloud.ZkDistributedQueueFactory;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -214,32 +215,8 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     try (CloudSolrClient build = new CloudSolrClient.Builder()
         .withHttpClient(container.getUpdateShardHandler().getHttpClient())
         .withZkHost(container.getZkController().getZkServerAddress()).build()) {
-      Policy.Session session = policy.createSession(new SolrClientDataProvider(build));
-      List<Row> sorted = session.getSorted();
-      List<Clause.Violation> violations = session.getViolations();
-
-      List<Preference> clusterPreferences = policy.getClusterPreferences();
-
-      List<Map<String, Object>> sortedNodes = new ArrayList<>(sorted.size());
-      for (Row row : sorted) {
-        Map<String, Object> map = Utils.makeMap("node", row.node);
-        for (Cell cell : row.getCells()) {
-          for (Preference clusterPreference : clusterPreferences) {
-            Policy.SortParam name = clusterPreference.getName();
-            if (cell.getName().equalsIgnoreCase(name.name())) {
-              map.put(name.name(), cell.getValue());
-              break;
-            }
-          }
-        }
-        sortedNodes.add(map);
-      }
-
-      Map<String, Object> map = new HashMap<>(2);
-      map.put("sortedNodes", sortedNodes);
-
-      map.put("violations", violations);
-      rsp.getValues().add("diagnostics", map);
+      DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
+      rsp.getValues().add("diagnostics", PolicyHelper.getDiagnostics(policy, new SolrClientCloudManager(queueFactory, build)));
     }
   }
 
@@ -459,7 +436,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     if (op.hasError()) return currentConfig;
 
     // validate that we can load the listener class
-    // todo nocommit -- what about MemClassLoader?
+    // todo allow creation from blobstore
     try {
       container.getResourceLoader().findClass(listenerClass, TriggerListener.class);
     } catch (Exception e) {
@@ -518,7 +495,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     }
 
     // validate that we can load all the actions
-    // todo nocommit -- what about MemClassLoader?
+    // todo allow creation from blobstore
     for (Map<String, String> action : actions) {
       if (!action.containsKey(NAME) || !action.containsKey(CLASS)) {
         op.addError("No 'name' or 'class' specified for action: " + action);
@@ -542,7 +519,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
   private static String fullName = SystemLogListener.class.getName();
   private static String solrName = "solr." + SystemLogListener.class.getSimpleName();
 
-  private static AutoScalingConfig withSystemLogListener(AutoScalingConfig autoScalingConfig, String triggerName) {
+  static AutoScalingConfig withSystemLogListener(AutoScalingConfig autoScalingConfig, String triggerName) {
     Map<String, AutoScalingConfig.TriggerListenerConfig> configs = autoScalingConfig.getTriggerListenerConfigs();
     for (AutoScalingConfig.TriggerListenerConfig cfg : configs.values()) {
       if (triggerName.equals(cfg.trigger)) {
@@ -638,7 +615,9 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     try (CloudSolrClient build = new CloudSolrClient.Builder()
         .withHttpClient(container.getUpdateShardHandler().getHttpClient())
         .withZkHost(container.getZkController().getZkServerAddress()).build()) {
-      Policy.Session session = autoScalingConf.getPolicy().createSession(new SolrClientDataProvider(build));
+      DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
+      Policy.Session session = autoScalingConf.getPolicy()
+          .createSession(new SolrClientCloudManager(queueFactory, build));
       log.debug("Verified autoscaling configuration");
     }
   }

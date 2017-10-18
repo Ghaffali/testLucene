@@ -30,13 +30,10 @@ import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.NoneSuggester;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
-import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.AutoScalingParams;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
+import org.apache.solr.client.solrj.cloud.autoscaling.Suggester;
 import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.core.CoreContainer;
-import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,40 +50,30 @@ public class ComputePlanAction extends TriggerActionBase {
   @Override
   public void process(TriggerEvent event, ActionContext context) {
     log.debug("-- processing event: {} with context properties: {}", event, context.getProperties());
-    CoreContainer container = context.getCoreContainer();
+    SolrCloudManager cloudManager = context.getCloudManager();
     try {
-      try (CloudSolrClient cloudSolrClient = new CloudSolrClient.Builder()
-          .withZkHost(container.getZkController().getZkServerAddress())
-          .withHttpClient(container.getUpdateShardHandler().getHttpClient())
-          .build()) {
-        ZkStateReader zkStateReader = cloudSolrClient.getZkStateReader();
-        AutoScalingConfig autoScalingConf = zkStateReader.getAutoScalingConfig();
-        if (autoScalingConf.isEmpty()) {
-          log.error("Action: " + getName() + " executed but no policy is configured");
-          return;
-        }
-        Policy policy = autoScalingConf.getPolicy();
-        Policy.Session session = policy.createSession(new SolrClientDataProvider(cloudSolrClient));
-        Policy.Suggester suggester = getSuggester(session, event, zkStateReader);
-        while (true) {
-          SolrRequest operation = suggester.getOperation();
-          if (operation == null) break;
-          log.info("Computed Plan: {}", operation.getParams());
-          Map<String, Object> props = context.getProperties();
-          props.compute("operations", (k, v) -> {
-            List<SolrRequest> operations = (List<SolrRequest>) v;
-            if (operations == null) operations = new ArrayList<>();
-            operations.add(operation);
-            return operations;
-          });
-          session = suggester.getSession();
-          suggester = getSuggester(session, event, zkStateReader);
-        }
+      AutoScalingConfig autoScalingConf = cloudManager.getDistribStateManager().getAutoScalingConfig();
+      if (autoScalingConf.isEmpty()) {
+        log.error("Action: " + getName() + " executed but no policy is configured");
+        return;
       }
-    } catch (KeeperException e) {
-      log.error("ZooKeeperException while processing event: " + event, e);
-    } catch (InterruptedException e) {
-      log.error("Interrupted while processing event: " + event, e);
+      Policy policy = autoScalingConf.getPolicy();
+      Policy.Session session = policy.createSession(cloudManager);
+      Suggester suggester = getSuggester(session, event, cloudManager);
+      while (true) {
+        SolrRequest operation = suggester.getOperation();
+        if (operation == null) break;
+        log.info("Computed Plan: {}", operation.getParams());
+        Map<String, Object> props = context.getProperties();
+        props.compute("operations", (k, v) -> {
+          List<SolrRequest> operations = (List<SolrRequest>) v;
+          if (operations == null) operations = new ArrayList<>();
+          operations.add(operation);
+          return operations;
+        });
+        session = suggester.getSession();
+        suggester = getSuggester(session, event, cloudManager);
+      }
     } catch (IOException e) {
       log.error("IOException while processing event: " + event, e);
     } catch (Exception e) {
@@ -94,18 +81,18 @@ public class ComputePlanAction extends TriggerActionBase {
     }
   }
 
-  protected Policy.Suggester getSuggester(Policy.Session session, TriggerEvent event, ZkStateReader zkStateReader) {
-    Policy.Suggester suggester;
+  protected Suggester getSuggester(Policy.Session session, TriggerEvent event, SolrCloudManager cloudManager) {
+    Suggester suggester;
     switch (event.getEventType()) {
       case NODEADDED:
         suggester = session.getSuggester(CollectionParams.CollectionAction.MOVEREPLICA)
-            .hint(Policy.Suggester.Hint.TARGET_NODE, event.getProperty(TriggerEvent.NODE_NAMES));
-        log.debug("Created suggester with targetNode: {}", event.getProperty(TriggerEvent.NODE_NAMES));
+            .hint(Suggester.Hint.TARGET_NODE, event.getProperty(TriggerEvent.NODE_NAMES));
+        log.debug("NODEADDED Created suggester with targetNode: {}", event.getProperty(TriggerEvent.NODE_NAMES));
         break;
       case NODELOST:
         suggester = session.getSuggester(CollectionParams.CollectionAction.MOVEREPLICA)
-            .hint(Policy.Suggester.Hint.SRC_NODE, event.getProperty(TriggerEvent.NODE_NAMES));
-        log.debug("Created suggester with srcNode: {}", event.getProperty(TriggerEvent.NODE_NAMES));
+            .hint(Suggester.Hint.SRC_NODE, event.getProperty(TriggerEvent.NODE_NAMES));
+        log.debug("NODELOST Created suggester with srcNode: {}", event.getProperty(TriggerEvent.NODE_NAMES));
         break;
       case SEARCHRATE:
         Map<String, Map<String, Double>> hotShards = (Map<String, Map<String, Double>>)event.getProperty(AutoScalingParams.SHARD);
@@ -121,7 +108,7 @@ public class ComputePlanAction extends TriggerActionBase {
           }
           suggester = session.getSuggester(CollectionParams.CollectionAction.MOVEREPLICA);
           for (String node : hotNodes.keySet()) {
-            suggester = suggester.hint(Policy.Suggester.Hint.SRC_NODE, node);
+            suggester = suggester.hint(Suggester.Hint.SRC_NODE, node);
           }
         } else {
           // collection || shard || replica -> ADDREPLICA
@@ -132,7 +119,7 @@ public class ComputePlanAction extends TriggerActionBase {
           hotShards.forEach((coll, shards) -> collections.add(coll));
           hotCollections.forEach((coll, rate) -> collections.add(coll));
           for (String coll : collections) {
-            suggester = suggester.hint(Policy.Suggester.Hint.COLL, coll);
+            suggester = suggester.hint(Suggester.Hint.COLL, coll);
           }
         }
         break;

@@ -21,11 +21,13 @@ import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
-import com.google.common.base.Preconditions;
 import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
-import org.apache.solr.core.CoreContainer;
+import org.apache.solr.common.util.Utils;
+import org.apache.solr.core.SolrResourceLoader;
 
 public class AutoScaling {
 
@@ -47,7 +49,7 @@ public class AutoScaling {
   /**
    * Interface for a Solr trigger. Each trigger implements Runnable and Closeable interface. A trigger
    * is scheduled using a {@link java.util.concurrent.ScheduledExecutorService} so it is executed as
-   * per a configured schedule to check whether the trigger is ready to fire. The {@link Trigger#setProcessor(TriggerEventProcessor)}
+   * per a configured schedule to check whether the trigger is ready to fire. The {@link AutoScaling.Trigger#setProcessor(AutoScaling.TriggerEventProcessor)}
    * method should be used to set a processor which is used by implementation of this class whenever
    * ready.
    * <p>
@@ -110,30 +112,13 @@ public class AutoScaling {
     void init();
   }
 
-  public static class TriggerFactory implements Closeable {
+  /**
+   * Factory to produce instances of {@link Trigger}.
+   */
+  public static abstract class TriggerFactory implements Closeable {
+    protected boolean isClosed = false;
 
-    private final CoreContainer coreContainer;
-
-    private boolean isClosed = false;
-
-    public TriggerFactory(CoreContainer coreContainer) {
-      Preconditions.checkNotNull(coreContainer);
-      this.coreContainer = coreContainer;
-    }
-
-    public synchronized Trigger create(TriggerEventType type, String name, Map<String, Object> props) {
-      if (isClosed) {
-        throw new AlreadyClosedException("TriggerFactory has already been closed, cannot create new triggers");
-      }
-      switch (type) {
-        case NODEADDED:
-          return new NodeAddedTrigger(name, props, coreContainer);
-        case NODELOST:
-          return new NodeLostTrigger(name, props, coreContainer);
-        default:
-          throw new IllegalArgumentException("Unknown event type: " + type + " in trigger: " + name);
-      }
-    }
+    public abstract Trigger create(TriggerEventType type, String name, Map<String, Object> props);
 
     @Override
     public void close() throws IOException {
@@ -143,12 +128,43 @@ public class AutoScaling {
     }
   }
 
+  /**
+   * Default implementation of {@link TriggerFactory}.
+   */
+  public static class TriggerFactoryImpl extends TriggerFactory {
+
+    private final SolrCloudManager dataProvider;
+    private final SolrResourceLoader loader;
+
+    public TriggerFactoryImpl(SolrResourceLoader loader, SolrCloudManager dataProvider) {
+      Objects.requireNonNull(dataProvider);
+      Objects.requireNonNull(loader);
+      this.dataProvider = dataProvider;
+      this.loader = loader;
+    }
+
+    @Override
+    public synchronized Trigger create(TriggerEventType type, String name, Map<String, Object> props) {
+      if (isClosed) {
+        throw new AlreadyClosedException("TriggerFactory has already been closed, cannot create new triggers");
+      }
+      switch (type) {
+        case NODEADDED:
+          return new NodeAddedTrigger(name, props, loader, dataProvider);
+        case NODELOST:
+          return new NodeLostTrigger(name, props, loader, dataProvider);
+        default:
+          throw new IllegalArgumentException("Unknown event type: " + type + " in trigger: " + name);
+      }
+    }
+
+  }
+
   public static final String AUTO_ADD_REPLICAS_TRIGGER_DSL =
-      "{" +
-      "    'set-trigger' : {" +
+      "    {" +
       "        'name' : '.auto_add_replicas'," +
       "        'event' : 'nodeLost'," +
-      "        'waitFor' : '{{waitFor}}s'," +
+      "        'waitFor' : -1," +
       "        'enabled' : true," +
       "        'actions' : [" +
       "            {" +
@@ -160,6 +176,7 @@ public class AutoScaling {
       "                'class':'solr.ExecutePlanAction'" +
       "            }" +
       "        ]" +
-      "    }" +
-      "}";
+      "    }";
+
+  public static final Map<String, Object> AUTO_ADD_REPLICAS_TRIGGER_PROPS = (Map) Utils.fromJSONString(AUTO_ADD_REPLICAS_TRIGGER_DSL);
 }

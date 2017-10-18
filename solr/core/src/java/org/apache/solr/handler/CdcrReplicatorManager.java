@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -142,6 +143,11 @@ class CdcrReplicatorManager implements CdcrStateManager.CdcrStateObserver {
       ExecutorUtil.shutdownAndAwaitTermination(bootstrapExecutor);
     }
     this.closeLogReaders();
+    Callable callable = core.getSolrCoreState().getCdcrBootstrapCallable();
+    if (callable != null)  {
+      CdcrRequestHandler.BootstrapCallable bootstrapCallable = (CdcrRequestHandler.BootstrapCallable) callable;
+      IOUtils.closeQuietly(bootstrapCallable);
+    }
   }
 
   List<CdcrReplicatorState> getReplicatorStates() {
@@ -306,7 +312,9 @@ class CdcrReplicatorManager implements CdcrStateManager.CdcrStateObserver {
               timeOut = new TimeOut(BOOTSTRAP_TIMEOUT_SECONDS, TimeUnit.SECONDS); // reset the timer
               retries++;
             }
-          } else if (status == BootstrapStatus.NOTFOUND) {
+          } else if (status == BootstrapStatus.NOTFOUND || status == BootstrapStatus.CANCELLED) {
+            log.info("CDCR bootstrap " + (status == BootstrapStatus.NOTFOUND ? "not found" : "cancelled") + "in {} seconds",
+                BOOTSTRAP_TIMEOUT_SECONDS - timeOut.timeLeft(TimeUnit.SECONDS));
             // the leader of the target shard may have changed and therefore there is no record of the
             // bootstrap process so we must retry the operation
             while (!closed && sendBootstrapCommand() != BootstrapStatus.SUBMITTED)  {
@@ -314,7 +322,9 @@ class CdcrReplicatorManager implements CdcrStateManager.CdcrStateObserver {
             }
             retries = 1;
             timeOut = new TimeOut(6L * 3600L * 3600L, TimeUnit.SECONDS); // reset the timer
-          } else if (status == BootstrapStatus.UNKNOWN) {
+          } else if (status == BootstrapStatus.UNKNOWN || status == BootstrapStatus.SUBMITTED) {
+            log.info("CDCR bootstrap is " + (status == BootstrapStatus.UNKNOWN ? "unknown" : "submitted"),
+                BOOTSTRAP_TIMEOUT_SECONDS - timeOut.timeLeft(TimeUnit.SECONDS));
             // we were not able to query the status on the remote end
             // so just sleep for a bit and try again
             Thread.sleep(BOOTSTRAP_RETRY_DELAY_MS);

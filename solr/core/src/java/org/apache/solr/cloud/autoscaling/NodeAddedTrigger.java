@@ -25,15 +25,17 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ZkStateReader;
-import org.apache.solr.core.CoreContainer;
+import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.util.TimeSource;
-import org.apache.zookeeper.KeeperException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +45,6 @@ import org.slf4j.LoggerFactory;
 public class NodeAddedTrigger extends TriggerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private final CoreContainer container;
   private final TimeSource timeSource;
 
   private Set<String> lastLiveNodes;
@@ -51,11 +52,11 @@ public class NodeAddedTrigger extends TriggerBase {
   private Map<String, Long> nodeNameVsTimeAdded = new HashMap<>();
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
-                          CoreContainer container) {
-    super(TriggerEventType.NODEADDED, name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
-    this.container = container;
+                          SolrResourceLoader loader,
+                          SolrCloudManager dataProvider) {
+    super(TriggerEventType.NODEADDED, name, properties, loader, dataProvider);
     this.timeSource = TimeSource.CURRENT_TIME;
-    lastLiveNodes = new HashSet<>(container.getZkController().getZkStateReader().getClusterState().getLiveNodes());
+    lastLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     log.debug("NodeAddedTrigger {} instantiated with properties: {}", name, properties);
   }
@@ -65,7 +66,7 @@ public class NodeAddedTrigger extends TriggerBase {
     super.init();
     // pick up added nodes for which marker paths were created
     try {
-      List<String> added = container.getZkController().getZkClient().getChildren(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH, null, true);
+      List<String> added = stateManager.listData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
       added.forEach(n -> {
         // don't add nodes that have since gone away
         if (lastLiveNodes.contains(n)) {
@@ -74,9 +75,9 @@ public class NodeAddedTrigger extends TriggerBase {
         }
         removeMarker(n);
       });
-    } catch (KeeperException.NoNodeException e) {
+    } catch (NoSuchElementException e) {
       // ignore
-    } catch (KeeperException | InterruptedException e) {
+    } catch (Exception e) {
       log.warn("Exception retrieving nodeLost markers", e);
     }
 
@@ -129,8 +130,7 @@ public class NodeAddedTrigger extends TriggerBase {
       }
       log.debug("Running NodeAddedTrigger {}", name);
 
-      ZkStateReader reader = container.getZkController().getZkStateReader();
-      Set<String> newLiveNodes = reader.getClusterState().getLiveNodes();
+      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
       log.debug("Found livenodes: {}", newLiveNodes);
 
       // have any nodes that we were tracking been removed from the cluster?
@@ -178,7 +178,7 @@ public class NodeAddedTrigger extends TriggerBase {
           });
         }
       }
-      lastLiveNodes = new HashSet(newLiveNodes);
+      lastLiveNodes = new HashSet<>(newLiveNodes);
     } catch (RuntimeException e) {
       log.error("Unexpected exception in NodeAddedTrigger", e);
     }
@@ -187,12 +187,12 @@ public class NodeAddedTrigger extends TriggerBase {
   private void removeMarker(String nodeName) {
     String path = ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + nodeName;
     try {
-      if (container.getZkController().getZkClient().exists(path, true)) {
-        container.getZkController().getZkClient().delete(path, -1, true);
+      if (stateManager.hasData(path)) {
+        stateManager.removeData(path, -1);
       }
-    } catch (KeeperException.NoNodeException e) {
+    } catch (NoSuchElementException e) {
       // ignore
-    } catch (KeeperException | InterruptedException e) {
+    } catch (Exception e) {
       log.debug("Exception removing nodeAdded marker " + nodeName, e);
     }
 

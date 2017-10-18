@@ -24,6 +24,7 @@ import java.util.List;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Check relationship between polygon and GeoShapes of basic polygons. Normally we construct
@@ -721,6 +722,43 @@ public class SimpleGeoPolygonRelationshipsTest {
     rel = polConcave.getRelationship(shape);
     assertEquals(GeoArea.OVERLAPS,  rel);
   }
+
+  @Test
+  public void testDegeneratedPointIntersectShape(){
+    GeoBBox bBox1 = GeoBBoxFactory.makeGeoBBox(PlanetModel.SPHERE, 1,0,0,1);
+    GeoBBox bBox2 = GeoBBoxFactory.makeGeoBBox(PlanetModel.SPHERE, 1,1,1,1);
+    int rel = bBox1.getRelationship(bBox2);
+    //OVERLAPS instead of WITHIN. In this case the degenerated point lies on the edge of the shape.
+    //intersects() returns true for one plane of the BBox and hence method return OVERLAPS.
+    assertEquals(GeoArea.OVERLAPS,  rel);
+    rel = bBox2.getRelationship(bBox1);
+    // The degenerated point cannot compute if it is on the edge. Uses WITHIN that is true
+    // and therefore CONTAINS
+    assertEquals(GeoArea.CONTAINS,  rel);
+  }
+
+  @Test
+  public void testDegeneratedPointInPole(){
+    GeoBBox bBox1 = GeoBBoxFactory.makeGeoBBox(PlanetModel.SPHERE, Math.PI*0.5, Math.PI*0.5, 0, 0);
+    GeoPoint point = new GeoPoint(PlanetModel.SPHERE, Math.PI*0.5,  Math.PI);
+    System.out.println("bbox1 = "+bBox1+"; point = "+point);
+    assertTrue(bBox1.isWithin(point));
+  }
+
+  @Test
+  public void testDegeneratePathShape(){
+    GeoPoint point1 = new GeoPoint(PlanetModel.SPHERE, 0, 0);
+    GeoPoint point2 = new GeoPoint(PlanetModel.SPHERE, 0, 1);
+    GeoPoint[] pointPath1 = new GeoPoint[] {point1, point2};
+    GeoPath path1 = GeoPathFactory.makeGeoPath(PlanetModel.SPHERE, 0, pointPath1);
+    GeoPath path2 = GeoPathFactory.makeGeoPath(PlanetModel.SPHERE, 1, pointPath1);
+    int rel = path1.getRelationship(path2);
+    //if an end point is inside the shape it will always return intersects
+    assertEquals(GeoArea.CONTAINS, rel); //should be contains?
+    rel = path2.getRelationship(path1);
+    assertEquals(GeoArea.WITHIN, rel);
+  }
+
 
   private GeoPolygon buildConvexGeoPolygon(double lon1, double lat1,
                                            double lon2, double lat2,

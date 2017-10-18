@@ -244,6 +244,7 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
   protected Gauge<Integer> bufferedOpsGauge;
   protected Meter applyingBufferedOpsMeter;
   protected Meter replayOpsMeter;
+  protected Meter copyOverOldUpdatesMeter;
 
   public static class LogPtr {
     final long pointer;
@@ -435,6 +436,7 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
     manager.registerGauge(null, registry, () -> getTotalLogsSize(), true, "bytes", scope, "replay", "remaining");
     applyingBufferedOpsMeter = manager.meter(null, registry, "ops", scope, "applyingBuffered");
     replayOpsMeter = manager.meter(null, registry, "ops", scope, "replay");
+    copyOverOldUpdatesMeter = manager.meter(null, registry, "ops", scope, "copyOverOldUpdates");
     manager.registerGauge(null, registry, () -> state.getValue(), true, "state", scope);
   }
 
@@ -1158,7 +1160,9 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
 
   protected void copyAndSwitchToNewTlog(CommitUpdateCommand cuc) {
     synchronized (this) {
-      if (tlog == null) return;
+      if (tlog == null) {
+        return;
+      }
       preCommit(cuc);
       try {
         copyOverOldUpdates(cuc.getVersion());
@@ -1182,13 +1186,12 @@ public class UpdateLog implements PluginInfoInitialized, SolrMetricProducer {
     }
 
     try {
-      if (oldTlog.endsWithCommit()) {
-        return;
-      }
+      if (oldTlog.endsWithCommit()) return;
     } catch (IOException e) {
       log.warn("Exception reading log", e);
       return;
     }
+    copyOverOldUpdatesMeter.mark();
 
     SolrQueryRequest req = new LocalSolrQueryRequest(uhandler.core,
         new ModifiableSolrParams());

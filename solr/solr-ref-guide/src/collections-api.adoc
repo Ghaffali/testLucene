@@ -109,6 +109,8 @@ Replica placement rules. See the section <<rule-based-replica-placement.adoc#rul
 `snitch`::
 Details of the snitch provider. See the section <<rule-based-replica-placement.adoc#rule-based-replica-placement,Rule-based Replica Placement>> for details.
 
+`policy`:: Name of the collection-level policy. See <<solrcloud-autoscaling-policy-preferences.adoc#collection-specific-policy, Defining Collection-Specific Policies >> for details
+
 === CREATE Response
 
 The response will include the status of the request and the new core names. If the status is anything other than "success", an error message will explain why the request failed.
@@ -173,6 +175,7 @@ The attributes that can be modified are:
 * collection.configName
 * rule
 * snitch
+* policy
 +
 See the <<create,CREATE action>> section above for details on these attributes.
 
@@ -1875,7 +1878,7 @@ Time in seconds to wait until new replicas are created, and until leader replica
 ====
 This operation does not hold necessary locks on the replicas that belong to on the source node. So don't perform other collection operations in this period.
 ====
-
+[[movereplica]]
 == MOVEREPLICA: Move a Replica to a New Node
 
 This command moves a replica from one node to a new node. In case of shared filesystems the `dataDir` will be reused.
