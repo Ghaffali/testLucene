@@ -38,8 +38,6 @@ class AddReplicaSuggester extends Suggester {
     Set<Pair<String, String>> shards = (Set<Pair<String, String>>) hints.getOrDefault(Hint.COLL_SHARD, Collections.emptySet());
     if (shards.isEmpty()) {
       throw new RuntimeException("add-replica requires 'collection' and 'shard'");
-    } else if (collections != null && collections.size() > 1 && shard != null) {
-      throw new RuntimeException("add-replica allows only one combination of 'collection' or 'shard'");
     }
     for (Pair<String,String> shard : shards) {
       Replica.Type type = Replica.Type.get((String) hints.get(Hint.REPLICATYPE));

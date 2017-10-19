@@ -32,7 +32,6 @@ import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
-import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.util.Pair;
@@ -53,11 +52,6 @@ public class PolicyHelper {
                                                           List<String> nodesList) {
     List<ReplicaPosition> positions = new ArrayList<>();
     ClusterStateProvider stateProvider = new DelegatingClusterStateProvider(cloudManager.getClusterStateProvider()) {
-        @Override
-        public ClusterState getClusterState() {
-          return delegate.getClusterState();
-        }
-
         @Override
         public String getPolicyNameByCollection(String coll) {
           return policyMapping.get() != null && policyMapping.get().containsKey(coll) ?

@@ -53,10 +53,10 @@ public class NodeAddedTrigger extends TriggerBase {
 
   public NodeAddedTrigger(String name, Map<String, Object> properties,
                           SolrResourceLoader loader,
-                          SolrCloudManager dataProvider) {
-    super(TriggerEventType.NODEADDED, name, properties, loader, dataProvider);
+                          SolrCloudManager cloudManager) {
+    super(TriggerEventType.NODEADDED, name, properties, loader, cloudManager);
     this.timeSource = TimeSource.CURRENT_TIME;
-    lastLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
+    lastLiveNodes = new HashSet<>(cloudManager.getClusterStateProvider().getLiveNodes());
     log.debug("Initial livenodes: {}", lastLiveNodes);
     log.debug("NodeAddedTrigger {} instantiated with properties: {}", name, properties);
   }
@@ -130,7 +130,7 @@ public class NodeAddedTrigger extends TriggerBase {
       }
       log.debug("Running NodeAddedTrigger {}", name);
 
-      Set<String> newLiveNodes = new HashSet<>(dataProvider.getClusterStateProvider().getLiveNodes());
+      Set<String> newLiveNodes = new HashSet<>(cloudManager.getClusterStateProvider().getLiveNodes());
       log.debug("Found livenodes: {}", newLiveNodes);
 
       // have any nodes that we were tracking been removed from the cluster?

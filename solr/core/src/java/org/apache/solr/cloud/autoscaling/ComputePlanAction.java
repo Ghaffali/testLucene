@@ -124,7 +124,7 @@ public class ComputePlanAction extends TriggerActionBase {
         }
         break;
       default:
-        throw new UnsupportedOperationException("No support for events other than nodeAdded and nodeLost, received: " + event.getEventType());
+        throw new UnsupportedOperationException("No support for events other than nodeAdded, nodeLost and searchRate, received: " + event.getEventType());
     }
     return suggester;
   }

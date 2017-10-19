@@ -7,15 +7,20 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
+import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.SolrCloudTestCase;
+import org.apache.solr.cloud.ZkDistributedQueueFactory;
+import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.core.CoreContainer;
+import org.apache.solr.core.SolrResourceLoader;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
@@ -52,14 +57,17 @@ public class SearchRateTriggerTest extends SolrCloudTestCase {
   @Test
   public void testTrigger() throws Exception {
     double rate = 1.0;
-    CoreContainer container = cluster.getJettySolrRunners().get(0).getCoreContainer();
+    SolrZkClient zkClient = cluster.getSolrClient().getZkStateReader().getZkClient();
+    SolrResourceLoader loader = cluster.getJettySolrRunner(0).getCoreContainer().getResourceLoader();
+    CoreContainer container = cluster.getJettySolrRunner(0).getCoreContainer();
+    SolrCloudManager cloudManager = new SolrClientCloudManager(new ZkDistributedQueueFactory(zkClient), cluster.getSolrClient());
     URL baseUrl = cluster.getJettySolrRunners().get(1).getBaseUrl();
     long waitForSeconds = 5 + random().nextInt(5);
     Map<String, Object> props = createTriggerProps(waitForSeconds, rate);
     final List<TriggerEvent> events = new ArrayList<>();
     CloudSolrClient solrClient = cluster.getSolrClient();
 
-    try (SearchRateTrigger trigger = new SearchRateTrigger("search_rate_trigger", props, container)) {
+    try (SearchRateTrigger trigger = new SearchRateTrigger("search_rate_trigger", props, loader, cloudManager)) {
       trigger.setProcessor(noFirstRunProcessor);
       trigger.run();
       trigger.setProcessor(event -> events.add(event));

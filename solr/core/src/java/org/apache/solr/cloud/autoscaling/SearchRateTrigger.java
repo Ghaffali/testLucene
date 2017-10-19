@@ -30,13 +30,14 @@ import java.util.stream.Collectors;
 import com.google.common.util.concurrent.AtomicDouble;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientDataProvider;
 import org.apache.solr.client.solrj.impl.ZkClientClusterStateProvider;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.params.AutoScalingParams;
-import org.apache.solr.core.CoreContainer;
+import org.apache.solr.common.util.Utils;
+import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.metrics.SolrCoreMetricManager;
 import org.apache.solr.util.TimeSource;
 import org.slf4j.Logger;
@@ -49,7 +50,6 @@ public class SearchRateTrigger extends TriggerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final TimeSource timeSource;
-  private final CoreContainer container;
   private final String handler;
   private final String collection;
   private final String shard;
@@ -61,10 +61,11 @@ public class SearchRateTrigger extends TriggerBase {
   private final Map<String, Long> lastReplicaEvent = new ConcurrentHashMap<>();
   private final Map<String, Object> state = new HashMap<>();
 
-  public SearchRateTrigger(String name, Map<String, Object> properties, CoreContainer container) {
-    super(TriggerEventType.SEARCHRATE, name, properties, container.getResourceLoader(), container.getZkController().getZkClient());
+  public SearchRateTrigger(String name, Map<String, Object> properties,
+                           SolrResourceLoader loader,
+                           SolrCloudManager cloudManager) {
+    super(TriggerEventType.SEARCHRATE, name, properties, loader, cloudManager);
     this.timeSource = TimeSource.CURRENT_TIME;
-    this.container = container;
     this.state.put("lastCollectionEvent", lastCollectionEvent);
     this.state.put("lastNodeEvent", lastNodeEvent);
     this.state.put("lastShardEvent", lastShardEvent);
@@ -150,49 +151,39 @@ public class SearchRateTrigger extends TriggerBase {
     Map<String, Map<String, List<ReplicaInfo>>> collectionRates = new HashMap<>();
     Map<String, AtomicDouble> nodeRates = new HashMap<>();
 
-    try (CloudSolrClient cloudSolrClient = new CloudSolrClient.Builder()
-        .withClusterStateProvider(new ZkClientClusterStateProvider(container.getZkController().getZkStateReader()))
-        .build()) {
-
-      SolrClientDataProvider dataProvider = new SolrClientDataProvider(cloudSolrClient);
-
-      for (String node : dataProvider.getNodes()) {
-        Map<String, ReplicaInfo> metricTags = new HashMap<>();
-        // coll, shard, replica
-        Map<String, Map<String, List<ReplicaInfo>>> infos = dataProvider.getReplicaInfo(node, Collections.emptyList());
-        infos.forEach((coll, shards) -> {
-          shards.forEach((sh, replicas) -> {
-            replicas.forEach(replica -> {
-              // we have to translate to the metrics registry name, which uses "_replica_nN" as suffix
-              String replicaName = SolrCoreMetricManager.parseReplicaName(coll, replica.getCore());
-              if (replicaName == null) { // should never happen???
-                replicaName = replica.getName(); // which is actually coreNode name...
-              }
-              String registry = SolrCoreMetricManager.createRegistryName(true, coll, sh, replicaName, null);
-              String tag = "metrics:" + registry
-                  + ":QUERY." + handler + ".requestTimes:1minRate";
-              metricTags.put(tag, replica);
-            });
+    for (String node : cloudManager.getClusterStateProvider().getLiveNodes()) {
+      Map<String, ReplicaInfo> metricTags = new HashMap<>();
+      // coll, shard, replica
+      Map<String, Map<String, List<ReplicaInfo>>> infos = cloudManager.getNodeStateProvider().getReplicaInfo(node, Collections.emptyList());
+      infos.forEach((coll, shards) -> {
+        shards.forEach((sh, replicas) -> {
+          replicas.forEach(replica -> {
+            // we have to translate to the metrics registry name, which uses "_replica_nN" as suffix
+            String replicaName = Utils.parseMetricsReplicaName(coll, replica.getCore());
+            if (replicaName == null) { // should never happen???
+              replicaName = replica.getName(); // which is actually coreNode name...
+            }
+            String registry = SolrCoreMetricManager.createRegistryName(true, coll, sh, replicaName, null);
+            String tag = "metrics:" + registry
+                + ":QUERY." + handler + ".requestTimes:1minRate";
+            metricTags.put(tag, replica);
           });
         });
-        Map<String, Object> rates = dataProvider.getNodeValues(node, metricTags.keySet());
-        rates.forEach((tag, rate) -> {
-          ReplicaInfo info = metricTags.get(tag);
-          if (info == null) {
-            log.warn("Missing replica info for response tag " + tag);
-          } else {
-            Map<String, List<ReplicaInfo>> perCollection = collectionRates.computeIfAbsent(info.getCollection(), s -> new HashMap<>());
-            List<ReplicaInfo> perShard = perCollection.computeIfAbsent(info.getShard(), s -> new ArrayList<>());
-            info.getVariables().put(AutoScalingParams.RATE, rate);
-            perShard.add(info);
-            AtomicDouble perNode = nodeRates.computeIfAbsent(node, s -> new AtomicDouble());
-            perNode.addAndGet((Double)rate);
-          }
-        });
-      }
-    } catch (IOException e) {
-      log.warn("Exception getting node values", e);
-      return;
+      });
+      Map<String, Object> rates = cloudManager.getNodeStateProvider().getNodeValues(node, metricTags.keySet());
+      rates.forEach((tag, rate) -> {
+        ReplicaInfo info = metricTags.get(tag);
+        if (info == null) {
+          log.warn("Missing replica info for response tag " + tag);
+        } else {
+          Map<String, List<ReplicaInfo>> perCollection = collectionRates.computeIfAbsent(info.getCollection(), s -> new HashMap<>());
+          List<ReplicaInfo> perShard = perCollection.computeIfAbsent(info.getShard(), s -> new ArrayList<>());
+          info.getVariables().put(AutoScalingParams.RATE, rate);
+          perShard.add(info);
+          AtomicDouble perNode = nodeRates.computeIfAbsent(node, s -> new AtomicDouble());
+          perNode.addAndGet((Double)rate);
+        }
+      });
     }
 
     long now = timeSource.getTime();
