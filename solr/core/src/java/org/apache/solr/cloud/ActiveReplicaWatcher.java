@@ -20,8 +20,8 @@ import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.CountDownLatch;
 
+import org.apache.solr.common.SolrCloseableLatch;
 import org.apache.solr.common.cloud.CollectionStateWatcher;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
  * Watch for replicas to become {@link org.apache.solr.common.cloud.Replica.State#ACTIVE}. Watcher is
  * terminated (its {@link #onStateChanged(Set, DocCollection)} method returns false) when all listed
  * replicas become active.
- * <p>Additionally, the provided {@link CountDownLatch} instance can be used to await
+ * <p>Additionally, the provided {@link SolrCloseableLatch} instance can be used to await
  * for all listed replicas to become active.</p>
  */
 public class ActiveReplicaWatcher implements CollectionStateWatcher {
@@ -44,17 +44,17 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
   private final List<String> solrCoreNames = new ArrayList<>();
   private final List<Replica> activeReplicas = new ArrayList<>();
 
-  private CountDownLatch countDownLatch;
+  private SolrCloseableLatch latch;
 
   /**
    * Construct the watcher. At least one replicaId or solrCoreName must be provided.
    * @param collection collection name
    * @param replicaIds list of replica id-s
    * @param solrCoreNames list of SolrCore names
-   * @param countDownLatch optional latch to await for all provided replicas to become active. This latch will be
+   * @param latch optional latch to await for all provided replicas to become active. This latch will be
    *                       counted down by at most the number of provided replica id-s / SolrCore names.
    */
-  public ActiveReplicaWatcher(String collection, List<String> replicaIds, List<String> solrCoreNames, CountDownLatch countDownLatch) {
+  public ActiveReplicaWatcher(String collection, List<String> replicaIds, List<String> solrCoreNames, SolrCloseableLatch latch) {
     if (replicaIds == null && solrCoreNames == null) {
       throw new IllegalArgumentException("Either replicaId or solrCoreName must be provided.");
     }
@@ -68,7 +68,7 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
       throw new IllegalArgumentException("At least one replicaId or solrCoreName must be provided");
     }
     this.collection = collection;
-    this.countDownLatch = countDownLatch;
+    this.latch = latch;
   }
 
   /**
@@ -111,11 +111,11 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
 
   @Override
   public boolean onStateChanged(Set<String> liveNodes, DocCollection collectionState) {
-    log.debug("-- onStateChanged: " + collectionState);
+    log.info("-- onStateChanged: " + collectionState);
     if (collectionState == null) { // collection has been deleted - don't wait
-      if (countDownLatch != null) {
+      if (latch != null) {
         for (int i = 0; i < replicaIds.size() + solrCoreNames.size(); i++) {
-          countDownLatch.countDown();
+          latch.countDown();
         }
       }
       replicaIds.clear();
@@ -128,16 +128,16 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
           if (replica.isActive(liveNodes)) {
             activeReplicas.add(replica);
             replicaIds.remove(replica.getName());
-            if (countDownLatch != null) {
-              countDownLatch.countDown();
+            if (latch != null) {
+              latch.countDown();
             }
           }
         } else if (solrCoreNames.contains(replica.getStr(ZkStateReader.CORE_NAME_PROP))) {
           if (replica.isActive(liveNodes)) {
             activeReplicas.add(replica);
             solrCoreNames.remove(replica.getStr(ZkStateReader.CORE_NAME_PROP));
-            if (countDownLatch != null) {
-              countDownLatch.countDown();
+            if (latch != null) {
+              latch.countDown();
             }
           }
         }

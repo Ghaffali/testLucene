@@ -22,9 +22,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.solr.common.SolrCloseableLatch;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -194,7 +194,7 @@ public class MoveReplicaCmd implements Cmd{
         CoreAdminParams.NAME, newCoreName);
     if(async!=null) addReplicasProps.getProperties().put(ASYNC, async);
     NamedList addResult = new NamedList();
-    CountDownLatch countDownLatch = new CountDownLatch(1);
+    SolrCloseableLatch countDownLatch = new SolrCloseableLatch(1, ocmh);
     ActiveReplicaWatcher watcher = null;
     if (replica.equals(slice.getLeader()) || waitForFinalState) {
       watcher = new ActiveReplicaWatcher(coll.getName(), Collections.singletonList(replica.getName()), null, countDownLatch);
