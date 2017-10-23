@@ -20,6 +20,7 @@ package org.apache.solr.cloud.autoscaling;
 import java.io.Closeable;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.sql.Time;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,11 +38,13 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.lucene.store.AlreadyClosedException;
+import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
@@ -72,6 +75,7 @@ public class ScheduledTriggers implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS = 1;
   static final int DEFAULT_MIN_MS_BETWEEN_ACTIONS = 5000;
+  static final int DEFAULT_COOLDOWN_PERIOD_MS = 5000;
 
   private final Map<String, ScheduledTrigger> scheduledTriggers = new ConcurrentHashMap<>();
 
@@ -90,6 +94,10 @@ public class ScheduledTriggers implements Closeable {
   private boolean isClosed = false;
 
   private final AtomicBoolean hasPendingActions = new AtomicBoolean(false);
+
+  private final AtomicLong cooldownStart = new AtomicLong();
+
+  private final AtomicLong cooldownPeriod = new AtomicLong(TimeUnit.MILLISECONDS.toNanos(DEFAULT_COOLDOWN_PERIOD_MS));
 
   private final ActionThrottle actionThrottle;
 
@@ -123,6 +131,8 @@ public class ScheduledTriggers implements Closeable {
     this.loader = loader;
     queueStats = new Stats();
     listeners = new TriggerListeners();
+    // initialize cooldown timer
+    cooldownStart.set(System.nanoTime() - cooldownPeriod.get());
   }
 
   /**
@@ -197,6 +207,13 @@ public class ScheduledTriggers implements Closeable {
         // we do not want to lose this event just because the trigger was closed, perhaps a replacement will need it
         return false;
       }
+      // reject events during cooldown period
+      if (cooldownStart.get() + cooldownPeriod.get() > System.nanoTime()) {
+        log.debug("-------- Cooldown period - rejecting event: " + event);
+        return false;
+      } else {
+        log.debug("++++++++ Cooldown inactive - processing event: " + event);
+      }
       if (hasPendingActions.compareAndSet(false, true)) {
         final boolean enqueued;
         if (replaying) {
@@ -222,17 +239,16 @@ public class ScheduledTriggers implements Closeable {
 
               ActionContext actionContext = new ActionContext(dataProvider, newTrigger, new HashMap<>());
               for (TriggerAction action : actions) {
-                List<String> beforeActions = (List<String>)actionContext.getProperties().computeIfAbsent(TriggerEventProcessorStage.BEFORE_ACTION.toString(), k -> new ArrayList<String>());
+                List<String> beforeActions = (List<String>) actionContext.getProperties().computeIfAbsent(TriggerEventProcessorStage.BEFORE_ACTION.toString(), k -> new ArrayList<String>());
                 beforeActions.add(action.getName());
                 listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.BEFORE_ACTION, action.getName(), actionContext);
                 try {
                   action.process(event, actionContext);
                 } catch (Exception e) {
                   listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.FAILED, action.getName(), actionContext, e, null);
-                  log.error("Error executing action: " + action.getName() + " for trigger event: " + event, e);
-                  throw e;
+                  throw new Exception("Error executing action: " + action.getName() + " for trigger event: " + event, e);
                 }
-                List<String> afterActions = (List<String>)actionContext.getProperties().computeIfAbsent(TriggerEventProcessorStage.AFTER_ACTION.toString(), k -> new ArrayList<String>());
+                List<String> afterActions = (List<String>) actionContext.getProperties().computeIfAbsent(TriggerEventProcessorStage.AFTER_ACTION.toString(), k -> new ArrayList<String>());
                 afterActions.add(action.getName());
                 listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.AFTER_ACTION, action.getName(), actionContext);
               }
@@ -241,7 +257,10 @@ public class ScheduledTriggers implements Closeable {
                 assert ev.getId().equals(event.getId());
               }
               listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.SUCCEEDED);
+            } catch (Exception e) {
+              log.warn("Exception executing actions", e);
             } finally {
+              cooldownStart.set(System.nanoTime());
               hasPendingActions.set(false);
             }
           });
@@ -303,6 +322,9 @@ public class ScheduledTriggers implements Closeable {
                     throw e;
                   }
                   if (rootCause instanceof TimeoutException && rootCause.getMessage().contains("Could not connect to ZooKeeper")) {
+                    throw e;
+                  }
+                  if (rootCause instanceof SolrServerException) {
                     throw e;
                   }
                   log.error("Unexpected exception while waiting for pending task with requestid: " + requestid + " to finish", e);
