@@ -196,11 +196,13 @@ public class MoveReplicaCmd implements Cmd{
     NamedList addResult = new NamedList();
     SolrCloseableLatch countDownLatch = new SolrCloseableLatch(1, ocmh);
     ActiveReplicaWatcher watcher = null;
+    ZkNodeProps props = ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
+    log.info("props " + props);
     if (replica.equals(slice.getLeader()) || waitForFinalState) {
-      watcher = new ActiveReplicaWatcher(coll.getName(), Collections.singletonList(replica.getName()), null, countDownLatch);
+      watcher = new ActiveReplicaWatcher(coll.getName(), null, Collections.singletonList(newCoreName), countDownLatch);
+      log.info("-- registered watcher " + watcher);
       ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
     }
-    ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
     if (addResult.get("failure") != null) {
       String errorString = String.format(Locale.ROOT, "Failed to create replica for collection=%s shard=%s" +
           " on node=%s", coll.getName(), slice.getName(), targetNode);

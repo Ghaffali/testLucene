@@ -44,6 +44,8 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
   private final List<String> solrCoreNames = new ArrayList<>();
   private final List<Replica> activeReplicas = new ArrayList<>();
 
+  private int lastZkVersion = -1;
+
   private SolrCloseableLatch latch;
 
   /**
@@ -101,18 +103,23 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
 
   @Override
   public String toString() {
-    return "ActiveReplicaWatcher{" +
+    return "ActiveReplicaWatcher@" + Long.toHexString(hashCode()) + "{" +
         "collection='" + collection + '\'' +
         ", replicaIds=" + replicaIds +
         ", solrCoreNames=" + solrCoreNames +
+        ", latch=" + (latch != null ? latch.getCount() : "null") + "," +
         ", activeReplicas=" + activeReplicas +
         '}';
   }
 
+  // synchronized due to SOLR-11535
   @Override
-  public boolean onStateChanged(Set<String> liveNodes, DocCollection collectionState) {
-    log.info("-- onStateChanged: " + collectionState);
+  public synchronized boolean onStateChanged(Set<String> liveNodes, DocCollection collectionState) {
+    log.debug("-- onStateChanged@" + Long.toHexString(hashCode()) + ": replicaIds=" + replicaIds + ", solrCoreNames=" + solrCoreNames +
+        (latch != null ? "\nlatch count=" + latch.getCount() : "") +
+        "\ncollectionState=" + collectionState);
     if (collectionState == null) { // collection has been deleted - don't wait
+      log.debug("-- collection deleted, decrementing latch by " + replicaIds.size() + solrCoreNames.size());
       if (latch != null) {
         for (int i = 0; i < replicaIds.size() + solrCoreNames.size(); i++) {
           latch.countDown();
@@ -122,6 +129,16 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
       solrCoreNames.clear();
       return true;
     }
+    if (replicaIds.isEmpty() && solrCoreNames.isEmpty()) {
+      log.debug("-- already done, exiting...");
+      return true;
+    }
+    if (collectionState.getZNodeVersion() == lastZkVersion) {
+      log.debug("-- spurious call with already seen zkVersion=" + lastZkVersion + ", ignoring...");
+      return false;
+    }
+    lastZkVersion = collectionState.getZNodeVersion();
+
     for (Slice slice : collectionState.getSlices()) {
       for (Replica replica : slice.getReplicas()) {
         if (replicaIds.contains(replica.getName())) {
@@ -143,6 +160,7 @@ public class ActiveReplicaWatcher implements CollectionStateWatcher {
         }
       }
     }
+    log.debug("-- " + Long.toHexString(hashCode()) + " now latch count=" + latch.getCount());
     if (replicaIds.isEmpty() && solrCoreNames.isEmpty()) {
       return true;
     } else {
