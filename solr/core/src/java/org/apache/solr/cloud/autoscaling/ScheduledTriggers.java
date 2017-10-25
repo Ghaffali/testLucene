@@ -210,6 +210,8 @@ public class ScheduledTriggers implements Closeable {
       // reject events during cooldown period
       if (cooldownStart.get() + cooldownPeriod.get() > System.nanoTime()) {
         log.debug("-------- Cooldown period - rejecting event: " + event);
+        event.getProperties().put(TriggerEvent.COOLDOWN, true);
+        listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.IGNORED, "In cooldown period.");
         return false;
       } else {
         log.debug("++++++++ Cooldown inactive - processing event: " + event);
@@ -278,6 +280,7 @@ public class ScheduledTriggers implements Closeable {
         return true;
       } else {
         // there is an action in the queue and we don't want to enqueue another until it is complete
+        listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.IGNORED, "Already processing another event.");
         return false;
       }
     });
@@ -322,9 +325,6 @@ public class ScheduledTriggers implements Closeable {
                     throw e;
                   }
                   if (rootCause instanceof TimeoutException && rootCause.getMessage().contains("Could not connect to ZooKeeper")) {
-                    throw e;
-                  }
-                  if (rootCause instanceof SolrServerException) {
                     throw e;
                   }
                   log.error("Unexpected exception while waiting for pending task with requestid: " + requestid + " to finish", e);
