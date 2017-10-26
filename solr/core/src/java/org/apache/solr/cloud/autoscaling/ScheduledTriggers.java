@@ -132,6 +132,7 @@ public class ScheduledTriggers implements Closeable {
     queueStats = new Stats();
     listeners = new TriggerListeners();
     // initialize cooldown timer
+    // todo: make the cooldownPeriod configurable
     cooldownStart.set(System.nanoTime() - cooldownPeriod.get());
   }
 

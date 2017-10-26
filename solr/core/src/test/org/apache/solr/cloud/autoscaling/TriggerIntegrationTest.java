@@ -1144,7 +1144,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     waitForSeconds = 1;
     String setTriggerCommand = "{" +
         "'set-trigger' : {" +
-        "'name' : 'node_added_trigger'," +
+        "'name' : 'node_added_cooldown_trigger'," +
         "'event' : 'nodeAdded'," +
         "'waitFor' : '" + waitForSeconds + "s'," +
         "'enabled' : true," +
@@ -1160,7 +1160,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "'set-listener' : " +
         "{" +
         "'name' : 'bar'," +
-        "'trigger' : 'node_added_trigger'," +
+        "'trigger' : 'node_added_cooldown_trigger'," +
         "'stage' : ['FAILED','SUCCEEDED', 'IGNORED']," +
         "'class' : '" + TestTriggerListener.class.getName() + "'" +
         "}" +
@@ -1180,8 +1180,9 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     Thread.sleep(1000);
 
     List<TestEvent> capturedEvents = listenerEvents.get("bar");
-    assertEquals(capturedEvents.toString(), 1, capturedEvents.size());
-    long prevTimestamp = capturedEvents.get(0).timestamp;
+    // we may get a few IGNORED events if other tests caused events within cooldown period
+    assertTrue(capturedEvents.toString(), capturedEvents.size() > 0);
+    long prevTimestamp = capturedEvents.get(capturedEvents.size() - 1).timestamp;
 
     // reset the trigger and captured events
     listenerEvents.clear();
@@ -1192,7 +1193,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     await = triggerFiredLatch.await(20, TimeUnit.SECONDS);
     assertTrue("The trigger did not fire at all", await);
     // wait for listener to capture the SUCCEEDED stage
-    Thread.sleep(1000);
+    Thread.sleep(2000);
 
     // there must be at least one IGNORED event due to cooldown, and one SUCCEEDED event
     capturedEvents = listenerEvents.get("bar");
