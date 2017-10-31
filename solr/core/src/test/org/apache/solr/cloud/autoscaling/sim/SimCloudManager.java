@@ -24,6 +24,7 @@ import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.SolrServerException;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
@@ -108,5 +109,10 @@ public class SimCloudManager implements SolrCloudManager {
   @Override
   public byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException {
     return httpServer.httpRequest(url, method, headers, payload, timeout, followRedirects);
+  }
+
+  @Override
+  public void close() throws IOException {
+
   }
 }

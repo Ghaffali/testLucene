@@ -22,7 +22,7 @@ import java.util.function.Predicate;
 import com.codahale.metrics.Timer;
 import com.google.common.base.Preconditions;
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.cloud.Stats;
 import org.apache.solr.common.util.Pair;
 import org.slf4j.Logger;
@@ -31,7 +31,7 @@ import org.slf4j.LoggerFactory;
 /**
  *
  */
-public class SimDistributedQueueFactory implements SolrCloudManager.DistributedQueueFactory {
+public class SimDistributedQueueFactory implements DistributedQueueFactory {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   Map<String, SimDistributedQueue> queues = new ConcurrentHashMap<>();

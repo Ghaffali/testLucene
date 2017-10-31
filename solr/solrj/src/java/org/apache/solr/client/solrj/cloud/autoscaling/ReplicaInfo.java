@@ -34,7 +34,7 @@ public class ReplicaInfo implements MapWriter {
   private String core, collection, shard;
   private Replica.Type type;
   private String node;
-  private Map<String, Object> variables;
+  private final Map<String, Object> variables = new HashMap<>();
 
   public ReplicaInfo(String coll,String shard, Replica r, Map<String, Object> vals){
     this.name = r.getName();
@@ -42,7 +42,9 @@ public class ReplicaInfo implements MapWriter {
     this.collection = coll;
     this.shard = shard;
     this.type = r.getType();
-    this.variables = vals;
+    if (vals != null) {
+      this.variables.putAll(vals);
+    }
     this.node = r.getNodeName();
   }
 
@@ -64,6 +66,19 @@ public class ReplicaInfo implements MapWriter {
       for (Map.Entry<String, Object> e : variables.entrySet()) {
         ew1.put(e.getKey(), e.getValue());
       }
+      if (core != null && !variables.containsKey(ZkStateReader.CORE_NAME_PROP)) {
+        ew1.put(ZkStateReader.CORE_NAME_PROP, core);
+      }
+      if (shard != null && !variables.containsKey(ZkStateReader.SHARD_ID_PROP)) {
+        ew1.put(ZkStateReader.SHARD_ID_PROP, shard);
+      }
+      if (collection != null && !variables.containsKey(ZkStateReader.COLLECTION_PROP)) {
+        ew1.put(ZkStateReader.COLLECTION_PROP, collection);
+      }
+      if (node != null && !variables.containsKey(ZkStateReader.NODE_NAME_PROP)) {
+        ew1.put(ZkStateReader.NODE_NAME_PROP, node);
+      }
+      if (type != null) ew1.put(ZkStateReader.REPLICA_TYPE, type.toString());
     });
   }
 
@@ -86,13 +101,11 @@ public class ReplicaInfo implements MapWriter {
   public Replica.Type getType() {
     Object o = type == null ? variables.get(ZkStateReader.REPLICA_TYPE) : type;
     if (o == null) {
-      variables.put(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT);
       return Replica.Type.NRT;
     } else if (o instanceof Replica.Type) {
       return (Replica.Type)o;
     } else {
       Replica.Type type = Replica.Type.get(String.valueOf(o).toUpperCase(Locale.ROOT));
-      variables.put(ZkStateReader.REPLICA_TYPE, type);
       return type;
     }
   }

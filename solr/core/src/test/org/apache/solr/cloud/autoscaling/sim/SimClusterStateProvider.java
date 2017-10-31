@@ -79,7 +79,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         sliceProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>())
             .computeIfAbsent(s.getName(), name -> new HashMap<>()).putAll(s.getProperties());
         s.getReplicas().forEach(r -> {
-          ReplicaInfo ri = new ReplicaInfo(r.getName(), dc.getName(), s.getName(), r.getProperties());
+          ReplicaInfo ri = new ReplicaInfo(r.getName(), r.getCoreName(), dc.getName(), s.getName(), r.getType(), r.getNodeName(), r.getProperties());
           if (liveNodes.contains(r.getNodeName())) {
             nodeReplicaMap.computeIfAbsent(r.getNodeName(), rn -> new ArrayList<>()).add(ri);
           }
@@ -267,13 +267,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   }
 
   @Override
-  public String getAlias(String alias) {
-    return null;
-  }
-
-  @Override
-  public String getCollectionName(String name) {
-    return null;
+  public List<String> resolveAlias(String alias) {
+    throw new UnsupportedOperationException("resolveAlias not implemented");
   }
 
   @Override
