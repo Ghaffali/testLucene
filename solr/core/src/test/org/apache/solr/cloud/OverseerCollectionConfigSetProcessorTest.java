@@ -51,6 +51,7 @@ import org.apache.solr.handler.component.ShardHandlerFactory;
 import org.apache.solr.handler.component.ShardRequest;
 import org.apache.solr.util.TimeOut;
 import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.data.Stat;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Before;
@@ -218,7 +219,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     doAnswer(invocation -> {
       queue.remove(invocation.getArgument(0));
       return null;
-    }).when(workQueueMock).remove(any());
+    }).when(workQueueMock).remove(any(QueueEvent.class));
 
     when(workQueueMock.poll()).thenAnswer(invocation -> {
       queue.poll();
@@ -326,6 +327,15 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
       }
     }).when(stateManagerMock).setData(anyString(), any(byte[].class), anyInt());
     when(stateManagerMock.getData(anyString(), any())).thenAnswer(invocation -> zkMap.get(invocation.getArgument(0)));
+
+    when(solrZkClientMock.exists(any(String.class), isNull(), anyBoolean())).thenAnswer(invocation -> {
+      String key = invocation.getArgument(0);
+      if (zkMap.containsKey(key)) {
+        return new Stat();
+      } else {
+        return null;
+      }
+    });
 
     zkMap.put("/configs/myconfig", null);
     

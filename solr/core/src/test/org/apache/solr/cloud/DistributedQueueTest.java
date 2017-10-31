@@ -208,7 +208,7 @@ public class DistributedQueueTest extends SolrTestCaseJ4 {
   @Test
   public void testLocallyOffer() throws Exception {
     String dqZNode = "/distqueue/test";
-    DistributedQueue dq = makeDistributedQueue(dqZNode);
+    ZkDistributedQueue dq = makeDistributedQueue(dqZNode);
     dq.peekElements(1, 1, s -> true);
     for (int i = 0; i < 100; i++) {
       byte[] data = String.valueOf(i).getBytes(UTF8);
@@ -225,7 +225,7 @@ public class DistributedQueueTest extends SolrTestCaseJ4 {
     String dqZNode = "/distqueue/test";
     byte[] data = "hello world".getBytes(UTF8);
 
-    DistributedQueue dq = makeDistributedQueue(dqZNode);
+    ZkDistributedQueue dq = makeDistributedQueue(dqZNode);
 
     // Populate with data.
     dq.offer(data);

@@ -22,12 +22,14 @@ import java.util.Map;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.common.MapWriter;
+import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.IdUtils;
 
 /**
  * Trigger event.
  */
 public class TriggerEvent implements MapWriter {
+  public static final String COOLDOWN = "cooldown";
   public static final String REPLAYING = "replaying";
   public static final String NODE_NAMES = "nodeNames";
   public static final String EVENT_TIMES = "eventTimes";
@@ -145,11 +147,6 @@ public class TriggerEvent implements MapWriter {
 
   @Override
   public String toString() {
-    return this.getClass().getSimpleName() + "{" +
-        "id='" + id + '\'' +
-        ", source='" + source + '\'' +
-        ", eventTime=" + eventTime +
-        ", properties=" + properties +
-        '}';
+    return Utils.toJSONString(this);
   }
 }

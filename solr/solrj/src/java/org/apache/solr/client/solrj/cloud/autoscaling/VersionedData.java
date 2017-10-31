@@ -17,13 +17,19 @@
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
 /**
- *
+ * Immutable representation of binary data with version.
  */
 public class VersionedData {
   private final int version;
   private final byte[] data;
   private final String owner;
 
+  /**
+   * Constructor.
+   * @param version version of the data, or -1 if unknown
+   * @param data binary data, or null.
+   * @param owner symbolic identifier of data owner / creator, or null.
+   */
   public VersionedData(int version, byte[] data, String owner) {
     this.version = version;
     this.data = data;

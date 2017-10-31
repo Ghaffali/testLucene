@@ -55,10 +55,6 @@ public class ZkDistribStateManager implements DistribStateManager {
   public boolean hasData(String path) throws IOException, KeeperException, InterruptedException {
     try {
       return zkClient.exists(path, true);
-    } catch (KeeperException.NoNodeException e) {
-      return false;
-    } catch (KeeperException e) {
-      throw new IOException(e);
     } catch (InterruptedException e) {
       throw e;
     }

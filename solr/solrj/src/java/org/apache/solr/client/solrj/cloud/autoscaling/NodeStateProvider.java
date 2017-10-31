@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * This interface models access to node and replica information.
+ * This interface models the access to node and replica information.
  */
 public interface NodeStateProvider {
   /**
@@ -36,8 +36,7 @@ public interface NodeStateProvider {
   /**
    * Get the details of each replica in a node. It attempts to fetch as much details about
    * the replica as mentioned in the keys list. It is not necessary to give all details
-   * <p>
-   * the format is {collection:shard :[{replicadetails}]}
+   * <p>The format is {collection:shard :[{replicadetails}]}.</p>
    */
   Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys);
 }

@@ -14,7 +14,7 @@ Getting Started
 You need a Java 1.8 VM or later installed.
 In this release, there is an example Solr server including a bundled 
 servlet container in the directory named "example".
-See the Quick Start guide at http://lucene.apache.org/solr/quickstart.html
+See the Solr tutorial at https://lucene.apache.org/solr/guide/solr-tutorial.html
 
 ==================  8.0.0 ==================
 
@@ -22,7 +22,7 @@ Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this r
 
 Versions of Major Components
 ---------------------
-Apache Tika 1.13
+Apache Tika 1.16
 Carrot2 3.15.0
 Velocity 1.7 and Velocity Tools 2.0
 Apache UIMA 2.3.1
@@ -32,13 +32,104 @@ Jetty 9.3.20.v20170531
 
 (No Changes)
 
+==================  7.2.0 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.16
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.20.v20170531
+
+New Features
+----------------------
+* SOLR-11448: Implement an option in collection commands to wait for final results. (ab)
+
+* SOLR-11072: Implement trigger for searchRate event type. (ab)
+
+* SOLR-11524: A new autoscaling/suggestions API end-point which gives autoscaling suggestions (noble)
+
+* SOLR-11519: Implement autoscaling suggestions for replica count violations (noble)
+
+* SOLR-11518: Implement autoscaling Suggestions for freedisk violations (noble)
+
+* SOLR-10132: A new optional facet.matches parameter to return facet buckets only
+  for terms that match a regular expression. (Gus Heck, Christine Poerschke)
+
+* SOLR-11520: Implement autoscaling suggestions for cores count violations (noble)
+
+
+Bug Fixes
+----------------------
+
+* SOLR-11445: Overseer should not hang when process bad message. (Cao Manh Dat, shalin) 
+
+* SOLR-11447: ZkStateWriter should process commands in atomic. (Cao Manh Dat, shalin)
+
+* SOLR-11491: Support retrieval of cluster properties in HttpClusterStateProvider. (ab)
+
+* SOLR-11146: Small fixes to the mapping functions in the Analytics Component (Houston Putman)
+
+* SOLR-11326: A bootstrap of a target cluster does not need to download the tlog files from the source cluster
+  (Amrit Sarkar, Varun Thacker)
+  
+* SOLR-10874: Fix AIOOBE caused by FloatPayloadValueSource calling PostingsEnum.nextPosition()
+  more than the given term's frequency in overridden FloatDocValues.floatVal().
+  (Michael Kosten, Erik Hatcher, Steve Rowe)
+
+* SOLR-11484: CloudSolrClient does not invalidate cache or retry for RouteException (noble, hossman)
+
+* SOLR-11532: Solr hits NPE when fl only contains DV fields and any of them is a spatial field. (Cao Manh Dat, David Smiley)
+
+* SOLR-11557: Fix SolrZkClient.checkInterrupted (Tomás Fernández Löbbe)
+
+* SOLR-11413: SolrGraphiteReporter fails to report metrics due to non-thread safe code. (Erik Persson, ab)
+
+Optimizations
+----------------------
+* SOLR-11285: Refactor autoscaling framework to avoid direct references to Zookeeper and Solr
+  to make testing and large scale simulations easier. (ab)
+
+* SOLR-11443: Remove the usage of workqueue for Overseer. (Cao Manh Dat, Scott Blum)
+
+* SOLR-11320: Lock autoscaling triggers when changes they requested are being made. This helps to
+  ensure that cluster is in a stable state before processing any new trigger events. (ab)
+
+Other Changes
+----------------------
+* SOLR-11478: Solr should remove itself from live_nodes in zk immediately on shutdown. (Cao Manh Dat)
+
+* SOLR-11145: Adds comprehensive unit tests for the Analytics Component v2 (Houston Putman)
+
+* SOLR-11389: For Solr(Shard|Cluster)Reporter instances the SolrMetricManager.registerReporter
+  method is now called after the SolrCore or CoreContainer has been set for the instance.
+  (Christine Poerschke)
+
+* SOLR-11464, SOLR-11493, SOLR-11511: Minor refactorings to DistributedUpdateProcessor. (Gus Heck, David Smiley)
+
+* SOLR-11444: Improved consistency of collection alias handling, and collection references that are
+  comma delimited lists of collections, across the various places collections can be referred to.
+  Updates are delivered to the first in a list.  It's now possible to refer to a comma delimited list
+  of them in the path, ex: /solr/colA,colB/select?... (David Smiley)
+
+* SOLR-11165: Ref guide documentation for Autoscaling APIs, triggers, listeners, actions for Solr 7.1
+  (ab, Cassandra Targett, Noble Paul, shalin)
+
+* SOLR-11562: Restore Solr logo ASCII-art in startup log by removing unnecessary default confdir logging (janhoy)
+
+* SOLR-11380: SolrJ must stream docs to server instead of writing to a buffer first (noble)
+
 ==================  7.1.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
 
 Versions of Major Components
 ---------------------
-Apache Tika 1.13
+Apache Tika 1.16
 Carrot2 3.15.0
 Velocity 1.7 and Velocity Tools 2.0
 Apache UIMA 2.3.1
@@ -72,6 +163,16 @@ Upgrade Notes
   robust structure. This simplifies and condenses the code required to implement a new Evaluator and
   makes it much easier for evaluators to handle differing data types (primitives, objects, arrays,
   lists, and so forth). (Dennis Gove)
+
+* SOLR-10962: in the ReplicationHandler the master.commitReserveDuration sub-element is deprecated. Instead
+  please configure a direct commitReserveDuration element for use in all modes (master, slave, cloud).
+
+* SOLR-11482: RunExecutableListener was removed for security reasons. If you want to listen to
+  events caused by updates, commits, or optimize, write your own listener as native Java class
+  as part of a Solr plugin.
+
+* SOLR-11477: in the XML query parser (defType=xmlparser or {!xmlparser ... })
+  the resolving of external entities is now disallowed by default.
 
 New Features
 ----------------------
@@ -119,8 +220,58 @@ New Features
 * SOLR-11316: JSON Facet API: min/max aggregations are now supported on single-valued date fields.
   (yonik)
 
+* SOLR-10962: Make ReplicationHandler's commitReserveDuration configurable in SolrCloud mode.
+  (Ramsey Haddad, Christine Poerschke, hossman)
+
+* SOLR-11382: Lucene's Geo3D (surface of sphere & ellipsoid) is now supported on spatial RPT fields by
+  setting spatialContextFactory="Geo3D".  Furthermore, this is the first time Solr has out of the box
+  support for polygons. (David Smiley)
+
+* SOLR-11160: Add normalDistribution, uniformDistribution, sample and kolmogorovSmirnov Stream Evaluators
+  (Joel Bernstein)
+
+* SOLR-11225: Add cumulativeProbability Stream Evaluator (Joel Bernstein)
+
+* SOLR-11241: Add discrete counting and probability Stream Evaluators (Joel Bernstein)
+
+* SOLR-11321: Add ebeAdd, ebeSubtract, ebeDivide, ebeMultiply, dotProduct and cosineSimilarity Stream Evaluators
+  (Joel Bernstein)
+
+* SOLR-11338: Add Kendall's Tau-b rank and Spearmans rank correlation Stream Evaluators (Joel Bernstein)
+
+* SOLR-11339: Add Canberra, Chebyshev, Earth Movers and Manhattan Distance Stream Evaluators (Joel Bernstein)
+
+* SOLR-11342: Add sumDifference and meanDifference Stream Evaluators (Joel Bernstein)
+
+* SOLR-11350: Add primes Stream Evaluator (Joel Bernstein)
+
+* SOLR-11354: Add factorial and movingMedian Stream Evaluators (Joel Bernstein)
+
+* SOLR-11377: Add expMovingAverage (exponential moving average) and binomialCoefficient Stream Evaluators
+  (Mathew Skaria, Joel Bernstein)
+
+* SOLR-11388: Add monteCarlo Stream Evaluator to support Monte Carlo simulations (Joel Bernstein)
+
+* SOLR-11398: Add weibullDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11400: Add logNormalDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11401: Add zipFDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11414: Add gammaDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11415: Add betaDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11436: Add polyfit and polyfitDerivative Stream Evaluators (Joel Bernstein)
+
+* SOLR-11439: Add harmonicFit Stream Evaluator (Joel Bernstein)
+
+* SOLR-11076: New /autoscaling/history API to return past cluster events and actions. (ab)
+
 Bug Fixes
 ----------------------
+
+* SOLR-11423: Overseer queue needs a hard cap (maximum size) that clients respect (Scott Blum, Joshua Humphries, Noble Paul)
 
 * SOLR-10602: Triggers should be able to restore state from old instances when taking over. (shalin)
 
@@ -166,7 +317,7 @@ Bug Fixes
 
 * SOLR-11278: Stopping CDCR should cancel a running bootstrap operation. (Amrit Sarkar, shalin)
 
-* SOLR-11293: Potential data loss in TLOG replicas after replication failures (noble)
+* SOLR-11293: Potential data loss in TLOG replicas when masterVersion equals zero (noble, Cao Manh Dat)
 
 * SOLR-10101: TestLazyCores hangs (Erick Erickson)
 
@@ -178,6 +329,24 @@ Bug Fixes
   were double counted. (Hossman, yonik)
 
 * SOLR-11085: Improve resiliency of autoscaling actions against overseer restarts and operation failures. (shalin)
+
+* SOLR-11297: Message "Lock held by this virtual machine" during startup.  Solr is trying to start some cores twice.
+  (Luiz Armesto, Shawn Heisey, Erick Erickson)
+
+* SOLR-11399: The UnifiedHighlighter was ignoring the hl.fragsize parameter when hl.bs.type=SEPARATOR
+  (Marc Morissette via David Smiley)
+
+* SOLR-11224: SolrStream.close can hit an NPE (Erick Erickson)
+
+* SOLR-11278: Fix a race condition in the CDCR bootstrap process which could lead to bootstraps cancelling itself
+  (Amrit Sarkar, shalin, Varun Thacker)
+
+* SOLR-11425: SolrClientBuilder does not allow infinite timeout (value 0). (Peter Szantai-Kis via Mark Miller)
+
+* SOLR-11449: MoveReplicaCmd mistakenly called registerCollectionStateWatcher on failure. (ab)
+
+* SOLR-11477: Disallow resolving of external entities in the XML query parser (defType=xmlparser).
+  (Michael Stepankin, Olga Barinova, Uwe Schindler, Christine Poerschke)
 
 Optimizations
 ----------------------
@@ -196,6 +365,10 @@ Optimizations
 * SOLR-11314: FastCharStream: re-use the READ_PAST_EOF exception. (Michael Braun via David Smiley)
 
 * SOLR-8344: Decide default when requested fields are both column and row stored. (Cao Manh Dat, David Smiley)
+
+* SOLR-10285: Skip LEADER messages when there are leader only shards (Cao Manh Dat, Joshua Humphries)
+
+* SOLR-11424: When legacyCloud=false, cores should not publish itself as DOWN on startup. (Cao Manh Dat)
 
 Other Changes
 ----------------------
@@ -222,7 +395,7 @@ Other Changes
 
 * SOLR-10338: Configure SecureRandom non blocking for tests. (Mihaly Toth, hossman, Ishan Chattopadhyaya, via Mark Miller)
 
-* SOLR-10916: Convert tests that extend LuceneTestCase and use MiniSolrCloudCluster 
+* SOLR-10916: Convert tests that extend LuceneTestCase and use MiniSolrCloudCluster
   to instead extend SolrCloudTestCase. (Steve Rowe)
 
 * SOLR-11131: Document 'assert' as a command option in bin/solr, and bin/solr.cmd scripts.
@@ -272,7 +445,36 @@ Other Changes
 * SOLR-11351: Make LTRScoringModel model more extensible. (Christine Poerschke)
 
 * SOLR-10451: Remove contrib/ltr/lib from lib includes in the techproducts example config (sungjunyoung via janhoy)
-   
+
+* SOLR-11306: Fix inaccurate comments on docValues and StrField in the example schemas
+  (Tom Burton-West, Jason Gerlowski, Varun Thacker)
+
+* SOLR-11482: RunExecutableListener was removed for security reasons.  (Michael Stepankin,
+  Olga Barinova, Uwe Schindler, Tomás Fernández Löbbe)
+
+* SOLR-10335: Upgrade to Tika 1.16. (Tim Allison, Tomás Fernández Löbbe via shalin)
+
+==================  7.0.1 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.13
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.14.v20161028
+
+Bug Fixes
+----------------------
+
+* SOLR-11297: Message "Lock held by this virtual machine" during startup.  Solr is trying to start some cores twice.
+  (Luiz Armesto, Shawn Heisey, Erick Erickson)
+
+* SOLR-11406: Solr 7.0 cannot read indexes from 6.x versions. (Shawn Heisey, Steve Rowe)
+
 ==================  7.0.0 ==================
 
 Versions of Major Components
@@ -486,7 +688,7 @@ New Features
 * SOLR-10406: v2 API error messages list the URL request path as /solr/____v2/... when the original path was /v2/... (Cao Manh Dat, noble)
 
 * SOLR-10574: New _default config set replacing basic_configs and data_driven_schema_configs.
-  (Ishan Chattopadhyaya, noble, shalin, hossman, David Smiley, janhoy, Alexandre Rafalovich)
+  (Ishan Chattopadhyaya, noble, shalin, hossman, David Smiley, janhoy, Alexandre Rafalovitch)
 
 * SOLR-10272: Use _default config set if no collection.configName is specified with CREATE (Ishan Chattopadhyaya)
 
@@ -494,7 +696,7 @@ New Features
   to facilitate both search and faceting. AddSchemaFieldsUpdateProcessor now has the ability to add a "copyField" to
   the type mappings, with an optional maxChars limitation. You can also define one typeMappings as default.
   This also solves issues SOLR-8495, SOLR-6966, and SOLR-7058
-  (janhoy, Steve Rowe, hossman, Alexandre Rafalovich, Shawn Heisey, Cao Manh Dat)
+  (janhoy, Steve Rowe, hossman, Alexandre Rafalovitch, Shawn Heisey, Cao Manh Dat)
 
 * SOLR-10123: Upgraded the Analytics Component to version 2.0 which now supports distributed collections, expressions over
   multivalued fields, a new JSON request language, and more. DocValues are now required for any field used in the analytics
@@ -809,6 +1011,8 @@ Other Changes
 
 * SOLR-10713: Ignore .pid and .out files in solr working directory (Jason Gerlowski via Mike Drob)
 
+* SOLR-10764: AutoScalingHandler should validate policy and preferences before updating zookeeper. (shalin)
+
 * SOLR-10782: Improve error handling and tests for Snitch and subclasses and general cleanups. (Noble Paul, shalin)
 
 * SOLR-10419: All collection APIs should use the new Policy framework for replica placement. (Noble Paul, shalin)
@@ -973,6 +1177,46 @@ Other Changes
   (Uwe Schindler)
 
 * SOLR-11324: Clean up mention of trie fields in documentation and source comments. (Steve Rowe)
+
+==================  6.6.2 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.16
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.14.v20161028
+
+Upgrade Notes
+----------------------
+
+* SOLR-11477: in the XML query parser (defType=xmlparser or {!xmlparser ... })
+  the resolving of external entities is now disallowed by default.
+
+* SOLR-11482: RunExecutableListener was deprecated and is disabled by default for
+  security reasons. Legacy applications still using it must explicitely pass
+  '-Dsolr.enableRunExecutableListener=true' to the Solr command line.
+  Be aware that you should really disable API-based config editing at the same
+  time, using '-Ddisable.configEdit=true'!  (Uwe Schindler)
+
+Bug Fixes
+----------------------
+
+* SOLR-11477: Disallow resolving of external entities in the XML query parser (defType=xmlparser).
+  (Michael Stepankin, Olga Barinova, Uwe Schindler, Christine Poerschke)
+
+
+* SOLR-11297: Message "Lock held by this virtual machine" during startup.  Solr is trying to start some cores twice.
+  (Luiz Armesto, Shawn Heisey, Erick Erickson)
+
+Other Changes
+----------------------
+
+* SOLR-10335: Upgrade to Tika 1.16. (Tim Allison, Tomás Fernández Löbbe via shalin)
 
 ==================  6.6.1 ==================
 
@@ -3445,6 +3689,45 @@ Other Changes
 
 * SOLR-8904: DateUtil in SolrJ moved to the extraction contrib as ExtractionDateUtil.  Obsolete methods were removed.
   (David Smiley)
+
+======================= 5.5.5 =======================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.7
+Carrot2 3.10.4
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.6
+Jetty 9.2.13.v20150730
+
+Upgrade Notes
+----------------------
+
+* SOLR-11477: in the XML query parser (defType=xmlparser or {!xmlparser ... })
+  the resolving of external entities is now disallowed by default.
+
+* SOLR-11482: RunExecutableListener was deprecated and is disabled by default for
+  security reasons. Legacy applications still using it must explicitely pass
+  '-Dsolr.enableRunExecutableListener=true' to the Solr command line.
+  Be aware that you should really disable API-based config editing at the same
+  time, using '-Ddisable.configEdit=true'!  (Uwe Schindler)
+
+Bug Fixes
+----------------------
+
+* SOLR-10420: Leaking one SolrZkClient instance per second (Scott Blum, Cao Manh Dat, Markus Jelsma, Steve Rowe)
+
+* SOLR-11477: Disallow resolving of external entities in the XML query parser (defType=xmlparser).
+  (Michael Stepankin, Olga Barinova, Uwe Schindler, Christine Poerschke)
+
+Other
+----------------------
+
+* SOLR-11486: Update jmatio to 1.2 and prevent deserialization inside Matlab files.
+  (Uwe Schindler, Steve Rowe)
 
 ======================= 5.5.4 =======================
 

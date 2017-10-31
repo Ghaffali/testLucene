@@ -17,31 +17,27 @@
 
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.Map;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
-import org.apache.solr.client.solrj.cloud.DistributedQueue;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
+import org.apache.solr.common.SolrCloseable;
 
 /**
  * This interface abstracts the access to a SolrCloud cluster, including interactions with Zookeeper, Solr
  * and generic HTTP calls.
+ * <p>This abstraction should be used when possible instead of directly referencing ZK, Solr and HTTP.</p>
  */
-public interface SolrCloudManager extends Closeable {
+public interface SolrCloudManager extends SolrCloseable {
 
   ClusterStateProvider getClusterStateProvider();
 
   NodeStateProvider getNodeStateProvider();
 
   DistribStateManager getDistribStateManager();
-
-  interface DistributedQueueFactory {
-    DistributedQueue makeQueue(String path) throws IOException;
-    void removeQueue(String path) throws IOException;
-  }
 
   DistributedQueueFactory getDistributedQueueFactory();
 
@@ -50,15 +46,4 @@ public interface SolrCloudManager extends Closeable {
   SolrResponse request(SolrRequest req) throws IOException;
 
   byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException;
-
-  // distributed queue implementation
-
-  @Override
-  default void close() {
-
-  }
-
-  default boolean isClosed() {
-    return false;
-  }
 }

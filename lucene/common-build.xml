@@ -1889,7 +1889,14 @@ ${ant.project.name}.test.dependencies=${test.classpath.list}
   <target name="stage-maven-artifacts">
     <sequential>
       <property name="output.build.xml" location="${build.dir}/stage_maven_build.xml"/>
-      <property name="dev-tools.scripts.dir" value="../dev-tools/scripts"/>
+      <property name="dev-tools.scripts.dir" value="${common.dir}/../dev-tools/scripts"/>
+      <fail message="maven.dist.dir '${maven.dist.dir}' does not exist!">
+        <condition>
+          <not>
+            <available file="${maven.dist.dir}" type="dir"/>
+          </not>
+        </condition>
+      </fail>
       <exec dir="." executable="${perl.exe}" failonerror="false" outputproperty="stage.maven.script.output"
         resultproperty="stage.maven.script.success">
         <arg value="-CSD"/>
@@ -1899,7 +1906,6 @@ ${ant.project.name}.test.dependencies=${test.classpath.list}
         <arg value="${common.dir}/common-build.xml"/> <!-- Imported from the ant file to be written -->
         <arg value="${m2.credentials.prompt}"/>
         <arg value="${m2.repository.id}"/>
-        <arg value="${m2.repository.url}"/>
       </exec>
       <echo message="${stage.maven.script.output}"/>
       <fail message="maven stage script failed!">
@@ -2411,7 +2417,7 @@ ${ant.project.name}.test.dependencies=${test.classpath.list}
 
   <!-- GROOVY scripting engine for ANT tasks -->
   <target name="resolve-groovy" unless="groovy.loaded" depends="ivy-availability-check,ivy-configure">
-    <ivy:cachepath organisation="org.codehaus.groovy" module="groovy-all" revision="2.4.8"
+    <ivy:cachepath organisation="org.codehaus.groovy" module="groovy-all" revision="2.4.12"
       inline="true" conf="default" type="jar" transitive="true" pathid="groovy.classpath"/>
     <taskdef name="groovy"
       classname="org.codehaus.groovy.ant.Groovy"
@@ -2425,7 +2431,7 @@ ${ant.project.name}.test.dependencies=${test.classpath.list}
   <property name="forbidden-sysout-excludes" value=""/>
   
   <target name="-install-forbidden-apis" unless="forbidden-apis.loaded" depends="ivy-availability-check,ivy-configure">
-    <ivy:cachepath organisation="de.thetaphi" module="forbiddenapis" revision="2.3"
+    <ivy:cachepath organisation="de.thetaphi" module="forbiddenapis" revision="2.4.1"
       inline="true" conf="default" transitive="true" pathid="forbidden-apis.classpath"/>
     <taskdef name="forbidden-apis" classname="de.thetaphi.forbiddenapis.ant.AntTask" classpathref="forbidden-apis.classpath"/>
     <property name="forbidden-apis.loaded" value="true"/>

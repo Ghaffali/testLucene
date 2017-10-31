@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.TreeSet;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Predicate;
@@ -41,8 +42,10 @@ import org.apache.solr.common.cloud.ZkCmdExecutor;
 import org.apache.solr.common.util.Pair;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Op;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.data.Stat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -96,11 +99,22 @@ public class ZkDistributedQueue implements DistributedQueue {
 
   private int watcherCount = 0;
 
+  private final int maxQueueSize;
+
+  /**
+   * If {@link #maxQueueSize} is set, the number of items we can queue without rechecking the server.
+   */
+  private final AtomicInteger offerPermits = new AtomicInteger(0);
+
   public ZkDistributedQueue(SolrZkClient zookeeper, String dir) {
     this(zookeeper, dir, new Stats());
   }
 
   public ZkDistributedQueue(SolrZkClient zookeeper, String dir, Stats stats) {
+    this(zookeeper, dir, stats, 0);
+  }
+
+  public ZkDistributedQueue(SolrZkClient zookeeper, String dir, Stats stats, int maxQueueSize) {
     this.dir = dir;
 
     ZkCmdExecutor cmdExecutor = new ZkCmdExecutor(zookeeper.getZkClientTimeout());
@@ -115,6 +129,7 @@ public class ZkDistributedQueue implements DistributedQueue {
 
     this.zookeeper = zookeeper;
     this.stats = stats;
+    this.maxQueueSize = maxQueueSize;
   }
 
   /**
@@ -213,6 +228,42 @@ public class ZkDistributedQueue implements DistributedQueue {
     }
   }
 
+  public void remove(Collection<String> paths) throws KeeperException, InterruptedException {
+    if (paths.isEmpty()) return;
+    List<Op> ops = new ArrayList<>();
+    for (String path : paths) {
+      ops.add(Op.delete(dir + "/" + path, -1));
+    }
+    for (int from = 0; from < ops.size(); from += 1000) {
+      int to = Math.min(from + 1000, ops.size());
+      if (from < to) {
+        try {
+          zookeeper.multi(ops.subList(from, to), true);
+        } catch (KeeperException.NoNodeException e) {
+          // don't know which nodes are not exist, so try to delete one by one node
+          for (int j = from; j < to; j++) {
+            try {
+              zookeeper.delete(ops.get(j).getPath(), -1, true);
+            } catch (KeeperException.NoNodeException e2) {
+              LOG.debug("Can not remove node which is not exist : " + ops.get(j).getPath());
+            }
+          }
+        }
+      }
+    }
+
+    int cacheSizeBefore = knownChildren.size();
+    knownChildren.removeAll(paths);
+    if (cacheSizeBefore - paths.size() == knownChildren.size() && knownChildren.size() != 0) {
+      stats.setQueueLength(knownChildren.size());
+    } else {
+      // There are elements get deleted but not present in the cache,
+      // the cache seems not valid anymore
+      knownChildren.clear();
+      isDirty = true;
+    }
+  }
+
   /**
    * Removes the head of the queue and returns it, blocks until it succeeds.
    *
@@ -247,6 +298,24 @@ public class ZkDistributedQueue implements DistributedQueue {
     try {
       while (true) {
         try {
+          if (maxQueueSize > 0) {
+            if (offerPermits.get() <= 0 || offerPermits.getAndDecrement() <= 0) {
+              // If a max queue size is set, check it before creating a new queue item.
+              Stat stat = zookeeper.exists(dir, null, true);
+              if (stat == null) {
+                // jump to the code below, which tries to create dir if it doesn't exist
+                throw new KeeperException.NoNodeException();
+              }
+              int remainingCapacity = maxQueueSize - stat.getNumChildren();
+              if (remainingCapacity <= 0) {
+                throw new IllegalStateException("queue is full");
+              }
+
+              // Allow this client to push up to 1% of the remaining queue capacity without rechecking.
+              offerPermits.set(maxQueueSize - stat.getNumChildren() / 100);
+            }
+          }
+
           // Explicitly set isDirty here so that synchronous same-thread calls behave as expected.
           // This will get set again when the watcher actually fires, but that's ok.
           zookeeper.create(dir + "/" + PREFIX, data, CreateMode.PERSISTENT_SEQUENTIAL, true);

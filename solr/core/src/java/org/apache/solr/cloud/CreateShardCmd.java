@@ -24,7 +24,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
@@ -32,6 +31,7 @@ import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler.Cmd;
+import org.apache.solr.common.SolrCloseableLatch;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -39,6 +39,7 @@ import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CommonAdminParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.SimpleOrderedMap;
@@ -68,6 +69,7 @@ public class CreateShardCmd implements Cmd {
   public void call(ClusterState clusterState, ZkNodeProps message, NamedList results) throws Exception {
     String collectionName = message.getStr(COLLECTION_PROP);
     String sliceName = message.getStr(SHARD_ID_PROP);
+    boolean waitForFinalState = message.getBool(CommonAdminParams.WAIT_FOR_FINAL_STATE, false);
 
     log.info("Create shard invoked: {}", message);
     if (collectionName == null || sliceName == null)
@@ -88,7 +90,7 @@ public class CreateShardCmd implements Cmd {
     ZkStateReader zkStateReader = ocmh.zkStateReader;
     boolean usePolicyFramework = usePolicyFramework(collection,ocmh);
     List<ReplicaPosition> positions = null;
-    CountDownLatch countDownLatch;
+    SolrCloseableLatch countDownLatch;
     try {
       if (usePolicyFramework) {
         if (collection.getPolicyName() != null) message.getProperties().put(Policy.POLICY, collection.getPolicyName());
@@ -121,7 +123,7 @@ public class CreateShardCmd implements Cmd {
       ocmh.waitForNewShard(collectionName, sliceName);
 
       String async = message.getStr(ASYNC);
-      countDownLatch = new CountDownLatch(totalReplicas);
+      countDownLatch = new SolrCloseableLatch(totalReplicas, ocmh);
       for (ReplicaPosition position : positions) {
         String nodeName = position.node;
         String coreName = Assign.buildCoreName(ocmh.overseer.getSolrCloudManager().getDistribStateManager(), collection, sliceName, position.type);
@@ -134,7 +136,8 @@ public class CreateShardCmd implements Cmd {
             SHARD_ID_PROP, sliceName,
             ZkStateReader.REPLICA_TYPE, position.type.name(),
             CoreAdminParams.NODE, nodeName,
-            CoreAdminParams.NAME, coreName);
+            CoreAdminParams.NAME, coreName,
+            CommonAdminParams.WAIT_FOR_FINAL_STATE, Boolean.toString(waitForFinalState));
         Map<String, Object> propertyParams = new HashMap<>();
         ocmh.addPropertyParams(message, propertyParams);
         addReplicasProps = addReplicasProps.plus(propertyParams);

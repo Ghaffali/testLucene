@@ -23,6 +23,7 @@ public interface AutoScalingParams {
 
   // parameters
   String DIAGNOSTICS = "diagnostics";
+  String SUGGESTIONS = "suggestions";
   String NAME = "name";
   String TRIGGER = "trigger";
   String EVENT = "event";
@@ -37,6 +38,12 @@ public interface AutoScalingParams {
   String BEFORE_ACTION = "beforeAction";
   String AFTER_ACTION = "afterAction";
   String TIMEOUT = "timeout";
+  String COLLECTION = "collection";
+  String SHARD = "shard";
+  String REPLICA = "replica";
+  String NODE = "node";
+  String HANDLER = "handler";
+  String RATE = "rate";
   String REMOVE_LISTENERS = "removeListeners";
   String ZK_VERSION = "zkVersion";
 

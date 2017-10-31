@@ -25,21 +25,37 @@ import java.util.Map;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.util.Utils;
 
 
 public class ReplicaInfo implements MapWriter {
-  final String name;
-  final String core, collection, shard;
-  final Map<String, Object> variables = new HashMap<>();
+//  private final Replica replica;
+  private final String name;
+  private String core, collection, shard;
+  private Replica.Type type;
+  private String node;
+  private Map<String, Object> variables;
 
-  public ReplicaInfo(String name, String coll, String shard, Map<String, Object> vals) {
+  public ReplicaInfo(String coll,String shard, Replica r, Map<String, Object> vals){
+    this.name = r.getName();
+    this.core = r.getCoreName();
+    this.collection = coll;
+    this.shard = shard;
+    this.type = r.getType();
+    this.variables = vals;
+    this.node = r.getNodeName();
+  }
+
+  public ReplicaInfo(String name, String core, String coll, String shard, Replica.Type type, String node, Map<String, Object> vals) {
     this.name = name;
     if (vals != null) {
       this.variables.putAll(vals);
     }
     this.collection = coll;
     this.shard = shard;
-    this.core = (String)vals.get("core");
+    this.type = type;
+    this.core = core;
+    this.node = node;
   }
 
   @Override
@@ -68,7 +84,7 @@ public class ReplicaInfo implements MapWriter {
   }
 
   public Replica.Type getType() {
-    Object o = variables.get(ZkStateReader.REPLICA_TYPE);
+    Object o = type == null ? variables.get(ZkStateReader.REPLICA_TYPE) : type;
     if (o == null) {
       variables.put(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT);
       return Replica.Type.NRT;
@@ -101,11 +117,10 @@ public class ReplicaInfo implements MapWriter {
 
   @Override
   public String toString() {
-    return "ReplicaInfo{" +
-        "name='" + name + '\'' +
-        ", collection='" + collection + '\'' +
-        ", shard='" + shard + '\'' +
-        ", variables=" + variables +
-        '}';
+    return Utils.toJSONString(this);
+  }
+
+  public String getNode() {
+    return node;
   }
 }

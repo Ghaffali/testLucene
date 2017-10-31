@@ -27,8 +27,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.client.solrj.cloud.autoscaling.Policy.Suggester.Hint;
+import org.apache.solr.client.solrj.cloud.autoscaling.Suggester.Hint;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
+import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
+import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
@@ -79,7 +81,7 @@ public class PolicyHelper {
         int idx = 0;
         for (Map.Entry<Replica.Type, Integer> e : typeVsCount.entrySet()) {
           for (int i = 0; i < e.getValue(); i++) {
-            Policy.Suggester suggester = session.getSuggester(ADDREPLICA)
+            Suggester suggester = session.getSuggester(ADDREPLICA)
                 .hint(Hint.REPLICATYPE, e.getKey())
                 .hint(Hint.COLL_SHARD, new Pair<>(collName, shardName));
             if (nodesList != null) {
@@ -87,7 +89,7 @@ public class PolicyHelper {
                 suggester = suggester.hint(Hint.TARGET_NODE, nodeName);
               }
             }
-            SolrRequest op = suggester.getOperation();
+            SolrRequest op = suggester.getSuggestion();
             if (op == null) {
               throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "No node can satisfy the rules " +
                   Utils.toJSONString(Utils.getDeepCopy(session.expandedClauses, 4, true)));
@@ -107,6 +109,51 @@ public class PolicyHelper {
 
   public static final int SESSION_EXPIRY = 180;//3 seconds
   public static ThreadLocal<Long> REF_VERSION = new ThreadLocal<>();
+
+  public static MapWriter getDiagnostics(Policy policy, SolrClientCloudManager cloudManager) {
+    Policy.Session session = policy.createSession(cloudManager);
+    List<Row> sorted = session.getSorted();
+    List<Violation> violations = session.getViolations();
+
+    List<Preference> clusterPreferences = policy.getClusterPreferences();
+
+    List<Map<String, Object>> sortedNodes = new ArrayList<>(sorted.size());
+    for (Row row : sorted) {
+      Map<String, Object> map = Utils.makeMap("node", row.node);
+      for (Cell cell : row.getCells()) {
+        for (Preference clusterPreference : clusterPreferences) {
+          Policy.SortParam name = clusterPreference.getName();
+          if (cell.getName().equalsIgnoreCase(name.name())) {
+            map.put(name.name(), cell.getValue());
+            break;
+          }
+        }
+      }
+      sortedNodes.add(map);
+    }
+
+    return ew -> {
+      ew.put("sortedNodes", sortedNodes);
+      ew.put("violations", violations);
+    };
+
+
+  }
+
+  public static List<Suggester.SuggestionInfo> getSuggestions(AutoScalingConfig autoScalingConf, SolrCloudManager cloudManager) {
+    Policy policy = autoScalingConf.getPolicy();
+    Suggestion.SuggestionCtx suggestionCtx = new Suggestion.SuggestionCtx();
+    suggestionCtx.session = policy.createSession(cloudManager);
+    List<Violation> violations = suggestionCtx.session.getViolations();
+    for (Violation violation : violations) {
+      Suggestion.getTagType(violation.getClause().isPerCollectiontag() ?
+          violation.getClause().tag.name:
+          violation.getClause().globalTag.name)
+          .getSuggestions(suggestionCtx.setViolation(violation));
+      suggestionCtx.violation = null;
+    }
+    return suggestionCtx.getSuggestions();
+  }
 
   public static class SessionRef {
     private final AtomicLong myVersion = new AtomicLong(0);

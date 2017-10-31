@@ -21,6 +21,7 @@ import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -35,6 +36,7 @@ import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkNodeProps;
+import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
@@ -114,29 +116,27 @@ public class ExecutePlanActionTest extends SolrCloudTestCase {
 
       CollectionAdminRequest.AsyncCollectionAdminRequest moveReplica = new CollectionAdminRequest.MoveReplica(collectionName, replicas.get(0).getName(), survivor.getNodeName());
       CollectionAdminRequest.AsyncCollectionAdminRequest mockRequest = new CollectionAdminRequest.AsyncCollectionAdminRequest(CollectionParams.CollectionAction.OVERSEERSTATUS) {
-        // nocommit: this doesn't work because async requests are now processed differently in ExecutePlanAction
-//
-//        @Override
-//        public String processAsync(String asyncId, SolrClient client) throws IOException, SolrServerException {
-//          String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/xyz/execute_plan";
-//          try {
-//            if (zkClient().exists(parentPath, true)) {
-//              java.util.List<String> children = zkClient().getChildren(parentPath, null, true);
-//              if (!children.isEmpty()) {
-//                String child = children.get(0);
-//                byte[] data = zkClient().getData(parentPath + "/" + child, null, null, true);
-//                Map m = (Map) Utils.fromJSON(data);
-//                if (m.containsKey("requestid")) {
-//                  znodeCreated.set(m.get("requestid").equals(asyncId));
-//                }
-//              }
-//            }
-//          } catch (Exception e) {
-//            throw new RuntimeException(e);
-//          }
-//          super.processAsync(asyncId, client);
-//          return asyncId;
-//        }
+        @Override
+        public void setAsyncId(String asyncId) {
+          super.setAsyncId(asyncId);
+          String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/xyz/execute_plan";
+          try {
+            if (zkClient().exists(parentPath, true)) {
+              java.util.List<String> children = zkClient().getChildren(parentPath, null, true);
+              if (!children.isEmpty()) {
+                String child = children.get(0);
+                byte[] data = zkClient().getData(parentPath + "/" + child, null, null, true);
+                Map m = (Map) Utils.fromJSON(data);
+                if (m.containsKey("requestid")) {
+                  znodeCreated.set(m.get("requestid").equals(asyncId));
+                }
+              }
+            }
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+
+        }
       };
       List<CollectionAdminRequest.AsyncCollectionAdminRequest> operations = Lists.asList(moveReplica, new CollectionAdminRequest.AsyncCollectionAdminRequest[]{mockRequest});
       NodeLostTrigger.NodeLostEvent nodeLostEvent = new NodeLostTrigger.NodeLostEvent(TriggerEventType.NODELOST,

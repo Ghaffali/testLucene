@@ -1,7 +1,24 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package org.apache.solr.cloud.autoscaling;
 
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
@@ -27,9 +44,9 @@ public class TriggerEventQueue {
   private final TimeSource timeSource;
   private final DistributedQueue delegate;
 
-  public TriggerEventQueue(SolrCloudManager dataProvider, String triggerName, Stats stats) throws IOException {
+  public TriggerEventQueue(SolrCloudManager cloudManager, String triggerName, Stats stats) throws IOException {
     // TODO: collect stats
-    this.delegate = dataProvider.getDistributedQueueFactory().makeQueue(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName);
+    this.delegate = cloudManager.getDistributedQueueFactory().makeQueue(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName);
     this.triggerName = triggerName;
     this.timeSource = TimeSource.CURRENT_TIME;
   }
@@ -58,7 +75,7 @@ public class TriggerEventQueue {
           Map<String, Object> map = (Map<String, Object>) Utils.fromJSON(data);
           return fromMap(map);
         } catch (Exception e) {
-          LOG.warn("Invalid event data, ignoring: " + new String(data));
+          LOG.warn("Invalid event data, ignoring: " + new String(data, StandardCharsets.UTF_8));
           continue;
         }
       }
@@ -80,7 +97,7 @@ public class TriggerEventQueue {
           Map<String, Object> map = (Map<String, Object>) Utils.fromJSON(data);
           return fromMap(map);
         } catch (Exception e) {
-          LOG.warn("Invalid event data, ignoring: " + new String(data));
+          LOG.warn("Invalid event data, ignoring: " + new String(data, StandardCharsets.UTF_8));
           continue;
         }
       }

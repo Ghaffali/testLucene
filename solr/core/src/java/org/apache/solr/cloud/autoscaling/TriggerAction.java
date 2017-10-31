@@ -27,5 +27,5 @@ import org.apache.solr.util.plugin.MapInitializedPlugin;
 public interface TriggerAction extends MapInitializedPlugin, Closeable {
   String getName();
 
-  void process(TriggerEvent event, ActionContext context);
+  void process(TriggerEvent event, ActionContext context) throws Exception;
 }

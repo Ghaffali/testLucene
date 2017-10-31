@@ -36,10 +36,11 @@ import java.util.stream.Stream;
 
 import org.apache.solr.api.Api;
 import org.apache.solr.api.ApiBag;
+import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.Cell;
 import org.apache.solr.client.solrj.cloud.autoscaling.Clause;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
+import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.client.solrj.cloud.autoscaling.Preference;
 import org.apache.solr.client.solrj.cloud.autoscaling.Row;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
@@ -47,6 +48,7 @@ import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventProcessorStage
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
+import org.apache.solr.cloud.ZkDistributedQueueFactory;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.SolrZkClient;
@@ -127,8 +129,12 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
               return this;
             }
           });
-        } else if (parts.size() == 3 && DIAGNOSTICS.equals(parts.get(2))) {
-          handleDiagnostics(rsp, autoScalingConf);
+        } else if (parts.size() == 3) {
+          if (DIAGNOSTICS.equals(parts.get(2))) {
+            handleDiagnostics(rsp, autoScalingConf);
+          } else if (SUGGESTIONS.equals(parts.get(2))) {
+            handleSuggestions(rsp, autoScalingConf);
+          }
         }
       } else {
         if (req.getContentStreams() == null) {
@@ -149,7 +155,21 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     }
   }
 
-  public void processOps(SolrQueryRequest req, SolrQueryResponse rsp, List<CommandOperation> ops) throws KeeperException, InterruptedException, IOException {
+
+  private void handleSuggestions(SolrQueryResponse rsp, AutoScalingConfig autoScalingConf) throws IOException {
+    try (CloudSolrClient build = new CloudSolrClient.Builder()
+        .withHttpClient(container.getUpdateShardHandler().getHttpClient())
+        .withZkHost(container.getZkController().getZkServerAddress()).build()) {
+      DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
+      rsp.getValues().add("suggestions",
+          PolicyHelper.getSuggestions(autoScalingConf, new SolrClientCloudManager(queueFactory, build)));
+    }
+
+
+  }
+
+  public void processOps(SolrQueryRequest req, SolrQueryResponse rsp, List<CommandOperation> ops)
+      throws KeeperException, InterruptedException, IOException {
     while (true) {
       AutoScalingConfig initialConfig = container.getZkController().zkStateReader.getAutoScalingConfig();
       AutoScalingConfig currentConfig = initialConfig;
@@ -216,33 +236,8 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     try (CloudSolrClient build = new CloudSolrClient.Builder()
         .withHttpClient(container.getUpdateShardHandler().getHttpClient())
         .withZkHost(container.getZkController().getZkServerAddress()).build()) {
-      SolrCloudManager.DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
-      Policy.Session session = policy.createSession(new SolrClientCloudManager(queueFactory, build));
-      List<Row> sorted = session.getSorted();
-      List<Clause.Violation> violations = session.getViolations();
-
-      List<Preference> clusterPreferences = policy.getClusterPreferences();
-
-      List<Map<String, Object>> sortedNodes = new ArrayList<>(sorted.size());
-      for (Row row : sorted) {
-        Map<String, Object> map = Utils.makeMap("node", row.node);
-        for (Cell cell : row.getCells()) {
-          for (Preference clusterPreference : clusterPreferences) {
-            Policy.SortParam name = clusterPreference.getName();
-            if (cell.getName().equalsIgnoreCase(name.name())) {
-              map.put(name.name(), cell.getValue());
-              break;
-            }
-          }
-        }
-        sortedNodes.add(map);
-      }
-
-      Map<String, Object> map = new HashMap<>(2);
-      map.put("sortedNodes", sortedNodes);
-
-      map.put("violations", violations);
-      rsp.getValues().add("diagnostics", map);
+      DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
+      rsp.getValues().add("diagnostics", PolicyHelper.getDiagnostics(policy, new SolrClientCloudManager(queueFactory, build)));
     }
   }
 
@@ -641,7 +636,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
     try (CloudSolrClient build = new CloudSolrClient.Builder()
         .withHttpClient(container.getUpdateShardHandler().getHttpClient())
         .withZkHost(container.getZkController().getZkServerAddress()).build()) {
-      SolrCloudManager.DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
+      DistributedQueueFactory queueFactory = new ZkDistributedQueueFactory(container.getZkController().getZkClient());
       Policy.Session session = autoScalingConf.getPolicy()
           .createSession(new SolrClientCloudManager(queueFactory, build));
       log.debug("Verified autoscaling configuration");
@@ -677,7 +672,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
 
   @Override
   public SolrRequestHandler getSubHandler(String path) {
-    if (path.equals("/diagnostics")) return this;
+    if (path.equals("/diagnostics") || path.equals("/suggestions")) return this;
     return null;
   }
 }
