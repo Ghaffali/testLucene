@@ -171,7 +171,7 @@ public class SimDistributedQueueFactory implements DistributedQueueFactory {
       try {
         queue.offer(new Pair(String.format("qn-%010d", seq), data));
         seq++;
-        LOG.info("=== offer " + System.nanoTime());
+        LOG.debug("=== offer " + System.nanoTime());
         changed.signalAll();
       } finally {
         updateLock.unlock();

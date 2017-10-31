@@ -55,7 +55,6 @@ public interface DistribStateManager extends Closeable {
    * @param mode creation mode.
    * @return actual path of the node - in case of sequential nodes this will differ from the base path because
    * of the appended sequence number.
-   * @throws IOException
    */
   String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
