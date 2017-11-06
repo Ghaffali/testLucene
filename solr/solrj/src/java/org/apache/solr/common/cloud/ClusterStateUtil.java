@@ -100,7 +100,7 @@ public class ClusterStateUtil {
         }
       }
     }
-    
+
     return success;
   }
   

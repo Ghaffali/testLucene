@@ -112,9 +112,14 @@ public class MoveReplicaCmd implements Cmd{
     }
     assert slice != null;
     Object dataDir = replica.get("dataDir");
-    if (dataDir != null && dataDir.toString().startsWith("hdfs:/")) {
+    // don't move the only replica in place - if it fails we can lose data
+    boolean inPlaceMove = slice.getReplicas().size() > 1;
+    log.debug("--- in-place move allowed=" + inPlaceMove);
+    if (inPlaceMove && dataDir != null && dataDir.toString().startsWith("hdfs:/")) {
+      log.debug("--- using moveHdfsReplica");
       moveHdfsReplica(clusterState, results, dataDir.toString(), targetNode, async, coll, replica, slice, timeout, waitForFinalState);
     } else {
+      log.debug("--- using moveNormalReplica");
       moveNormalReplica(clusterState, results, targetNode, async, coll, replica, slice, timeout, waitForFinalState);
     }
   }
@@ -224,7 +229,7 @@ public class MoveReplicaCmd implements Cmd{
           results.add("failure", errorString);
           return;
         } else {
-          log.debug("Replica " + watcher.getActiveReplicas() + " is active - deleting the source...");
+          log.info("Replica " + watcher.getActiveReplicas() + " is active - deleting the source...");
         }
       } finally {
         ocmh.zkStateReader.removeCollectionStateWatcher(coll.getName(), watcher);
