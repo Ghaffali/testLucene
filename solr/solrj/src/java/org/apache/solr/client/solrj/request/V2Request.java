@@ -17,12 +17,8 @@
 
 package org.apache.solr.client.solrj.request;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.Collections;
+import java.io.OutputStream;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -32,9 +28,11 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.response.V2Response;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.params.SolrParams;
-import org.apache.solr.common.util.ContentStream;
-import org.apache.solr.common.util.ContentStreamBase;
+import org.apache.solr.common.util.JavaBinCodec;
 import org.apache.solr.common.util.Utils;
+
+import static org.apache.solr.common.params.CommonParams.JAVABIN_MIME;
+import static org.apache.solr.common.params.CommonParams.JSON_MIME;
 
 public class V2Request extends SolrRequest<V2Response> implements MapWriter {
   //only for debugging purposes
@@ -63,24 +61,29 @@ public class V2Request extends SolrRequest<V2Response> implements MapWriter {
   }
 
   @Override
-  public Collection<ContentStream> getContentStreams() throws IOException {
+  public RequestWriter.ContentWriter getContentWriter(String s) {
     if (v2Calls.get() != null) v2Calls.get().incrementAndGet();
-    if (payload != null) {
-      return Collections.singleton(new ContentStreamBase() {
-        @Override
-        public InputStream getStream() throws IOException {
-          if(payload instanceof InputStream) return (InputStream) payload;
-          if (useBinary) return Utils.toJavabin(payload);
-          else return new ByteArrayInputStream(Utils.toJSON(payload));
-        }
+    if (payload == null) return null;
+    if (payload instanceof String) {
+      return new RequestWriter.StringPayloadContentWriter((String) payload, JSON_MIME);
 
-        @Override
-        public String getContentType() {
-          return useBinary ? "application/javabin" : "application/json";
-        }
-      });
     }
-    return null;
+    return new RequestWriter.ContentWriter() {
+      @Override
+      public void write(OutputStream os) throws IOException {
+        if (useBinary) {
+          new JavaBinCodec().marshal(payload, os);
+        } else {
+          byte[] b = Utils.toJSON(payload);
+          os.write(b);
+        }
+      }
+
+      @Override
+      public String getContentType() {
+        return useBinary ? JAVABIN_MIME : JSON_MIME;
+      }
+    };
   }
 
   public boolean isPerCollectionRequest() {
@@ -135,7 +138,7 @@ public class V2Request extends SolrRequest<V2Response> implements MapWriter {
      */
     public Builder withPayload(String payload) {
       if (payload != null) {
-        this.payload = new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8));
+        this.payload = payload;
       }
       return this;
     }

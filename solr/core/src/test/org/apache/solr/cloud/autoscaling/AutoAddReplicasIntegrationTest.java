@@ -28,6 +28,7 @@ import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.QueryRequest;
 import org.apache.solr.cloud.SolrCloudTestCase;
+import org.apache.solr.common.cloud.ClusterStateUtil;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -77,10 +78,6 @@ public class AutoAddReplicasIntegrationTest extends SolrCloudTestCase {
         .process(cluster.getSolrClient());
 
     ZkStateReader zkStateReader = cluster.getSolrClient().getZkStateReader();
-    // todo remove this workaround after SOLR-9440 is fixed
-    zkStateReader.registerCore("testSimple1");
-    zkStateReader.registerCore("testSimple2");
-    zkStateReader.registerCore("testSimple3");
 
     // start the tests
     JettySolrRunner lostJetty = random().nextBoolean() ? cluster.getJettySolrRunner(0) : cluster.getJettySolrRunner(1);
@@ -88,9 +85,14 @@ public class AutoAddReplicasIntegrationTest extends SolrCloudTestCase {
     List<Replica> replacedHdfsReplicas = getReplacedSharedFsReplicas(COLLECTION1, zkStateReader, lostNodeName);
     lostJetty.stop();
     waitForNodeLeave(lostNodeName);
-    waitForState("Waiting for collection " + COLLECTION1, COLLECTION1, clusterShape(2, 2));
+    // ensure that 2 shards have 2 active replicas and only 4 replicas in total
+    // i.e. old replicas have been deleted.
+    // todo remove the condition for total replicas == 4 after SOLR-11591 is fixed
+    waitForState("Waiting for collection " + COLLECTION1, COLLECTION1, (liveNodes, collectionState) -> clusterShape(2, 2).matches(liveNodes, collectionState)
+        && collectionState.getReplicas().size() == 4);
     checkSharedFsReplicasMovedCorrectly(replacedHdfsReplicas, zkStateReader, COLLECTION1);
     lostJetty.start();
+    assertTrue("Timeout waiting for all live and active", ClusterStateUtil.waitForAllActiveAndLiveReplicas(cluster.getSolrClient().getZkStateReader(), 90000));
 
     // check cluster property is considered
     disableAutoAddReplicasInCluster();

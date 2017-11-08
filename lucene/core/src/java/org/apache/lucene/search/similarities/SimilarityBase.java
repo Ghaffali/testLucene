@@ -100,41 +100,16 @@ public abstract class SimilarityBase extends Similarity {
   /** Fills all member fields defined in {@code BasicStats} in {@code stats}. 
    *  Subclasses can override this method to fill additional stats. */
   protected void fillBasicStats(BasicStats stats, CollectionStatistics collectionStats, TermStatistics termStats) {
-    // #positions(field) must be >= #positions(term)
-    assert collectionStats.sumTotalTermFreq() == -1 || collectionStats.sumTotalTermFreq() >= termStats.totalTermFreq();
-    long numberOfDocuments = collectionStats.docCount() == -1 ? collectionStats.maxDoc() : collectionStats.docCount();
-    
-    long docFreq = termStats.docFreq();
-    long totalTermFreq = termStats.totalTermFreq();
-
-    // codec does not supply totalTermFreq: substitute docFreq
-    if (totalTermFreq == -1) {
-      totalTermFreq = docFreq;
-    }
-
-    final long numberOfFieldTokens;
-    final double avgFieldLength;
-
-    long sumTotalTermFreq = collectionStats.sumTotalTermFreq();
-
-    if (sumTotalTermFreq <= 0) {
-      // field does not exist;
-      // We have to provide something if codec doesnt supply these measures,
-      // or if someone omitted frequencies for the field... negative values cause
-      // NaN/Inf for some scorers.
-      numberOfFieldTokens = docFreq;
-      avgFieldLength = 1;
-    } else {
-      numberOfFieldTokens = sumTotalTermFreq;
-      avgFieldLength = (float)numberOfFieldTokens / numberOfDocuments;
-    }
+    // TODO: validate this for real, somewhere else
+    assert termStats.totalTermFreq() <= collectionStats.sumTotalTermFreq();
+    assert termStats.docFreq() <= collectionStats.sumDocFreq();
  
     // TODO: add sumDocFreq for field (numberOfFieldPostings)
-    stats.setNumberOfDocuments(numberOfDocuments);
-    stats.setNumberOfFieldTokens(numberOfFieldTokens);
-    stats.setAvgFieldLength(avgFieldLength);
-    stats.setDocFreq(docFreq);
-    stats.setTotalTermFreq(totalTermFreq);
+    stats.setNumberOfDocuments(collectionStats.docCount());
+    stats.setNumberOfFieldTokens(collectionStats.sumTotalTermFreq());
+    stats.setAvgFieldLength(collectionStats.sumTotalTermFreq() / (double) collectionStats.docCount());
+    stats.setDocFreq(termStats.docFreq());
+    stats.setTotalTermFreq(termStats.totalTermFreq());
   }
   
   /**
@@ -265,16 +240,13 @@ public abstract class SimilarityBase extends Similarity {
       if (norms == null) {
         return 1D;
       }
-      if (norms.advanceExact(doc)) {
-        return LENGTH_TABLE[Byte.toUnsignedInt((byte) norms.longValue())];
-      } else {
-        return 0;
-      }
+      boolean found = norms.advanceExact(doc);
+      assert found;
+      return LENGTH_TABLE[Byte.toUnsignedInt((byte) norms.longValue())];
     }
     
     @Override
     public float score(int doc, float freq) throws IOException {
-      // We have to supply something in case norms are omitted
       return (float) SimilarityBase.this.score(stats, freq, getLengthValue(doc));
     }
 

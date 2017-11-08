@@ -18,13 +18,9 @@ package org.apache.solr.client.solrj.request;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
-import java.io.Reader;
-import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +28,6 @@ import java.util.Map;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.util.ClientUtils;
 import org.apache.solr.common.util.ContentStream;
-import org.apache.solr.common.util.ContentStreamBase;
 
 /**
  * A RequestWriter is used to write requests to Solr.
@@ -43,7 +38,6 @@ import org.apache.solr.common.util.ContentStreamBase;
  * @since solr 1.4
  */
 public class RequestWriter {
-  public static final Charset UTF_8 = StandardCharsets.UTF_8;
 
 
   public interface ContentWriter {
@@ -55,20 +49,33 @@ public class RequestWriter {
 
   /**
    * Use this to do a push writing instead of pull. If this method returns null
-   * {@link org.apache.solr.client.solrj.request.RequestWriter#getContentStream(UpdateRequest)} is
+   * {@link org.apache.solr.client.solrj.request.RequestWriter#getContentStreams(SolrRequest)} is
    * invoked to do a pull write.
    */
   public ContentWriter getContentWriter(SolrRequest req) {
-    return null;
+    if (req instanceof UpdateRequest) {
+      UpdateRequest updateRequest = (UpdateRequest) req;
+      if (isEmpty(updateRequest)) return null;
+      return new ContentWriter() {
+        @Override
+        public void write(OutputStream os) throws IOException {
+          OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8);
+          updateRequest.writeXML(writer);
+          writer.flush();
+        }
+
+        @Override
+        public String getContentType() {
+          return ClientUtils.TEXT_XML;
+        }
+      };
+    }
+    return req.getContentWriter(ClientUtils.TEXT_XML);
   }
 
   public Collection<ContentStream> getContentStreams(SolrRequest req) throws IOException {
     if (req instanceof UpdateRequest) {
-      UpdateRequest updateRequest = (UpdateRequest) req;
-      if (isEmpty(updateRequest)) return null;
-      List<ContentStream> l = new ArrayList<>();
-      l.add(new LazyContentStream(updateRequest));
-      return l;
+      return null;
     }
     return req.getContentStreams();
   }
@@ -84,14 +91,10 @@ public class RequestWriter {
     return req.getPath();
   }
 
-  public ContentStream getContentStream(UpdateRequest req) throws IOException {
-    return new ContentStreamBase.StringStream(req.getXML());
-  }
-
   public void write(SolrRequest request, OutputStream os) throws IOException {
     if (request instanceof UpdateRequest) {
       UpdateRequest updateRequest = (UpdateRequest) request;
-      BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, UTF_8));
+      BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(os, StandardCharsets.UTF_8));
       updateRequest.writeXML(writer);
       writer.flush();
     }
@@ -99,61 +102,26 @@ public class RequestWriter {
 
   public String getUpdateContentType() {
     return ClientUtils.TEXT_XML;
-
   }
 
-  public class LazyContentStream implements ContentStream {
-    ContentStream contentStream = null;
-    UpdateRequest req = null;
+  public static class StringPayloadContentWriter implements ContentWriter {
+    public final String payload;
+    public final String type;
 
-    public LazyContentStream(UpdateRequest req) {
-      this.req = req;
-    }
-
-    private ContentStream getDelegate() {
-      if (contentStream == null) {
-        try {
-          contentStream = getContentStream(req);
-        } catch (IOException e) {
-          throw new RuntimeException("Unable to write xml into a stream", e);
-        }
-      }
-      return contentStream;
+    public StringPayloadContentWriter(String payload, String type) {
+      this.payload = payload;
+      this.type = type;
     }
 
     @Override
-    public String getName() {
-      return getDelegate().getName();
-    }
-
-    @Override
-    public String getSourceInfo() {
-      return getDelegate().getSourceInfo();
+    public void write(OutputStream os) throws IOException {
+      if (payload == null) return;
+      os.write(payload.getBytes(StandardCharsets.UTF_8));
     }
 
     @Override
     public String getContentType() {
-      return getUpdateContentType();
-    }
-
-    @Override
-    public Long getSize() {
-      return getDelegate().getSize();
-    }
-
-    @Override
-    public InputStream getStream() throws IOException {
-      return getDelegate().getStream();
-    }
-
-    @Override
-    public Reader getReader() throws IOException {
-      return getDelegate().getReader();
-    }
-
-    public void writeTo(OutputStream os) throws IOException {
-      write(req, os);
-
+      return type;
     }
   }
 
