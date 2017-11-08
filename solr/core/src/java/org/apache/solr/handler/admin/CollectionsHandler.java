@@ -130,6 +130,7 @@ import static org.apache.solr.common.cloud.ZkStateReader.TLOG_REPLICAS;
 import static org.apache.solr.common.params.CollectionAdminParams.COUNT_PROP;
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.*;
 import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
+import static org.apache.solr.common.params.CommonAdminParams.IN_PLACE_MOVE;
 import static org.apache.solr.common.params.CommonAdminParams.WAIT_FOR_FINAL_STATE;
 import static org.apache.solr.common.params.CommonParams.NAME;
 import static org.apache.solr.common.params.CommonParams.VALUE_LONG;
@@ -917,6 +918,7 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
           CollectionParams.SOURCE_NODE,
           CollectionParams.TARGET_NODE,
           WAIT_FOR_FINAL_STATE,
+          IN_PLACE_MOVE,
           "replica",
           "shard");
     }),
