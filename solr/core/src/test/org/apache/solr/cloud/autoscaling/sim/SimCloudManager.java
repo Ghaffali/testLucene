@@ -54,6 +54,9 @@ public class SimCloudManager implements SolrCloudManager {
     this.solrClient = solrClient;
   }
 
+  // ---------- simulator setup methods -----------
+
+
   // ---------- type-safe methods to obtain simulator components ----------
   public SimClusterStateProvider getSimClusterStateProvider() {
     return clusterStateProvider;

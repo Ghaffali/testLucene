@@ -55,6 +55,7 @@ public class TestClusterStateProvider extends SolrCloudTestCase {
   public static void setupCluster() throws Exception {
     simulated = random().nextBoolean();
     //simulated = true;
+    LOG.info("####### Using simulated component? " + simulated);
 
     configureCluster(NODE_COUNT)
         .addConfig("conf", configset("cloud-minimal"))

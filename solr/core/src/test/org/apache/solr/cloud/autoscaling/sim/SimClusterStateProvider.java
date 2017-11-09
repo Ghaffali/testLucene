@@ -22,10 +22,13 @@ import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
@@ -43,6 +46,7 @@ import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.NamedList;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,10 +57,13 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, List<ReplicaInfo>> nodeReplicaMap = new ConcurrentHashMap<>();
+  private final Set<String> liveNodes = ConcurrentHashMap.newKeySet();
 
   private final Map<String, Object> clusterProperties = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Object>> collProperties = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Map<String, Object>>> sliceProperties = new ConcurrentHashMap<>();
+
+  private final ReentrantLock lock = new ReentrantLock();
 
   /**
    * Zero-arg constructor. The instance needs to be initialized using the <code>sim*</code> methods in order
@@ -69,28 +76,33 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   // ============== SIMULATOR SETUP METHODS ====================
 
   public void simSetClusterState(ClusterState initialState) {
-    collProperties.clear();
-    sliceProperties.clear();
-    nodeReplicaMap.clear();
-    Collection<String> liveNodes = initialState.getLiveNodes();
-    initialState.forEachCollection(dc -> {
-      collProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>()).putAll(dc.getProperties());
-      dc.getSlices().forEach(s -> {
-        sliceProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>())
-            .computeIfAbsent(s.getName(), name -> new HashMap<>()).putAll(s.getProperties());
-        s.getReplicas().forEach(r -> {
-          ReplicaInfo ri = new ReplicaInfo(r.getName(), r.getCoreName(), dc.getName(), s.getName(), r.getType(), r.getNodeName(), r.getProperties());
-          if (liveNodes.contains(r.getNodeName())) {
-            nodeReplicaMap.computeIfAbsent(r.getNodeName(), rn -> new ArrayList<>()).add(ri);
-          }
+    lock.lock();
+    try {
+      collProperties.clear();
+      sliceProperties.clear();
+      nodeReplicaMap.clear();
+      liveNodes.addAll(initialState.getLiveNodes());
+      initialState.forEachCollection(dc -> {
+        collProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>()).putAll(dc.getProperties());
+        dc.getSlices().forEach(s -> {
+          sliceProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>())
+              .computeIfAbsent(s.getName(), name -> new HashMap<>()).putAll(s.getProperties());
+          s.getReplicas().forEach(r -> {
+            ReplicaInfo ri = new ReplicaInfo(r.getName(), r.getCoreName(), dc.getName(), s.getName(), r.getType(), r.getNodeName(), r.getProperties());
+            if (liveNodes.contains(r.getNodeName())) {
+              nodeReplicaMap.computeIfAbsent(r.getNodeName(), rn -> new ArrayList<>()).add(ri);
+            }
+          });
         });
       });
-    });
+    } finally {
+      lock.unlock();
+    }
   }
 
   public void simAddNodes(Collection<String> nodeIds) throws Exception {
     for (String node : nodeIds) {
-      if (nodeReplicaMap.containsKey(node)) {
+      if (liveNodes.contains(node)) {
         throw new Exception("Node " + node + " already exists");
       }
     }
@@ -102,16 +114,29 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
   public boolean simAddNode(String nodeId) throws Exception {
-    if (nodeReplicaMap.containsKey(nodeId)) {
+    if (liveNodes.contains(nodeId)) {
       throw new Exception("Node " + nodeId + " already exists");
     }
+    liveNodes.add(nodeId);
     return nodeReplicaMap.putIfAbsent(nodeId, new ArrayList<>()) == null;
   }
 
   // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
   public boolean simRemoveNode(String nodeId) {
-    return nodeReplicaMap.remove(nodeId) != null;
+    lock.lock();
+    try {
+      // mark every replica on that node as down
+      List<ReplicaInfo> replicas = nodeReplicaMap.get(nodeId);
+      if (replicas != null) {
+        replicas.forEach(r -> {
+          r.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.DOWN.toString());
+        });
+      }
+      return liveNodes.remove(nodeId);
+    } finally {
+      lock.unlock();
+    }
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
@@ -124,20 +149,60 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         }
       }
     }
-    List<ReplicaInfo> replicas = nodeReplicaMap.computeIfAbsent(nodeId, n -> new ArrayList<>());
-    replicas.add(replicaInfo);
+    lock.lock();
+    try {
+      List<ReplicaInfo> replicas = nodeReplicaMap.computeIfAbsent(nodeId, n -> new ArrayList<>());
+      replicas.add(replicaInfo);
+    } finally {
+      lock.unlock();
+    }
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
   public void simRemoveReplica(String nodeId, String coreNodeName) throws Exception {
     List<ReplicaInfo> replicas = nodeReplicaMap.computeIfAbsent(nodeId, n -> new ArrayList<>());
-    for (int i = 0; i < replicas.size(); i++) {
-      if (coreNodeName.equals(replicas.get(i).getCore())) {
-        replicas.remove(i);
-        return;
+    lock.lock();
+    try {
+      for (int i = 0; i < replicas.size(); i++) {
+        if (coreNodeName.equals(replicas.get(i).getCore())) {
+          replicas.remove(i);
+          return;
+        }
       }
+      throw new Exception("Replica " + coreNodeName + " not found on node " + nodeId);
+    } finally {
+      lock.unlock();
     }
-    throw new Exception("Replica " + coreNodeName + " not found on node " + nodeId);
+
+  }
+
+  public void simDeleteCollection(String collection) throws Exception {
+    lock.lock();
+    try {
+      collProperties.remove(collection);
+      sliceProperties.remove(collection);
+      nodeReplicaMap.forEach((n, replicas) -> {
+        for (Iterator<ReplicaInfo> it = replicas.iterator(); it.hasNext(); ) {
+          ReplicaInfo ri = it.next();
+          if (ri.getCollection().equals(collection)) {
+            it.remove();
+          }
+        }
+      });
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public void simDeleteAllCollections() {
+    lock.lock();
+    try {
+      nodeReplicaMap.clear();
+      collProperties.clear();
+      sliceProperties.clear();
+    } finally {
+      lock.unlock();
+    }
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
@@ -161,9 +226,14 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     if (properties == null) {
       collProperties.remove(coll);
     } else {
-      Map<String, Object> props = collProperties.computeIfAbsent(coll, c -> new HashMap<>());
-      props.clear();
-      props.putAll(properties);
+      lock.lock();
+      try {
+        Map<String, Object> props = collProperties.computeIfAbsent(coll, c -> new HashMap<>());
+        props.clear();
+        props.putAll(properties);
+      } finally {
+        lock.unlock();
+      }
     }
   }
 
@@ -178,9 +248,14 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   public void setSliceProperties(String coll, String slice, Map<String, Object> properties) {
     Map<String, Object> sliceProps = sliceProperties.computeIfAbsent(coll, c -> new HashMap<>()).computeIfAbsent(slice, s -> new HashMap<>());
-    sliceProps.clear();
-    if (properties != null) {
-      sliceProps.putAll(properties);
+    lock.lock();
+    try {
+      sliceProps.clear();
+      if (properties != null) {
+        sliceProps.putAll(properties);
+      }
+    } finally {
+      lock.unlock();
     }
   }
 
@@ -221,6 +296,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         case FORCELEADER:
           break;
         case LIST:
+          NamedList results = new NamedList();
+          results.add("collections", listCollections());
+          rsp.setResponse(results);
           break;
         case MODIFYCOLLECTION:
           break;
@@ -250,6 +328,19 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     return nodeReplicaMap.get(node);
   }
 
+  private List<String> listCollections() {
+    final Set<String> collections = new HashSet<>();
+    lock.lock();
+    try {
+      nodeReplicaMap.forEach((n, replicas) -> {
+        replicas.forEach(ri -> collections.add(ri.getCollection()));
+      });
+      return new ArrayList<>(collections);
+    } finally {
+      lock.unlock();
+    }
+  }
+
   // interface methods
 
   @Override
@@ -263,7 +354,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public Set<String> getLiveNodes() {
-    return nodeReplicaMap.keySet();
+    return liveNodes;
   }
 
   @Override
@@ -273,34 +364,39 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public ClusterState getClusterState() throws IOException {
-    return new ClusterState(0, nodeReplicaMap.keySet(), getCollectionStates());
+    return new ClusterState(0, liveNodes, getCollectionStates());
   }
 
   private Map<String, DocCollection> getCollectionStates() {
-    Map<String, Map<String, Map<String, Replica>>> collMap = new HashMap<>();
-    nodeReplicaMap.forEach((n, replicas) -> {
-      replicas.forEach(ri -> {
-        Map<String, Object> props = new HashMap<>(ri.getVariables());
-        props.put(ZkStateReader.NODE_NAME_PROP, n);
-        Replica r = new Replica(ri.getName(), props);
-        collMap.computeIfAbsent(ri.getCollection(), c -> new HashMap<>())
-            .computeIfAbsent(ri.getShard(), s -> new HashMap<>())
-            .put(ri.getName(), r);
+    lock.lock();
+    try {
+      Map<String, Map<String, Map<String, Replica>>> collMap = new HashMap<>();
+      nodeReplicaMap.forEach((n, replicas) -> {
+        replicas.forEach(ri -> {
+          Map<String, Object> props = new HashMap<>(ri.getVariables());
+          props.put(ZkStateReader.NODE_NAME_PROP, n);
+          Replica r = new Replica(ri.getName(), props);
+          collMap.computeIfAbsent(ri.getCollection(), c -> new HashMap<>())
+              .computeIfAbsent(ri.getShard(), s -> new HashMap<>())
+              .put(ri.getName(), r);
+        });
       });
-    });
-    Map<String, DocCollection> res = new HashMap<>();
-    collMap.forEach((coll, shards) -> {
-      Map<String, Slice> slices = new HashMap<>();
-      shards.forEach((s, replicas) -> {
-        Map<String, Object> sliceProps = sliceProperties.computeIfAbsent(coll, c -> new HashMap<>()).computeIfAbsent(s, sl -> new HashMap<>());
-        Slice slice = new Slice(s, replicas, sliceProps);
-        slices.put(s, slice);
+      Map<String, DocCollection> res = new HashMap<>();
+      collMap.forEach((coll, shards) -> {
+        Map<String, Slice> slices = new HashMap<>();
+        shards.forEach((s, replicas) -> {
+          Map<String, Object> sliceProps = sliceProperties.computeIfAbsent(coll, c -> new HashMap<>()).computeIfAbsent(s, sl -> new HashMap<>());
+          Slice slice = new Slice(s, replicas, sliceProps);
+          slices.put(s, slice);
+        });
+        Map<String, Object> collProps = collProperties.computeIfAbsent(coll, c -> new HashMap<>());
+        DocCollection dc = new DocCollection(coll, slices, collProps, DocRouter.DEFAULT, 0, ZkStateReader.CLUSTER_STATE);
+        res.put(coll, dc);
       });
-      Map<String, Object> collProps = collProperties.computeIfAbsent(coll, c -> new HashMap<>());
-      DocCollection dc = new DocCollection(coll, slices, collProps, DocRouter.DEFAULT, 0, ZkStateReader.CLUSTER_STATE);
-      res.put(coll, dc);
-    });
-    return res;
+      return res;
+    } finally {
+      lock.unlock();
+    }
   }
 
   @Override
