@@ -17,6 +17,12 @@ API Changes
   stored they are equal to TermsEnum.docFreq() and Terms.getSumDocFreq(),
   respectively, because all freq() values equal 1. (Adrien Grand, Robert Muir)
 
+* LUCENE-8038: Deprecated PayloadScoreQuery constructors have been removed (Alan
+  Woodward)
+
+* LUCENE-8014: Similarity.computeSlopFactor() and
+  Similarity.computePayloadFactor() have been removed (Alan Woodward)
+
 Changes in Runtime Behavior
 
 * LUCENE-7837: Indices that were created before the previous major version
@@ -42,6 +48,13 @@ API Changes
 * LUCENE-8017: Weight now exposes a getCacheHelper() method to help query caches
   determine whether or not a query can be cached. (Alan Woodward)
 
+* LUCENE-8038: Payload factors for scoring in PayloadScoreQuery are now
+  calculated by a PayloadDecoder, instead of delegating to the Similarity.
+  (Alan Woodward)
+
+* LUCENE-8014: Similarity.computeSlopFactor() and
+  Similarity.computePayloadFactor() have been deprecated. (Alan Woodward)
+
 Bug Fixes
 
 * LUCENE-7991: KNearestNeighborDocumentClassifier.knnSearch no longer applies
@@ -57,6 +70,9 @@ Bug Fixes
   that omit term frequency information, as it is equivalent in that case.
   Previously bogus numbers were used, and many similarities would
   completely degrade. (Robert Muir, Adrien Grand)
+
+* LUCENE-8045: ParallelLeafReader did not correctly report FieldInfo.dvGen
+  (Alan Woodward)
 
 Optimizations
 
