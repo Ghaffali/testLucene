@@ -16,6 +16,8 @@
  */
 package org.apache.solr.cloud.autoscaling.sim;
 
+import java.util.concurrent.ExecutorService;
+
 import org.apache.commons.math3.distribution.RealDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 
@@ -47,5 +49,12 @@ public class RandomThrottle {
     } catch (InterruptedException e) {
       // do nothing
     }
+  }
+
+  public void throttle(ExecutorService executor, Runnable runnable) {
+    executor.submit(() -> {
+      throttle();
+      runnable.run();
+    });
   }
 }

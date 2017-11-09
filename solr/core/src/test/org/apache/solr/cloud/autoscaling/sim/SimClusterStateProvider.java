@@ -33,15 +33,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
-import org.apache.solr.client.solrj.SolrRequest;
-import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
-import org.apache.solr.client.solrj.request.CollectionAdminRequest;
-import org.apache.solr.client.solrj.request.UpdateRequest;
-import org.apache.solr.client.solrj.response.SolrResponseBase;
-import org.apache.solr.client.solrj.response.UpdateResponse;
-import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -49,12 +42,7 @@ import org.apache.solr.common.cloud.DocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
-import org.apache.solr.common.params.CollectionAdminParams;
-import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.common.params.CoreAdminParams;
-import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ExecutorUtil;
-import org.apache.solr.common.util.NamedList;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -65,16 +53,12 @@ import org.slf4j.LoggerFactory;
 public class SimClusterStateProvider implements ClusterStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private static final String REPLICA_INFO_PROP = "__ri__";
-
   private final Map<String, List<ReplicaInfo>> nodeReplicaMap = new ConcurrentHashMap<>();
-  private final Set<String> liveNodes = ConcurrentHashMap.newKeySet();
+  private final Set<String> liveNodes;
 
   private final Map<String, Object> clusterProperties = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Object>> collProperties = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Map<String, Object>>> sliceProperties = new ConcurrentHashMap<>();
-
-  private final List<SolrInputDocument> systemColl = Collections.synchronizedList(new ArrayList<>());
 
   private final ExecutorService simStateProviderPool;
 
@@ -84,8 +68,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
    * Zero-arg constructor. The instance needs to be initialized using the <code>sim*</code> methods in order
    * to ensure proper behavior, otherwise it will behave as a cluster with zero live nodes and zero replicas.
    */
-  public SimClusterStateProvider() {
-    simStateProviderPool = ExecutorUtil.newMDCAwareCachedThreadPool(new DefaultSolrThreadFactory("simStateProviderPool"));
+  public SimClusterStateProvider(Set<String> liveNodes) {
+    this.liveNodes = liveNodes;
+    simStateProviderPool = ExecutorUtil.newMDCAwareCachedThreadPool(new DefaultSolrThreadFactory("simClusterStateProviderPool"));
   }
 
   // ============== SIMULATOR SETUP METHODS ====================
@@ -112,17 +97,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       });
     } finally {
       lock.unlock();
-    }
-  }
-
-  public void simAddNodes(Collection<String> nodeIds) throws Exception {
-    for (String node : nodeIds) {
-      if (liveNodes.contains(node)) {
-        throw new Exception("Node " + node + " already exists");
-      }
-    }
-    for (String node : nodeIds) {
-      simAddNode(node);
     }
   }
 
@@ -232,6 +206,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
               LOG.warn("-- can't find any active replicas for " + dc.getName() + " / " + s.getName());
               return;
             }
+            // pick random one
             Collections.shuffle(active);
             ReplicaInfo ri = active.get(0);
             ri.getVariables().put(ZkStateReader.LEADER_PROP, "true");
@@ -271,14 +246,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     } finally {
       lock.unlock();
     }
-  }
-
-  public void simClearSystemCollection() {
-    systemColl.clear();
-  }
-
-  public List<SolrInputDocument> simGetSystemCollection() {
-    return systemColl;
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
@@ -335,89 +302,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
-  public SolrResponse simHandleSolrRequest(SolrRequest req) throws IOException {
-    LOG.info("--- got SolrRequest: " + req);
-    if (req instanceof UpdateRequest) {
-      // support only updates to the system collection
-      UpdateRequest ureq = (UpdateRequest)req;
-      if (ureq.getCollection() == null || !ureq.getCollection().equals(CollectionAdminParams.SYSTEM_COLL)) {
-        throw new UnsupportedOperationException("Only .system updates are supported but got: " + req);
-      }
-      List<SolrInputDocument> docs = ureq.getDocuments();
-      if (docs != null) {
-        systemColl.addAll(docs);
-      }
-      return new UpdateResponse();
-    }
-    // support only a specific subset of collection admin ops
-    if (!(req instanceof CollectionAdminRequest)) {
-      throw new UnsupportedOperationException("Only CollectionAdminRequest-s are supported: " + req.getClass().getName());
-    }
-    SolrParams params = req.getParams();
-    String a = params.get(CoreAdminParams.ACTION);
-    SolrResponse rsp = new SolrResponseBase();
-    if (a != null) {
-      CollectionParams.CollectionAction action = CollectionParams.CollectionAction.get(a);
-      if (action == null) {
-        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown action: " + a);
-      }
-      switch (action) {
-        case ADDREPLICA:
-          break;
-        case ADDREPLICAPROP:
-          break;
-        case CREATE:
-          break;
-        case CLUSTERPROP:
-          break;
-        case CREATESHARD:
-          break;
-        case DELETE:
-          break;
-        case DELETENODE:
-          break;
-        case DELETEREPLICA:
-          break;
-        case DELETEREPLICAPROP:
-          break;
-        case DELETESHARD:
-          break;
-        case FORCELEADER:
-          break;
-        case LIST:
-          NamedList results = new NamedList();
-          results.add("collections", listCollections());
-          rsp.setResponse(results);
-          break;
-        case MODIFYCOLLECTION:
-          break;
-        case MOVEREPLICA:
-          break;
-        case REBALANCELEADERS:
-          break;
-        case RELOAD:
-          break;
-        case REPLACENODE:
-          break;
-        case SPLITSHARD:
-          break;
-        default:
-          throw new UnsupportedOperationException("Unsupported collection admin action=" + action);
-      }
-      LOG.info("Invoked Collection Action :{} with params {}", action.toLower(), req.getParams().toQueryString());
-    } else {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "action is a required param");
-    }
-
-    return rsp;
-
-  }
-
   public List<ReplicaInfo> simGetReplicaInfos(String node) {
     return nodeReplicaMap.get(node);
   }
 
-  private List<String> listCollections() {
+  public List<String> simListCollections() {
     final Set<String> collections = new HashSet<>();
     lock.lock();
     try {

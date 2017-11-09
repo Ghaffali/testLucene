@@ -1,12 +1,11 @@
 package org.apache.solr.cloud.autoscaling.sim;
 
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.SolrTestCaseJ4;
-import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.common.cloud.ClusterState;
-import org.apache.solr.common.cloud.Replica;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -64,15 +63,13 @@ public class TestSimClusterStateProvider extends SolrTestCaseJ4 {
   public void setup() throws Exception {
     ClusterState cs = ClusterState.load(1, coll1State.getBytes(UTF_8),
         initialLiveNodes, "/collections/gettingstarted/state.json");
-    dataProvider = new SimClusterStateProvider();
+    dataProvider = new SimClusterStateProvider(ConcurrentHashMap.newKeySet());
     dataProvider.simSetClusterState(cs);
   }
 
   @Test
   public void testAddReplica() throws Exception {
 
-    CollectionAdminRequest req = CollectionAdminRequest.addReplicaToShard(COLL, "shard1", Replica.Type.PULL);
-    dataProvider.simHandleSolrRequest(req);
   }
 
 }

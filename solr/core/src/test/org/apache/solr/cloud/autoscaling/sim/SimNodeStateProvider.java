@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -24,8 +25,10 @@ public class SimNodeStateProvider implements NodeStateProvider {
 
   private final Map<String, Map<String, Object>> nodeValues = new ConcurrentHashMap<>();
   private final SimClusterStateProvider stateProvider;
+  private final Set<String> liveNodes;
 
-  public SimNodeStateProvider(SimClusterStateProvider stateProvider, Map<String, Map<String, Object>> nodeValues) {
+  public SimNodeStateProvider(Set<String> liveNodes, SimClusterStateProvider stateProvider, Map<String, Map<String, Object>> nodeValues) {
+    this.liveNodes = liveNodes;
     this.stateProvider = stateProvider;
     if (nodeValues != null) {
       this.nodeValues.putAll(nodeValues);
@@ -41,10 +44,18 @@ public class SimNodeStateProvider implements NodeStateProvider {
     nodeValues.computeIfAbsent(node, n -> new ConcurrentHashMap<>()).put(key, value);
   }
 
+  public void simRemoveNodeValues(String node) {
+    nodeValues.remove(node);
+  }
+
   // ---------- interface methods -------------
 
   @Override
   public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+    if (!liveNodes.contains(node)) {
+      nodeValues.remove(node);
+      return Collections.emptyMap();
+    }
     Map<String, Object> values = nodeValues.get(node);
     if (values == null) {
       return Collections.emptyMap();
@@ -60,6 +71,9 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
     Map<String, Map<String, List<ReplicaInfo>>> res = new HashMap<>();
     for (ReplicaInfo r : replicas) {
+      if (!liveNodes.contains(r.getNode())) {
+        continue;
+      }
       Map<String, List<ReplicaInfo>> perCollection = res.computeIfAbsent(r.getCollection(), s -> new HashMap<>());
       List<ReplicaInfo> perShard = perCollection.computeIfAbsent(r.getShard(), s -> new ArrayList<>());
       perShard.add(r);
