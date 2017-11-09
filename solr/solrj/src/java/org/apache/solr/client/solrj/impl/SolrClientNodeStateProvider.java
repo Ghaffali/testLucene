@@ -156,6 +156,11 @@ public class SolrClientNodeStateProvider implements NodeStateProvider, MapWriter
     }
   }
 
+  @Override
+  public void close() throws IOException {
+
+  }
+
   //uses metrics API to get node information
   static class AutoScalingSnitch extends ImplicitSnitch {
     @Override

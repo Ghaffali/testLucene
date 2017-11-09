@@ -49,7 +49,6 @@ import org.apache.solr.common.util.ObjectReleaseTracker;
 import org.apache.solr.common.util.Pair;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.CloudConfig;
-import org.apache.solr.core.CoreContainer;
 import org.apache.solr.handler.admin.CollectionsHandler;
 import org.apache.solr.handler.component.ShardHandler;
 import org.apache.solr.update.UpdateShardHandler;
@@ -442,7 +441,7 @@ public class Overseer implements SolrCloseable {
 
   }
 
-  static class OverseerThread extends Thread implements Closeable {
+  public static class OverseerThread extends Thread implements Closeable {
 
     protected volatile boolean isClosed;
     private Closeable thread;
@@ -542,10 +541,6 @@ public class Overseer implements SolrCloseable {
 
   ZkController getZkController(){
     return zkController;
-  }
-
-  public CoreContainer getCoreContainer() {
-    return zkController.getCoreContainer();
   }
 
   public SolrCloudManager getSolrCloudManager() {

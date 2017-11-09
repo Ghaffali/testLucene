@@ -27,6 +27,7 @@ import org.apache.solr.common.cloud.rule.ImplicitSnitch;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.util.Utils;
 import org.apache.zookeeper.Watcher;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
@@ -54,7 +55,7 @@ public class TestClusterStateProvider extends SolrCloudTestCase {
   @BeforeClass
   public static void setupCluster() throws Exception {
     simulated = random().nextBoolean();
-    //simulated = true;
+    simulated = true;
     LOG.info("####### Using simulated component? " + simulated);
 
     configureCluster(NODE_COUNT)
@@ -63,6 +64,13 @@ public class TestClusterStateProvider extends SolrCloudTestCase {
     CollectionAdminRequest.createCollection(CollectionAdminParams.SYSTEM_COLL, null, 1, 2, 0, 1)
         .process(cluster.getSolrClient());
     init();
+  }
+
+  @AfterClass
+  public static void closeCloudManager() throws Exception {
+    if (simulated && cloudManager != null) {
+      cloudManager.close();
+    }
   }
 
   private static void init() throws Exception {

@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -28,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.solr.client.solrj.SolrRequest;
@@ -35,18 +38,24 @@ import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
+import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.client.solrj.response.SolrResponseBase;
+import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.common.SolrException;
+import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.DocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,12 +65,18 @@ import org.slf4j.LoggerFactory;
 public class SimClusterStateProvider implements ClusterStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
+  private static final String REPLICA_INFO_PROP = "__ri__";
+
   private final Map<String, List<ReplicaInfo>> nodeReplicaMap = new ConcurrentHashMap<>();
   private final Set<String> liveNodes = ConcurrentHashMap.newKeySet();
 
   private final Map<String, Object> clusterProperties = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Object>> collProperties = new ConcurrentHashMap<>();
   private final Map<String, Map<String, Map<String, Object>>> sliceProperties = new ConcurrentHashMap<>();
+
+  private final List<SolrInputDocument> systemColl = Collections.synchronizedList(new ArrayList<>());
+
+  private final ExecutorService simStateProviderPool;
 
   private final ReentrantLock lock = new ReentrantLock();
 
@@ -70,7 +85,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
    * to ensure proper behavior, otherwise it will behave as a cluster with zero live nodes and zero replicas.
    */
   public SimClusterStateProvider() {
-
+    simStateProviderPool = ExecutorUtil.newMDCAwareCachedThreadPool(new DefaultSolrThreadFactory("simStateProviderPool"));
   }
 
   // ============== SIMULATOR SETUP METHODS ====================
@@ -133,7 +148,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           r.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.DOWN.toString());
         });
       }
-      return liveNodes.remove(nodeId);
+      boolean res = liveNodes.remove(nodeId);
+      simStateProviderPool.submit(() -> simRunLeaderElection());
+      return res;
     } finally {
       lock.unlock();
     }
@@ -153,6 +170,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     try {
       List<ReplicaInfo> replicas = nodeReplicaMap.computeIfAbsent(nodeId, n -> new ArrayList<>());
       replicas.add(replicaInfo);
+      simStateProviderPool.submit(() -> simRunLeaderElection());
     } finally {
       lock.unlock();
     }
@@ -166,6 +184,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       for (int i = 0; i < replicas.size(); i++) {
         if (coreNodeName.equals(replicas.get(i).getCore())) {
           replicas.remove(i);
+          simStateProviderPool.submit(() -> simRunLeaderElection());
           return;
         }
       }
@@ -173,7 +192,56 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     } finally {
       lock.unlock();
     }
+  }
 
+  public synchronized void simRunLeaderElection() {
+    try {
+      ClusterState state = getClusterState();
+      state.forEachCollection(dc -> {
+        dc.getSlices().forEach(s -> {
+          Replica leader = s.getLeader();
+          if (leader == null || !liveNodes.contains(leader.getNodeName())) {
+            LOG.info("Running leader election for " + dc.getName() + " / " + s.getName());
+            if (s.getReplicas().isEmpty()) { // no replicas - punt
+              return;
+            }
+            // mark all replicas as non-leader (probably not necessary) and collect all active and live
+            List<ReplicaInfo> active = new ArrayList<>();
+            s.getReplicas().forEach(r -> {
+              AtomicReference<ReplicaInfo> riRef = new AtomicReference<>();
+              // find our ReplicaInfo for this replica
+              nodeReplicaMap.get(r.getNodeName()).forEach(info -> {
+                if (info.getName().equals(r.getName())) {
+                  riRef.set(info);
+                }
+              });
+              ReplicaInfo ri = riRef.get();
+              if (ri == null) {
+                throw new RuntimeException("-- could not find ReplicaInfo for replica " + r);
+              }
+              ri.getVariables().remove(ZkStateReader.LEADER_PROP);
+              if (r.isActive(liveNodes)) {
+                active.add(ri);
+              } else { // if it's on a node that is not live mark it down
+                if (!liveNodes.contains(r.getNodeName())) {
+                  ri.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.DOWN.toString());
+                }
+              }
+            });
+            if (active.isEmpty()) {
+              LOG.warn("-- can't find any active replicas for " + dc.getName() + " / " + s.getName());
+              return;
+            }
+            Collections.shuffle(active);
+            ReplicaInfo ri = active.get(0);
+            ri.getVariables().put(ZkStateReader.LEADER_PROP, "true");
+            LOG.info("-- elected new leader for " + dc.getName() + " / " + s.getName() + ": " + ri);
+          }
+        });
+      });
+    } catch (Exception e) {
+      throw new RuntimeException("simRunLeaderElection failed!", e);
+    }
   }
 
   public void simDeleteCollection(String collection) throws Exception {
@@ -203,6 +271,14 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     } finally {
       lock.unlock();
     }
+  }
+
+  public void simClearSystemCollection() {
+    systemColl.clear();
+  }
+
+  public List<SolrInputDocument> simGetSystemCollection() {
+    return systemColl;
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
@@ -260,6 +336,19 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   }
 
   public SolrResponse simHandleSolrRequest(SolrRequest req) throws IOException {
+    LOG.info("--- got SolrRequest: " + req);
+    if (req instanceof UpdateRequest) {
+      // support only updates to the system collection
+      UpdateRequest ureq = (UpdateRequest)req;
+      if (ureq.getCollection() == null || !ureq.getCollection().equals(CollectionAdminParams.SYSTEM_COLL)) {
+        throw new UnsupportedOperationException("Only .system updates are supported but got: " + req);
+      }
+      List<SolrInputDocument> docs = ureq.getDocuments();
+      if (docs != null) {
+        systemColl.addAll(docs);
+      }
+      return new UpdateResponse();
+    }
     // support only a specific subset of collection admin ops
     if (!(req instanceof CollectionAdminRequest)) {
       throw new UnsupportedOperationException("Only CollectionAdminRequest-s are supported: " + req.getClass().getName());
@@ -417,6 +506,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public void close() throws IOException {
-
+    simStateProviderPool.shutdownNow();
   }
 }

@@ -979,8 +979,8 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
   public static class TestTriggerListener extends TriggerListenerBase {
     @Override
-    public void init(SolrCloudManager dataProvider, AutoScalingConfig.TriggerListenerConfig config) {
-      super.init(dataProvider, config);
+    public void init(SolrCloudManager cloudManager, AutoScalingConfig.TriggerListenerConfig config) {
+      super.init(cloudManager, config);
       listenerCreated.countDown();
     }
 

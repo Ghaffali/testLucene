@@ -56,7 +56,7 @@ public class ExecutePlanAction extends TriggerActionBase {
   @Override
   public void process(TriggerEvent event, ActionContext context) throws Exception {
     log.debug("-- processing event: {} with context properties: {}", event, context.getProperties());
-    SolrCloudManager dataProvider = context.getCloudManager();
+    SolrCloudManager cloudManager = context.getCloudManager();
     List<SolrRequest> operations = (List<SolrRequest>) context.getProperty("operations");
     if (operations == null || operations.isEmpty()) {
       log.info("No operations to execute for event: {}", event);
@@ -73,22 +73,22 @@ public class ExecutePlanAction extends TriggerActionBase {
             // waitForFinalState so that the end effects of operations are visible
             req.setWaitForFinalState(true);
             String asyncId = event.getSource() + '/' + event.getId() + '/' + counter;
-            String znode = saveAsyncId(dataProvider.getDistribStateManager(), event, asyncId);
+            String znode = saveAsyncId(cloudManager.getDistribStateManager(), event, asyncId);
             log.debug("Saved requestId: {} in znode: {}", asyncId, znode);
             // TODO: find a better way of using async calls using dataProvider API !!!
             req.setAsyncId(asyncId);
-            SolrResponse asyncResponse = dataProvider.request(req);
+            SolrResponse asyncResponse = cloudManager.request(req);
             if (asyncResponse.getResponse().get("error") != null) {
               throw new IOException("" + asyncResponse.getResponse().get("error"));
             }
             asyncId = (String)asyncResponse.getResponse().get("requestid");
-            CollectionAdminRequest.RequestStatusResponse statusResponse = waitForTaskToFinish(dataProvider, asyncId,
+            CollectionAdminRequest.RequestStatusResponse statusResponse = waitForTaskToFinish(cloudManager, asyncId,
                 DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (statusResponse != null) {
               RequestStatusState state = statusResponse.getRequestStatus();
               if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {
                 try {
-                  dataProvider.getDistribStateManager().removeData(znode, -1);
+                  cloudManager.getDistribStateManager().removeData(znode, -1);
                 } catch (Exception e) {
                   log.warn("Unexpected exception while trying to delete znode: " + znode, e);
                 }
@@ -96,7 +96,7 @@ public class ExecutePlanAction extends TriggerActionBase {
               response = statusResponse;
             }
           } else {
-            response = dataProvider.request(operation);
+            response = cloudManager.request(operation);
           }
           NamedList<Object> result = response.getResponse();
           context.getProperties().compute("responses", (s, o) -> {

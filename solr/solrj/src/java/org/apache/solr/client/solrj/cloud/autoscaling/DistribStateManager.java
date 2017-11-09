@@ -16,11 +16,11 @@
  */
 package org.apache.solr.client.solrj.cloud.autoscaling;
 
-import java.io.Closeable;
 import java.io.IOException;
 import java.util.List;
 import java.util.NoSuchElementException;
 
+import org.apache.solr.common.SolrCloseable;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.Op;
@@ -30,7 +30,7 @@ import org.apache.zookeeper.Watcher;
 /**
  * This interface represents a distributed state repository.
  */
-public interface DistribStateManager extends Closeable {
+public interface DistribStateManager extends SolrCloseable {
 
   // state accessors
 
@@ -68,10 +68,5 @@ public interface DistribStateManager extends Closeable {
 
   default AutoScalingConfig getAutoScalingConfig() throws InterruptedException, IOException {
     return getAutoScalingConfig(null);
-  }
-
-  @Override
-  default void close() throws IOException {
-
   }
 }

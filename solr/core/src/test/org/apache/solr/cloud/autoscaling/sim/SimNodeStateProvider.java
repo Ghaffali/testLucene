@@ -1,5 +1,6 @@
 package org.apache.solr.cloud.autoscaling.sim;
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -66,4 +67,8 @@ public class SimNodeStateProvider implements NodeStateProvider {
     return res;
   }
 
+  @Override
+  public void close() throws IOException {
+
+  }
 }

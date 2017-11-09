@@ -167,4 +167,8 @@ public class ZkDistribStateManager implements DistribStateManager {
     return new AutoScalingConfig(map);
   }
 
+  @Override
+  public void close() throws IOException {
+
+  }
 }

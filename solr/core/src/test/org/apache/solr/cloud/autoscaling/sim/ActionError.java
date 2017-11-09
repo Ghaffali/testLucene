@@ -14,34 +14,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.cloud.autoscaling;
-
-import java.io.IOException;
-
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
+package org.apache.solr.cloud.autoscaling.sim;
 
 /**
- * Base class for implementations of {@link TriggerListener}.
+ *
  */
-public abstract class TriggerListenerBase implements TriggerListener {
-
-  protected AutoScalingConfig.TriggerListenerConfig config;
-  protected SolrCloudManager cloudManager;
-
-  @Override
-  public void init(SolrCloudManager cloudManager, AutoScalingConfig.TriggerListenerConfig config) {
-    this.cloudManager = cloudManager;
-    this.config = config;
-  }
-
-  @Override
-  public AutoScalingConfig.TriggerListenerConfig getConfig() {
-    return config;
-  }
-
-  @Override
-  public void close() throws IOException {
-
-  }
+public interface ActionError {
+  boolean shouldFail(String... args);
 }

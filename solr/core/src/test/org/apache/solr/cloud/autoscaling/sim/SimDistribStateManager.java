@@ -185,10 +185,6 @@ public class SimDistribStateManager implements DistribStateManager {
 
   }
 
-  public interface ActionError {
-    boolean shouldFail(String path);
-  }
-
   // shared state across all instances
   private static Node sharedRoot = createNewRootNode();
   private static final ReentrantLock multiLock = new ReentrantLock();

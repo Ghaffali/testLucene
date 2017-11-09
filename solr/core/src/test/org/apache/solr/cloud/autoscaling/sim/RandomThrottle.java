@@ -14,34 +14,38 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.solr.cloud.autoscaling;
+package org.apache.solr.cloud.autoscaling.sim;
 
-import java.io.IOException;
-
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
-import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
+import org.apache.commons.math3.distribution.RealDistribution;
+import org.apache.commons.math3.distribution.UniformRealDistribution;
 
 /**
- * Base class for implementations of {@link TriggerListener}.
+ *
  */
-public abstract class TriggerListenerBase implements TriggerListener {
+public class RandomThrottle {
 
-  protected AutoScalingConfig.TriggerListenerConfig config;
-  protected SolrCloudManager cloudManager;
+  private final int minMs;
+  private final RealDistribution distribution;
 
-  @Override
-  public void init(SolrCloudManager cloudManager, AutoScalingConfig.TriggerListenerConfig config) {
-    this.cloudManager = cloudManager;
-    this.config = config;
+  public RandomThrottle(int minMs, int maxMs) {
+    this.minMs = minMs;
+    this.distribution = new UniformRealDistribution(0, maxMs - minMs);
   }
 
-  @Override
-  public AutoScalingConfig.TriggerListenerConfig getConfig() {
-    return config;
+  public RandomThrottle(int minMs, RealDistribution distribution) {
+    this.minMs = minMs;
+    this.distribution = distribution;
   }
 
-  @Override
-  public void close() throws IOException {
-
+  public void throttle() {
+    double random = distribution.sample();
+    if (random < 0) {
+      random = 0;
+    }
+    try {
+      Thread.sleep(minMs + Math.round(random));
+    } catch (InterruptedException e) {
+      // do nothing
+    }
   }
 }

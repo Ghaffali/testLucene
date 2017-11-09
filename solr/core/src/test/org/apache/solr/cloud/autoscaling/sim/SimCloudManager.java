@@ -29,6 +29,11 @@ import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
+import org.apache.solr.cloud.Overseer;
+import org.apache.solr.cloud.autoscaling.OverseerTriggerThread;
+import org.apache.solr.common.util.IOUtils;
+import org.apache.solr.core.CloudConfig;
+import org.apache.solr.core.SolrResourceLoader;
 
 /**
  * Simulated {@link SolrCloudManager}.
@@ -42,12 +47,19 @@ public class SimCloudManager implements SolrCloudManager {
   private SolrClient solrClient;
   private final SimHttpServer httpServer;
 
+  private Overseer.OverseerThread triggerThread;
+
   public SimCloudManager() {
     this.stateManager = new SimDistribStateManager();
     this.clusterStateProvider = new SimClusterStateProvider();
     this.nodeStateProvider = new SimNodeStateProvider(this.clusterStateProvider, null);
     this.queueFactory = new SimDistributedQueueFactory();
     this.httpServer = new SimHttpServer();
+    ThreadGroup triggerThreadGroup = new ThreadGroup("Simulated Overseer autoscaling triggers");
+    OverseerTriggerThread trigger = new OverseerTriggerThread(new SolrResourceLoader(), this,
+        new CloudConfig.CloudConfigBuilder("nonexistent", 0, "sim").build());
+    triggerThread = new Overseer.OverseerThread(triggerThreadGroup, trigger, "Simulated OverseerAutoScalingTriggerThread");
+    triggerThread.start();
   }
 
   public void setSolrClient(SolrClient solrClient) {
@@ -116,6 +128,10 @@ public class SimCloudManager implements SolrCloudManager {
 
   @Override
   public void close() throws IOException {
-
+    IOUtils.closeQuietly(clusterStateProvider);
+    IOUtils.closeQuietly(nodeStateProvider);
+    IOUtils.closeQuietly(stateManager);
+    IOUtils.closeQuietly(triggerThread);
+    triggerThread.interrupt();
   }
 }
