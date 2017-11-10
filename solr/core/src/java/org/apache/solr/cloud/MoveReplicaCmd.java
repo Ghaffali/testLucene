@@ -184,7 +184,10 @@ public class MoveReplicaCmd implements Cmd{
     try {
       ocmh.addReplica(ocmh.zkStateReader.getClusterState(), addReplicasProps, addResult, null);
     } catch (Exception e) {
-      // fatal error - try rolling back?
+      // fatal error - try rolling back
+      String errorString = String.format(Locale.ROOT, "Failed to create replica for collection=%s shard=%s" +
+          " on node=%s, failure=%s", coll.getName(), slice.getName(), targetNode, addResult.get("failure"));
+      results.add("failure", errorString);
       log.warn("Error adding replica " + addReplicasProps + " - trying to roll back...", e);
       addReplicasProps = addReplicasProps.plus(CoreAdminParams.NODE, replica.getNodeName());
       NamedList rollback = new NamedList();
