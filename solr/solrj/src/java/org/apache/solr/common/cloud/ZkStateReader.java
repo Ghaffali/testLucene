@@ -17,9 +17,7 @@
 package org.apache.solr.common.cloud;
 
 import java.io.Closeable;
-import java.io.UnsupportedEncodingException;
 import java.lang.invoke.MethodHandles;
-import java.net.URLDecoder;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -998,21 +996,7 @@ public class ZkStateReader implements Closeable {
    * @lucene.experimental
    */
   public String getBaseUrlForNodeName(final String nodeName) {
-    return getBaseUrlForNodeName(nodeName, getClusterProperty(URL_SCHEME, "http"));
-  }
-
-  public static String getBaseUrlForNodeName(final String nodeName, String urlScheme) {
-    final int _offset = nodeName.indexOf("_");
-    if (_offset < 0) {
-      throw new IllegalArgumentException("nodeName does not contain expected '_' separator: " + nodeName);
-    }
-    final String hostAndPort = nodeName.substring(0,_offset);
-    try {
-      final String path = URLDecoder.decode(nodeName.substring(1+_offset), "UTF-8");
-      return urlScheme + "://" + hostAndPort + (path.isEmpty() ? "" : ("/" + path));
-    } catch (UnsupportedEncodingException e) {
-      throw new IllegalStateException("JVM Does not seem to support UTF-8", e);
-    }
+    return Utils.getBaseUrlForNodeName(nodeName, getClusterProperty(URL_SCHEME, "http"));
   }
 
   /** Watches a single collection's format2 state.json. */

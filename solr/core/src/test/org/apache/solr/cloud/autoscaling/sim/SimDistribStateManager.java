@@ -72,8 +72,8 @@ public class SimDistribStateManager implements DistribStateManager {
     private final Node parent;
     private byte[] data = null;
     private Map<String, Node> children = new ConcurrentHashMap<>();
-    List<Watcher> dataWatches = new ArrayList<>();
-    List<Watcher> childrenWatches = new ArrayList<>();
+    Set<Watcher> dataWatches = ConcurrentHashMap.newKeySet();
+    Set<Watcher> childrenWatches = ConcurrentHashMap.newKeySet();
 
     Node(Node parent, String name, String path, CreateMode mode, String clientId) {
       this.parent = parent;
@@ -109,10 +109,11 @@ public class SimDistribStateManager implements DistribStateManager {
           this.data = null;
         }
         this.version++;
-        for (Watcher w : dataWatches) {
+        Set<Watcher> currentWatchers = new HashSet<>(dataWatches);
+        dataWatches.clear();
+        for (Watcher w : currentWatchers) {
           w.process(new WatchedEvent(Watcher.Event.EventType.NodeDataChanged, Watcher.Event.KeeperState.SyncConnected, path));
         }
-        dataWatches.clear();
       } finally {
         dataLock.unlock();
       }
@@ -136,10 +137,11 @@ public class SimDistribStateManager implements DistribStateManager {
       dataLock.lock();
       try {
         children.put(name, child);
-        for (Watcher w : childrenWatches) {
+        Set<Watcher> currentWatchers = new HashSet<>(childrenWatches);
+        childrenWatches.clear();
+        for (Watcher w : currentWatchers) {
           w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
         }
-        childrenWatches.clear();
       } finally {
         dataLock.unlock();
       }
@@ -154,10 +156,14 @@ public class SimDistribStateManager implements DistribStateManager {
         throw new BadVersionException(version, path);
       }
       children.remove(name);
-      for (Watcher w : childrenWatches) {
+      Set<Watcher> currentWatchers = new HashSet<>(childrenWatches);
+      childrenWatches.clear();
+      for (Watcher w : currentWatchers) {
         w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
       }
-      for (Watcher w : n.dataWatches) {
+      currentWatchers = new HashSet<>(n.dataWatches);
+      n.dataWatches.clear();
+      for (Watcher w : currentWatchers) {
         w.process(new WatchedEvent(Watcher.Event.EventType.NodeDeleted, Watcher.Event.KeeperState.SyncConnected, n.path));
       }
       // TODO: not sure if it's correct to recurse and fire watches???
@@ -346,6 +352,24 @@ public class SimDistribStateManager implements DistribStateManager {
   }
 
   @Override
+  public void makePath(String path, byte[] data, CreateMode createMode, boolean failOnExists) throws AlreadyExistsException, IOException, KeeperException, InterruptedException {
+    multiLock.lock();
+    try {
+      if (failOnExists && hasData(path)) {
+        throw new AlreadyExistsException(path);
+      }
+      Node n = traverse(path, true, createMode);
+      try {
+        n.setData(data, -1);
+      } catch (BadVersionException e) {
+        throw new IOException("should not happen!", e);
+      }
+    } finally {
+      multiLock.unlock();
+    }
+  }
+
+  @Override
   public String createData(String path, byte[] data, CreateMode mode) throws AlreadyExistsException, NoSuchElementException, IOException {
     if ((CreateMode.EPHEMERAL == mode || CreateMode.PERSISTENT == mode) && hasData(path)) {
       throw new AlreadyExistsException(path);
@@ -465,6 +489,7 @@ public class SimDistribStateManager implements DistribStateManager {
       VersionedData data = getData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH, watcher);
       if (data != null && data.getData() != null && data.getData().length > 0) {
         map = (Map<String, Object>) Utils.fromJSON(data.getData());
+        version = data.getVersion();
       }
     } catch (NoSuchElementException e) {
       // ignore

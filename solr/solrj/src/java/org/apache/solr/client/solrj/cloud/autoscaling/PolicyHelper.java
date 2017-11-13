@@ -29,7 +29,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.Suggester.Hint;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
-import org.apache.solr.client.solrj.impl.SolrClientCloudManager;
 import org.apache.solr.common.MapWriter;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.Replica;
@@ -110,7 +109,7 @@ public class PolicyHelper {
   public static final int SESSION_EXPIRY = 180;//3 seconds
   public static ThreadLocal<Long> REF_VERSION = new ThreadLocal<>();
 
-  public static MapWriter getDiagnostics(Policy policy, SolrClientCloudManager cloudManager) {
+  public static MapWriter getDiagnostics(Policy policy, SolrCloudManager cloudManager) {
     Policy.Session session = policy.createSession(cloudManager);
     List<Row> sorted = session.getSorted();
     List<Violation> violations = session.getViolations();

@@ -69,7 +69,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
 
   @Override
   public void call(ClusterState state, ZkNodeProps message, NamedList results) throws Exception {
-    addReplica(ocmh.zkStateReader.getClusterState(), message, results, null);
+    addReplica(ocmh.cloudManager.getClusterStateProvider().getClusterState(), message, results, null);
   }
 
   ZkNodeProps addReplica(ClusterState clusterState, ZkNodeProps message, NamedList results, Runnable onComplete)
@@ -124,7 +124,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
         }
       } else {
         node = getNodesForNewReplicas(clusterState, collection, shard, 1, node,
-            ocmh.overseer.getSolrCloudManager()).get(0).nodeName;// TODO: use replica type in this logic too
+            ocmh.cloudManager).get(0).nodeName;// TODO: use replica type in this logic too
       }
     }
     log.info("Node Identified {} for creating new replica", node);
@@ -133,7 +133,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Node: " + node + " is not live");
     }
     if (coreName == null) {
-      coreName = Assign.buildCoreName(ocmh.overseer.getSolrCloudManager().getDistribStateManager(), coll, shard, replicaType);
+      coreName = Assign.buildCoreName(ocmh.cloudManager.getDistribStateManager(), coll, shard, replicaType);
     } else if (!skipCreateReplicaInClusterState) {
       //Validate that the core name is unique in that collection
       for (Slice slice : coll.getSlices()) {

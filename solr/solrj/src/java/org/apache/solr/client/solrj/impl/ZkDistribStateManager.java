@@ -96,6 +96,17 @@ public class ZkDistribStateManager implements DistribStateManager {
   }
 
   @Override
+  public void makePath(String path, byte[] data, CreateMode createMode, boolean failOnExists) throws AlreadyExistsException, IOException, KeeperException, InterruptedException {
+    try {
+      zkClient.makePath(path, data, createMode, null, failOnExists, true);
+    } catch (KeeperException.NodeExistsException e) {
+      throw new AlreadyExistsException(path);
+    } catch (InterruptedException e) {
+      throw e;
+    }
+  }
+
+  @Override
   public String createData(String path, byte[] data, CreateMode mode) throws NoSuchElementException, AlreadyExistsException, IOException, KeeperException, InterruptedException {
     try {
       return zkClient.create(path, data, mode, true);

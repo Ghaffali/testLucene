@@ -17,6 +17,7 @@
 
 package org.apache.solr.cloud.autoscaling.sim;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
@@ -24,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,29 +34,54 @@ import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
+import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
+import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
+import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
+import org.apache.solr.client.solrj.request.RequestWriter;
 import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.client.solrj.response.SolrResponseBase;
 import org.apache.solr.client.solrj.response.UpdateResponse;
+import org.apache.solr.cloud.Assign;
 import org.apache.solr.cloud.Overseer;
+import org.apache.solr.cloud.OverseerCollectionMessageHandler;
+import org.apache.solr.cloud.autoscaling.AutoScalingHandler;
 import org.apache.solr.cloud.autoscaling.OverseerTriggerThread;
+import org.apache.solr.cloud.overseer.ClusterStateMutator;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
+import org.apache.solr.common.cloud.ClusterState;
+import org.apache.solr.common.cloud.DocRouter;
+import org.apache.solr.common.cloud.ImplicitDocRouter;
+import org.apache.solr.common.cloud.ReplicaPosition;
+import org.apache.solr.common.cloud.ZkNodeProps;
+import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.rule.ImplicitSnitch;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CollectionParams;
+import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.CoreAdminParams;
+import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
+import org.apache.solr.common.util.ContentStreamBase;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.SolrResourceLoader;
+import org.apache.solr.request.LocalSolrQueryRequest;
+import org.apache.solr.response.SolrQueryResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.NUM_SLICES;
+import static org.apache.solr.common.cloud.ZkStateReader.NRT_REPLICAS;
+import static org.apache.solr.common.cloud.ZkStateReader.PULL_REPLICAS;
+import static org.apache.solr.common.cloud.ZkStateReader.REPLICATION_FACTOR;
+import static org.apache.solr.common.cloud.ZkStateReader.TLOG_REPLICAS;
 
 /**
  * Simulated {@link SolrCloudManager}.
@@ -65,6 +92,7 @@ public class SimCloudManager implements SolrCloudManager {
   private final SimDistribStateManager stateManager;
   private final SimClusterStateProvider clusterStateProvider;
   private final SimNodeStateProvider nodeStateProvider;
+  private final AutoScalingHandler autoScalingHandler;
   private final Set<String> liveNodes = ConcurrentHashMap.newKeySet();
   private final SimDistributedQueueFactory queueFactory;
   private SolrClient solrClient;
@@ -76,12 +104,18 @@ public class SimCloudManager implements SolrCloudManager {
 
   private static int nodeIdPort = 10000;
 
-  public SimCloudManager() {
+  public SimCloudManager() throws Exception {
     this.stateManager = new SimDistribStateManager();
-    this.clusterStateProvider = new SimClusterStateProvider(liveNodes);
+    // init common paths
+    stateManager.makePath(ZkStateReader.CLUSTER_STATE);
+    stateManager.makePath(ZkStateReader.CLUSTER_PROPS);
+    stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH);
+    stateManager.makePath(ZkStateReader.LIVE_NODES_ZKNODE);
+    this.clusterStateProvider = new SimClusterStateProvider(liveNodes, this);
     this.nodeStateProvider = new SimNodeStateProvider(liveNodes, this.clusterStateProvider, null);
     this.queueFactory = new SimDistributedQueueFactory();
     this.httpServer = new SimHttpServer();
+    this.autoScalingHandler = new AutoScalingHandler(this, new SolrResourceLoader());
     ThreadGroup triggerThreadGroup = new ThreadGroup("Simulated Overseer autoscaling triggers");
     OverseerTriggerThread trigger = new OverseerTriggerThread(new SolrResourceLoader(), this,
         new CloudConfig.CloudConfigBuilder("nonexistent", 0, "sim").build());
@@ -98,7 +132,7 @@ public class SimCloudManager implements SolrCloudManager {
   public static SimCloudManager createCluster(int numNodes) throws Exception {
     SimCloudManager cloudManager = new SimCloudManager();
     for (int i = 1; i <= numNodes; i++) {
-      Map<String, Object> values = createNodeValues();
+      Map<String, Object> values = createNodeValues(null);
       String nodeId = (String)values.get(ImplicitSnitch.NODE);
       cloudManager.getSimClusterStateProvider().simAddNode(nodeId);
       cloudManager.getSimNodeStateProvider().simSetNodeValues(nodeId, values);
@@ -106,15 +140,46 @@ public class SimCloudManager implements SolrCloudManager {
     return cloudManager;
   }
 
-  public static Map<String, Object> createNodeValues() {
-    String host = "127.0.0.1";
-    String port = "" + nodeIdPort++;
-    String nodeId = host + ":" + port + "_solr";
+  public static SimCloudManager createCluster(ClusterState initialState) throws Exception {
+    SimCloudManager cloudManager = new SimCloudManager();
+    cloudManager.getSimClusterStateProvider().simSetClusterState(initialState);
+    for (String node : cloudManager.getClusterStateProvider().getLiveNodes()) {
+      cloudManager.getSimNodeStateProvider().simSetNodeValues(node, createNodeValues(node));
+    }
+    return cloudManager;
+  }
+
+  public static Map<String, Object> createNodeValues(String nodeName) {
     Map<String, Object> values = new HashMap<>();
-    values.put("ip_1", "127");
-    values.put("ip_2", "0");
-    values.put("ip_3", "0");
-    values.put("ip_4", "1");
+    String host, port, nodeId;
+    if (nodeName == null) {
+      host = "127.0.0.1";
+      port = "" + nodeIdPort++;
+      nodeId = host + ":" + port + "_solr";
+      values.put("ip_1", "127");
+      values.put("ip_2", "0");
+      values.put("ip_3", "0");
+      values.put("ip_4", "1");
+    } else {
+      String[] hostPortCtx = nodeName.split(":");
+      if (hostPortCtx.length != 2) {
+        throw new RuntimeException("Invalid nodeName " + nodeName);
+      }
+      host = hostPortCtx[0];
+      String[] portCtx = hostPortCtx[1].split("_");
+      if (portCtx.length != 2) {
+        throw new RuntimeException("Invalid port_context in nodeName " + nodeName);
+      }
+      port = portCtx[0];
+      nodeId = host + ":" + port + "_" + portCtx[1];
+      String[] ip = host.split("\\.");
+      if (ip.length == 4) {
+        values.put("ip_1", ip[0]);
+        values.put("ip_2", ip[1]);
+        values.put("ip_3", ip[2]);
+        values.put("ip_4", ip[3]);
+      }
+    }
     values.put(ImplicitSnitch.HOST, host);
     values.put(ImplicitSnitch.PORT, port);
     values.put(ImplicitSnitch.NODE, nodeId);
@@ -125,11 +190,12 @@ public class SimCloudManager implements SolrCloudManager {
     return values;
   }
 
-  public void simAddNode() throws Exception {
-    Map<String, Object> values = createNodeValues();
+  public String simAddNode() throws Exception {
+    Map<String, Object> values = createNodeValues(null);
     String nodeId = (String)values.get(ImplicitSnitch.NODE);
     clusterStateProvider.simAddNode(nodeId);
     nodeStateProvider.simSetNodeValues(nodeId, values);
+    return nodeId;
   }
 
   public void simRemoveNode(String nodeId) throws Exception {
@@ -143,6 +209,25 @@ public class SimCloudManager implements SolrCloudManager {
 
   public List<SolrInputDocument> simGetSystemCollection() {
     return systemColl;
+  }
+
+  public SolrClient simGetSolrClient() {
+    if (solrClient != null) {
+      return solrClient;
+    } else {
+      return new SolrClient() {
+        @Override
+        public NamedList<Object> request(SolrRequest request, String collection) throws SolrServerException, IOException {
+          SolrResponse rsp = SimCloudManager.this.request(request);
+          return rsp.getResponse();
+        }
+
+        @Override
+        public void close() throws IOException {
+
+        }
+      };
+    }
   }
 
 
@@ -194,12 +279,36 @@ public class SimCloudManager implements SolrCloudManager {
         throw new IOException(e);
       }
     } else {
-      return simHandleSolrRequest(req);
+      try {
+        return simHandleSolrRequest(req);
+      } catch (Exception e) {
+        throw new IOException(e);
+      }
     }
   }
 
-  public SolrResponse simHandleSolrRequest(SolrRequest req) throws IOException {
-    LOG.info("--- got SolrRequest: " + req);
+  public SolrResponse simHandleSolrRequest(SolrRequest req) throws IOException, InterruptedException {
+    LOG.debug("--- got SolrRequest: " + req.getMethod() + " " + req.getPath() +
+        (req.getParams() != null ? " " + req.getParams().toQueryString() : ""));
+    if (req.getPath() != null && req.getPath().startsWith("/admin/autoscaling") ||
+        req.getPath().startsWith("/cluster/autoscaling")) {
+      ModifiableSolrParams params = new ModifiableSolrParams(req.getParams());
+      params.set(CommonParams.PATH, req.getPath());
+      LocalSolrQueryRequest queryRequest = new LocalSolrQueryRequest(null, params);
+      RequestWriter.ContentWriter cw = req.getContentWriter("application/json");
+      ByteArrayOutputStream baos = new ByteArrayOutputStream();
+      cw.write(baos);
+      String payload = baos.toString("UTF-8");
+      LOG.debug("-- payload: " + payload);
+      queryRequest.setContentStreams(Collections.singletonList(new ContentStreamBase.StringStream(payload)));
+      queryRequest.getContext().put("httpMethod", req.getMethod().toString());
+      SolrQueryResponse queryResponse = new SolrQueryResponse();
+      autoScalingHandler.handleRequest(queryRequest, queryResponse);
+      SolrResponse rsp = new SolrResponseBase();
+      rsp.setResponse(queryResponse.getValues());
+      LOG.debug("-- response: " + rsp);
+      return rsp;
+    }
     if (req instanceof UpdateRequest) {
       // support only updates to the system collection
       UpdateRequest ureq = (UpdateRequest)req;
@@ -214,11 +323,12 @@ public class SimCloudManager implements SolrCloudManager {
     }
     // support only a specific subset of collection admin ops
     if (!(req instanceof CollectionAdminRequest)) {
-      throw new UnsupportedOperationException("Only CollectionAdminRequest-s are supported: " + req.getClass().getName());
+      throw new UnsupportedOperationException("Only some CollectionAdminRequest-s are supported: " + req.getClass().getName());
     }
     SolrParams params = req.getParams();
     String a = params.get(CoreAdminParams.ACTION);
     SolrResponse rsp = new SolrResponseBase();
+    rsp.setResponse(new NamedList<>());
     if (a != null) {
       CollectionParams.CollectionAction action = CollectionParams.CollectionAction.get(a);
       if (action == null) {
@@ -231,12 +341,20 @@ public class SimCloudManager implements SolrCloudManager {
         case ADDREPLICAPROP:
           break;
         case CREATE:
+          try {
+            clusterStateProvider.simCreateCollection(new ZkNodeProps(req.getParams().toNamedList().asMap(10)));
+            rsp.getResponse().add("success", "");
+          } catch (Exception e) {
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
+          }
           break;
         case CLUSTERPROP:
           break;
         case CREATESHARD:
           break;
         case DELETE:
+          clusterStateProvider.simDeleteCollection(req.getParams().get(CommonParams.NAME));
+          rsp.getResponse().add("success", "");
           break;
         case DELETENODE:
           break;

@@ -18,6 +18,7 @@
 package org.apache.solr.cloud;
 
 
+import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -26,11 +27,15 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
+import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
+import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler.Cmd;
 import org.apache.solr.cloud.overseer.ClusterStateMutator;
 import org.apache.solr.common.SolrException;
@@ -40,7 +45,6 @@ import org.apache.solr.common.cloud.DocRouter;
 import org.apache.solr.common.cloud.ImplicitDocRouter;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ReplicaPosition;
-import org.apache.solr.common.cloud.SolrZkClient;
 import org.apache.solr.common.cloud.ZkConfigManager;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -81,11 +85,11 @@ import static org.apache.solr.common.util.StrUtils.formatString;
 public class CreateCollectionCmd implements Cmd {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private final OverseerCollectionMessageHandler ocmh;
-  private SolrZkClient zkClient;
+  private final DistribStateManager stateManager;
 
   public CreateCollectionCmd(OverseerCollectionMessageHandler ocmh) {
     this.ocmh = ocmh;
-    this.zkClient = ocmh.zkStateReader.getZkClient();
+    this.stateManager = ocmh.cloudManager.getDistribStateManager();
   }
 
   @Override
@@ -148,8 +152,8 @@ public class CreateCollectionCmd implements Cmd {
       // add our new cores to existing nodes serving the least number of cores
       // but (for now) require that each core goes on a distinct node.
 
-      final List<String> nodeList = Assign.getLiveOrLiveAndCreateNodeSetList(clusterState.getLiveNodes(), message, RANDOM);
       List<ReplicaPosition> replicaPositions;
+      final List<String> nodeList = Assign.getLiveOrLiveAndCreateNodeSetList(clusterState.getLiveNodes(), message, RANDOM);
       if (nodeList.isEmpty()) {
         log.warn("It is unusual to create a collection ("+collectionName+") without cores.");
 
@@ -189,7 +193,7 @@ public class CreateCollectionCmd implements Cmd {
       ZkStateReader zkStateReader = ocmh.zkStateReader;
       boolean isLegacyCloud = Overseer.isLegacy(zkStateReader);
 
-      ocmh.createConfNode(configName, collectionName, isLegacyCloud);
+      ocmh.createConfNode(stateManager, configName, collectionName, isLegacyCloud);
 
       Map<String,String> collectionParams = new HashMap<>();
       Map<String,Object> collectionProps = message.getProperties();
@@ -199,7 +203,7 @@ public class CreateCollectionCmd implements Cmd {
         }
       }
       
-      createCollectionZkNode(zkClient, collectionName, collectionParams);
+      createCollectionZkNode(stateManager, collectionName, collectionParams);
       
       Overseer.getStateUpdateQueue(zkStateReader.getZkClient()).offer(Utils.toJSON(message));
 
@@ -208,7 +212,7 @@ public class CreateCollectionCmd implements Cmd {
       boolean created = false;
       while (! waitUntil.hasTimedOut()) {
         Thread.sleep(100);
-        created = zkStateReader.getClusterState().hasCollection(collectionName);
+        created = ocmh.cloudManager.getClusterStateProvider().getClusterState().hasCollection(collectionName);
         if(created) break;
       }
       if (!created)
@@ -228,7 +232,8 @@ public class CreateCollectionCmd implements Cmd {
       Map<String,ShardRequest> coresToCreate = new LinkedHashMap<>();
       for (ReplicaPosition replicaPosition : replicaPositions) {
         String nodeName = replicaPosition.node;
-        String coreName = Assign.buildCoreName(ocmh.overseer.getSolrCloudManager().getDistribStateManager(), zkStateReader.getClusterState().getCollection(collectionName),
+        String coreName = Assign.buildCoreName(ocmh.cloudManager.getDistribStateManager(),
+            ocmh.cloudManager.getClusterStateProvider().getClusterState().getCollection(collectionName),
             replicaPosition.shard, replicaPosition.type, true);
         log.debug(formatString("Creating core {0} as part of shard {1} of collection {2} on {3}"
             , coreName, replicaPosition.shard, collectionName, nodeName));
@@ -373,12 +378,12 @@ public class CreateCollectionCmd implements Cmd {
     }
   }
 
-  public static void createCollectionZkNode(SolrZkClient zkClient, String collection, Map<String,String> params) {
+  public static void createCollectionZkNode(DistribStateManager stateManager, String collection, Map<String,String> params) {
     log.debug("Check for collection zkNode:" + collection);
     String collectionPath = ZkStateReader.COLLECTIONS_ZKNODE + "/" + collection;
 
     try {
-      if (!zkClient.exists(collectionPath, true)) {
+      if (!stateManager.hasData(collectionPath)) {
         log.debug("Creating collection in ZooKeeper:" + collection);
 
         try {
@@ -392,7 +397,7 @@ public class CreateCollectionCmd implements Cmd {
             // if the config name wasn't passed in, use the default
             if (!collectionProps.containsKey(ZkController.CONFIGNAME_PROP)) {
               // users can create the collection node and conf link ahead of time, or this may return another option
-              getConfName(zkClient, collection, collectionPath, collectionProps);
+              getConfName(stateManager, collection, collectionPath, collectionProps);
             }
 
           } else if (System.getProperty("bootstrap_confdir") != null) {
@@ -415,19 +420,21 @@ public class CreateCollectionCmd implements Cmd {
             // the conf name should should be the collection name of this core
             collectionProps.put(ZkController.CONFIGNAME_PROP, collection);
           } else {
-            getConfName(zkClient, collection, collectionPath, collectionProps);
+            getConfName(stateManager, collection, collectionPath, collectionProps);
           }
 
           collectionProps.remove(ZkStateReader.NUM_SHARDS_PROP);  // we don't put numShards in the collections properties
 
           ZkNodeProps zkProps = new ZkNodeProps(collectionProps);
-          zkClient.makePath(collectionPath, Utils.toJSON(zkProps), CreateMode.PERSISTENT, null, true);
+          stateManager.makePath(collectionPath, Utils.toJSON(zkProps), CreateMode.PERSISTENT, false);
 
         } catch (KeeperException e) {
           // it's okay if the node already exists
           if (e.code() != KeeperException.Code.NODEEXISTS) {
             throw e;
           }
+        } catch (AlreadyExistsException e) {
+          // it's okay if the node already exists
         }
       } else {
         log.debug("Collection zkNode exists");
@@ -439,6 +446,8 @@ public class CreateCollectionCmd implements Cmd {
         return;
       }
       throw new SolrException(ErrorCode.SERVER_ERROR, "Error creating collection node in Zookeeper", e);
+    } catch (IOException e) {
+      throw new SolrException(ErrorCode.SERVER_ERROR, "Error creating collection node in Zookeeper", e);
     } catch (InterruptedException e) {
       Thread.interrupted();
       throw new SolrException(ErrorCode.SERVER_ERROR, "Error creating collection node in Zookeeper", e);
@@ -446,8 +455,8 @@ public class CreateCollectionCmd implements Cmd {
 
   }
   
-  private static void getConfName(SolrZkClient zkClient, String collection, String collectionPath, Map<String,Object> collectionProps) throws KeeperException,
-  InterruptedException {
+  private static void getConfName(DistribStateManager stateManager, String collection, String collectionPath, Map<String,Object> collectionProps) throws IOException,
+      KeeperException, InterruptedException {
     // check for configName
     log.debug("Looking for collection configName");
     if (collectionProps.containsKey("configName")) {
@@ -459,17 +468,17 @@ public class CreateCollectionCmd implements Cmd {
     int retry = 1;
     int retryLimt = 6;
     for (; retry < retryLimt; retry++) {
-      if (zkClient.exists(collectionPath, true)) {
-        ZkNodeProps cProps = ZkNodeProps.load(zkClient.getData(collectionPath, null, null, true));
+      if (stateManager.hasData(collectionPath)) {
+        VersionedData data = stateManager.getData(collectionPath);
+        ZkNodeProps cProps = ZkNodeProps.load(data.getData());
         if (cProps.containsKey(ZkController.CONFIGNAME_PROP)) {
           break;
         }
       }
 
       try {
-        configNames = zkClient.getChildren(ZkConfigManager.CONFIGS_ZKNODE, null,
-            true);
-      } catch (NoNodeException e) {
+        configNames = stateManager.listData(ZkConfigManager.CONFIGS_ZKNODE);
+      } catch (NoSuchElementException | NoNodeException e) {
         // just keep trying
       }
 
@@ -505,15 +514,4 @@ public class CreateCollectionCmd implements Cmd {
           "Could not find configName for collection " + collection + " found:" + configNames);
     }
   }
-
-  public static boolean usePolicyFramework(ZkStateReader zkStateReader, ZkNodeProps message) {
-    Map autoScalingJson = Collections.emptyMap();
-    try {
-      autoScalingJson = Utils.getJson(zkStateReader.getZkClient(), SOLR_AUTOSCALING_CONF_PATH, true);
-    } catch (Exception e) {
-      return false;
-    }
-    return autoScalingJson.get(Policy.CLUSTER_POLICY) != null || message.getStr(Policy.POLICY) != null;
-  }
-
 }

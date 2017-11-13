@@ -7,6 +7,7 @@ import com.google.common.collect.ImmutableSet;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.cloud.ClusterState;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -14,9 +15,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 /**
  *
  */
-public class TestSimClusterStateProvider extends SolrTestCaseJ4 {
-
-  private SimClusterStateProvider dataProvider;
+public class TestSimClusterStateProvider extends SimSolrCloudTestCase {
 
   private static final String COLL = "gettingstarted";
   private static final Set<String> initialLiveNodes = ImmutableSet.of("192.168.1.108:7574_solr", "192.168.1.108:8983_solr");
@@ -63,8 +62,7 @@ public class TestSimClusterStateProvider extends SolrTestCaseJ4 {
   public void setup() throws Exception {
     ClusterState cs = ClusterState.load(1, coll1State.getBytes(UTF_8),
         initialLiveNodes, "/collections/gettingstarted/state.json");
-    dataProvider = new SimClusterStateProvider(ConcurrentHashMap.newKeySet());
-    dataProvider.simSetClusterState(cs);
+    cluster = SimCloudManager.createCluster(cs);
   }
 
   @Test

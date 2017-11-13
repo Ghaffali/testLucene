@@ -48,6 +48,8 @@ public interface DistribStateManager extends SolrCloseable {
 
   void makePath(String path) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
 
+  void makePath(String path, byte[] data, CreateMode createMode, boolean failOnExists) throws AlreadyExistsException, IOException, KeeperException, InterruptedException;
+
   /**
    * Create data (leaf) node at specified path.
    * @param path base path name of the node.
