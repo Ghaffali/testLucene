@@ -19,7 +19,6 @@ package org.apache.lucene.search.suggest.document;
 import java.io.IOException;
 import java.util.Set;
 
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
@@ -133,9 +132,14 @@ public class CompletionWeight extends Weight {
     throw new UnsupportedOperationException();
   }
 
+  /**
+   * This object can be cached
+   * 
+   * @see org.apache.lucene.search.SegmentCacheable#isCacheable(LeafReaderContext)
+   */
   @Override
-  public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-    return context.reader().getCoreCacheHelper();
+  public boolean isCacheable(LeafReaderContext ctx) {
+    return true;
   }
 
   @Override

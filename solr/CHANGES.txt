@@ -67,6 +67,8 @@ New Features
 * SOLR-11003: Support bi-directional syncing of cdcr clusters. We still only support active indexing in one cluster,
   but have the ability to switch indexing clusters and cdcr will replicate correctly. (Amrit Sarkar, Varun Thacker)
 
+* SOLR-11538: Implement suggestions for port,ip_*, nodeRole,sysprop.*, metrics:* (noble)
+
 Bug Fixes
 ----------------------
 
@@ -104,6 +106,9 @@ Bug Fixes
 * SOLR-11503: Collections created with legacyCloud=true cannot be opened if legacyCloud=false (Erick Erickson)
 
 * SOLR-11619: V2 requests that needed to be forwarded to other nodes would get an NPE. (David Smiley)
+
+* SOLR-11231: Guard against unset fields when performing language detection.
+  (Chris Beer via Steve Rowe)
 
 Optimizations
 ----------------------
@@ -154,6 +159,11 @@ Other Changes
   framework (Alan Woodward)
 
 * SOLR-9120: Reduce log level for inconsequential NoSuchFileException that LukeRequestHandler may encounter (hossman)
+
+* SOLR-10469: Move CloudSolrClient.setParallelUpdates to its Builder. (David Smiley)
+
+* SOLR-11507: SOLR-11638: Randomize SolrTestCaseJ4.CloudSolrClientBuilder more, and simplify it.
+  (Jason Gerlowski, David Smiley)
 
 ==================  7.1.0 ==================
 
