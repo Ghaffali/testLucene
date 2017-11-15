@@ -70,6 +70,7 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStreamBase;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.common.util.ObjectCache;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.request.LocalSolrQueryRequest;
@@ -95,6 +96,7 @@ public class SimCloudManager implements SolrCloudManager {
   private final AutoScalingHandler autoScalingHandler;
   private final Set<String> liveNodes = ConcurrentHashMap.newKeySet();
   private final SimDistributedQueueFactory queueFactory;
+  private final ObjectCache objectCache = new ObjectCache();
   private SolrClient solrClient;
   private final SimHttpServer httpServer;
 
@@ -133,6 +135,9 @@ public class SimCloudManager implements SolrCloudManager {
     SimCloudManager cloudManager = new SimCloudManager();
     for (int i = 1; i <= numNodes; i++) {
       Map<String, Object> values = createNodeValues(null);
+      if (i == 1) { // designated Overseer
+        values.put(ImplicitSnitch.NODEROLE, "overseer");
+      }
       String nodeId = (String)values.get(ImplicitSnitch.NODE);
       cloudManager.getSimClusterStateProvider().simAddNode(nodeId);
       cloudManager.getSimNodeStateProvider().simSetNodeValues(nodeId, values);
@@ -183,10 +188,11 @@ public class SimCloudManager implements SolrCloudManager {
     values.put(ImplicitSnitch.HOST, host);
     values.put(ImplicitSnitch.PORT, port);
     values.put(ImplicitSnitch.NODE, nodeId);
-    values.put(ImplicitSnitch.CORES, 4);
-    values.put(ImplicitSnitch.DISK, 123450000);
+    values.put(ImplicitSnitch.CORES, 2);
+    values.put(ImplicitSnitch.DISK, 1000);
     values.put(ImplicitSnitch.SYSLOADAVG, 1.0);
     values.put(ImplicitSnitch.HEAPUSAGE, 123450000);
+    values.put("INDEX.sizeInBytes", 12345000);
     return values;
   }
 
@@ -249,6 +255,12 @@ public class SimCloudManager implements SolrCloudManager {
   }
 
   // --------- interface methods -----------
+
+
+  @Override
+  public ObjectCache getObjectCache() {
+    return objectCache;
+  }
 
   @Override
   public ClusterStateProvider getClusterStateProvider() {
@@ -406,6 +418,7 @@ public class SimCloudManager implements SolrCloudManager {
     IOUtils.closeQuietly(nodeStateProvider);
     IOUtils.closeQuietly(stateManager);
     IOUtils.closeQuietly(triggerThread);
+    IOUtils.closeQuietly(objectCache);
     triggerThread.interrupt();
   }
 }

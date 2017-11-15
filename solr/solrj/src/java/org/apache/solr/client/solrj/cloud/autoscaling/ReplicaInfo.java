@@ -36,7 +36,7 @@ public class ReplicaInfo implements MapWriter {
   private String node;
   private final Map<String, Object> variables = new HashMap<>();
 
-  public ReplicaInfo(String coll,String shard, Replica r, Map<String, Object> vals){
+  public ReplicaInfo(String coll, String shard, Replica r, Map<String, Object> vals) {
     this.name = r.getName();
     this.core = r.getCoreName();
     this.collection = coll;
