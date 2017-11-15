@@ -39,7 +39,6 @@ import org.apache.solr.client.solrj.cloud.DistributedQueue;
 import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
 import org.apache.solr.client.solrj.cloud.autoscaling.BadVersionException;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.impl.HttpSolrClient;
 import org.apache.solr.client.solrj.impl.HttpSolrClient.RemoteSolrException;
@@ -977,7 +976,6 @@ public class OverseerCollectionMessageHandler implements OverseerMessageHandler,
     );
   }
 
-  public final PolicyHelper.SessionRef policySessionRef = new PolicyHelper.SessionRef();
 
   @Override
   public void close() throws IOException {
