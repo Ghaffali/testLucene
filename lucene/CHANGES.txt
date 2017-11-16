@@ -41,6 +41,12 @@ Improvements
   Add missing range checks for similarity parameters.
   Improve BM25 and ClassicSimilarity's explanations. (Robert Muir)
 
+Optimizations
+
+* LUCENE-8040: Optimize IndexSearcher.collectionStatistics, avoiding MultiFields/MultiTerms
+  (David Smiley, Robert Muir)
+
+
 ======================= Lucene 7.2.0 =======================
 
 API Changes
@@ -56,6 +62,19 @@ API Changes
 
 * LUCENE-8014: Similarity.computeSlopFactor() and
   Similarity.computePayloadFactor() have been deprecated. (Alan Woodward)
+
+* LUCENE-6278: Scorer.freq() has been removed (Alan Woodward)
+
+* LUCENE-7736: DoubleValuesSource and LongValuesSource now expose a
+  rewrite(IndexSearcher) function. (Alan Woodward)
+
+* LUCENE-7998: DoubleValuesSource.fromQuery() allows you to use the scores
+  from a Query as a DoubleValuesSource. (Alan Woodward)
+
+New Features
+
+* LUCENE-7736: IndexReaderFunctions expose various IndexReader statistics as
+  DoubleValuesSources. (Alan Woodward)
 
 Bug Fixes
 
