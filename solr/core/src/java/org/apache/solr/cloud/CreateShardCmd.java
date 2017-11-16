@@ -17,7 +17,6 @@
 package org.apache.solr.cloud;
 
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -27,7 +26,6 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 import com.google.common.collect.ImmutableMap;
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler.Cmd;
@@ -88,13 +86,13 @@ public class CreateShardCmd implements Cmd {
     Object createNodeSetStr = message.get(OverseerCollectionMessageHandler.CREATE_NODE_SET);
 
     ZkStateReader zkStateReader = ocmh.zkStateReader;
-    boolean usePolicyFramework = usePolicyFramework(collection,ocmh);
+    boolean usePolicyFramework = CloudUtil.usePolicyFramework(collection, ocmh.cloudManager);
     List<ReplicaPosition> positions = null;
     SolrCloseableLatch countDownLatch;
     try {
       if (usePolicyFramework) {
         if (collection.getPolicyName() != null) message.getProperties().put(Policy.POLICY, collection.getPolicyName());
-        positions = Assign.identifyNodes(ocmh,
+        positions = Assign.identifyNodes(ocmh.cloudManager,
             clusterState,
             Assign.getLiveOrLiveAndCreateNodeSetList(clusterState.getLiveNodes(), message, RANDOM),
             collectionName,
@@ -175,9 +173,4 @@ public class CreateShardCmd implements Cmd {
 
   }
 
-  static boolean usePolicyFramework(DocCollection collection, OverseerCollectionMessageHandler ocmh)
-      throws IOException, InterruptedException {
-    AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudManager().getDistribStateManager().getAutoScalingConfig();
-    return !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty() || collection.getPolicyName() != null;
-  }
 }

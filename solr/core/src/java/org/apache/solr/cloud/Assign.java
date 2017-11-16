@@ -237,7 +237,7 @@ public class Assign {
     return nodeList;
   }
 
-  public static List<ReplicaPosition> identifyNodes(OverseerCollectionMessageHandler ocmh,
+  public static List<ReplicaPosition> identifyNodes(SolrCloudManager cloudManager,
                                                     ClusterState clusterState,
                                                     List<String> nodeList,
                                                     String collectionName,
@@ -248,7 +248,7 @@ public class Assign {
                                                     int numPullReplicas) throws IOException, InterruptedException {
     List<Map> rulesMap = (List) message.get("rule");
     String policyName = message.getStr(POLICY);
-    AutoScalingConfig autoScalingConfig = ocmh.overseer.getSolrCloudManager().getDistribStateManager().getAutoScalingConfig();
+    AutoScalingConfig autoScalingConfig = cloudManager.getDistribStateManager().getAutoScalingConfig();
 
     if (rulesMap == null && policyName == null && autoScalingConfig.getPolicy().getClusterPolicy().isEmpty()) {
       log.debug("Identify nodes using default");
@@ -283,7 +283,7 @@ public class Assign {
           (List<Map>) message.get(SNITCH),
           new HashMap<>(),//this is a new collection. So, there are no nodes in any shard
           nodeList,
-          ocmh.overseer.getSolrCloudManager(),
+          cloudManager,
           clusterState);
 
       Map<ReplicaPosition, String> nodeMappings = replicaAssigner.getNodeMappings();
@@ -293,11 +293,11 @@ public class Assign {
     } else  {
       if (message.getStr(CREATE_NODE_SET) == null)
         nodeList = Collections.emptyList();// unless explicitly specified do not pass node list to Policy
-      synchronized (ocmh) {
-        PolicyHelper.SESSION_REF.set(PolicyHelper.getPolicySessionRef(ocmh.overseer.getSolrCloudManager()));
+      synchronized (cloudManager) {
+        PolicyHelper.SESSION_REF.set(PolicyHelper.getPolicySessionRef(cloudManager));
         try {
           return getPositionsUsingPolicy(collectionName,
-              shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas, policyName, ocmh.overseer.getSolrCloudManager(), nodeList);
+              shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas, policyName, cloudManager, nodeList);
         } finally {
           PolicyHelper.SESSION_REF.remove();
         }
@@ -404,7 +404,7 @@ public class Assign {
           nodesList);
       return replicaPositions;
     } catch (Exception e) {
-      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error closing CloudSolrClient",e);
+      throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Error getting replica locations", e);
     } finally {
       if (log.isTraceEnabled()) {
         if (replicaPositions != null)

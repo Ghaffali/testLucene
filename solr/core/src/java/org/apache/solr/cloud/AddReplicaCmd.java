@@ -69,7 +69,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
 
   @Override
   public void call(ClusterState state, ZkNodeProps message, NamedList results) throws Exception {
-    addReplica(ocmh.cloudManager.getClusterStateProvider().getClusterState(), message, results, null);
+    addReplica(state, message, results, null);
   }
 
   ZkNodeProps addReplica(ClusterState clusterState, ZkNodeProps message, NamedList results, Runnable onComplete)
@@ -98,17 +98,16 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
           "Collection: " + collection + " shard: " + shard + " does not exist");
     }
-    ShardHandler shardHandler = ocmh.shardHandlerFactory.getShardHandler();
     boolean skipCreateReplicaInClusterState = message.getBool(SKIP_CREATE_REPLICA_IN_CLUSTER_STATE, false);
 
     final Long policyVersionBefore = PolicyHelper.REF_VERSION.get();
     AtomicLong policyVersionAfter  = new AtomicLong(-1);
     // Kind of unnecessary, but it does put the logic of whether to override maxShardsPerNode in one place.
     if (!skipCreateReplicaInClusterState) {
-      if (CreateShardCmd.usePolicyFramework(coll, ocmh)) {
+      if (CloudUtil.usePolicyFramework(coll, ocmh.cloudManager)) {
         if (node == null) {
           if(coll.getPolicyName() != null) message.getProperties().put(Policy.POLICY, coll.getPolicyName());
-          node = Assign.identifyNodes(ocmh,
+          node = Assign.identifyNodes(ocmh.cloudManager,
               clusterState,
               Collections.emptyList(),
               collection,
@@ -212,6 +211,8 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
 
     // For tracking async calls.
     Map<String,String> requestMap = new HashMap<>();
+    ShardHandler shardHandler = ocmh.shardHandlerFactory.getShardHandler();
+
     ocmh.sendShardRequest(node, params, shardHandler, asyncId, requestMap);
 
     final String fnode = node;

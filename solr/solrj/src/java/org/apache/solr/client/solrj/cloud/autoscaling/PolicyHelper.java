@@ -200,7 +200,11 @@ public class PolicyHelper {
     public Policy.Session initOrGet(SolrCloudManager cloudManager, Policy policy) {
       synchronized (SessionRef.class) {
         Policy.Session session = get();
-        if (session != null) return session;
+        if (session != null) {
+          if (cloudManager.getClusterStateProvider().getLiveNodes().equals(session.nodes)) {
+            return session;
+          }
+        }
         this.session = policy.createSession(cloudManager);
         myVersion.incrementAndGet();
         lastUsedTime = System.nanoTime();

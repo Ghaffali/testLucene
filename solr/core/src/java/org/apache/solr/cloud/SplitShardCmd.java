@@ -386,7 +386,7 @@ public class SplitShardCmd implements Cmd {
 
       // TODO: change this to handle sharding a slice into > 2 sub-shards.
 
-      List<ReplicaPosition> replicaPositions = Assign.identifyNodes(ocmh,
+      List<ReplicaPosition> replicaPositions = Assign.identifyNodes(ocmh.cloudManager,
           clusterState,
           new ArrayList<>(clusterState.getLiveNodes()),
           collectionName,

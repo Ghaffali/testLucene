@@ -36,6 +36,7 @@ import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.cloud.OverseerCollectionMessageHandler.Cmd;
 import org.apache.solr.cloud.overseer.ClusterStateMutator;
@@ -75,7 +76,6 @@ import static org.apache.solr.common.cloud.ZkStateReader.MAX_SHARDS_PER_NODE;
 import static org.apache.solr.common.cloud.ZkStateReader.NRT_REPLICAS;
 import static org.apache.solr.common.cloud.ZkStateReader.PULL_REPLICAS;
 import static org.apache.solr.common.cloud.ZkStateReader.REPLICATION_FACTOR;
-import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_PATH;
 import static org.apache.solr.common.cloud.ZkStateReader.TLOG_REPLICAS;
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICA;
 import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
@@ -110,87 +110,13 @@ public class CreateCollectionCmd implements Cmd {
     ocmh.validateConfigOrThrowSolrException(configName);
 
     try {
-      // look at the replication factor and see if it matches reality
-      // if it does not, find best nodes to create more cores
 
-      int numTlogReplicas = message.getInt(TLOG_REPLICAS, 0);
-      int numNrtReplicas = message.getInt(NRT_REPLICAS, message.getInt(REPLICATION_FACTOR, numTlogReplicas>0?0:1));
-      int numPullReplicas = message.getInt(PULL_REPLICAS, 0);
-      AutoScalingConfig autoScalingConfig = ocmh.cloudManager.getDistribStateManager().getAutoScalingConfig();
-      String policy = message.getStr(Policy.POLICY);
-      boolean usePolicyFramework = !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty() || policy != null;
-
-      ShardHandler shardHandler = ocmh.shardHandlerFactory.getShardHandler();
       final String async = message.getStr(ASYNC);
 
-      Integer numSlices = message.getInt(NUM_SLICES, null);
-      String router = message.getStr("router.name", DocRouter.DEFAULT_NAME);
+      List<String> nodeList = new ArrayList<>();
       List<String> shardNames = new ArrayList<>();
-      if(ImplicitDocRouter.NAME.equals(router)){
-        ClusterStateMutator.getShardNames(shardNames, message.getStr("shards", null));
-        numSlices = shardNames.size();
-      } else {
-        if (numSlices == null ) {
-          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, NUM_SLICES + " is a required param (when using CompositeId router).");
-        }
-        ClusterStateMutator.getShardNames(numSlices, shardNames);
-      }
-
-      int maxShardsPerNode = message.getInt(MAX_SHARDS_PER_NODE, 1);
-      if (usePolicyFramework && message.getStr(MAX_SHARDS_PER_NODE) != null && maxShardsPerNode > 0) {
-        throw new SolrException(ErrorCode.BAD_REQUEST, "'maxShardsPerNode>0' is not supported when autoScaling policies are used");
-      }
-      if (maxShardsPerNode == -1 || usePolicyFramework) maxShardsPerNode = Integer.MAX_VALUE;
-      if (numNrtReplicas + numTlogReplicas <= 0) {
-        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, NRT_REPLICAS + " + " + TLOG_REPLICAS + " must be greater than 0");
-      }
-
-      if (numSlices <= 0) {
-        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, NUM_SLICES + " must be > 0");
-      }
-
-      // we need to look at every node and see how many cores it serves
-      // add our new cores to existing nodes serving the least number of cores
-      // but (for now) require that each core goes on a distinct node.
-
-      List<ReplicaPosition> replicaPositions;
-      final List<String> nodeList = Assign.getLiveOrLiveAndCreateNodeSetList(clusterState.getLiveNodes(), message, RANDOM);
-      if (nodeList.isEmpty()) {
-        log.warn("It is unusual to create a collection ("+collectionName+") without cores.");
-
-        replicaPositions = new ArrayList<>();
-      } else {
-        int totalNumReplicas = numNrtReplicas + numTlogReplicas + numPullReplicas;
-        if (totalNumReplicas > nodeList.size()) {
-          log.warn("Specified number of replicas of "
-              + totalNumReplicas
-              + " on collection "
-              + collectionName
-              + " is higher than the number of Solr instances currently live or live and part of your " + CREATE_NODE_SET + "("
-              + nodeList.size()
-              + "). It's unusual to run two replica of the same slice on the same Solr-instance.");
-        }
-
-        int maxShardsAllowedToCreate = maxShardsPerNode == Integer.MAX_VALUE ?
-            Integer.MAX_VALUE :
-            maxShardsPerNode * nodeList.size();
-        int requestedShardsToCreate = numSlices * totalNumReplicas;
-        if (maxShardsAllowedToCreate < requestedShardsToCreate) {
-          throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Cannot create collection " + collectionName + ". Value of "
-              + MAX_SHARDS_PER_NODE + " is " + maxShardsPerNode
-              + ", and the number of nodes currently live or live and part of your "+CREATE_NODE_SET+" is " + nodeList.size()
-              + ". This allows a maximum of " + maxShardsAllowedToCreate
-              + " to be created. Value of " + NUM_SLICES + " is " + numSlices
-              + ", value of " + NRT_REPLICAS + " is " + numNrtReplicas
-              + ", value of " + TLOG_REPLICAS + " is " + numTlogReplicas
-              + " and value of " + PULL_REPLICAS + " is " + numPullReplicas
-              + ". This requires " + requestedShardsToCreate
-              + " shards to be created (higher than the allowed number)");
-        }
-        replicaPositions = Assign.identifyNodes(ocmh
-            , clusterState, nodeList, collectionName, message, shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas);
-      }
-
+      List<ReplicaPosition> replicaPositions = buildReplicaPositions(ocmh.cloudManager, clusterState, message,
+          nodeList, shardNames);
       ZkStateReader zkStateReader = ocmh.zkStateReader;
       boolean isLegacyCloud = Overseer.isLegacy(zkStateReader);
 
@@ -228,9 +154,10 @@ public class CreateCollectionCmd implements Cmd {
       Map<String, String> requestMap = new HashMap<>();
 
 
-      log.debug(formatString("Creating SolrCores for new collection {0}, shardNames {1} , nrtReplicas : {2}, tlogReplicas: {3}, pullReplicas: {4}",
-          collectionName, shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas));
+      log.debug(formatString("Creating SolrCores for new collection {0}, shardNames {1} , message : {2}",
+          collectionName, shardNames, message));
       Map<String,ShardRequest> coresToCreate = new LinkedHashMap<>();
+      ShardHandler shardHandler = ocmh.shardHandlerFactory.getShardHandler();
       for (ReplicaPosition replicaPosition : replicaPositions) {
         String nodeName = replicaPosition.node;
         String coreName = Assign.buildCoreName(ocmh.cloudManager.getDistribStateManager(),
@@ -264,7 +191,7 @@ public class CreateCollectionCmd implements Cmd {
         params.set(COLL_CONF, configName);
         params.set(CoreAdminParams.COLLECTION, collectionName);
         params.set(CoreAdminParams.SHARD, replicaPosition.shard);
-        params.set(ZkStateReader.NUM_SHARDS_PROP, numSlices);
+        params.set(ZkStateReader.NUM_SHARDS_PROP, shardNames.size());
         params.set(CoreAdminParams.NEW_COLLECTION, "true");
         params.set(CoreAdminParams.REPLICA_TYPE, replicaPosition.type.name());
 
@@ -326,6 +253,86 @@ public class CreateCollectionCmd implements Cmd {
     } finally {
       PolicyHelper.clearFlagAndDecref(PolicyHelper.getPolicySessionRef(ocmh.overseer.getSolrCloudManager()));
     }
+  }
+
+  public static List<ReplicaPosition> buildReplicaPositions(SolrCloudManager cloudManager, ClusterState clusterState,
+      ZkNodeProps message, List<String> nodeList, List<String> shardNames) throws IOException, InterruptedException {
+    final String collectionName = message.getStr(NAME);
+    // look at the replication factor and see if it matches reality
+    // if it does not, find best nodes to create more cores
+    int numTlogReplicas = message.getInt(TLOG_REPLICAS, 0);
+    int numNrtReplicas = message.getInt(NRT_REPLICAS, message.getInt(REPLICATION_FACTOR, numTlogReplicas>0?0:1));
+    int numPullReplicas = message.getInt(PULL_REPLICAS, 0);
+    AutoScalingConfig autoScalingConfig = cloudManager.getDistribStateManager().getAutoScalingConfig();
+    String policy = message.getStr(Policy.POLICY);
+    boolean usePolicyFramework = !autoScalingConfig.getPolicy().getClusterPolicy().isEmpty() || policy != null;
+
+    Integer numSlices = message.getInt(NUM_SLICES, null);
+    String router = message.getStr("router.name", DocRouter.DEFAULT_NAME);
+    if(ImplicitDocRouter.NAME.equals(router)){
+      ClusterStateMutator.getShardNames(shardNames, message.getStr("shards", null));
+      numSlices = shardNames.size();
+    } else {
+      if (numSlices == null ) {
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, NUM_SLICES + " is a required param (when using CompositeId router).");
+      }
+      if (numSlices <= 0) {
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, NUM_SLICES + " must be > 0");
+      }
+      ClusterStateMutator.getShardNames(numSlices, shardNames);
+    }
+
+    int maxShardsPerNode = message.getInt(MAX_SHARDS_PER_NODE, 1);
+    if (usePolicyFramework && message.getStr(MAX_SHARDS_PER_NODE) != null && maxShardsPerNode > 0) {
+      throw new SolrException(ErrorCode.BAD_REQUEST, "'maxShardsPerNode>0' is not supported when autoScaling policies are used");
+    }
+    if (maxShardsPerNode == -1 || usePolicyFramework) maxShardsPerNode = Integer.MAX_VALUE;
+    if (numNrtReplicas + numTlogReplicas <= 0) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, NRT_REPLICAS + " + " + TLOG_REPLICAS + " must be greater than 0");
+    }
+
+    // we need to look at every node and see how many cores it serves
+    // add our new cores to existing nodes serving the least number of cores
+    // but (for now) require that each core goes on a distinct node.
+
+    List<ReplicaPosition> replicaPositions;
+    nodeList.addAll(Assign.getLiveOrLiveAndCreateNodeSetList(clusterState.getLiveNodes(), message, RANDOM));
+    if (nodeList.isEmpty()) {
+      log.warn("It is unusual to create a collection ("+collectionName+") without cores.");
+
+      replicaPositions = new ArrayList<>();
+    } else {
+      int totalNumReplicas = numNrtReplicas + numTlogReplicas + numPullReplicas;
+      if (totalNumReplicas > nodeList.size()) {
+        log.warn("Specified number of replicas of "
+            + totalNumReplicas
+            + " on collection "
+            + collectionName
+            + " is higher than the number of Solr instances currently live or live and part of your " + CREATE_NODE_SET + "("
+            + nodeList.size()
+            + "). It's unusual to run two replica of the same slice on the same Solr-instance.");
+      }
+
+      int maxShardsAllowedToCreate = maxShardsPerNode == Integer.MAX_VALUE ?
+          Integer.MAX_VALUE :
+          maxShardsPerNode * nodeList.size();
+      int requestedShardsToCreate = numSlices * totalNumReplicas;
+      if (maxShardsAllowedToCreate < requestedShardsToCreate) {
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Cannot create collection " + collectionName + ". Value of "
+            + MAX_SHARDS_PER_NODE + " is " + maxShardsPerNode
+            + ", and the number of nodes currently live or live and part of your "+CREATE_NODE_SET+" is " + nodeList.size()
+            + ". This allows a maximum of " + maxShardsAllowedToCreate
+            + " to be created. Value of " + NUM_SLICES + " is " + numSlices
+            + ", value of " + NRT_REPLICAS + " is " + numNrtReplicas
+            + ", value of " + TLOG_REPLICAS + " is " + numTlogReplicas
+            + " and value of " + PULL_REPLICAS + " is " + numPullReplicas
+            + ". This requires " + requestedShardsToCreate
+            + " shards to be created (higher than the allowed number)");
+      }
+      replicaPositions = Assign.identifyNodes(cloudManager
+          , clusterState, nodeList, collectionName, message, shardNames, numNrtReplicas, numTlogReplicas, numPullReplicas);
+    }
+    return replicaPositions;
   }
 
   String getConfigName(String coll, ZkNodeProps message) throws KeeperException, InterruptedException {

@@ -613,7 +613,7 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
       // somebody else has changed the configuration so we must retry
       return false;
     }
-    log.debug("-- saved version " + currentConfig.getZkVersion() + ": " + currentConfig);
+    //log.debug("-- saved version " + currentConfig.getZkVersion() + ": " + currentConfig);
     return true;
   }
 

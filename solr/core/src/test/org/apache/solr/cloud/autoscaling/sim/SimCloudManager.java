@@ -25,20 +25,19 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.SolrServerException;
 import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
-import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.NodeStateProvider;
-import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
-import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
@@ -46,18 +45,12 @@ import org.apache.solr.client.solrj.request.RequestWriter;
 import org.apache.solr.client.solrj.request.UpdateRequest;
 import org.apache.solr.client.solrj.response.SolrResponseBase;
 import org.apache.solr.client.solrj.response.UpdateResponse;
-import org.apache.solr.cloud.Assign;
 import org.apache.solr.cloud.Overseer;
-import org.apache.solr.cloud.OverseerCollectionMessageHandler;
 import org.apache.solr.cloud.autoscaling.AutoScalingHandler;
 import org.apache.solr.cloud.autoscaling.OverseerTriggerThread;
-import org.apache.solr.cloud.overseer.ClusterStateMutator;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.SolrInputDocument;
 import org.apache.solr.common.cloud.ClusterState;
-import org.apache.solr.common.cloud.DocRouter;
-import org.apache.solr.common.cloud.ImplicitDocRouter;
-import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.rule.ImplicitSnitch;
@@ -68,6 +61,7 @@ import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ContentStreamBase;
+import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.ObjectCache;
@@ -75,14 +69,9 @@ import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.request.LocalSolrQueryRequest;
 import org.apache.solr.response.SolrQueryResponse;
+import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.solr.cloud.OverseerCollectionMessageHandler.NUM_SLICES;
-import static org.apache.solr.common.cloud.ZkStateReader.NRT_REPLICAS;
-import static org.apache.solr.common.cloud.ZkStateReader.PULL_REPLICAS;
-import static org.apache.solr.common.cloud.ZkStateReader.REPLICATION_FACTOR;
-import static org.apache.solr.common.cloud.ZkStateReader.TLOG_REPLICAS;
 
 /**
  * Simulated {@link SolrCloudManager}.
@@ -101,6 +90,8 @@ public class SimCloudManager implements SolrCloudManager {
   private final SimHttpServer httpServer;
 
   private final List<SolrInputDocument> systemColl = Collections.synchronizedList(new ArrayList<>());
+  private final ExecutorService simCloudManagerPool;
+
 
   private Overseer.OverseerThread triggerThread;
 
@@ -117,6 +108,7 @@ public class SimCloudManager implements SolrCloudManager {
     this.nodeStateProvider = new SimNodeStateProvider(liveNodes, this.clusterStateProvider, null);
     this.queueFactory = new SimDistributedQueueFactory();
     this.httpServer = new SimHttpServer();
+    this.simCloudManagerPool = ExecutorUtil.newMDCAwareCachedThreadPool(new DefaultSolrThreadFactory("simCloudManagerPool"));
     this.autoScalingHandler = new AutoScalingHandler(this, new SolrResourceLoader());
     ThreadGroup triggerThreadGroup = new ThreadGroup("Simulated Overseer autoscaling triggers");
     OverseerTriggerThread trigger = new OverseerTriggerThread(new SolrResourceLoader(), this,
@@ -236,6 +228,9 @@ public class SimCloudManager implements SolrCloudManager {
     }
   }
 
+  public <T> Future<T> submit(Callable<T> callable) {
+    return simCloudManagerPool.submit(callable);
+  }
 
   // ---------- type-safe methods to obtain simulator components ----------
   public SimClusterStateProvider getSimClusterStateProvider() {
@@ -292,7 +287,8 @@ public class SimCloudManager implements SolrCloudManager {
       }
     } else {
       try {
-        return simHandleSolrRequest(req);
+        Future<SolrResponse> res = submit(() -> simHandleSolrRequest(req));
+        return res.get();
       } catch (Exception e) {
         throw new IOException(e);
       }
@@ -419,6 +415,7 @@ public class SimCloudManager implements SolrCloudManager {
     IOUtils.closeQuietly(stateManager);
     IOUtils.closeQuietly(triggerThread);
     IOUtils.closeQuietly(objectCache);
+    simCloudManagerPool.shutdownNow();
     triggerThread.interrupt();
   }
 }
