@@ -39,6 +39,7 @@ import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.cloud.autoscaling.ActionContext;
 import org.apache.solr.cloud.autoscaling.ComputePlanAction;
+import org.apache.solr.cloud.autoscaling.ScheduledTriggers;
 import org.apache.solr.cloud.autoscaling.TriggerAction;
 import org.apache.solr.cloud.autoscaling.TriggerEvent;
 import org.apache.solr.common.cloud.ClusterState;
@@ -50,6 +51,7 @@ import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.LogLevel;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -75,12 +77,11 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(4);
+    cluster = SimCloudManager.createCluster(1);
   }
 
   @Before
-  public void setUp() throws Exception {
-    super.setUp();
+  public void init() throws Exception {
 
     fired.set(false);
     triggerFiredLatch = new CountDownLatch(1);
@@ -135,6 +136,19 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
     rsp = cluster.request(req);
     response = rsp.getResponse();
     assertEquals(response.get("result").toString(), "success");
+    Thread.sleep(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_MS);
+  }
+
+  @After
+  public void printState() throws Exception {
+    log.info("-------------_ FINAL STATE --------------");
+    log.info("* Node values: " + Utils.toJSONString(cluster.getSimNodeStateProvider().simGetAllNodeValues()));
+    log.info("* Live nodes: " + cluster.getClusterStateProvider().getLiveNodes());
+    ClusterState state = cluster.getClusterStateProvider().getClusterState();
+    for (String coll: cluster.getSimClusterStateProvider().simListCollections()) {
+      log.info("* Collection " + coll + " state: " + state.getCollection(coll));
+    }
+
   }
 
   @Test
@@ -320,6 +334,8 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
     assertTrue(fired.get());
     Map context = actionContextPropsRef.get();
     assertNotNull(context);
+    log.info("Node values: " + Utils.toJSONString(cluster.getSimNodeStateProvider().simGetAllNodeValues()));
+    log.info("Live nodes: " + cluster.getClusterStateProvider().getLiveNodes() + ", collection state: " + cluster.getClusterStateProvider().getClusterState().getCollection("testNodeAdded"));
     List<SolrRequest> operations = (List<SolrRequest>) context.get("operations");
     assertNotNull("The operations computed by ComputePlanAction should not be null" + context, operations);
     assertEquals("ComputePlanAction should have computed exactly 1 operation", 1, operations.size());

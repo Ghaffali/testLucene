@@ -128,7 +128,7 @@ public class SimCloudManager implements SolrCloudManager {
     for (int i = 1; i <= numNodes; i++) {
       Map<String, Object> values = createNodeValues(null);
       if (i == 1) { // designated Overseer
-        values.put(ImplicitSnitch.NODEROLE, "overseer");
+        //values.put(ImplicitSnitch.NODEROLE, "overseer");
       }
       String nodeId = (String)values.get(ImplicitSnitch.NODE);
       cloudManager.getSimClusterStateProvider().simAddNode(nodeId);
@@ -180,7 +180,7 @@ public class SimCloudManager implements SolrCloudManager {
     values.put(ImplicitSnitch.HOST, host);
     values.put(ImplicitSnitch.PORT, port);
     values.put(ImplicitSnitch.NODE, nodeId);
-    values.put(ImplicitSnitch.CORES, 2);
+    values.put(ImplicitSnitch.CORES, 0);
     values.put(ImplicitSnitch.DISK, 1000);
     values.put(ImplicitSnitch.SYSLOADAVG, 1.0);
     values.put(ImplicitSnitch.HEAPUSAGE, 123450000);

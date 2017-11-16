@@ -36,6 +36,14 @@ public class SimNodeStateProvider implements NodeStateProvider {
   }
 
   // -------- simulator setup methods ------------
+  public Object simGetNodeValue(String node, String key) {
+    Map<String, Object> values = nodeValues.get(node);
+    if (values == null) {
+      return null;
+    }
+    return values.get(key);
+  }
+
   public void simSetNodeValues(String node, Map<String, Object> values) {
     nodeValues.put(node, new ConcurrentHashMap<>(values));
   }
@@ -48,10 +56,15 @@ public class SimNodeStateProvider implements NodeStateProvider {
     nodeValues.remove(node);
   }
 
+  public Map<String, Map<String, Object>> simGetAllNodeValues() {
+    return nodeValues;
+  }
+
   // ---------- interface methods -------------
 
   @Override
   public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+    LOG.debug("-- requested values for " + node + ": " + tags);
     if (!liveNodes.contains(node)) {
       nodeValues.remove(node);
       return Collections.emptyMap();
@@ -71,9 +84,6 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
     Map<String, Map<String, List<ReplicaInfo>>> res = new HashMap<>();
     for (ReplicaInfo r : replicas) {
-      if (!liveNodes.contains(r.getNode())) {
-        continue;
-      }
       Map<String, List<ReplicaInfo>> perCollection = res.computeIfAbsent(r.getCollection(), s -> new HashMap<>());
       List<ReplicaInfo> perShard = perCollection.computeIfAbsent(r.getShard(), s -> new ArrayList<>());
       perShard.add(r);

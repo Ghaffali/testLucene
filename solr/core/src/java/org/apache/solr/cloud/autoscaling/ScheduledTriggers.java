@@ -72,9 +72,9 @@ import static org.apache.solr.cloud.autoscaling.ExecutePlanAction.waitForTaskToF
  */
 public class ScheduledTriggers implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS = 1;
-  static final int DEFAULT_MIN_MS_BETWEEN_ACTIONS = 5000;
-  static final int DEFAULT_COOLDOWN_PERIOD_MS = 5000;
+  public static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS = 1;
+  public static final int DEFAULT_MIN_MS_BETWEEN_ACTIONS = 5000;
+  public static final int DEFAULT_COOLDOWN_PERIOD_MS = 5000;
 
   private final Map<String, ScheduledTrigger> scheduledTriggers = new ConcurrentHashMap<>();
 

@@ -20,6 +20,7 @@ package org.apache.solr.cloud.autoscaling.sim;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -151,15 +152,17 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   public boolean simRemoveNode(String nodeId) throws Exception {
     lock.lock();
     try {
+      Set<String> collections = new HashSet<>();
       // mark every replica on that node as down
       List<ReplicaInfo> replicas = nodeReplicaMap.get(nodeId);
       if (replicas != null) {
         replicas.forEach(r -> {
           r.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.DOWN.toString());
+          collections.add(r.getCollection());
         });
       }
       boolean res = liveNodes.remove(nodeId);
-      cloudManager.submit(() -> {simRunLeaderElection(true); return true;});
+      cloudManager.submit(() -> {simRunLeaderElection(collections, true); return true;});
       return res;
     } finally {
       lock.unlock();
@@ -185,7 +188,13 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       // mark replica as active
       replicaInfo.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.ACTIVE.toString());
       replicas.add(replicaInfo);
-      cloudManager.submit(() -> {simRunLeaderElection(true); return true;});
+      // update the number of cores in node values
+      Integer cores = (Integer)cloudManager.getSimNodeStateProvider().simGetNodeValue(nodeId, "cores");
+      if (cores == null) {
+        cores = 0;
+      }
+      cloudManager.getSimNodeStateProvider().simSetNodeValue(nodeId, "cores", cores + 1);
+      cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(replicaInfo.getCollection()), true); return true;});
     } finally {
       lock.unlock();
     }
@@ -198,8 +207,14 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     try {
       for (int i = 0; i < replicas.size(); i++) {
         if (coreNodeName.equals(replicas.get(i).getCore())) {
-          replicas.remove(i);
-          cloudManager.submit(() -> {simRunLeaderElection(true); return true;});
+          ReplicaInfo ri = replicas.remove(i);
+          // update the number of cores in node values
+          Integer cores = (Integer)cloudManager.getSimNodeStateProvider().simGetNodeValue(nodeId, "cores");
+          if (cores == null || cores == 0) {
+            throw new Exception("Unexpected value of 'cores' (" + cores + ") on node: " + nodeId);
+          }
+          cloudManager.getSimNodeStateProvider().simSetNodeValue(nodeId, "cores", cores - 1);
+          cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(ri.getCollection()), true); return true;});
           return;
         }
       }
@@ -226,12 +241,15 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     return currentState;
   }
 
-  public synchronized void simRunLeaderElection(boolean saveClusterState) throws Exception {
+  public synchronized void simRunLeaderElection(Collection<String> collections, boolean saveClusterState) throws Exception {
     if (saveClusterState) {
       saveClusterState();
     }
     ClusterState state = getClusterState();
     state.forEachCollection(dc -> {
+      if (!collections.contains(dc.getName())) {
+        return;
+      }
       dc.getSlices().forEach(s -> {
         Replica leader = s.getLeader();
         if (leader == null || !liveNodes.contains(leader.getNodeName())) {
@@ -271,6 +289,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           ReplicaInfo ri = active.get(0);
           ri.getVariables().put(ZkStateReader.LEADER_PROP, "true");
           LOG.info("-- elected new leader for " + dc.getName() + " / " + s.getName() + ": " + ri);
+        } else {
+
         }
       });
     });
@@ -312,6 +332,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           ReplicaInfo ri = it.next();
           if (ri.getCollection().equals(collection)) {
             it.remove();
+            // update the number of cores in node values
+            Integer cores = (Integer)cloudManager.getSimNodeStateProvider().simGetNodeValue(n, "cores");
+            if (cores == null || cores == 0) {
+              throw new RuntimeException("Unexpected value of 'cores' (" + cores + ") on node: " + n);
+            }
+            cloudManager.getSimNodeStateProvider().simSetNodeValue(n, "cores", cores - 1);
           }
         }
       });
@@ -327,6 +353,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       nodeReplicaMap.clear();
       collProperties.clear();
       sliceProperties.clear();
+      cloudManager.getSimNodeStateProvider().simGetAllNodeValues().forEach((n, values) -> {
+        values.put("cores", 0);
+      });
       saveClusterState();
     } finally {
       lock.unlock();
