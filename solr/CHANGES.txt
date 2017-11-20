@@ -69,6 +69,13 @@ New Features
 
 * SOLR-11538: Implement suggestions for port,ip_*, nodeRole,sysprop.*, metrics:* (noble)
 
+* SOLR-11487: Collection Aliases may now have metadata (currently an internal feature).
+  (Gus Heck, David Smiley)
+
+* SOLR-11542: New TimePartitionedUpdateProcessor URP that routes documents to another collection
+  in the same Alias defined set based on a time field (currently an internal feature).
+  (David Smiley)
+
 Bug Fixes
 ----------------------
 
@@ -109,6 +116,13 @@ Bug Fixes
 
 * SOLR-11231: Guard against unset fields when performing language detection.
   (Chris Beer via Steve Rowe)
+
+* SOLR-11553: JSON Facet API: facet refinement could use UIF in phase one and DV uninversion in phase 2, resulting
+  in too much memory use. (yonik)
+
+* SOLR-11645: When the java commandline had exact duplicate arguments, the
+  admin UI dashboard would not display any commandline arguments.
+  (Webster Homer via Shawn Heisey)
 
 Optimizations
 ----------------------
