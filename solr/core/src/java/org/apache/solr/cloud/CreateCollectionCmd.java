@@ -160,7 +160,7 @@ public class CreateCollectionCmd implements Cmd {
       ShardHandler shardHandler = ocmh.shardHandlerFactory.getShardHandler();
       for (ReplicaPosition replicaPosition : replicaPositions) {
         String nodeName = replicaPosition.node;
-        String coreName = Assign.buildCoreName(ocmh.cloudManager.getDistribStateManager(),
+        String coreName = Assign.buildSolrCoreName(ocmh.cloudManager.getDistribStateManager(),
             ocmh.cloudManager.getClusterStateProvider().getClusterState().getCollection(collectionName),
             replicaPosition.shard, replicaPosition.type, true);
         log.debug(formatString("Creating core {0} as part of shard {1} of collection {2} on {3}"

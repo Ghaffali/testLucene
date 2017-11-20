@@ -31,6 +31,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
+import org.apache.calcite.avatica.proto.Common;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
@@ -43,6 +44,7 @@ import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.client.solrj.request.RequestWriter;
 import org.apache.solr.client.solrj.request.UpdateRequest;
+import org.apache.solr.client.solrj.response.RequestStatusState;
 import org.apache.solr.client.solrj.response.SolrResponseBase;
 import org.apache.solr.client.solrj.response.UpdateResponse;
 import org.apache.solr.cloud.Overseer;
@@ -56,6 +58,7 @@ import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.rule.ImplicitSnitch;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CollectionParams;
+import org.apache.solr.common.params.CommonAdminParams;
 import org.apache.solr.common.params.CommonParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.ModifiableSolrParams;
@@ -65,6 +68,7 @@ import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.ObjectCache;
+import org.apache.solr.common.util.SimpleOrderedMap;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.request.LocalSolrQueryRequest;
@@ -72,6 +76,8 @@ import org.apache.solr.response.SolrQueryResponse;
 import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static org.apache.solr.cloud.OverseerCollectionMessageHandler.REQUESTID;
 
 /**
  * Simulated {@link SolrCloudManager}.
@@ -343,53 +349,52 @@ public class SimCloudManager implements SolrCloudManager {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Unknown action: " + a);
       }
       LOG.info("Invoking Collection Action :{} with params {}", action.toLower(), req.getParams().toQueryString());
+      NamedList results = new NamedList();
+      rsp.setResponse(results);
       switch (action) {
-        case ADDREPLICA:
+        case REQUESTSTATUS:
+          // we complete all async ops immediately
+          String requestId = req.getParams().get(REQUESTID);
+          SimpleOrderedMap<String> status = new SimpleOrderedMap<>();
+          status.add("state", RequestStatusState.COMPLETED.getKey());
+          status.add("msg", "found [" + requestId + "] in completed tasks");
+          results.add("status", status);
+          results.add("success", "");
+          // ExecutePlanAction expects a specific response class
+          rsp = new CollectionAdminRequest.RequestStatusResponse();
+          rsp.setResponse(results);
           break;
-        case ADDREPLICAPROP:
+        case DELETESTATUS:
+          requestId = req.getParams().get(REQUESTID);
+          results.add("status", "successfully removed stored response for [" + requestId + "]");
+          results.add("success", "");
           break;
         case CREATE:
           try {
-            clusterStateProvider.simCreateCollection(new ZkNodeProps(req.getParams().toNamedList().asMap(10)));
-            rsp.getResponse().add("success", "");
+            clusterStateProvider.simCreateCollection(new ZkNodeProps(req.getParams().toNamedList().asMap(10)), results);
           } catch (Exception e) {
             throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
           }
           break;
-        case CLUSTERPROP:
-          break;
-        case CREATESHARD:
-          break;
         case DELETE:
-          clusterStateProvider.simDeleteCollection(req.getParams().get(CommonParams.NAME));
-          rsp.getResponse().add("success", "");
-          break;
-        case DELETENODE:
-          break;
-        case DELETEREPLICA:
-          break;
-        case DELETEREPLICAPROP:
-          break;
-        case DELETESHARD:
-          break;
-        case FORCELEADER:
+          clusterStateProvider.simDeleteCollection(req.getParams().get(CommonParams.NAME),
+              req.getParams().get(CommonAdminParams.ASYNC), results);
           break;
         case LIST:
-          NamedList results = new NamedList();
           results.add("collections", clusterStateProvider.simListCollections());
-          rsp.setResponse(results);
-          break;
-        case MODIFYCOLLECTION:
           break;
         case MOVEREPLICA:
+          try {
+            clusterStateProvider.simMoveReplica(new ZkNodeProps(req.getParams().toNamedList().asMap(10)), results);
+          } catch (Exception e) {
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
+          }
           break;
-        case REBALANCELEADERS:
-          break;
-        case RELOAD:
-          break;
-        case REPLACENODE:
-          break;
-        case SPLITSHARD:
+        case OVERSEERSTATUS:
+          if (req.getParams().get(CommonAdminParams.ASYNC) != null) {
+            results.add(REQUESTID, req.getParams().get(CommonAdminParams.ASYNC));
+          }
+          results.add("success", "");
           break;
         default:
           throw new UnsupportedOperationException("Unsupported collection admin action=" + action);

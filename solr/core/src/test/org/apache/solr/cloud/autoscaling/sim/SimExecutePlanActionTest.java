@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package org.apache.solr.cloud.autoscaling;
+package org.apache.solr.cloud.autoscaling.sim;
 
 import java.lang.invoke.MethodHandles;
 import java.util.Collections;
@@ -32,6 +32,10 @@ import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
 import org.apache.solr.cloud.SolrCloudTestCase;
+import org.apache.solr.cloud.autoscaling.ActionContext;
+import org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest;
+import org.apache.solr.cloud.autoscaling.ExecutePlanAction;
+import org.apache.solr.cloud.autoscaling.NodeLostTrigger;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
@@ -55,7 +59,7 @@ import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_P
  * Test for {@link ExecutePlanAction}
  */
 @LogLevel("org.apache.solr.cloud.autoscaling=DEBUG")
-public class ExecutePlanActionTest extends SolrCloudTestCase {
+public class SimExecutePlanActionTest extends SolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static final int NODE_COUNT = 2;
