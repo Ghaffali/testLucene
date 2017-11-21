@@ -106,14 +106,16 @@ public class SimCloudManager implements SolrCloudManager {
 
   public SimCloudManager(TimeSource timeSource) throws Exception {
     this.stateManager = new SimDistribStateManager();
-    this.timeSource = timeSource != null ? timeSource : TimeSource.NANO_TIME;
     // init common paths
     stateManager.makePath(ZkStateReader.CLUSTER_STATE);
     stateManager.makePath(ZkStateReader.CLUSTER_PROPS);
     stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH);
     stateManager.makePath(ZkStateReader.LIVE_NODES_ZKNODE);
+    stateManager.makePath(ZkStateReader.ROLES);
+
+    this.timeSource = timeSource != null ? timeSource : TimeSource.NANO_TIME;
     this.clusterStateProvider = new SimClusterStateProvider(liveNodes, this);
-    this.nodeStateProvider = new SimNodeStateProvider(liveNodes, this.clusterStateProvider, null);
+    this.nodeStateProvider = new SimNodeStateProvider(liveNodes, this.stateManager, this.clusterStateProvider, null);
     this.queueFactory = new SimDistributedQueueFactory();
     this.httpServer = new SimHttpServer();
     this.simCloudManagerPool = ExecutorUtil.newMDCAwareCachedThreadPool(new DefaultSolrThreadFactory("simCloudManagerPool"));
@@ -156,10 +158,11 @@ public class SimCloudManager implements SolrCloudManager {
 
   public static Map<String, Object> createNodeValues(String nodeName) {
     Map<String, Object> values = new HashMap<>();
-    String host, port, nodeId;
+    String host, nodeId;
+    int port;
     if (nodeName == null) {
       host = "127.0.0.1";
-      port = "" + nodeIdPort++;
+      port = nodeIdPort++;
       nodeId = host + ":" + port + "_solr";
       values.put("ip_1", "127");
       values.put("ip_2", "0");
@@ -175,7 +178,7 @@ public class SimCloudManager implements SolrCloudManager {
       if (portCtx.length != 2) {
         throw new RuntimeException("Invalid port_context in nodeName " + nodeName);
       }
-      port = portCtx[0];
+      port = Integer.parseInt(portCtx[0]);
       nodeId = host + ":" + port + "_" + portCtx[1];
       String[] ip = host.split("\\.");
       if (ip.length == 4) {
@@ -193,6 +196,11 @@ public class SimCloudManager implements SolrCloudManager {
     values.put(ImplicitSnitch.SYSLOADAVG, 1.0);
     values.put(ImplicitSnitch.HEAPUSAGE, 123450000);
     values.put("INDEX.sizeInBytes", 12345000);
+    values.put("sysprop.java.version", System.getProperty("java.version"));
+    values.put("sysprop.java.vendor", System.getProperty("java.vendor"));
+    // fake some metrics expected in tests
+    values.put("metrics:solr.node:ADMIN./admin/authorization.clientErrors:count", 0);
+    values.put("metrics:solr.jvm:buffers.direct.Count", 0);
     return values;
   }
 
@@ -325,6 +333,9 @@ public class SimCloudManager implements SolrCloudManager {
       queryRequest.getContext().put("httpMethod", req.getMethod().toString());
       SolrQueryResponse queryResponse = new SolrQueryResponse();
       autoScalingHandler.handleRequest(queryRequest, queryResponse);
+      if (queryResponse.getException() != null) {
+        throw new IOException(queryResponse.getException());
+      }
       SolrResponse rsp = new SolrResponseBase();
       rsp.setResponse(queryResponse.getValues());
       LOG.debug("-- response: " + rsp);
@@ -409,11 +420,21 @@ public class SimCloudManager implements SolrCloudManager {
           results.add("overseer_collection_queue_size", 0);
           results.add("success", "");
           break;
+        case ADDROLE:
+          nodeStateProvider.simAddNodeValue(req.getParams().get("node"), "nodeRole", req.getParams().get("role"));
+          break;
+        case CREATESHARD:
+          try {
+            clusterStateProvider.simCreateShard(new ZkNodeProps(req.getParams().toNamedList().asMap(10)), results);
+          } catch (Exception e) {
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
+          }
+          break;
         default:
-          throw new UnsupportedOperationException("Unsupported collection admin action=" + action);
+          throw new UnsupportedOperationException("Unsupported collection admin action=" + action + " in request: " + req.getParams());
       }
     } else {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "action is a required param");
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "action is a required param in request: " + req.getParams());
     }
     return rsp;
 

@@ -58,7 +58,7 @@ import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_P
  * Test for {@link ExecutePlanAction}
  */
 @LogLevel("org.apache.solr.cloud.autoscaling=DEBUG")
-public class SimExecutePlanActionTest extends SimSolrCloudTestCase {
+public class TestExecutePlanAction extends SimSolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static final int NODE_COUNT = 2;

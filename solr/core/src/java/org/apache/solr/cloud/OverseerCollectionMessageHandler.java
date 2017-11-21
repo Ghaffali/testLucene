@@ -651,7 +651,7 @@ public class OverseerCollectionMessageHandler implements OverseerMessageHandler,
       validateConfigOrThrowSolrException(configName);
       
       boolean isLegacyCloud =  Overseer.isLegacy(zkStateReader);
-      createConfNode(overseer.getSolrCloudManager().getDistribStateManager(), configName, collectionName, isLegacyCloud);
+      createConfNode(cloudManager.getDistribStateManager(), configName, collectionName, isLegacyCloud);
       reloadCollection(null, new ZkNodeProps(NAME, collectionName), results);
     }
     
@@ -660,7 +660,7 @@ public class OverseerCollectionMessageHandler implements OverseerMessageHandler,
     TimeOut timeout = new TimeOut(30, TimeUnit.SECONDS, timeSource);
     boolean areChangesVisible = true;
     while (!timeout.hasTimedOut()) {
-      DocCollection collection = zkStateReader.getClusterState().getCollection(collectionName);
+      DocCollection collection = cloudManager.getClusterStateProvider().getClusterState().getCollection(collectionName);
       areChangesVisible = true;
       for (Map.Entry<String,Object> updateEntry : message.getProperties().entrySet()) {
         String updateKey = updateEntry.getKey();

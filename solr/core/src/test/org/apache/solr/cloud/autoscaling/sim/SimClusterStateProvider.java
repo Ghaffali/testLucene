@@ -41,6 +41,9 @@ import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.cloud.Assign;
 import org.apache.solr.cloud.CreateCollectionCmd;
+import org.apache.solr.cloud.CreateShardCmd;
+import org.apache.solr.cloud.overseer.CollectionMutator;
+import org.apache.solr.cloud.overseer.ZkWriteCommand;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
@@ -298,7 +301,17 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           }
           // pick random one
           Collections.shuffle(active);
-          ReplicaInfo ri = active.get(0);
+          ReplicaInfo ri = null;
+          for (ReplicaInfo a : active) {
+            if (!a.getType().equals(Replica.Type.PULL)) {
+              ri = a;
+              break;
+            }
+          }
+          if (ri == null) {
+            LOG.warn("-- can't find any suitable replica type for " + dc.getName() + " / " + s.getName());
+            return;
+          }
           ri.getVariables().put(ZkStateReader.LEADER_PROP, "true");
           LOG.info("-- elected new leader for " + dc.getName() + " / " + s.getName() + ": " + ri);
         } else {
@@ -334,6 +347,17 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         throw new RuntimeException(e);
       }
     });
+    Map<String, Object> colProps = collProperties.computeIfAbsent(collectionName, c -> new ConcurrentHashMap<>());
+    props.getProperties().entrySet().stream()
+        .filter(e -> !e.getKey().equals("action"))
+        .filter(e -> !e.getKey().equals("name"))
+        .forEach(e -> {
+          if (e.getKey().startsWith("collection.")) {
+            colProps.put(e.getKey().substring("collection.".length()), e.getValue());
+          } else {
+            colProps.put(e.getKey(), e.getValue());
+          }
+        });
     cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(collectionName), true); return true;});
     results.add("success", "");
   }
@@ -423,6 +447,58 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     // this will trigger leader election
     simRemoveReplica(replica.getNodeName(), replica.getName());
     results.add("success", "");
+  }
+
+  public void simCreateShard(ZkNodeProps message, NamedList results) throws Exception {
+    if (message.getStr(CommonAdminParams.ASYNC) != null) {
+      results.add(CoreAdminParams.REQUESTID, message.getStr(CommonAdminParams.ASYNC));
+    }
+    String collectionName = message.getStr(COLLECTION_PROP);
+    String sliceName = message.getStr(SHARD_ID_PROP);
+    ClusterState clusterState = getClusterState();
+    lock.lock();
+    try {
+      ZkWriteCommand cmd = new CollectionMutator(cloudManager).createShard(clusterState, message);
+      if (cmd.noop) {
+        results.add("success", "no-op");
+        return;
+      }
+      // copy shard properties
+      DocCollection collection = cmd.collection;
+      Slice slice = collection.getSlice(sliceName);
+      Map<String, Object> props = sliceProperties.computeIfAbsent(collection.getName(), c -> new ConcurrentHashMap<>())
+          .computeIfAbsent(sliceName, s -> new ConcurrentHashMap<>());
+      props.clear();
+      slice.getProperties().entrySet().stream()
+          .filter(e -> !e.getKey().equals("range"))
+          .filter(e -> !e.getKey().equals("replicas"))
+          .forEach(e -> props.put(e.getKey(), e.getValue()));
+      // 2. create new replicas
+      List<ReplicaPosition> positions = CreateShardCmd.buildReplicaPositions(cloudManager, clusterState, collectionName, message);
+      AtomicInteger replicaNum = new AtomicInteger(1);
+      positions.forEach(pos -> {
+        Map<String, Object> replicaProps = new HashMap<>();
+        replicaProps.put(ZkStateReader.SHARD_ID_PROP, pos.shard);
+        replicaProps.put(ZkStateReader.NODE_NAME_PROP, pos.node);
+        replicaProps.put(ZkStateReader.REPLICA_TYPE, pos.type.toString());
+        String coreName = String.format(Locale.ROOT, "%s_%s_replica_%s%s", collectionName, pos.shard, pos.type.name().substring(0,1).toLowerCase(Locale.ROOT),
+            replicaNum.getAndIncrement());
+        try {
+          replicaProps.put(ZkStateReader.CORE_NAME_PROP, coreName);
+          ReplicaInfo ri = new ReplicaInfo("core_node" + Assign.incAndGetId(stateManager, collectionName, 0),
+              coreName, collectionName, pos.shard, pos.type, pos.node, replicaProps);
+          simAddReplica(pos.node, ri, false);
+        } catch (Exception e) {
+          throw new RuntimeException(e);
+        }
+      });
+      Map<String, Object> colProps = collProperties.computeIfAbsent(collectionName, c -> new ConcurrentHashMap<>());
+
+      cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(collectionName), true); return true;});
+      results.add("success", "");
+    } finally {
+      lock.unlock();
+    }
   }
 
   public synchronized Map<String, Object> saveClusterProperties() throws Exception {
@@ -562,15 +638,23 @@ public class SimClusterStateProvider implements ClusterStateProvider {
               .put(ri.getName(), r);
         });
       });
+
+      // add empty slices
+      sliceProperties.forEach((c, perSliceProps) -> {
+        perSliceProps.forEach((slice, props) -> {
+          collMap.computeIfAbsent(c, co -> new ConcurrentHashMap<>()).computeIfAbsent(slice, s -> new ConcurrentHashMap<>());
+        });
+      });
+
       Map<String, DocCollection> res = new HashMap<>();
       collMap.forEach((coll, shards) -> {
         Map<String, Slice> slices = new HashMap<>();
         shards.forEach((s, replicas) -> {
-          Map<String, Object> sliceProps = sliceProperties.computeIfAbsent(coll, c -> new HashMap<>()).computeIfAbsent(s, sl -> new HashMap<>());
+          Map<String, Object> sliceProps = sliceProperties.computeIfAbsent(coll, c -> new ConcurrentHashMap<>()).computeIfAbsent(s, sl -> new ConcurrentHashMap<>());
           Slice slice = new Slice(s, replicas, sliceProps);
           slices.put(s, slice);
         });
-        Map<String, Object> collProps = collProperties.computeIfAbsent(coll, c -> new HashMap<>());
+        Map<String, Object> collProps = collProperties.computeIfAbsent(coll, c -> new ConcurrentHashMap<>());
         DocCollection dc = new DocCollection(coll, slices, collProps, DocRouter.DEFAULT, 0, ZkStateReader.CLUSTER_STATE);
         res.put(coll, dc);
       });

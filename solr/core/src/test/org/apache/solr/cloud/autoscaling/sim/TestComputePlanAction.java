@@ -27,16 +27,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
-import org.apache.solr.client.solrj.embedded.JettySolrRunner;
-import org.apache.solr.client.solrj.impl.CloudSolrClient;
-import org.apache.solr.client.solrj.impl.SolrClientNodeStateProvider;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
-import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.cloud.autoscaling.ActionContext;
 import org.apache.solr.cloud.autoscaling.ComputePlanAction;
 import org.apache.solr.cloud.autoscaling.ScheduledTriggers;
@@ -67,7 +62,7 @@ import static org.apache.solr.common.params.CollectionParams.CollectionAction.MO
  * Test for {@link ComputePlanAction}
  */
 @LogLevel("org.apache.solr.cloud.autoscaling=DEBUG;org.apache.solr.cloud.Overseer=DEBUG;org.apache.solr.cloud.overseer=DEBUG;org.apache.solr.client.solrj.impl.SolrClientDataProvider=DEBUG;")
-public class SimComputePlanActionTest extends SimSolrCloudTestCase {
+public class TestComputePlanAction extends SimSolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static final AtomicBoolean fired = new AtomicBoolean(false);
@@ -166,7 +161,7 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
         "'waitFor' : '7s'," +
         "'enabled' : true," +
         "'actions' : [{'name':'compute_plan', 'class' : 'solr.ComputePlanAction'}," +
-        "{'name':'test','class':'" + SimComputePlanActionTest.AssertingTriggerAction.class.getName() + "'}]" +
+        "{'name':'test','class':'" + TestComputePlanAction.AssertingTriggerAction.class.getName() + "'}]" +
         "}}";
     SolrRequest req = createAutoScalingRequest(SolrRequest.METHOD.POST, setTriggerCommand);
     NamedList<Object> response = solrClient.request(req);
@@ -227,7 +222,7 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
         "'waitFor' : '1s'," +
         "'enabled' : true," +
         "'actions' : [{'name':'compute_plan', 'class' : 'solr.ComputePlanAction'}," +
-        "{'name':'test','class':'" + SimComputePlanActionTest.AssertingTriggerAction.class.getName() + "'}]" +
+        "{'name':'test','class':'" + TestComputePlanAction.AssertingTriggerAction.class.getName() + "'}]" +
         "}}";
     SolrRequest req = createAutoScalingRequest(SolrRequest.METHOD.POST, setTriggerCommand);
     NamedList<Object> response = solrClient.request(req);
@@ -292,7 +287,7 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
         "'waitFor' : '1s'," +
         "'enabled' : true," +
         "'actions' : [{'name':'compute_plan', 'class' : 'solr.ComputePlanAction'}," +
-        "{'name':'test','class':'" + SimComputePlanActionTest.AssertingTriggerAction.class.getName() + "'}]" +
+        "{'name':'test','class':'" + TestComputePlanAction.AssertingTriggerAction.class.getName() + "'}]" +
         "}}";
     SolrRequest req = createAutoScalingRequest(SolrRequest.METHOD.POST, setTriggerCommand);
     NamedList<Object> response = solrClient.request(req);
