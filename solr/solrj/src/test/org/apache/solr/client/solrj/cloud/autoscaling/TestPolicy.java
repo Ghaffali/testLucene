@@ -46,6 +46,7 @@ import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.ObjectCache;
 import org.apache.solr.common.util.Pair;
+import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.common.util.ValidatingJsonMap;
 import org.junit.Test;
@@ -1137,6 +1138,12 @@ public class TestPolicy extends SolrTestCaseJ4 {
       public ObjectCache getObjectCache() {
         return objectCache;
       }
+
+      @Override
+      public TimeSource getTimeSource() {
+        return TimeSource.NANO_TIME;
+      }
+
       @Override
       public void close() throws IOException {
 

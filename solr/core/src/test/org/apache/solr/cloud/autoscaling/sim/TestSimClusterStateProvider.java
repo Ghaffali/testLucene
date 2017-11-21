@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import com.google.common.collect.ImmutableSet;
 import org.apache.solr.SolrTestCaseJ4;
 import org.apache.solr.common.cloud.ClusterState;
+import org.apache.solr.common.util.TimeSource;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -62,7 +63,7 @@ public class TestSimClusterStateProvider extends SimSolrCloudTestCase {
   public void setup() throws Exception {
     ClusterState cs = ClusterState.load(1, coll1State.getBytes(UTF_8),
         initialLiveNodes, "/collections/gettingstarted/state.json");
-    cluster = SimCloudManager.createCluster(cs);
+    cluster = SimCloudManager.createCluster(cs, TimeSource.get("simTime:10"));
   }
 
   @Test

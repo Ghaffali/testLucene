@@ -37,7 +37,7 @@ import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.metrics.SolrCoreMetricManager;
-import org.apache.solr.util.TimeSource;
+import org.apache.solr.common.util.TimeSource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -47,7 +47,6 @@ import org.slf4j.LoggerFactory;
 public class SearchRateTrigger extends TriggerBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  private final TimeSource timeSource;
   private final String handler;
   private final String collection;
   private final String shard;
@@ -63,7 +62,6 @@ public class SearchRateTrigger extends TriggerBase {
                            SolrResourceLoader loader,
                            SolrCloudManager cloudManager) {
     super(TriggerEventType.SEARCHRATE, name, properties, loader, cloudManager);
-    this.timeSource = TimeSource.CURRENT_TIME;
     this.state.put("lastCollectionEvent", lastCollectionEvent);
     this.state.put("lastNodeEvent", lastNodeEvent);
     this.state.put("lastShardEvent", lastShardEvent);
@@ -184,7 +182,7 @@ public class SearchRateTrigger extends TriggerBase {
       });
     }
 
-    long now = timeSource.getTime();
+    long now = cloudManager.getTimeSource().getTime();
     // check for exceeded rates and filter out those with less than waitFor from previous events
     Map<String, Double> hotNodes = nodeRates.entrySet().stream()
         .filter(entry -> node.equals(Policy.ANY) || node.equals(entry.getKey()))

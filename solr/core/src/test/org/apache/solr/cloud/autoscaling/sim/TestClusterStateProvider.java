@@ -25,6 +25,7 @@ import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.cloud.rule.ImplicitSnitch;
 import org.apache.solr.common.params.CollectionAdminParams;
+import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.common.util.Utils;
 import org.apache.zookeeper.Watcher;
 import org.junit.AfterClass;
@@ -89,7 +90,7 @@ public class TestClusterStateProvider extends SolrCloudTestCase {
 
     if (simulated) {
       // initialize simulated provider
-      SimCloudManager simCloudManager = new SimCloudManager();
+      SimCloudManager simCloudManager = new SimCloudManager(TimeSource.get("simTime:10"));
       simCloudManager.getSimClusterStateProvider().simSetClusterProperties(clusterProperties);
       simCloudManager.getSimDistribStateManager().simSetAutoScalingConfig(autoScalingConfig);
       nodeValues.forEach((n, values) -> {

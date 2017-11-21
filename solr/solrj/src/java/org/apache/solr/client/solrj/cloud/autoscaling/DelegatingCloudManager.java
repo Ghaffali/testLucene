@@ -24,6 +24,7 @@ import org.apache.solr.client.solrj.SolrResponse;
 import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.common.util.ObjectCache;
+import org.apache.solr.common.util.TimeSource;
 
 /**
  * Base class for overriding some behavior of {@link SolrCloudManager}.
@@ -58,6 +59,16 @@ public class DelegatingCloudManager implements SolrCloudManager {
   @Override
   public ObjectCache getObjectCache() {
     return delegate.getObjectCache();
+  }
+
+  @Override
+  public boolean isClosed() {
+    return delegate.isClosed();
+  }
+
+  @Override
+  public TimeSource getTimeSource() {
+    return delegate.getTimeSource();
   }
 
   @Override

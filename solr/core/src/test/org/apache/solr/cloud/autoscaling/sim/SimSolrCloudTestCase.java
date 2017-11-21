@@ -20,6 +20,7 @@ import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.util.TimeOut;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
@@ -36,8 +37,8 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
   /** The cluster. */
   protected static SimCloudManager cluster;
 
-  protected static SimCloudManager configureCluster(int nodeCount) throws Exception {
-    return SimCloudManager.createCluster(nodeCount);
+  protected static SimCloudManager configureCluster(int nodeCount, TimeSource timeSource) throws Exception {
+    return SimCloudManager.createCluster(nodeCount, timeSource);
   }
 
   @AfterClass
@@ -102,7 +103,7 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
    */
   public void waitForState(final String collection, long wait, TimeUnit unit, CollectionStatePredicate predicate)
       throws InterruptedException, TimeoutException, IOException {
-    TimeOut timeout = new TimeOut(wait, unit);
+    TimeOut timeout = new TimeOut(wait, unit, cluster.getTimeSource());
     while (!timeout.hasTimedOut()) {
       ClusterState state = cluster.getClusterStateProvider().getClusterState();
       DocCollection coll = state.getCollectionOrNull(collection);

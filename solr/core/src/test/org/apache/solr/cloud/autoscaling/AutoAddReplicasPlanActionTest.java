@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.apache.solr.client.solrj.SolrRequest;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.embedded.JettySolrRunner;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
@@ -44,6 +45,7 @@ import org.junit.Test;
 import static org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest.createAutoScalingRequest;
 
 public class AutoAddReplicasPlanActionTest extends SolrCloudTestCase{
+
   @BeforeClass
   public static void setupCluster() throws Exception {
     configureCluster(3)
@@ -141,7 +143,8 @@ public class AutoAddReplicasPlanActionTest extends SolrCloudTestCase{
 
   private void waitForNodeLeave(String lostNodeName) throws InterruptedException {
     ZkStateReader reader = cluster.getSolrClient().getZkStateReader();
-    TimeOut timeOut = new TimeOut(10, TimeUnit.SECONDS);
+    TimeOut timeOut = new TimeOut(10, TimeUnit.SECONDS,
+        cluster.getJettySolrRunner(0).getCoreContainer().getZkController().getSolrCloudManager().getTimeSource());
     while (reader.getClusterState().getLiveNodes().contains(lostNodeName)) {
       Thread.sleep(100);
       if (timeOut.hasTimedOut()) fail("Wait for " + lostNodeName + " to leave failed!");

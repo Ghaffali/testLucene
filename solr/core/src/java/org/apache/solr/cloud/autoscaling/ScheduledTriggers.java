@@ -72,7 +72,7 @@ import static org.apache.solr.cloud.autoscaling.ExecutePlanAction.waitForTaskToF
  */
 public class ScheduledTriggers implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-  public static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS = 1;
+  public static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_MS = 1000;
   public static final int DEFAULT_MIN_MS_BETWEEN_ACTIONS = 5000;
   public static final int DEFAULT_COOLDOWN_PERIOD_MS = 5000;
 
@@ -100,7 +100,7 @@ public class ScheduledTriggers implements Closeable {
 
   private final ActionThrottle actionThrottle;
 
-  private final SolrCloudManager dataProvider;
+  private final SolrCloudManager cloudManager;
 
   private final DistribStateManager stateManager;
 
@@ -112,7 +112,7 @@ public class ScheduledTriggers implements Closeable {
 
   private AutoScalingConfig autoScalingConfig;
 
-  public ScheduledTriggers(SolrResourceLoader loader, SolrCloudManager dataProvider) {
+  public ScheduledTriggers(SolrResourceLoader loader, SolrCloudManager cloudManager) {
     // todo make the core pool size configurable
     // it is important to use more than one because a time taking trigger can starve other scheduled triggers
     // ideally we should have as many core threads as the number of triggers but firstly, we don't know beforehand
@@ -124,15 +124,15 @@ public class ScheduledTriggers implements Closeable {
     scheduledThreadPoolExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
     actionExecutor = ExecutorUtil.newMDCAwareSingleThreadExecutor(new DefaultSolrThreadFactory("AutoscalingActionExecutor"));
     // todo make the wait time configurable
-    actionThrottle = new ActionThrottle("action", DEFAULT_MIN_MS_BETWEEN_ACTIONS);
-    this.dataProvider = dataProvider;
-    this.stateManager = dataProvider.getDistribStateManager();
+    actionThrottle = new ActionThrottle("action", DEFAULT_MIN_MS_BETWEEN_ACTIONS, cloudManager.getTimeSource());
+    this.cloudManager = cloudManager;
+    this.stateManager = cloudManager.getDistribStateManager();
     this.loader = loader;
     queueStats = new Stats();
     listeners = new TriggerListeners();
     // initialize cooldown timer
     // todo: make the cooldownPeriod configurable
-    cooldownStart.set(System.nanoTime() - cooldownPeriod.get());
+    cooldownStart.set(cloudManager.getTimeSource().getTime() - cooldownPeriod.get());
   }
 
   /**
@@ -159,12 +159,12 @@ public class ScheduledTriggers implements Closeable {
     }
     ScheduledTrigger st;
     try {
-      st = new ScheduledTrigger(newTrigger, dataProvider, queueStats);
+      st = new ScheduledTrigger(newTrigger, cloudManager, queueStats);
     } catch (Exception e) {
       if (isClosed) {
         throw new AlreadyClosedException("ScheduledTriggers has been closed and cannot be used anymore");
       }
-      if (dataProvider.isClosed()) {
+      if (cloudManager.isClosed()) {
         log.error("Failed to add trigger " + newTrigger.getName() + " - closing or disconnected from data provider", e);
       } else {
         log.error("Failed to add trigger " + newTrigger.getName(), e);
@@ -185,7 +185,7 @@ public class ScheduledTriggers implements Closeable {
       scheduledTriggers.replace(newTrigger.getName(), scheduledTrigger);
     }
     newTrigger.setProcessor(event -> {
-      if (dataProvider.isClosed()) {
+      if (cloudManager.isClosed()) {
         String msg = String.format(Locale.ROOT, "Ignoring autoscaling event %s because Solr has been shutdown.", event.toString());
         log.warn(msg);
         listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.ABORTED, msg);
@@ -208,7 +208,7 @@ public class ScheduledTriggers implements Closeable {
         return false;
       }
       // reject events during cooldown period
-      if (cooldownStart.get() + cooldownPeriod.get() > System.nanoTime()) {
+      if (cooldownStart.get() + cooldownPeriod.get() > cloudManager.getTimeSource().getTime()) {
         log.debug("-------- Cooldown period - rejecting event: " + event);
         event.getProperties().put(TriggerEvent.COOLDOWN, true);
         listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.IGNORED, "In cooldown period.");
@@ -239,7 +239,7 @@ public class ScheduledTriggers implements Closeable {
               // this event so that we continue processing other events and not block this action executor
               waitForPendingTasks(newTrigger, actions);
 
-              ActionContext actionContext = new ActionContext(dataProvider, newTrigger, new HashMap<>());
+              ActionContext actionContext = new ActionContext(cloudManager, newTrigger, new HashMap<>());
               for (TriggerAction action : actions) {
                 List<String> beforeActions = (List<String>) actionContext.getProperties().computeIfAbsent(TriggerEventProcessorStage.BEFORE_ACTION.toString(), k -> new ArrayList<String>());
                 beforeActions.add(action.getName());
@@ -285,11 +285,13 @@ public class ScheduledTriggers implements Closeable {
       }
     });
     newTrigger.init(); // mark as ready for scheduling
-    scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(scheduledTrigger, 0, DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS, TimeUnit.SECONDS);
+    scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(scheduledTrigger, 0,
+        cloudManager.getTimeSource().convertDelay(TimeUnit.MILLISECONDS, DEFAULT_SCHEDULED_TRIGGER_DELAY_MS, TimeUnit.MILLISECONDS),
+        TimeUnit.MILLISECONDS);
   }
 
   private void waitForPendingTasks(AutoScaling.Trigger newTrigger, List<TriggerAction> actions) throws AlreadyClosedException {
-    DistribStateManager stateManager = dataProvider.getDistribStateManager();
+    DistribStateManager stateManager = cloudManager.getDistribStateManager();
     try {
 
       for (TriggerAction action : actions) {
@@ -308,8 +310,9 @@ public class ScheduledTriggers implements Closeable {
                 String requestid = (String) map.get("requestid");
                 try {
                   log.debug("Found pending task with requestid={}", requestid);
-                  RequestStatusResponse statusResponse = waitForTaskToFinish(dataProvider, requestid,
-                      ExecutePlanAction.DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                  RequestStatusResponse statusResponse = waitForTaskToFinish(cloudManager, requestid,
+                      cloudManager.getTimeSource().convertDelay(TimeUnit.MILLISECONDS, ExecutePlanAction.DEFAULT_TASK_TIMEOUT_MS, TimeUnit.MILLISECONDS),
+                      TimeUnit.MILLISECONDS);
                   if (statusResponse != null) {
                     RequestStatusState state = statusResponse.getRequestStatus();
                     if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {
@@ -317,7 +320,7 @@ public class ScheduledTriggers implements Closeable {
                     }
                   }
                 } catch (Exception e) {
-                  if (dataProvider.isClosed())  {
+                  if (cloudManager.isClosed())  {
                     throw e; // propagate the abort to the caller
                   }
                   Throwable rootCause = ExceptionUtils.getRootCause(e);
@@ -338,7 +341,7 @@ public class ScheduledTriggers implements Closeable {
       Thread.currentThread().interrupt();
       throw new SolrException(SolrException.ErrorCode.SERVER_ERROR, "Thread interrupted", e);
     } catch (Exception e) {
-      if (dataProvider.isClosed())  {
+      if (cloudManager.isClosed())  {
         throw new AlreadyClosedException("The Solr instance has been shutdown");
       }
       // we catch but don't rethrow because a failure to wait for pending tasks
@@ -554,7 +557,7 @@ public class ScheduledTriggers implements Closeable {
             }
             if (listener != null) {
               try {
-                listener.init(dataProvider, config);
+                listener.init(cloudManager, config);
                 listenersPerName.put(config.name, listener);
               } catch (Exception e) {
                 log.warn("Error initializing TriggerListener " + config, e);

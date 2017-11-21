@@ -31,7 +31,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 
-import org.apache.calcite.avatica.proto.Common;
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.SolrResponse;
@@ -69,6 +68,7 @@ import org.apache.solr.common.util.IOUtils;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.ObjectCache;
 import org.apache.solr.common.util.SimpleOrderedMap;
+import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.core.CloudConfig;
 import org.apache.solr.core.SolrResourceLoader;
 import org.apache.solr.request.LocalSolrQueryRequest;
@@ -92,6 +92,7 @@ public class SimCloudManager implements SolrCloudManager {
   private final Set<String> liveNodes = ConcurrentHashMap.newKeySet();
   private final SimDistributedQueueFactory queueFactory;
   private final ObjectCache objectCache = new ObjectCache();
+  private TimeSource timeSource;
   private SolrClient solrClient;
   private final SimHttpServer httpServer;
 
@@ -103,8 +104,9 @@ public class SimCloudManager implements SolrCloudManager {
 
   private static int nodeIdPort = 10000;
 
-  public SimCloudManager() throws Exception {
+  public SimCloudManager(TimeSource timeSource) throws Exception {
     this.stateManager = new SimDistribStateManager();
+    this.timeSource = timeSource != null ? timeSource : TimeSource.NANO_TIME;
     // init common paths
     stateManager.makePath(ZkStateReader.CLUSTER_STATE);
     stateManager.makePath(ZkStateReader.CLUSTER_PROPS);
@@ -129,8 +131,8 @@ public class SimCloudManager implements SolrCloudManager {
 
   // ---------- simulator setup methods -----------
 
-  public static SimCloudManager createCluster(int numNodes) throws Exception {
-    SimCloudManager cloudManager = new SimCloudManager();
+  public static SimCloudManager createCluster(int numNodes, TimeSource timeSource) throws Exception {
+    SimCloudManager cloudManager = new SimCloudManager(timeSource);
     for (int i = 1; i <= numNodes; i++) {
       Map<String, Object> values = createNodeValues(null);
       if (i == 1) { // designated Overseer
@@ -143,8 +145,8 @@ public class SimCloudManager implements SolrCloudManager {
     return cloudManager;
   }
 
-  public static SimCloudManager createCluster(ClusterState initialState) throws Exception {
-    SimCloudManager cloudManager = new SimCloudManager();
+  public static SimCloudManager createCluster(ClusterState initialState, TimeSource timeSource) throws Exception {
+    SimCloudManager cloudManager = new SimCloudManager(timeSource);
     cloudManager.getSimClusterStateProvider().simSetClusterState(initialState);
     for (String node : cloudManager.getClusterStateProvider().getLiveNodes()) {
       cloudManager.getSimNodeStateProvider().simSetNodeValues(node, createNodeValues(node));
@@ -261,6 +263,11 @@ public class SimCloudManager implements SolrCloudManager {
   @Override
   public ObjectCache getObjectCache() {
     return objectCache;
+  }
+
+  @Override
+  public TimeSource getTimeSource() {
+    return timeSource;
   }
 
   @Override
@@ -394,6 +401,12 @@ public class SimCloudManager implements SolrCloudManager {
           if (req.getParams().get(CommonAdminParams.ASYNC) != null) {
             results.add(REQUESTID, req.getParams().get(CommonAdminParams.ASYNC));
           }
+          if (!liveNodes.isEmpty()) {
+            results.add("leader", liveNodes.iterator().next());
+          }
+          results.add("overseer_queue_size", 0);
+          results.add("overseer_work_queue_size", 0);
+          results.add("overseer_collection_queue_size", 0);
           results.add("success", "");
           break;
         default:

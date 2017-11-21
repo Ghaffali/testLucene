@@ -21,7 +21,7 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.SolrTestCaseJ4;
-import org.apache.solr.util.TimeSource;
+import org.apache.solr.common.util.TimeSource;
 import org.junit.Test;
 
 public class ActionThrottleTest extends SolrTestCaseJ4 {
@@ -39,7 +39,17 @@ public class ActionThrottleTest extends SolrTestCaseJ4 {
     public long getTime() {
       return returnValues.get(index++);
     }
-    
+
+    @Override
+    public void sleep(long ms) throws InterruptedException {
+      throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public long convertDelay(TimeUnit fromUnit, long value, TimeUnit toUnit) {
+      throw new UnsupportedOperationException();
+    }
+
   }
 
   // use the same time source as ActionThrottle

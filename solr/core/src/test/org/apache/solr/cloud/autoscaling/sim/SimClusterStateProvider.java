@@ -352,16 +352,20 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           if (ri.getCollection().equals(collection)) {
             it.remove();
             // update the number of cores in node values
-            Integer cores = (Integer)cloudManager.getSimNodeStateProvider().simGetNodeValue(n, "cores");
-            if (cores == null || cores == 0) {
-              throw new RuntimeException("Unexpected value of 'cores' (" + cores + ") on node: " + n);
+            Integer cores = (Integer) cloudManager.getSimNodeStateProvider().simGetNodeValue(n, "cores");
+            if (cores != null) { // node is still up
+              if (cores == 0) {
+                throw new RuntimeException("Unexpected value of 'cores' (" + cores + ") on node: " + n);
+              }
+              cloudManager.getSimNodeStateProvider().simSetNodeValue(n, "cores", cores - 1);
             }
-            cloudManager.getSimNodeStateProvider().simSetNodeValue(n, "cores", cores - 1);
           }
         }
       });
       saveClusterState();
       results.add("success", "");
+    } catch (Exception e) {
+      LOG.warn("Exception", e);
     } finally {
       lock.unlock();
     }
@@ -399,16 +403,21 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
           "Collection: " + collection + " replica: " + replicaName + " does not exist");
     }
-    String slice = replica.getStr(ZkStateReader.SHARD_ID_PROP);
+    Slice slice = null;
+    for (Slice s : coll.getSlices()) {
+      if (s.getReplicas().contains(replica)) {
+        slice = s;
+      }
+    }
     if (slice == null) {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Replica has no 'slice' property! : " + replica);
     }
 
     // TODO: for now simulate moveNormalReplica sequence, where we first add new replica and then delete the old one
 
-    String newSolrCoreName = Assign.buildSolrCoreName(stateManager, coll, slice, replica.getType());
+    String newSolrCoreName = Assign.buildSolrCoreName(stateManager, coll, slice.getName(), replica.getType());
     String coreNodeName = Assign.assignCoreNodeName(stateManager, coll);
-    ReplicaInfo newReplica = new ReplicaInfo(coreNodeName, newSolrCoreName, collection, slice, Replica.Type.NRT, targetNode, null);
+    ReplicaInfo newReplica = new ReplicaInfo(coreNodeName, newSolrCoreName, collection, slice.getName(), Replica.Type.NRT, targetNode, null);
     // xxx should run leader election here already?
     simAddReplica(targetNode, newReplica, false);
     // this will trigger leader election

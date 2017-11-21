@@ -51,7 +51,7 @@ public class ExecutePlanAction extends TriggerActionBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private static final String PREFIX = "op-";
 
-  static final int DEFAULT_TASK_TIMEOUT_SECONDS = 120;
+  static final int DEFAULT_TASK_TIMEOUT_MS = 120000;
 
   @Override
   public void process(TriggerEvent event, ActionContext context) throws Exception {
@@ -83,7 +83,7 @@ public class ExecutePlanAction extends TriggerActionBase {
             }
             asyncId = (String)asyncResponse.getResponse().get("requestid");
             CollectionAdminRequest.RequestStatusResponse statusResponse = waitForTaskToFinish(cloudManager, asyncId,
-                DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+                DEFAULT_TASK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
             if (statusResponse != null) {
               RequestStatusState state = statusResponse.getRequestStatus();
               if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {
@@ -125,22 +125,22 @@ public class ExecutePlanAction extends TriggerActionBase {
   }
 
 
-  static CollectionAdminRequest.RequestStatusResponse waitForTaskToFinish(SolrCloudManager dataProvider, String requestId, long duration, TimeUnit timeUnit) throws IOException, InterruptedException {
+  static CollectionAdminRequest.RequestStatusResponse waitForTaskToFinish(SolrCloudManager cloudManager, String requestId, long duration, TimeUnit timeUnit) throws IOException, InterruptedException {
     long timeoutSeconds = timeUnit.toSeconds(duration);
     RequestStatusState state = RequestStatusState.NOT_FOUND;
     CollectionAdminRequest.RequestStatusResponse statusResponse = null;
     for (int i = 0; i < timeoutSeconds; i++) {
       try {
-        statusResponse = (CollectionAdminRequest.RequestStatusResponse)dataProvider.request(CollectionAdminRequest.requestStatus(requestId));
+        statusResponse = (CollectionAdminRequest.RequestStatusResponse)cloudManager.request(CollectionAdminRequest.requestStatus(requestId));
         state = statusResponse.getRequestStatus();
         if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED) {
           log.info("Task with requestId={} finished with state={} in {}s", requestId, state, i * 5);
-          dataProvider.request(CollectionAdminRequest.deleteAsyncId(requestId));
+          cloudManager.request(CollectionAdminRequest.deleteAsyncId(requestId));
           return statusResponse;
         } else if (state == RequestStatusState.NOT_FOUND) {
           // the request for this id was never actually submitted! no harm done, just bail out
           log.warn("Task with requestId={} was not found on overseer", requestId);
-          dataProvider.request(CollectionAdminRequest.deleteAsyncId(requestId));
+          cloudManager.request(CollectionAdminRequest.deleteAsyncId(requestId));
           return statusResponse;
         }
       } catch (Exception e) {
@@ -159,7 +159,7 @@ public class ExecutePlanAction extends TriggerActionBase {
       if (i > 0 && i % 5 == 0) {
         log.debug("Task with requestId={} still not complete after {}s. Last state={}", requestId, i * 5, state);
       }
-      TimeUnit.SECONDS.sleep(5);
+      cloudManager.getTimeSource().sleep(5000);
     }
     log.debug("Task with requestId={} did not complete within 5 minutes. Last state={}", requestId, state);
     return statusResponse;

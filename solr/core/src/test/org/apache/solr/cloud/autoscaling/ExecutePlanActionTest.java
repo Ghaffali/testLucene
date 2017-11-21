@@ -26,13 +26,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.Lists;
-import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
-import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
+import org.apache.solr.client.solrj.embedded.JettySolrRunner;
+import org.apache.solr.client.solrj.impl.CloudSolrClient;
 import org.apache.solr.client.solrj.request.CollectionAdminRequest;
-import org.apache.solr.cloud.autoscaling.sim.SimCloudManager;
-import org.apache.solr.cloud.autoscaling.sim.SimSolrCloudTestCase;
+import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
@@ -42,8 +41,8 @@ import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.LogLevel;
-import org.apache.solr.util.TimeSource;
-import org.junit.After;
+import org.apache.solr.common.util.TimeSource;
+import org.apache.zookeeper.data.Stat;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -56,46 +55,37 @@ import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_P
  * Test for {@link ExecutePlanAction}
  */
 @LogLevel("org.apache.solr.cloud.autoscaling=DEBUG")
-public class SimExecutePlanActionTest extends SimSolrCloudTestCase {
+public class ExecutePlanActionTest extends SolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private static final int NODE_COUNT = 2;
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(NODE_COUNT);
+    configureCluster(NODE_COUNT)
+        .addConfig("conf", configset("cloud-minimal"))
+        .configure();
   }
 
   @Before
   public void setUp() throws Exception  {
     super.setUp();
     // clear any persisted auto scaling configuration
-    cluster.getDistribStateManager().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(new ZkNodeProps()), -1);
+    Stat stat = zkClient().setData(SOLR_AUTOSCALING_CONF_PATH, Utils.toJSON(new ZkNodeProps()), true);
 
-    if (cluster.getClusterStateProvider().getLiveNodes().size() < NODE_COUNT) {
+    if (cluster.getJettySolrRunners().size() < NODE_COUNT) {
       // start some to get to original state
-      int numJetties = cluster.getClusterStateProvider().getLiveNodes().size();
+      int numJetties = cluster.getJettySolrRunners().size();
       for (int i = 0; i < NODE_COUNT - numJetties; i++) {
-        cluster.simAddNode();
+        cluster.startJettySolrRunner();
       }
     }
-  }
-
-  @After
-  public void printState() throws Exception {
-    log.info("-------------_ FINAL STATE --------------");
-    log.info("* Node values: " + Utils.toJSONString(cluster.getSimNodeStateProvider().simGetAllNodeValues()));
-    log.info("* Live nodes: " + cluster.getClusterStateProvider().getLiveNodes());
-    ClusterState state = cluster.getClusterStateProvider().getClusterState();
-    for (String coll: cluster.getSimClusterStateProvider().simListCollections()) {
-      log.info("* Collection " + coll + " state: " + state.getCollection(coll));
-    }
-
+    cluster.waitForAllNodes(30);
   }
 
   @Test
   public void testExecute() throws Exception {
-    SolrClient solrClient = cluster.simGetSolrClient();
+    CloudSolrClient solrClient = cluster.getSolrClient();
     String collectionName = "testExecute";
     CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(collectionName,
         "conf", 1, 2);
@@ -105,17 +95,18 @@ public class SimExecutePlanActionTest extends SimSolrCloudTestCase {
     waitForState("Timed out waiting for replicas of new collection to be active",
         collectionName, clusterShape(1, 2));
 
-    String sourceNodeName = cluster.getSimClusterStateProvider().simGetRandomNode(random());
-    ClusterState clusterState = cluster.getClusterStateProvider().getClusterState();
+    JettySolrRunner sourceNode = cluster.getRandomJetty(random());
+    String sourceNodeName = sourceNode.getNodeName();
+    ClusterState clusterState = solrClient.getZkStateReader().getClusterState();
     DocCollection docCollection = clusterState.getCollection(collectionName);
     List<Replica> replicas = docCollection.getReplicas(sourceNodeName);
     assertNotNull(replicas);
     assertFalse(replicas.isEmpty());
 
-    List<String> otherNodes = cluster.getClusterStateProvider().getLiveNodes().stream()
-        .filter(node -> !node.equals(sourceNodeName)).collect(Collectors.toList());
-    assertFalse(otherNodes.isEmpty());
-    String survivor = otherNodes.get(0);
+    List<JettySolrRunner> otherJetties = cluster.getJettySolrRunners().stream()
+        .filter(jettySolrRunner -> jettySolrRunner != sourceNode).collect(Collectors.toList());
+    assertFalse(otherJetties.isEmpty());
+    JettySolrRunner survivor = otherJetties.get(0);
 
     try (ExecutePlanAction action = new ExecutePlanAction()) {
       action.init(Collections.singletonMap("name", "execute_plan"));
@@ -123,19 +114,19 @@ public class SimExecutePlanActionTest extends SimSolrCloudTestCase {
       // used to signal if we found that ExecutePlanAction did in fact create the right znode before executing the operation
       AtomicBoolean znodeCreated = new AtomicBoolean(false);
 
-      CollectionAdminRequest.AsyncCollectionAdminRequest moveReplica = new CollectionAdminRequest.MoveReplica(collectionName, replicas.get(0).getName(), survivor);
+      CollectionAdminRequest.AsyncCollectionAdminRequest moveReplica = new CollectionAdminRequest.MoveReplica(collectionName, replicas.get(0).getName(), survivor.getNodeName());
       CollectionAdminRequest.AsyncCollectionAdminRequest mockRequest = new CollectionAdminRequest.AsyncCollectionAdminRequest(CollectionParams.CollectionAction.OVERSEERSTATUS) {
         @Override
         public void setAsyncId(String asyncId) {
           super.setAsyncId(asyncId);
           String parentPath = ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH + "/xyz/execute_plan";
           try {
-            if (cluster.getDistribStateManager().hasData(parentPath)) {
-              java.util.List<String> children = cluster.getDistribStateManager().listData(parentPath);
+            if (zkClient().exists(parentPath, true)) {
+              java.util.List<String> children = zkClient().getChildren(parentPath, null, true);
               if (!children.isEmpty()) {
                 String child = children.get(0);
-                VersionedData data = cluster.getDistribStateManager().getData(parentPath + "/" + child);
-                Map m = (Map) Utils.fromJSON(data.getData());
+                byte[] data = zkClient().getData(parentPath + "/" + child, null, null, true);
+                Map m = (Map) Utils.fromJSON(data);
                 if (m.containsKey("requestid")) {
                   znodeCreated.set(m.get("requestid").equals(asyncId));
                 }
@@ -151,7 +142,7 @@ public class SimExecutePlanActionTest extends SimSolrCloudTestCase {
       NodeLostTrigger.NodeLostEvent nodeLostEvent = new NodeLostTrigger.NodeLostEvent(TriggerEventType.NODELOST,
           "mock_trigger_name", Collections.singletonList(TimeSource.CURRENT_TIME.getTime()),
           Collections.singletonList(sourceNodeName));
-      ActionContext actionContext = new ActionContext(cluster, null,
+      ActionContext actionContext = new ActionContext(survivor.getCoreContainer().getZkController().getSolrCloudManager(), null,
           new HashMap<>(Collections.singletonMap("operations", operations)));
       action.process(nodeLostEvent, actionContext);
 
@@ -170,7 +161,7 @@ public class SimExecutePlanActionTest extends SimSolrCloudTestCase {
 
   @Test
   public void testIntegration() throws Exception  {
-    SolrClient solrClient = cluster.simGetSolrClient();
+    CloudSolrClient solrClient = cluster.getSolrClient();
 
     String setTriggerCommand = "{" +
         "'set-trigger' : {" +
@@ -194,26 +185,33 @@ public class SimExecutePlanActionTest extends SimSolrCloudTestCase {
     waitForState("Timed out waiting for replicas of new collection to be active",
         collectionName, clusterShape(1, 2));
 
-    String sourceNodeName = cluster.getSimClusterStateProvider().simGetRandomNode(random());
-    ClusterState clusterState = cluster.getClusterStateProvider().getClusterState();
+    JettySolrRunner sourceNode = cluster.getRandomJetty(random());
+    String sourceNodeName = sourceNode.getNodeName();
+    ClusterState clusterState = solrClient.getZkStateReader().getClusterState();
     DocCollection docCollection = clusterState.getCollection(collectionName);
     List<Replica> replicas = docCollection.getReplicas(sourceNodeName);
     assertNotNull(replicas);
     assertFalse(replicas.isEmpty());
 
-    List<String> otherNodes = cluster.getClusterStateProvider().getLiveNodes().stream()
-        .filter(node -> !node.equals(sourceNodeName)).collect(Collectors.toList());
-    assertFalse(otherNodes.isEmpty());
-    String survivor = otherNodes.get(0);
+    List<JettySolrRunner> otherJetties = cluster.getJettySolrRunners().stream()
+        .filter(jettySolrRunner -> jettySolrRunner != sourceNode).collect(Collectors.toList());
+    assertFalse(otherJetties.isEmpty());
+    JettySolrRunner survivor = otherJetties.get(0);
 
-    cluster.simRemoveNode(sourceNodeName);
+    for (int i = 0; i < cluster.getJettySolrRunners().size(); i++) {
+      JettySolrRunner runner = cluster.getJettySolrRunner(i);
+      if (runner == sourceNode) {
+        cluster.stopJettySolrRunner(i);
+      }
+    }
 
+    cluster.waitForAllNodes(30);
     waitForState("Timed out waiting for replicas of collection to be 2 again",
         collectionName, clusterShape(1, 2));
 
-    clusterState = cluster.getClusterStateProvider().getClusterState();
+    clusterState = solrClient.getZkStateReader().getClusterState();
     docCollection = clusterState.getCollection(collectionName);
-    List<Replica> replicasOnSurvivor = docCollection.getReplicas(survivor);
+    List<Replica> replicasOnSurvivor = docCollection.getReplicas(survivor.getNodeName());
     assertNotNull(replicasOnSurvivor);
     assertEquals(2, replicasOnSurvivor.size());
   }

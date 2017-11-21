@@ -49,6 +49,7 @@ import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.util.LogLevel;
 import org.junit.After;
@@ -77,7 +78,7 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(1);
+    cluster = SimCloudManager.createCluster(1, TimeSource.get("simTime:50"));
   }
 
   @Before
@@ -136,7 +137,7 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
     rsp = cluster.request(req);
     response = rsp.getResponse();
     assertEquals(response.get("result").toString(), "success");
-    Thread.sleep(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_MS);
+    cluster.getTimeSource().sleep(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_MS);
   }
 
   @After
@@ -338,7 +339,7 @@ public class SimComputePlanActionTest extends SimSolrCloudTestCase {
     log.info("Live nodes: " + cluster.getClusterStateProvider().getLiveNodes() + ", collection state: " + cluster.getClusterStateProvider().getClusterState().getCollection("testNodeAdded"));
     List<SolrRequest> operations = (List<SolrRequest>) context.get("operations");
     assertNotNull("The operations computed by ComputePlanAction should not be null" + context, operations);
-    assertEquals("ComputePlanAction should have computed exactly 1 operation", 1, operations.size());
+    assertEquals("ComputePlanAction should have computed exactly 1 operation, but was: " + operations, 1, operations.size());
     SolrRequest request = operations.get(0);
     SolrParams params = request.getParams();
     assertEquals("Expected MOVEREPLICA action after adding node", MOVEREPLICA, CollectionParams.CollectionAction.get(params.get("action")));

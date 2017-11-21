@@ -211,7 +211,6 @@ public class ComputePlanActionTest extends SolrCloudTestCase {
     assertTrue(fired.get());
     Map context = actionContextPropsRef.get();
     assertNotNull(context);
-    fail("foo");
     List<SolrRequest> operations = (List<SolrRequest>) context.get("operations");
     assertNotNull("The operations computed by ComputePlanAction should not be null , "+ getNodeStateProviderState() + eventRef.get(), operations);
     assertEquals("ComputePlanAction should have computed exactly 1 operation", 1, operations.size());

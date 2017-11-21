@@ -34,6 +34,7 @@ import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.util.NamedList;
+import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.common.util.Utils;
 import org.apache.solr.update.UpdateLog;
 import org.apache.solr.util.TimeOut;
@@ -51,9 +52,11 @@ public class MoveReplicaCmd implements Cmd{
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final OverseerCollectionMessageHandler ocmh;
+  private final TimeSource timeSource;
 
   public MoveReplicaCmd(OverseerCollectionMessageHandler ocmh) {
     this.ocmh = ocmh;
+    this.timeSource = ocmh.cloudManager.getTimeSource();
   }
 
   @Override
@@ -142,11 +145,11 @@ public class MoveReplicaCmd implements Cmd{
         return;
       }
 
-      TimeOut timeOut = new TimeOut(20L, TimeUnit.SECONDS);
+      TimeOut timeOut = new TimeOut(20L, TimeUnit.SECONDS, timeSource);
       while (!timeOut.hasTimedOut()) {
         coll = ocmh.zkStateReader.getClusterState().getCollection(coll.getName());
         if (coll.getReplica(replica.getName()) != null) {
-          Thread.sleep(100);
+          timeOut.sleep(100);
         } else {
           break;
         }
