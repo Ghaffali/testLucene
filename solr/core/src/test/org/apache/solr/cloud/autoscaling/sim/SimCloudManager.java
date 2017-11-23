@@ -401,6 +401,13 @@ public class SimCloudManager implements SolrCloudManager {
         case LIST:
           results.add("collections", clusterStateProvider.simListCollections());
           break;
+        case ADDREPLICA:
+          try {
+            clusterStateProvider.simAddReplica(new ZkNodeProps(req.getParams().toNamedList().asMap(10)), results);
+          } catch (Exception e) {
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
+          }
+          break;
         case MOVEREPLICA:
           try {
             clusterStateProvider.simMoveReplica(new ZkNodeProps(req.getParams().toNamedList().asMap(10)), results);
@@ -426,6 +433,13 @@ public class SimCloudManager implements SolrCloudManager {
         case CREATESHARD:
           try {
             clusterStateProvider.simCreateShard(new ZkNodeProps(req.getParams().toNamedList().asMap(10)), results);
+          } catch (Exception e) {
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
+          }
+          break;
+        case SPLITSHARD:
+          try {
+            clusterStateProvider.simSplitShard(new ZkNodeProps(req.getParams().toNamedList().asMap(10)), results);
           } catch (Exception e) {
             throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, e);
           }

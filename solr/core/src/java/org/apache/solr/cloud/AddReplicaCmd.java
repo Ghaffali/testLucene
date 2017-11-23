@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
+import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.common.SolrCloseableLatch;
 import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
@@ -48,7 +49,6 @@ import org.apache.solr.handler.component.ShardHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.apache.solr.cloud.Assign.getNodesForNewReplicas;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.COLL_CONF;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SKIP_CREATE_REPLICA_IN_CLUSTER_STATE;
 import static org.apache.solr.common.cloud.ZkStateReader.COLLECTION_PROP;
@@ -75,7 +75,16 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
   ZkNodeProps addReplica(ClusterState clusterState, ZkNodeProps message, NamedList results, Runnable onComplete)
       throws IOException, InterruptedException {
     log.debug("addReplica() : {}", Utils.toJSONString(message));
+    boolean waitForFinalState = message.getBool(WAIT_FOR_FINAL_STATE, false);
+    boolean skipCreateReplicaInClusterState = message.getBool(SKIP_CREATE_REPLICA_IN_CLUSTER_STATE, false);
+    final String asyncId = message.getStr(ASYNC);
+
+    AtomicLong policyVersionAfter = new AtomicLong(-1);
+    message = assignReplicaDetails(ocmh.cloudManager, clusterState, message, policyVersionAfter);
+
     String collection = message.getStr(COLLECTION_PROP);
+    DocCollection coll = clusterState.getCollection(collection);
+
     String node = message.getStr(CoreAdminParams.NODE);
     String shard = message.getStr(SHARD_ID_PROP);
     String coreName = message.getStr(CoreAdminParams.NAME);
@@ -83,68 +92,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
     int timeout = message.getInt("timeout", 10 * 60); // 10 minutes
     Replica.Type replicaType = Replica.Type.valueOf(message.getStr(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT.name()).toUpperCase(Locale.ROOT));
     boolean parallel = message.getBool("parallel", false);
-    boolean waitForFinalState = message.getBool(WAIT_FOR_FINAL_STATE, false);
-    if (StringUtils.isBlank(coreName)) {
-      coreName = message.getStr(CoreAdminParams.PROPERTY_PREFIX + CoreAdminParams.NAME);
-    }
 
-    final String asyncId = message.getStr(ASYNC);
-
-    DocCollection coll = clusterState.getCollection(collection);
-    if (coll == null) {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Collection: " + collection + " does not exist");
-    }
-    if (coll.getSlice(shard) == null) {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
-          "Collection: " + collection + " shard: " + shard + " does not exist");
-    }
-    boolean skipCreateReplicaInClusterState = message.getBool(SKIP_CREATE_REPLICA_IN_CLUSTER_STATE, false);
-
-    final Long policyVersionBefore = PolicyHelper.REF_VERSION.get();
-    AtomicLong policyVersionAfter  = new AtomicLong(-1);
-    // Kind of unnecessary, but it does put the logic of whether to override maxShardsPerNode in one place.
-    if (!skipCreateReplicaInClusterState) {
-      if (CloudUtil.usePolicyFramework(coll, ocmh.cloudManager)) {
-        if (node == null) {
-          if(coll.getPolicyName() != null) message.getProperties().put(Policy.POLICY, coll.getPolicyName());
-          node = Assign.identifyNodes(ocmh.cloudManager,
-              clusterState,
-              Collections.emptyList(),
-              collection,
-              message,
-              Collections.singletonList(shard),
-              replicaType == Replica.Type.NRT ? 0 : 1,
-              replicaType == Replica.Type.TLOG ? 0 : 1,
-              replicaType == Replica.Type.PULL ? 0 : 1
-          ).get(0).node;
-          if (policyVersionBefore == null && PolicyHelper.REF_VERSION.get() != null) {
-            policyVersionAfter.set(PolicyHelper.REF_VERSION.get());
-          }
-        }
-      } else {
-        node = getNodesForNewReplicas(clusterState, collection, shard, 1, node,
-            ocmh.cloudManager).get(0).nodeName;// TODO: use replica type in this logic too
-      }
-    }
-    log.info("Node Identified {} for creating new replica", node);
-
-    if (!clusterState.liveNodesContain(node)) {
-      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Node: " + node + " is not live");
-    }
-    if (coreName == null) {
-      coreName = Assign.buildSolrCoreName(ocmh.cloudManager.getDistribStateManager(), coll, shard, replicaType);
-    } else if (!skipCreateReplicaInClusterState) {
-      //Validate that the core name is unique in that collection
-      for (Slice slice : coll.getSlices()) {
-        for (Replica replica : slice.getReplicas()) {
-          String replicaCoreName = replica.getStr(CORE_NAME_PROP);
-          if (coreName.equals(replicaCoreName)) {
-            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Another replica with the same core name already exists" +
-                " for this collection");
-          }
-        }
-      }
-    }
     ModifiableSolrParams params = new ModifiableSolrParams();
 
     ZkStateReader zkStateReader = ocmh.zkStateReader;
@@ -257,4 +205,76 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
     );
   }
 
+  public static ZkNodeProps assignReplicaDetails(SolrCloudManager cloudManager, ClusterState clusterState,
+                                                ZkNodeProps message, AtomicLong policyVersionAfter) throws IOException, InterruptedException {
+    boolean skipCreateReplicaInClusterState = message.getBool(SKIP_CREATE_REPLICA_IN_CLUSTER_STATE, false);
+
+    String collection = message.getStr(COLLECTION_PROP);
+    String node = message.getStr(CoreAdminParams.NODE);
+    String shard = message.getStr(SHARD_ID_PROP);
+    String coreName = message.getStr(CoreAdminParams.NAME);
+    String coreNodeName = message.getStr(CoreAdminParams.CORE_NODE_NAME);
+    Replica.Type replicaType = Replica.Type.valueOf(message.getStr(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT.name()).toUpperCase(Locale.ROOT));
+    if (StringUtils.isBlank(coreName)) {
+      coreName = message.getStr(CoreAdminParams.PROPERTY_PREFIX + CoreAdminParams.NAME);
+    }
+
+    DocCollection coll = clusterState.getCollection(collection);
+    if (coll == null) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Collection: " + collection + " does not exist");
+    }
+    if (coll.getSlice(shard) == null) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
+          "Collection: " + collection + " shard: " + shard + " does not exist");
+    }
+
+    final Long policyVersionBefore = PolicyHelper.REF_VERSION.get();
+    // Kind of unnecessary, but it does put the logic of whether to override maxShardsPerNode in one place.
+    if (!skipCreateReplicaInClusterState) {
+      if (CloudUtil.usePolicyFramework(coll, cloudManager)) {
+        if (node == null) {
+          if(coll.getPolicyName() != null) message.getProperties().put(Policy.POLICY, coll.getPolicyName());
+          node = Assign.identifyNodes(cloudManager,
+              clusterState,
+              Collections.emptyList(),
+              collection,
+              message,
+              Collections.singletonList(shard),
+              replicaType == Replica.Type.NRT ? 0 : 1,
+              replicaType == Replica.Type.TLOG ? 0 : 1,
+              replicaType == Replica.Type.PULL ? 0 : 1
+          ).get(0).node;
+          if (policyVersionBefore == null && PolicyHelper.REF_VERSION.get() != null) {
+            policyVersionAfter.set(PolicyHelper.REF_VERSION.get());
+          }
+        }
+      } else {
+        node = Assign.getNodesForNewReplicas(clusterState, collection, shard, 1, node,
+            cloudManager).get(0).nodeName;// TODO: use replica type in this logic too
+      }
+    }
+    log.info("Node Identified {} for creating new replica", node);
+
+    if (!clusterState.liveNodesContain(node)) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Node: " + node + " is not live");
+    }
+    if (coreName == null) {
+      coreName = Assign.buildSolrCoreName(cloudManager.getDistribStateManager(), coll, shard, replicaType);
+    } else if (!skipCreateReplicaInClusterState) {
+      //Validate that the core name is unique in that collection
+      for (Slice slice : coll.getSlices()) {
+        for (Replica replica : slice.getReplicas()) {
+          String replicaCoreName = replica.getStr(CORE_NAME_PROP);
+          if (coreName.equals(replicaCoreName)) {
+            throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Another replica with the same core name already exists" +
+                " for this collection");
+          }
+        }
+      }
+    }
+    message = message.plus(CoreAdminParams.CORE_NODE_NAME, coreNodeName);
+    message = message.plus(CoreAdminParams.NAME, coreName);
+    message = message.plus(CoreAdminParams.NODE, node);
+    return message;
+  }
 }

@@ -47,6 +47,7 @@ import org.apache.solr.cloud.OverseerTaskProcessor;
 import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.cloud.ZkDistributedQueueFactory;
 import org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest;
+import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.cloud.DocCollection;
 import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
@@ -227,7 +228,7 @@ public class TestPolicyCloud extends SimSolrCloudTestCase {
     DocCollection collection = getCollectionState("metricsTest");
     List<String> tags = Arrays.asList("metrics:solr.node:ADMIN./admin/authorization.clientErrors:count",
         "metrics:solr.jvm:buffers.direct.Count");
-    Map<String, Object> val = cluster.getNodeStateProvider().getNodeValues(collection .getReplicas().get(0).getNodeName(), tags);
+    Map<String, Object> val = cluster.getNodeStateProvider().getNodeValues(collection.getReplicas().get(0).getNodeName(), tags);
     for (String tag : tags) {
       assertNotNull( "missing : "+ tag , val.get(tag));
     }
