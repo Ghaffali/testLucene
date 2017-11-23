@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
@@ -270,7 +271,7 @@ public class SimDistribStateManager implements DistribStateManager {
             throw new IOException("NoChildrenEphemerals for " + parentNode.path);
           }
           if (CreateMode.PERSISTENT_SEQUENTIAL == mode || CreateMode.EPHEMERAL_SEQUENTIAL == mode) {
-            currentName = currentName + String.format("%010d", parentNode.seq);
+            currentName = currentName + String.format(Locale.ROOT, "%010d", parentNode.seq);
             parentNode.seq++;
           }
           currentPath.append(currentName);

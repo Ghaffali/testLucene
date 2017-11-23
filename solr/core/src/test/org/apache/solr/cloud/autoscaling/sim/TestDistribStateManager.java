@@ -17,10 +17,10 @@
 
 package org.apache.solr.cloud.autoscaling.sim;
 
-import java.io.IOException;
 import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.NoSuchElementException;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -169,7 +169,7 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     }
     // check what happens with gaps
     stateManager.createData("/createMode/persistent_seq/data", firstData, CreateMode.PERSISTENT_SEQUENTIAL);
-    stateManager.removeData("/createMode/persistent_seq/data" + String.format("%010d", 10), -1);
+    stateManager.removeData("/createMode/persistent_seq/data" + String.format(Locale.ROOT, "%010d", 10), -1);
     stateManager.createData("/createMode/persistent_seq/data", firstData, CreateMode.PERSISTENT_SEQUENTIAL);
 
     stateManager.createData("/createMode/ephemeral", firstData, CreateMode.EPHEMERAL);
@@ -185,21 +185,21 @@ public class TestDistribStateManager extends SolrTestCaseJ4 {
     kids = stateManager.listData("/createMode/ephemeral_seq");
     assertEquals(10, kids.size());
     for (int i = 0; i < 10; i++) {
-      assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format("%010d", i)));
+      assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format(Locale.ROOT, "%010d", i)));
     }
-    assertFalse(stateManager.hasData("/createMode/persistent_seq/data" + String.format("%010d", 10)));
-    assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format("%010d", 11)));
+    assertFalse(stateManager.hasData("/createMode/persistent_seq/data" + String.format(Locale.ROOT, "%010d", 10)));
+    assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format(Locale.ROOT, "%010d", 11)));
 
     for (int i = 0; i < 10; i++) {
-      assertTrue(stateManager.hasData("/createMode/ephemeral_seq/data" + String.format("%010d", i)));
+      assertTrue(stateManager.hasData("/createMode/ephemeral_seq/data" + String.format(Locale.ROOT, "%010d", i)));
     }
     // check that ephemeral nodes disappear on disconnect
     reInit();
     assertTrue(stateManager.hasData("/createMode/persistent"));
     for (int i = 0; i < 10; i++) {
-      assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format("%010d", i)));
+      assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format(Locale.ROOT, "%010d", i)));
     }
-    assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format("%010d", 11)));
+    assertTrue(stateManager.hasData("/createMode/persistent_seq/data" + String.format(Locale.ROOT, "%010d", 11)));
 
     assertFalse(stateManager.hasData("/createMode/ephemeral"));
     assertTrue(stateManager.hasData("/createMode/ephemeral_seq"));

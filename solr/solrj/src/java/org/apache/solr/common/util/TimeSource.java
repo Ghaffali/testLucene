@@ -121,7 +121,7 @@ public abstract class TimeSource {
    * @param type supported types: <code>currentTime</code>, <code>nanoTime</code> and accelerated
    *             time with a double factor in the form of <code>simTime:FACTOR</code>, eg.
    *             <code>simTime:2.5</code>
-   * @return
+   * @return one of the supported types
    */
   public static TimeSource get(String type) {
     if (type == null) {

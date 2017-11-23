@@ -76,18 +76,6 @@ import static org.apache.solr.common.params.CommonParams.NAME;
 public class SimClusterStateProvider implements ClusterStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
-  static final Random RANDOM;
-  static {
-    // We try to make things reproducible in the context of our tests by initializing the random instance
-    // based on the current seed
-    String seed = System.getProperty("tests.seed");
-    if (seed == null) {
-      RANDOM = new Random();
-    } else {
-      RANDOM = new Random(seed.hashCode());
-    }
-  }
-
   private final Map<String, List<ReplicaInfo>> nodeReplicaMap = new ConcurrentHashMap<>();
   private final Set<String> liveNodes;
   private final DistribStateManager stateManager;
@@ -322,8 +310,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
             LOG.warn("-- can't find any active replicas for " + dc.getName() + " / " + s.getName());
             return;
           }
-          // pick random one
-          Collections.shuffle(active);
+          // pick first active one
           ReplicaInfo ri = null;
           for (ReplicaInfo a : active) {
             if (!a.getType().equals(Replica.Type.PULL)) {
