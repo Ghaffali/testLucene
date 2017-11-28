@@ -20,10 +20,8 @@ package org.apache.solr.cloud.autoscaling.sim;
 import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
@@ -46,6 +44,7 @@ import org.apache.solr.cloud.autoscaling.ScheduledTriggers;
 import org.apache.solr.cloud.autoscaling.TriggerActionBase;
 import org.apache.solr.cloud.autoscaling.TriggerEvent;
 import org.apache.solr.cloud.autoscaling.TriggerListenerBase;
+import org.apache.solr.cloud.autoscaling.CapturedEvent;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.TimeSource;
@@ -79,13 +78,11 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
   private static AtomicBoolean triggerFired;
   private static Set<TriggerEvent> events = ConcurrentHashMap.newKeySet();
 
-  // use the same time source as triggers use
-
   private static final long WAIT_FOR_DELTA_NANOS = TimeUnit.MILLISECONDS.toNanos(5);
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(2, TimeSource.get("simTime:" + 50));
+    cluster = SimCloudManager.createCluster(2, TimeSource.get("simTime:" + SPEED));
   }
 
   private static CountDownLatch getTriggerFiredLatch() {
@@ -109,6 +106,8 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     // clear any persisted auto scaling configuration
     cluster.getDistribStateManager().setData(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH,
         "{}".getBytes(StandardCharsets.UTF_8), -1);
+    cluster.simClearSystemCollection();
+
     waitForSeconds = 1 + random().nextInt(3);
     actionConstructorCalled = new CountDownLatch(1);
     actionInitCalled = new CountDownLatch(1);
@@ -130,22 +129,6 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
       // perhaps a test stopped a node but didn't start it back
       // lets start a node
       cluster.simAddNode();
-    }
-  }
-
-  private void removeChildren(String path) throws Exception {
-    if (!cluster.getDistribStateManager().hasData(path)) {
-      return;
-    }
-    List<String> children = cluster.getDistribStateManager().listData(path);
-    for (String c : children) {
-      if (cluster.getDistribStateManager().hasData(path + "/" + c)) {
-        try {
-          cluster.getDistribStateManager().removeData(path + "/" + c, -1);
-        } catch (NoSuchElementException e) {
-          // ignore
-        }
-      }
     }
   }
 
@@ -920,37 +903,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
   }
 
 */
-  private static class TestEvent {
-    final AutoScalingConfig.TriggerListenerConfig config;
-    final TriggerEventProcessorStage stage;
-    final String actionName;
-    final TriggerEvent event;
-    final String message;
-    final long timestamp;
-
-    TestEvent(AutoScalingConfig.TriggerListenerConfig config, TriggerEventProcessorStage stage, String actionName, TriggerEvent event, String message) {
-      this.config = config;
-      this.stage = stage;
-      this.actionName = actionName;
-      this.event = event;
-      this.message = message;
-      this.timestamp = cluster.getTimeSource().getTime();
-    }
-
-    @Override
-    public String toString() {
-      return "TestEvent{" +
-          "timestamp=" + timestamp +
-          ", config=" + config +
-          ", stage=" + stage +
-          ", actionName='" + actionName + '\'' +
-          ", event=" + event +
-          ", message='" + message + '\'' +
-          '}';
-    }
-  }
-
-  static Map<String, List<TestEvent>> listenerEvents = new HashMap<>();
+  static Map<String, List<CapturedEvent>> listenerEvents = new ConcurrentHashMap<>();
   static CountDownLatch listenerCreated = new CountDownLatch(1);
   static boolean failDummyAction = false;
 
@@ -964,8 +917,8 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     @Override
     public synchronized void onEvent(TriggerEvent event, TriggerEventProcessorStage stage, String actionName,
                                      ActionContext context, Throwable error, String message) {
-      List<TestEvent> lst = listenerEvents.computeIfAbsent(config.name, s -> new ArrayList<>());
-      lst.add(new TestEvent(config, stage, actionName, event, message));
+      List<CapturedEvent> lst = listenerEvents.computeIfAbsent(config.name, s -> new ArrayList<>());
+      lst.add(new CapturedEvent(cluster.getTimeSource().getTime(), context, config, stage, actionName, event, message));
     }
   }
 
@@ -1045,7 +998,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     cluster.getTimeSource().sleep(2000);
 
     // check foo events
-    List<TestEvent> testEvents = listenerEvents.get("foo");
+    List<CapturedEvent> testEvents = listenerEvents.get("foo");
     assertNotNull("foo events: " + testEvents, testEvents);
     assertEquals("foo events: " + testEvents, 5, testEvents.size());
 
@@ -1166,7 +1119,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     // wait for listener to capture the SUCCEEDED stage
     cluster.getTimeSource().sleep(1000);
 
-    List<TestEvent> capturedEvents = listenerEvents.get("bar");
+    List<CapturedEvent> capturedEvents = listenerEvents.get("bar");
     // we may get a few IGNORED events if other tests caused events within cooldown period
     assertTrue(capturedEvents.toString(), capturedEvents.size() > 0);
     long prevTimestamp = capturedEvents.get(capturedEvents.size() - 1).timestamp;
@@ -1186,11 +1139,11 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     capturedEvents = listenerEvents.get("bar");
     assertTrue(capturedEvents.toString(), capturedEvents.size() > 1);
     for (int i = 0; i < capturedEvents.size() - 1; i++) {
-      TestEvent ev = capturedEvents.get(i);
+      CapturedEvent ev = capturedEvents.get(i);
       assertEquals(ev.toString(), TriggerEventProcessorStage.IGNORED, ev.stage);
       assertTrue(ev.toString(), ev.message.contains("cooldown"));
     }
-    TestEvent ev = capturedEvents.get(capturedEvents.size() - 1);
+    CapturedEvent ev = capturedEvents.get(capturedEvents.size() - 1);
     assertEquals(ev.toString(), TriggerEventProcessorStage.SUCCEEDED, ev.stage);
     // the difference between timestamps of the first SUCCEEDED and the last SUCCEEDED
     // must be larger than cooldown period
@@ -1262,7 +1215,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     // wait for listener to capture the SUCCEEDED stage
     cluster.getTimeSource().sleep(2000);
     assertEquals(listenerEvents.toString(), 1, listenerEvents.get("srt").size());
-    TestEvent ev = listenerEvents.get("srt").get(0);
+    CapturedEvent ev = listenerEvents.get("srt").get(0);
     long now = cluster.getTimeSource().getTime();
     // verify waitFor
     assertTrue(TimeUnit.SECONDS.convert(waitForSeconds, TimeUnit.NANOSECONDS) - WAIT_FOR_DELTA_NANOS <= now - ev.event.getEventTime());

@@ -227,6 +227,13 @@ public class ScheduledTriggers implements Closeable {
         listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.STARTED);
         List<TriggerAction> actions = source.getActions();
         if (actions != null) {
+          if (actionExecutor.isShutdown()) {
+            String msg = String.format(Locale.ROOT, "Ignoring autoscaling event %s because the executor has already been closed", event.toString(), source);
+            listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.ABORTED, msg);
+            log.warn(msg);
+            // we do not want to lose this event just because the trigger was closed, perhaps a replacement will need it
+            return false;
+          }
           actionExecutor.submit(() -> {
             assert hasPendingActions.get();
             log.debug("-- processing actions for " + event);

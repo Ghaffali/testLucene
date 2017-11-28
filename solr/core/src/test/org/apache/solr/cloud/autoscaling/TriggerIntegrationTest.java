@@ -945,37 +945,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     assertEquals(TriggerEventType.NODELOST, ev.getEventType());
   }
 
-  private static class TestEvent {
-    final AutoScalingConfig.TriggerListenerConfig config;
-    final TriggerEventProcessorStage stage;
-    final String actionName;
-    final TriggerEvent event;
-    final String message;
-    final long timestamp;
-
-    TestEvent(AutoScalingConfig.TriggerListenerConfig config, TriggerEventProcessorStage stage, String actionName, TriggerEvent event, String message) {
-      this.config = config;
-      this.stage = stage;
-      this.actionName = actionName;
-      this.event = event;
-      this.message = message;
-      this.timestamp = timeSource.getTime();
-    }
-
-    @Override
-    public String toString() {
-      return "TestEvent{" +
-          "timestamp=" + timestamp +
-          ", config=" + config +
-          ", stage=" + stage +
-          ", actionName='" + actionName + '\'' +
-          ", event=" + event +
-          ", message='" + message + '\'' +
-          '}';
-    }
-  }
-
-  static Map<String, List<TestEvent>> listenerEvents = new HashMap<>();
+  static Map<String, List<CapturedEvent>> listenerEvents = new HashMap<>();
   static CountDownLatch listenerCreated = new CountDownLatch(1);
   static boolean failDummyAction = false;
 
@@ -989,8 +959,8 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     @Override
     public synchronized void onEvent(TriggerEvent event, TriggerEventProcessorStage stage, String actionName,
                                      ActionContext context, Throwable error, String message) {
-      List<TestEvent> lst = listenerEvents.computeIfAbsent(config.name, s -> new ArrayList<>());
-      lst.add(new TestEvent(config, stage, actionName, event, message));
+      List<CapturedEvent> lst = listenerEvents.computeIfAbsent(config.name, s -> new ArrayList<>());
+      lst.add(new CapturedEvent(timeSource.getTime(), context, config, stage, actionName, event, message));
     }
   }
 
@@ -1070,38 +1040,38 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     Thread.sleep(2000);
 
     // check foo events
-    List<TestEvent> testEvents = listenerEvents.get("foo");
-    assertNotNull("foo events: " + testEvents, testEvents);
-    assertEquals("foo events: " + testEvents, 5, testEvents.size());
+    List<CapturedEvent> capturedEvents = listenerEvents.get("foo");
+    assertNotNull("foo events: " + capturedEvents, capturedEvents);
+    assertEquals("foo events: " + capturedEvents, 5, capturedEvents.size());
 
-    assertEquals(TriggerEventProcessorStage.STARTED, testEvents.get(0).stage);
+    assertEquals(TriggerEventProcessorStage.STARTED, capturedEvents.get(0).stage);
 
-    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, testEvents.get(1).stage);
-    assertEquals("test", testEvents.get(1).actionName);
+    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, capturedEvents.get(1).stage);
+    assertEquals("test", capturedEvents.get(1).actionName);
 
-    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, testEvents.get(2).stage);
-    assertEquals("test", testEvents.get(2).actionName);
+    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, capturedEvents.get(2).stage);
+    assertEquals("test", capturedEvents.get(2).actionName);
 
-    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, testEvents.get(3).stage);
-    assertEquals("test1", testEvents.get(3).actionName);
+    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, capturedEvents.get(3).stage);
+    assertEquals("test1", capturedEvents.get(3).actionName);
 
-    assertEquals(TriggerEventProcessorStage.SUCCEEDED, testEvents.get(4).stage);
+    assertEquals(TriggerEventProcessorStage.SUCCEEDED, capturedEvents.get(4).stage);
 
     // check bar events
-    testEvents = listenerEvents.get("bar");
-    assertNotNull("bar events", testEvents);
-    assertEquals("bar events", 4, testEvents.size());
+    capturedEvents = listenerEvents.get("bar");
+    assertNotNull("bar events", capturedEvents);
+    assertEquals("bar events", 4, capturedEvents.size());
 
-    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, testEvents.get(0).stage);
-    assertEquals("test", testEvents.get(0).actionName);
+    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, capturedEvents.get(0).stage);
+    assertEquals("test", capturedEvents.get(0).actionName);
 
-    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, testEvents.get(1).stage);
-    assertEquals("test", testEvents.get(1).actionName);
+    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, capturedEvents.get(1).stage);
+    assertEquals("test", capturedEvents.get(1).actionName);
 
-    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, testEvents.get(2).stage);
-    assertEquals("test1", testEvents.get(2).actionName);
+    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, capturedEvents.get(2).stage);
+    assertEquals("test1", capturedEvents.get(2).actionName);
 
-    assertEquals(TriggerEventProcessorStage.SUCCEEDED, testEvents.get(3).stage);
+    assertEquals(TriggerEventProcessorStage.SUCCEEDED, capturedEvents.get(3).stage);
 
     // reset
     triggerFired.set(false);
@@ -1116,37 +1086,37 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     Thread.sleep(2000);
 
     // check foo events
-    testEvents = listenerEvents.get("foo");
-    assertNotNull("foo events: " + testEvents, testEvents);
-    assertEquals("foo events: " + testEvents, 4, testEvents.size());
+    capturedEvents = listenerEvents.get("foo");
+    assertNotNull("foo events: " + capturedEvents, capturedEvents);
+    assertEquals("foo events: " + capturedEvents, 4, capturedEvents.size());
 
-    assertEquals(TriggerEventProcessorStage.STARTED, testEvents.get(0).stage);
+    assertEquals(TriggerEventProcessorStage.STARTED, capturedEvents.get(0).stage);
 
-    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, testEvents.get(1).stage);
-    assertEquals("test", testEvents.get(1).actionName);
+    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, capturedEvents.get(1).stage);
+    assertEquals("test", capturedEvents.get(1).actionName);
 
-    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, testEvents.get(2).stage);
-    assertEquals("test", testEvents.get(2).actionName);
+    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, capturedEvents.get(2).stage);
+    assertEquals("test", capturedEvents.get(2).actionName);
 
-    assertEquals(TriggerEventProcessorStage.FAILED, testEvents.get(3).stage);
-    assertEquals("test1", testEvents.get(3).actionName);
+    assertEquals(TriggerEventProcessorStage.FAILED, capturedEvents.get(3).stage);
+    assertEquals("test1", capturedEvents.get(3).actionName);
 
     // check bar events
-    testEvents = listenerEvents.get("bar");
-    assertNotNull("bar events", testEvents);
-    assertEquals("bar events", 4, testEvents.size());
+    capturedEvents = listenerEvents.get("bar");
+    assertNotNull("bar events", capturedEvents);
+    assertEquals("bar events", 4, capturedEvents.size());
 
-    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, testEvents.get(0).stage);
-    assertEquals("test", testEvents.get(0).actionName);
+    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, capturedEvents.get(0).stage);
+    assertEquals("test", capturedEvents.get(0).actionName);
 
-    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, testEvents.get(1).stage);
-    assertEquals("test", testEvents.get(1).actionName);
+    assertEquals(TriggerEventProcessorStage.AFTER_ACTION, capturedEvents.get(1).stage);
+    assertEquals("test", capturedEvents.get(1).actionName);
 
-    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, testEvents.get(2).stage);
-    assertEquals("test1", testEvents.get(2).actionName);
+    assertEquals(TriggerEventProcessorStage.BEFORE_ACTION, capturedEvents.get(2).stage);
+    assertEquals("test1", capturedEvents.get(2).actionName);
 
-    assertEquals(TriggerEventProcessorStage.FAILED, testEvents.get(3).stage);
-    assertEquals("test1", testEvents.get(3).actionName);
+    assertEquals(TriggerEventProcessorStage.FAILED, capturedEvents.get(3).stage);
+    assertEquals("test1", capturedEvents.get(3).actionName);
   }
 
   @Test
@@ -1191,7 +1161,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     // wait for listener to capture the SUCCEEDED stage
     Thread.sleep(1000);
 
-    List<TestEvent> capturedEvents = listenerEvents.get("bar");
+    List<CapturedEvent> capturedEvents = listenerEvents.get("bar");
     // we may get a few IGNORED events if other tests caused events within cooldown period
     assertTrue(capturedEvents.toString(), capturedEvents.size() > 0);
     long prevTimestamp = capturedEvents.get(capturedEvents.size() - 1).timestamp;
@@ -1211,11 +1181,11 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     capturedEvents = listenerEvents.get("bar");
     assertTrue(capturedEvents.toString(), capturedEvents.size() > 1);
     for (int i = 0; i < capturedEvents.size() - 1; i++) {
-      TestEvent ev = capturedEvents.get(i);
+      CapturedEvent ev = capturedEvents.get(i);
       assertEquals(ev.toString(), TriggerEventProcessorStage.IGNORED, ev.stage);
       assertTrue(ev.toString(), ev.message.contains("cooldown"));
     }
-    TestEvent ev = capturedEvents.get(capturedEvents.size() - 1);
+    CapturedEvent ev = capturedEvents.get(capturedEvents.size() - 1);
     assertEquals(ev.toString(), TriggerEventProcessorStage.SUCCEEDED, ev.stage);
     // the difference between timestamps of the first SUCCEEDED and the last SUCCEEDED
     // must be larger than cooldown period
@@ -1285,7 +1255,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     // wait for listener to capture the SUCCEEDED stage
     Thread.sleep(2000);
     assertEquals(listenerEvents.toString(), 1, listenerEvents.get("srt").size());
-    TestEvent ev = listenerEvents.get("srt").get(0);
+    CapturedEvent ev = listenerEvents.get("srt").get(0);
     long now = timeSource.getTime();
     // verify waitFor
     assertTrue(TimeUnit.SECONDS.convert(waitForSeconds, TimeUnit.NANOSECONDS) - WAIT_FOR_DELTA_NANOS <= now - ev.event.getEventTime());

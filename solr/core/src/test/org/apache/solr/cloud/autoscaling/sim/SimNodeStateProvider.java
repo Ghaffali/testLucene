@@ -37,7 +37,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * Simulated {@link NodeStateProvider}.
+ * Note: in order to set-up node-level metrics use {@link #simSetNodeValues(String, Map)}. However, in order
+ * to set-up core-level metrics use {@link SimClusterStateProvider#simSetCollectionValue(String, String, Object, boolean)}.
  */
 public class SimNodeStateProvider implements NodeStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -68,14 +70,23 @@ public class SimNodeStateProvider implements NodeStateProvider {
   }
 
   public void simSetNodeValues(String node, Map<String, Object> values) {
-    nodeValues.put(node, new ConcurrentHashMap<>(values));
-    if (values.containsKey("nodeRole")) {
+    Map<String, Object> existing = nodeValues.computeIfAbsent(node, n -> new ConcurrentHashMap<>());
+    existing.clear();
+    if (values != null) {
+      existing.putAll(values);
+    }
+    if (values == null || values.isEmpty() || values.containsKey("nodeRole")) {
       saveRoles();
     }
   }
 
   public void simSetNodeValue(String node, String key, Object value) {
-    nodeValues.computeIfAbsent(node, n -> new ConcurrentHashMap<>()).put(key, value);
+    Map<String, Object> existing = nodeValues.computeIfAbsent(node, n -> new ConcurrentHashMap<>());
+    if (value == null) {
+      existing.remove(key);
+    } else {
+      existing.put(key, value);
+    }
     if (key.equals("nodeRole")) {
       saveRoles();
     }
@@ -125,58 +136,7 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
   }
 
-  // ---------- interface methods -------------
-
-  @Override
-  public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-    LOG.debug("-- requested values for " + node + ": " + tags);
-    if (!liveNodes.contains(node)) {
-      nodeValues.remove(node);
-      return Collections.emptyMap();
-    }
-    if (tags.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    Boolean metrics = null;
-    for (String tag : tags) {
-      if (tag.startsWith("metrics:")) {
-        if (metrics != null && !metrics) {
-          throw new RuntimeException("mixed tags are not supported: " + tags);
-        }
-        metrics = Boolean.TRUE;
-      } else {
-        if (metrics != null && metrics) {
-          throw new RuntimeException("mixed tags are not supported: " + tags);
-        }
-        metrics = Boolean.FALSE;
-      }
-    }
-    if (metrics) {
-      return getMetricsValues(node, tags);
-    }
-    Map<String, Object> values = nodeValues.get(node);
-    if (values == null) {
-      return Collections.emptyMap();
-    }
-    return values.entrySet().stream().filter(e -> tags.contains(e.getKey())).collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue()));
-  }
-
-  @Override
-  public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
-    List<ReplicaInfo> replicas = clusterStateProvider.simGetReplicaInfos(node);
-    if (replicas == null) {
-      return Collections.emptyMap();
-    }
-    Map<String, Map<String, List<ReplicaInfo>>> res = new HashMap<>();
-    for (ReplicaInfo r : replicas) {
-      Map<String, List<ReplicaInfo>> perCollection = res.computeIfAbsent(r.getCollection(), s -> new HashMap<>());
-      List<ReplicaInfo> perShard = perCollection.computeIfAbsent(r.getShard(), s -> new ArrayList<>());
-      perShard.add(r);
-    }
-    return res;
-  }
-
-  public Map<String, Object> getMetricsValues(String node, Collection<String> tags) {
+  public Map<String, Object> getReplicaMetricsValues(String node, Collection<String> tags) {
     List<ReplicaInfo> replicas = clusterStateProvider.simGetReplicaInfos(node);
     if (replicas == null || replicas.isEmpty()) {
       return Collections.emptyMap();
@@ -189,7 +149,7 @@ public class SimNodeStateProvider implements NodeStateProvider {
         continue;
       }
       if (!parts[1].startsWith("solr.core.")) {
-        LOG.warn("Unsupported metric type: " + tag);
+        // skip - this is probably solr.node or solr.jvm metric
         continue;
       }
       String[] collParts = parts[1].substring(10).split("\\.");
@@ -216,6 +176,44 @@ public class SimNodeStateProvider implements NodeStateProvider {
       });
     }
     return values;
+  }
+
+  // ---------- interface methods -------------
+
+  @Override
+  public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
+    LOG.trace("-- requested values for " + node + ": " + tags);
+    if (!liveNodes.contains(node)) {
+      nodeValues.remove(node);
+      return Collections.emptyMap();
+    }
+    if (tags.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<String, Object> result = new HashMap<>();
+    Map<String, Object> metrics = getReplicaMetricsValues(node, tags.stream().filter(s -> s.startsWith("metrics:")).collect(Collectors.toList()));
+    result.putAll(metrics);
+    Map<String, Object> values = nodeValues.get(node);
+    if (values == null) {
+      return result;
+    }
+    result.putAll(values.entrySet().stream().filter(e -> tags.contains(e.getKey())).collect(Collectors.toMap(e -> e.getKey(), e -> e.getValue())));
+    return result;
+  }
+
+  @Override
+  public Map<String, Map<String, List<ReplicaInfo>>> getReplicaInfo(String node, Collection<String> keys) {
+    List<ReplicaInfo> replicas = clusterStateProvider.simGetReplicaInfos(node);
+    if (replicas == null) {
+      return Collections.emptyMap();
+    }
+    Map<String, Map<String, List<ReplicaInfo>>> res = new HashMap<>();
+    for (ReplicaInfo r : replicas) {
+      Map<String, List<ReplicaInfo>> perCollection = res.computeIfAbsent(r.getCollection(), s -> new HashMap<>());
+      List<ReplicaInfo> perShard = perCollection.computeIfAbsent(r.getShard(), s -> new ArrayList<>());
+      perShard.add(r);
+    }
+    return res;
   }
 
   @Override

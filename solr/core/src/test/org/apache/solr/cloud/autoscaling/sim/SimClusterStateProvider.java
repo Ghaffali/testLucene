@@ -30,6 +30,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -41,6 +42,7 @@ import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.cloud.autoscaling.Suggestion;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
+import org.apache.solr.cloud.ActionThrottle;
 import org.apache.solr.cloud.AddReplicaCmd;
 import org.apache.solr.cloud.Assign;
 import org.apache.solr.cloud.CreateCollectionCmd;
@@ -87,6 +89,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   private final ReentrantLock lock = new ReentrantLock();
 
+  private final ActionThrottle leaderThrottle;
+
+
   private ClusterState lastSavedState = null;
   private Map<String, Object> lastSavedProperties = null;
 
@@ -98,6 +103,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     this.liveNodes = liveNodes;
     this.cloudManager = cloudManager;
     this.stateManager = cloudManager.getDistribStateManager();
+    this.leaderThrottle = new ActionThrottle("leader", 5000, cloudManager.getTimeSource());
   }
 
   // ============== SIMULATOR SETUP METHODS ====================
@@ -147,6 +153,28 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     return nodeReplicaMap.putIfAbsent(nodeId, new ArrayList<>()) == null;
   }
 
+  private class LeaderElection implements Callable<Boolean> {
+    Collection<String> collections;
+    boolean saveClusterState;
+
+    LeaderElection(Collection<String> collections, boolean saveClusterState) {
+      this.collections = collections;
+      this.saveClusterState = saveClusterState;
+    }
+
+    @Override
+    public Boolean call() {
+      leaderThrottle.minimumWaitBetweenActions();
+      leaderThrottle.markAttemptingAction();
+      try {
+        simRunLeaderElection(collections, saveClusterState);
+      } catch (Exception e) {
+        return false;
+      }
+      return true;
+    }
+  }
+
   // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
   public boolean simRemoveNode(String nodeId) throws Exception {
@@ -162,7 +190,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         });
       }
       boolean res = liveNodes.remove(nodeId);
-      cloudManager.submit(() -> {simRunLeaderElection(collections, true); return true;});
+      cloudManager.submit(new LeaderElection(collections, true));
       return res;
     } finally {
       lock.unlock();
@@ -214,10 +242,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       }
       cloudManager.getSimNodeStateProvider().simSetNodeValue(nodeId, "cores", cores + 1);
       if (runLeaderElection) {
-        cloudManager.submit(() -> {
-          simRunLeaderElection(Collections.singleton(replicaInfo.getCollection()), true);
-          return true;
-        });
+        cloudManager.submit(new LeaderElection(Collections.singleton(replicaInfo.getCollection()), true));
       }
     } finally {
       lock.unlock();
@@ -240,7 +265,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
             }
             cloudManager.getSimNodeStateProvider().simSetNodeValue(nodeId, "cores", cores - 1);
           }
-          cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(ri.getCollection()), true); return true;});
+          cloudManager.submit(new LeaderElection(Collections.singleton(ri.getCollection()), true));
           return;
         }
       }
@@ -377,7 +402,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         }
       });
     });
-    cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(collectionName), true); return true;});
+    cloudManager.submit(new LeaderElection(Collections.singleton(collectionName), true));
     results.add("success", "");
   }
 
@@ -514,7 +539,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       });
       Map<String, Object> colProps = collProperties.computeIfAbsent(collectionName, c -> new ConcurrentHashMap<>());
 
-      cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(collectionName), true); return true;});
+      cloudManager.submit(new LeaderElection(Collections.singleton(collectionName), true));
       results.add("success", "");
     } finally {
       lock.unlock();
@@ -571,7 +596,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           solrCoreName, collectionName, replicaPosition.shard, replicaPosition.type, subShardNodeName, replicaProps);
       simAddReplica(replicaPosition.node, ri, false);
     }
-    cloudManager.submit(() -> {simRunLeaderElection(Collections.singleton(collectionName), true); return true;});
+    cloudManager.submit(new LeaderElection(Collections.singleton(collectionName), true));
     results.add("success", "");
 
   }

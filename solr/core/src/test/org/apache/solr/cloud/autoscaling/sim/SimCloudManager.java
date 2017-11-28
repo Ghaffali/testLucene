@@ -25,6 +25,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
@@ -94,7 +95,6 @@ public class SimCloudManager implements SolrCloudManager {
   private final ObjectCache objectCache = new ObjectCache();
   private TimeSource timeSource;
   private SolrClient solrClient;
-  private final SimHttpServer httpServer;
 
   private final List<SolrInputDocument> systemColl = Collections.synchronizedList(new ArrayList<>());
   private final ExecutorService simCloudManagerPool;
@@ -121,8 +121,7 @@ public class SimCloudManager implements SolrCloudManager {
     this.clusterStateProvider = new SimClusterStateProvider(liveNodes, this);
     this.nodeStateProvider = new SimNodeStateProvider(liveNodes, this.stateManager, this.clusterStateProvider, null);
     this.queueFactory = new SimDistributedQueueFactory();
-    this.httpServer = new SimHttpServer();
-    this.simCloudManagerPool = ExecutorUtil.newMDCAwareCachedThreadPool(new DefaultSolrThreadFactory("simCloudManagerPool"));
+    this.simCloudManagerPool = ExecutorUtil.newMDCAwareFixedThreadPool(50, new DefaultSolrThreadFactory("simCloudManagerPool"));
     this.autoScalingHandler = new AutoScalingHandler(this, new SolrResourceLoader());
     ThreadGroup triggerThreadGroup = new ThreadGroup("Simulated Overseer autoscaling triggers");
     OverseerTriggerThread trigger = new OverseerTriggerThread(new SolrResourceLoader(), this,
@@ -199,7 +198,6 @@ public class SimCloudManager implements SolrCloudManager {
     values.put(ImplicitSnitch.DISK, 1000);
     values.put(ImplicitSnitch.SYSLOADAVG, 1.0);
     values.put(ImplicitSnitch.HEAPUSAGE, 123450000);
-    values.put("INDEX.sizeInBytes", 12345000);
     values.put("sysprop.java.version", System.getProperty("java.version"));
     values.put("sysprop.java.vendor", System.getProperty("java.vendor"));
     // fake some metrics expected in tests
@@ -221,6 +219,15 @@ public class SimCloudManager implements SolrCloudManager {
     clusterStateProvider.simRemoveNode(nodeId);
     nodeStateProvider.simRemoveNodeValues(nodeId);
     LOG.debug("-- removed node " + nodeId);
+  }
+
+  public void simRemoveRandomNodes(int number, Random random) throws Exception {
+    List<String> nodes = new ArrayList<>(liveNodes);
+    Collections.shuffle(nodes, random);
+    int count = Math.min(number, nodes.size());
+    for (int i = 0; i < count; i++) {
+      simRemoveNode(nodes.get(i));
+    }
   }
 
   public void simClearSystemCollection() {
@@ -464,7 +471,7 @@ public class SimCloudManager implements SolrCloudManager {
 
   @Override
   public byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException {
-    return httpServer.httpRequest(url, method, headers, payload, timeout, followRedirects);
+    throw new UnsupportedOperationException("general HTTP requests are not supported yet");
   }
 
   @Override

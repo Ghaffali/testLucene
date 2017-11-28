@@ -118,7 +118,7 @@ public class NodeLostTrigger extends TriggerBase {
       synchronized (this) {
         if (isClosed) {
           log.warn("NodeLostTrigger ran but was already closed");
-          throw new RuntimeException("Trigger has been closed");
+          return;
         }
       }
 

@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -38,7 +39,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 
 /**
- *
+ * Base class for simulated test cases.
  */
 public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
 
@@ -62,7 +63,23 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
   @Before
   public void checkClusterConfiguration() {
     if (cluster == null)
-      throw new RuntimeException("MiniSolrCloudCluster not configured - have you called configureCluster().configure()?");
+      throw new RuntimeException("SimCloudManager not configured - have you called configureCluster()?");
+  }
+
+  protected void removeChildren(String path) throws Exception {
+    if (!cluster.getDistribStateManager().hasData(path)) {
+      return;
+    }
+    List<String> children = cluster.getDistribStateManager().listData(path);
+    for (String c : children) {
+      if (cluster.getDistribStateManager().hasData(path + "/" + c)) {
+        try {
+          cluster.getDistribStateManager().removeData(path + "/" + c, -1);
+        } catch (NoSuchElementException e) {
+          // ignore
+        }
+      }
+    }
   }
 
   /* Cluster helper methods ************************************/
@@ -123,7 +140,7 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
       if (predicate.matches(state.getLiveNodes(), coll)) {
         return;
       }
-      Thread.sleep(50);
+      timeout.sleep(50);
     }
     throw new TimeoutException();
   }

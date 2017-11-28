@@ -155,6 +155,7 @@ public class ExecutePlanAction extends TriggerActionBase {
           throw e;
         }
         log.error("Unexpected Exception while querying status of requestId=" + requestId, e);
+        throw e;
       }
       if (i > 0 && i % 5 == 0) {
         log.debug("Task with requestId={} still not complete after {}s. Last state={}", requestId, i * 5, state);
