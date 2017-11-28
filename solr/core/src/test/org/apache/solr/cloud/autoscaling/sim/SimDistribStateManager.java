@@ -29,6 +29,7 @@ import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -41,7 +42,9 @@ import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.cloud.ActionThrottle;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.AutoScalingParams;
+import org.apache.solr.common.util.ExecutorUtil;
 import org.apache.solr.common.util.Utils;
+import org.apache.solr.util.DefaultSolrThreadFactory;
 import org.apache.solr.util.IdUtils;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
@@ -75,13 +78,15 @@ public class SimDistribStateManager implements DistribStateManager {
     private Map<String, Node> children = new ConcurrentHashMap<>();
     Set<Watcher> dataWatches = ConcurrentHashMap.newKeySet();
     Set<Watcher> childrenWatches = ConcurrentHashMap.newKeySet();
+    private ExecutorService watcherPool;
 
-    Node(Node parent, String name, String path, CreateMode mode, String clientId) {
+    Node(Node parent, String name, String path, CreateMode mode, String clientId, ExecutorService watcherPool) {
       this.parent = parent;
       this.name = name;
       this.path = path;
       this.mode = mode;
       this.clientId = clientId;
+      this.watcherPool = watcherPool;
     }
 
     public void clear() {
@@ -98,7 +103,16 @@ public class SimDistribStateManager implements DistribStateManager {
       }
     }
 
+    private void runTask(Runnable r) {
+      if (watcherPool != null) {
+        watcherPool.submit(r);
+      } else {
+        r.run();
+      }
+    }
+
     public void setData(byte[] data, int version) throws BadVersionException, IOException {
+      Set<Watcher> currentWatchers = new HashSet<>(dataWatches);
       dataLock.lock();
       try {
         if (version != -1 && version != this.version) {
@@ -110,14 +124,15 @@ public class SimDistribStateManager implements DistribStateManager {
           this.data = null;
         }
         this.version++;
-        Set<Watcher> currentWatchers = new HashSet<>(dataWatches);
         dataWatches.clear();
-        for (Watcher w : currentWatchers) {
-          w.process(new WatchedEvent(Watcher.Event.EventType.NodeDataChanged, Watcher.Event.KeeperState.SyncConnected, path));
-        }
       } finally {
         dataLock.unlock();
       }
+      runTask(() -> {
+        for (Watcher w : currentWatchers) {
+          w.process(new WatchedEvent(Watcher.Event.EventType.NodeDataChanged, Watcher.Event.KeeperState.SyncConnected, path));
+        }
+      });
     }
 
     public VersionedData getData(Watcher w) {
@@ -135,17 +150,19 @@ public class SimDistribStateManager implements DistribStateManager {
 
     public void setChild(String name, Node child) {
       assert child.name.equals(name);
+      Set<Watcher> currentWatchers = new HashSet<>(childrenWatches);
       dataLock.lock();
       try {
         children.put(name, child);
-        Set<Watcher> currentWatchers = new HashSet<>(childrenWatches);
         childrenWatches.clear();
-        for (Watcher w : currentWatchers) {
-          w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
-        }
       } finally {
         dataLock.unlock();
       }
+      runTask(() -> {
+        for (Watcher w : currentWatchers) {
+          w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
+        }
+      });
     }
 
     public void removeChild(String name, int version) throws NoSuchElementException, BadVersionException, IOException {
@@ -157,16 +174,20 @@ public class SimDistribStateManager implements DistribStateManager {
         throw new BadVersionException(version, path);
       }
       children.remove(name);
-      Set<Watcher> currentWatchers = new HashSet<>(childrenWatches);
+      Set<Watcher> currentChildrenWatchers = new HashSet<>(childrenWatches);
       childrenWatches.clear();
-      for (Watcher w : currentWatchers) {
-        w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
-      }
-      currentWatchers = new HashSet<>(n.dataWatches);
+      runTask(() -> {
+        for (Watcher w : currentChildrenWatchers) {
+          w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
+        }
+      });
+      Set<Watcher> currentDataWatchers = new HashSet<>(n.dataWatches);
       n.dataWatches.clear();
-      for (Watcher w : currentWatchers) {
-        w.process(new WatchedEvent(Watcher.Event.EventType.NodeDeleted, Watcher.Event.KeeperState.SyncConnected, n.path));
-      }
+      runTask(() -> {
+        for (Watcher w : currentDataWatchers) {
+          w.process(new WatchedEvent(Watcher.Event.EventType.NodeDeleted, Watcher.Event.KeeperState.SyncConnected, n.path));
+        }
+      });
       // TODO: not sure if it's correct to recurse and fire watches???
       Set<String> kids = new HashSet<>(n.children.keySet());
       for (String kid : kids) {
@@ -197,8 +218,10 @@ public class SimDistribStateManager implements DistribStateManager {
   private static final ReentrantLock multiLock = new ReentrantLock();
 
   public static Node createNewRootNode() {
-    return new Node(null, "", "/", CreateMode.PERSISTENT, "__root__");
+    return new Node(null, "", "/", CreateMode.PERSISTENT, "__root__", null);
   }
+
+  private final ExecutorService watchersPool;
 
   private final AtomicReference<ActionThrottle> throttleRef = new AtomicReference<>();
   private final AtomicReference<ActionError> errorRef = new AtomicReference<>();
@@ -220,6 +243,7 @@ public class SimDistribStateManager implements DistribStateManager {
     } else {
       this.root = sharedRoot;
     }
+    watchersPool = ExecutorUtil.newMDCAwareFixedThreadPool(10, new DefaultSolrThreadFactory("sim-watchers"));
   }
 
   public SimDistribStateManager(ActionThrottle actionThrottle, ActionError actionError) {
@@ -275,7 +299,7 @@ public class SimDistribStateManager implements DistribStateManager {
             parentNode.seq++;
           }
           currentPath.append(currentName);
-          n = new Node(parentNode, currentName, currentPath.toString(), mode, id);
+          n = new Node(parentNode, currentName, currentPath.toString(), mode, id, watchersPool);
           parentNode.setChild(currentName, n);
         } else {
           break;
@@ -299,7 +323,9 @@ public class SimDistribStateManager implements DistribStateManager {
     } finally {
       multiLock.unlock();
     }
-
+    if (watchersPool != null) {
+      watchersPool.shutdownNow();
+    }
   }
 
   @Override

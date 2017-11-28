@@ -60,6 +60,7 @@ import org.apache.solr.common.cloud.ReplicaPosition;
 import org.apache.solr.common.cloud.Slice;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CommonAdminParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.util.NamedList;
@@ -91,6 +92,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   private final ActionThrottle leaderThrottle;
 
+  // op -> delay
+  private final Map<String, Long> defaultOpDelays = new HashMap<>();
+  // collection -> op -> delay
+  private final Map<String, Map<String, Long>> opDelays = new ConcurrentHashMap<>();
+
 
   private ClusterState lastSavedState = null;
   private Map<String, Object> lastSavedProperties = null;
@@ -104,6 +110,14 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     this.cloudManager = cloudManager;
     this.stateManager = cloudManager.getDistribStateManager();
     this.leaderThrottle = new ActionThrottle("leader", 5000, cloudManager.getTimeSource());
+    defaultOpDelays.put(CollectionParams.CollectionAction.MOVEREPLICA.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.DELETEREPLICA.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.ADDREPLICA.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.SPLITSHARD.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.CREATESHARD.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.DELETESHARD.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.CREATE.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.DELETE.name(), 5000L);
   }
 
   // ============== SIMULATOR SETUP METHODS ====================
@@ -117,9 +131,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       liveNodes.clear();
       liveNodes.addAll(initialState.getLiveNodes());
       initialState.forEachCollection(dc -> {
-        collProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>()).putAll(dc.getProperties());
+        collProperties.computeIfAbsent(dc.getName(), name -> new ConcurrentHashMap<>()).putAll(dc.getProperties());
+        opDelays.computeIfAbsent(dc.getName(), c -> new HashMap<>()).putAll(defaultOpDelays);
         dc.getSlices().forEach(s -> {
-          sliceProperties.computeIfAbsent(dc.getName(), name -> new HashMap<>())
+          sliceProperties.computeIfAbsent(dc.getName(), name -> new ConcurrentHashMap<>())
               .computeIfAbsent(s.getName(), name -> new HashMap<>()).putAll(s.getProperties());
           s.getReplicas().forEach(r -> {
             ReplicaInfo ri = new ReplicaInfo(r.getName(), r.getCoreName(), dc.getName(), s.getName(), r.getType(), r.getNodeName(), r.getProperties());
@@ -227,6 +242,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
     lock.lock();
     try {
+
+      opDelay(replicaInfo.getCollection(), CollectionParams.CollectionAction.ADDREPLICA.name());
+
       List<ReplicaInfo> replicas = nodeReplicaMap.computeIfAbsent(nodeId, n -> new ArrayList<>());
       // mark replica as active
       replicaInfo.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.ACTIVE.toString());
@@ -257,6 +275,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       for (int i = 0; i < replicas.size(); i++) {
         if (coreNodeName.equals(replicas.get(i).getName())) {
           ReplicaInfo ri = replicas.remove(i);
+
+          opDelay(ri.getCollection(), CollectionParams.CollectionAction.DELETEREPLICA.name());
+
           // update the number of cores in node values, if node is live
           Integer cores = (Integer)cloudManager.getSimNodeStateProvider().simGetNodeValue(nodeId, "cores");
           if (liveNodes.contains(nodeId)) {
@@ -292,7 +313,15 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     return currentState;
   }
 
-  public synchronized void simRunLeaderElection(Collection<String> collections, boolean saveClusterState) throws Exception {
+  private void opDelay(String collection, String op) throws InterruptedException {
+    Map<String, Long> delays = opDelays.get(collection);
+    if (delays == null || delays.isEmpty() || !delays.containsKey(op)) {
+      return;
+    }
+    cloudManager.getTimeSource().sleep(delays.get(op));
+  }
+
+  private synchronized void simRunLeaderElection(Collection<String> collections, boolean saveClusterState) throws Exception {
     if (saveClusterState) {
       saveClusterState();
     }
@@ -370,6 +399,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       results.add("success", "no-op");
       return;
     }
+    opDelays.computeIfAbsent(collectionName, c -> new HashMap<>()).putAll(defaultOpDelays);
+
+    opDelay(collectionName, CollectionParams.CollectionAction.CREATE.name());
+
     List<ReplicaPosition> replicaPositions = CreateCollectionCmd.buildReplicaPositions(cloudManager, getClusterState(), props,
         nodeList, shardNames);
     AtomicInteger replicaNum = new AtomicInteger(1);
@@ -384,7 +417,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         replicaProps.put(ZkStateReader.CORE_NAME_PROP, coreName);
         ReplicaInfo ri = new ReplicaInfo("core_node" + Assign.incAndGetId(stateManager, collectionName, 0),
             coreName, collectionName, pos.shard, pos.type, pos.node, replicaProps);
-        simAddReplica(pos.node, ri, false);
+        cloudManager.submit(() -> {simAddReplica(pos.node, ri, false); return true;});
       } catch (Exception e) {
         throw new RuntimeException(e);
       }
@@ -414,6 +447,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     try {
       collProperties.remove(collection);
       sliceProperties.remove(collection);
+
+      opDelay(collection, CollectionParams.CollectionAction.DELETE.name());
+
+      opDelays.remove(collection);
       nodeReplicaMap.forEach((n, replicas) -> {
         for (Iterator<ReplicaInfo> it = replicas.iterator(); it.hasNext(); ) {
           ReplicaInfo ri = it.next();
@@ -481,6 +518,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Replica has no 'slice' property! : " + replica);
     }
 
+    opDelay(collection, CollectionParams.CollectionAction.MOVEREPLICA.name());
+
     // TODO: for now simulate moveNormalReplica sequence, where we first add new replica and then delete the old one
 
     String newSolrCoreName = Assign.buildSolrCoreName(stateManager, coll, slice.getName(), replica.getType());
@@ -507,6 +546,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         results.add("success", "no-op");
         return;
       }
+
+      opDelay(collectionName, CollectionParams.CollectionAction.CREATESHARD.name());
+
       // copy shard properties -- our equivalent of creating an empty shard in cluster state
       DocCollection collection = cmd.collection;
       Slice slice = collection.getSlice(sliceName);
@@ -556,6 +598,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     List<DocRouter.Range> subRanges = new ArrayList<>();
     List<String> subSlices = new ArrayList<>();
     List<String> subShardNames = new ArrayList<>();
+
+    opDelay(collectionName, CollectionParams.CollectionAction.SPLITSHARD.name());
 
     SplitShardCmd.fillRanges(cloudManager, message, collection, parentSlice, subRanges, subSlices, subShardNames);
     // mark the old slice as inactive
@@ -613,6 +657,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     if (slice == null) {
       throw new Exception(" Collection " + collectionName + " slice " + sliceName + " doesn't exist.");
     }
+
+    opDelay(collectionName, CollectionParams.CollectionAction.DELETESHARD.name());
+
     lock.lock();
     try {
       sliceProperties.computeIfAbsent(collectionName, coll -> new ConcurrentHashMap<>()).remove(sliceName);

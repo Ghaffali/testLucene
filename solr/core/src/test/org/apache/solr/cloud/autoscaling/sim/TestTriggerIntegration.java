@@ -1177,6 +1177,8 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(COLL1,
         "conf", 1, 2);
     create.process(solrClient);
+    waitForState(COLL1, 10, TimeUnit.SECONDS, clusterShape(1, 2));
+
     String setTriggerCommand = "{" +
         "'set-trigger' : {" +
         "'name' : 'search_rate_trigger'," +
@@ -1208,6 +1210,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
 //    for (int i = 0; i < 500; i++) {
 //      solrClient.query(COLL1, query);
 //    }
+
     cluster.getSimClusterStateProvider().simSetCollectionValue(COLL1, "QUERY./select.requestTimes:1minRate", 500, true);
 
     boolean await = triggerFiredLatch.await(20000 / SPEED, TimeUnit.MILLISECONDS);
