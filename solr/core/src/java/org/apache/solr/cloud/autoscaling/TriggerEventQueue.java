@@ -48,7 +48,7 @@ public class TriggerEventQueue {
     // TODO: collect stats
     this.delegate = cloudManager.getDistributedQueueFactory().makeQueue(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH + "/" + triggerName);
     this.triggerName = triggerName;
-    this.timeSource = TimeSource.CURRENT_TIME;
+    this.timeSource = cloudManager.getTimeSource();
   }
 
   public boolean offerEvent(TriggerEvent event) {

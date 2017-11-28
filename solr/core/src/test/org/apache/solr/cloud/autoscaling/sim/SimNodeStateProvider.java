@@ -134,6 +134,26 @@ public class SimNodeStateProvider implements NodeStateProvider {
       nodeValues.remove(node);
       return Collections.emptyMap();
     }
+    if (tags.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Boolean metrics = null;
+    for (String tag : tags) {
+      if (tag.startsWith("metrics:")) {
+        if (metrics != null && !metrics) {
+          throw new RuntimeException("mixed tags are not supported: " + tags);
+        }
+        metrics = Boolean.TRUE;
+      } else {
+        if (metrics != null && metrics) {
+          throw new RuntimeException("mixed tags are not supported: " + tags);
+        }
+        metrics = Boolean.FALSE;
+      }
+    }
+    if (metrics) {
+      return getMetricsValues(node, tags);
+    }
     Map<String, Object> values = nodeValues.get(node);
     if (values == null) {
       return Collections.emptyMap();
@@ -154,6 +174,48 @@ public class SimNodeStateProvider implements NodeStateProvider {
       perShard.add(r);
     }
     return res;
+  }
+
+  public Map<String, Object> getMetricsValues(String node, Collection<String> tags) {
+    List<ReplicaInfo> replicas = clusterStateProvider.simGetReplicaInfos(node);
+    if (replicas == null || replicas.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<String, Object> values = new HashMap<>();
+    for (String tag : tags) {
+      String[] parts = tag.split(":");
+      if (parts.length < 3 || !parts[0].equals("metrics")) {
+        LOG.warn("Invalid metrics: tag: " + tag);
+        continue;
+      }
+      if (!parts[1].startsWith("solr.core.")) {
+        LOG.warn("Unsupported metric type: " + tag);
+        continue;
+      }
+      String[] collParts = parts[1].substring(10).split("\\.");
+      if (collParts.length != 3) {
+        LOG.warn("Invalid registry name: " + parts[1]);
+        continue;
+      }
+      String collection = collParts[0];
+      String shard = collParts[1];
+      String replica = collParts[2];
+      String key = parts.length > 3 ? parts[2] + ":" + parts[3] : parts[2];
+      replicas.forEach(r -> {
+        if (r.getCollection().equals(collection) && r.getShard().equals(shard) && r.getCore().endsWith(replica)) {
+          Object value = r.getVariables().get(key);
+          if (value != null) {
+            values.put(tag, value);
+          } else {
+            value = r.getVariables().get(tag);
+            if (value != null) {
+              values.put(tag, value);
+            }
+          }
+        }
+      });
+    }
+    return values;
   }
 
   @Override

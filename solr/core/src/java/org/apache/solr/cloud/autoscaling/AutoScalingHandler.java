@@ -82,12 +82,13 @@ public class AutoScalingHandler extends RequestHandlerBase implements Permission
   private final List<Map<String, String>> DEFAULT_ACTIONS = new ArrayList<>(3);
   private static Set<String> singletonCommands = Stream.of("set-cluster-preferences", "set-cluster-policy")
       .collect(collectingAndThen(toSet(), Collections::unmodifiableSet));
-  private static final TimeSource timeSource = TimeSource.CURRENT_TIME;
 
+  private final TimeSource timeSource;
 
   public AutoScalingHandler(SolrCloudManager cloudManager, SolrResourceLoader loader) {
     this.cloudManager = cloudManager;
     this.loader = loader;
+    this.timeSource = cloudManager.getTimeSource();
     Map<String, String> map = new HashMap<>(2);
     map.put(NAME, "compute_plan");
     map.put(CLASS, "solr.ComputePlanAction");

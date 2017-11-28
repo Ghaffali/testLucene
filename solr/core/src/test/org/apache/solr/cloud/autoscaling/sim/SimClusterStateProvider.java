@@ -674,7 +674,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     saveClusterState();
   }
 
-  public void setSliceProperties(String coll, String slice, Map<String, Object> properties) throws Exception {
+  public void simSetSliceProperties(String coll, String slice, Map<String, Object> properties) throws Exception {
     Map<String, Object> sliceProps = sliceProperties.computeIfAbsent(coll, c -> new HashMap<>()).computeIfAbsent(slice, s -> new HashMap<>());
     lock.lock();
     try {
@@ -687,6 +687,35 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       lock.unlock();
     }
   }
+
+  public void simSetCollectionValue(String collection, String key, Object value, boolean divide) throws Exception {
+    List<ReplicaInfo> infos = new ArrayList<>();
+    nodeReplicaMap.forEach((n, replicas) -> {
+      replicas.forEach(r -> {
+        if (r.getCollection().equals(collection)) {
+          infos.add(r);
+        }
+      });
+    });
+    if (infos.isEmpty()) {
+      throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "Collection " + collection + " doesn't exist.");
+    }
+    if (divide && value != null && (value instanceof Number)) {
+      value = ((Number)value).doubleValue() / infos.size();
+    }
+    for (ReplicaInfo r : infos) {
+      if (value == null) {
+        r.getVariables().remove(key);
+      } else {
+        r.getVariables().put(key, value);
+      }
+    }
+  }
+
+  public void simSetCollectionValue(String collection, String key, Object value) throws Exception {
+    simSetCollectionValue(collection, key, value, false);
+  }
+
 
   public List<ReplicaInfo> simGetReplicaInfos(String node) {
     return nodeReplicaMap.get(node);

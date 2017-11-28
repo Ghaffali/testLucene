@@ -112,6 +112,10 @@ public class SimCloudManager implements SolrCloudManager {
     stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_CONF_PATH);
     stateManager.makePath(ZkStateReader.LIVE_NODES_ZKNODE);
     stateManager.makePath(ZkStateReader.ROLES);
+    stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH);
+    stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
+    stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
+    stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
 
     this.timeSource = timeSource != null ? timeSource : TimeSource.NANO_TIME;
     this.clusterStateProvider = new SimClusterStateProvider(liveNodes, this);
@@ -209,12 +213,14 @@ public class SimCloudManager implements SolrCloudManager {
     String nodeId = (String)values.get(ImplicitSnitch.NODE);
     clusterStateProvider.simAddNode(nodeId);
     nodeStateProvider.simSetNodeValues(nodeId, values);
+    LOG.debug("-- added node " + nodeId);
     return nodeId;
   }
 
   public void simRemoveNode(String nodeId) throws Exception {
     clusterStateProvider.simRemoveNode(nodeId);
     nodeStateProvider.simRemoveNodeValues(nodeId);
+    LOG.debug("-- removed node " + nodeId);
   }
 
   public void simClearSystemCollection() {

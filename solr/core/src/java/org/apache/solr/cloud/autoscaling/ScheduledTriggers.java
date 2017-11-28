@@ -200,7 +200,7 @@ public class ScheduledTriggers implements Closeable {
       }
       boolean replaying = event.getProperty(TriggerEvent.REPLAYING) != null ? (Boolean)event.getProperty(TriggerEvent.REPLAYING) : false;
       AutoScaling.Trigger source = scheduledSource.trigger;
-      if (source.isClosed()) {
+      if (scheduledSource.isClosed || source.isClosed()) {
         String msg = String.format(Locale.ROOT, "Ignoring autoscaling event %s because the source trigger: %s has already been closed", event.toString(), source);
         listeners.fireListeners(event.getSource(), event, TriggerEventProcessorStage.ABORTED, msg);
         log.warn(msg);
@@ -262,7 +262,7 @@ public class ScheduledTriggers implements Closeable {
             } catch (Exception e) {
               log.warn("Exception executing actions", e);
             } finally {
-              cooldownStart.set(System.nanoTime());
+              cooldownStart.set(cloudManager.getTimeSource().getTime());
               hasPendingActions.set(false);
             }
           });
