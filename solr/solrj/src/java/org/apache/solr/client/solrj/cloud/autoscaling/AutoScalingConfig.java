@@ -525,7 +525,7 @@ public class AutoScalingConfig implements MapWriter {
     if (jsonMap != null) {
       return new AutoScalingConfig(jsonMap);
     } else {
-      return new AutoScalingConfig(getPolicy(), getTriggerConfigs(), getTriggerListenerConfigs(), zkVersion);
+      return new AutoScalingConfig(getPolicy(), getTriggerConfigs(), getTriggerListenerConfigs(), getProperties(), zkVersion);
     }
   }
 

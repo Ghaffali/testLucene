@@ -86,6 +86,7 @@ public class ScheduledTriggers implements Closeable {
 
   static final Map<String, Object> DEFAULT_PROPERTIES = new HashMap<>();
 
+  // Note: values must be all in milliseconds!
   static {
     DEFAULT_PROPERTIES.put(TRIGGER_SCHEDULE_DELAY_SECONDS, DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
     DEFAULT_PROPERTIES.put(TRIGGER_COOLDOWN_PERIOD_SECONDS, DEFAULT_COOLDOWN_PERIOD_MS);
@@ -115,7 +116,7 @@ public class ScheduledTriggers implements Closeable {
 
   private final AtomicLong cooldownPeriod = new AtomicLong(TimeUnit.MILLISECONDS.toNanos(DEFAULT_COOLDOWN_PERIOD_MS));
 
-  private final AtomicInteger triggerDelay = new AtomicInteger(DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
+  private final AtomicLong triggerDelay = new AtomicLong(DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
 
   private final AtomicReference<ActionThrottle> actionThrottle;
 
@@ -137,7 +138,7 @@ public class ScheduledTriggers implements Closeable {
     scheduledThreadPoolExecutor.setRemoveOnCancelPolicy(true);
     scheduledThreadPoolExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
     actionExecutor = ExecutorUtil.newMDCAwareSingleThreadExecutor(new DefaultSolrThreadFactory("AutoscalingActionExecutor"));
-    actionThrottle = new AtomicReference<>(new ActionThrottle("action", DEFAULT_MIN_BETWEEN_ACTIONS_MS));
+    actionThrottle = new AtomicReference<>(new ActionThrottle("action", DEFAULT_MIN_BETWEEN_ACTIONS_MS, cloudManager.getTimeSource()));
     this.cloudManager = cloudManager;
     this.stateManager = cloudManager.getDistribStateManager();
     this.loader = loader;
@@ -165,12 +166,14 @@ public class ScheduledTriggers implements Closeable {
         log.debug("Changing value of autoscaling property: {} from: {} to: {}", key, entry.getValue(), newProps.get(key));
         switch (key) {
           case TRIGGER_SCHEDULE_DELAY_SECONDS:
-            triggerDelay.set(((Number) newProps.get(key)).intValue());
+            triggerDelay.set(TimeUnit.MILLISECONDS.convert(((Number) newProps.get(key)).longValue(), TimeUnit.SECONDS));
             synchronized (this) {
               scheduledTriggers.forEach((s, scheduledTrigger) -> {
                 if (scheduledTrigger.scheduledFuture.cancel(false)) {
                   scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(
-                      scheduledTrigger, 0, triggerDelay.get(), TimeUnit.SECONDS);
+                      scheduledTrigger, 0,
+                      cloudManager.getTimeSource().convertDelay(TimeUnit.MILLISECONDS, triggerDelay.get(), TimeUnit.MILLISECONDS),
+                      TimeUnit.MILLISECONDS);
                 } else  {
                   log.debug("Failed to cancel scheduled task: {}", s);
                 }
@@ -190,9 +193,10 @@ public class ScheduledTriggers implements Closeable {
             if (oldThrottle.getLastActionStartedAt() != null) {
               newThrottle = new ActionThrottle("action",
                   minMsBetweenActions,
-                  oldThrottle.getLastActionStartedAt());
+                  oldThrottle.getLastActionStartedAt(),
+                  cloudManager.getTimeSource());
             } else  {
-              newThrottle = new ActionThrottle("action", minMsBetweenActions);
+              newThrottle = new ActionThrottle("action", minMsBetweenActions, cloudManager.getTimeSource());
             }
             this.actionThrottle.set(newThrottle);
             break;

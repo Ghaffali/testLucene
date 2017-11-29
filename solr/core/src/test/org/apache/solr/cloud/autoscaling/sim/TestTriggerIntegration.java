@@ -239,7 +239,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
       try {
         if (lastActionExecutedAt.get() != 0)  {
           log.info("last action at " + lastActionExecutedAt.get() + " time = " + cluster.getTimeSource().getTime());
-          if (TimeUnit.MILLISECONDS.convert(cluster.getTimeSource().getTime() - lastActionExecutedAt.get(), TimeUnit.NANOSECONDS) < ScheduledTriggers.DEFAULT_MIN_MS_BETWEEN_ACTIONS - DELTA_MS) {
+          if (TimeUnit.MILLISECONDS.convert(cluster.getTimeSource().getTime() - lastActionExecutedAt.get(), TimeUnit.NANOSECONDS) < ScheduledTriggers.DEFAULT_MIN_BETWEEN_ACTIONS_MS - DELTA_MS) {
             log.info("action executed again before minimum wait time from {}", event.getSource());
             fail("TriggerListener was fired before the throttling period");
           }
