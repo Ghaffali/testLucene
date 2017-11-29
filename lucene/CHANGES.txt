@@ -73,6 +73,10 @@ API Changes
 * LUCENE-8049: IndexWriter.getMergingSegments()'s return type was changed from
   Collection to Set to more accurately reflect it's nature. (David Smiley)
 
+* LUCENE-8059: TopFieldDocCollector can now early terminate collection when
+  the sort order is compatible with the index order. As a consequence,
+  EarlyTerminatingSortingCollector is now deprecated. (Adrien Grand)
+
 New Features
 
 * LUCENE-8061: Add convenience factory methods to create BBoxes and XYZSolids
@@ -121,6 +125,12 @@ Optimizations
 * LUCENE-7994: Use int/int scatter map to gather facet counts when the
   number of hits is small relative to the number of unique facet labels
   (Dawid Weiss, Robert Muir, Mike McCandless)
+
+* LUCENE-8062: GlobalOrdinalsQuery is no longer eligible for caching. (Jim Ferenczi)
+
+* LUCENE-8058: Large instances of TermInSetQuery are no longer eligible for
+  caching as they could break memory accounting of the query cache.
+  (Adrien Grand)
   
 Tests
 
