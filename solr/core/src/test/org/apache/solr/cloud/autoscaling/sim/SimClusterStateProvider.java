@@ -32,6 +32,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
@@ -74,7 +75,7 @@ import static org.apache.solr.common.cloud.ZkStateReader.SHARD_ID_PROP;
 import static org.apache.solr.common.params.CommonParams.NAME;
 
 /**
- *
+ * Simulated {@link ClusterStateProvider}.
  */
 public class SimClusterStateProvider implements ClusterStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -92,14 +93,16 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   private final ActionThrottle leaderThrottle;
 
-  // op -> delay
+  // default map of: operation -> delay
   private final Map<String, Long> defaultOpDelays = new HashMap<>();
-  // collection -> op -> delay
+  // per-collection map of: collection -> op -> delay
   private final Map<String, Map<String, Long>> opDelays = new ConcurrentHashMap<>();
 
 
   private ClusterState lastSavedState = null;
   private Map<String, Object> lastSavedProperties = null;
+
+  private AtomicReference<Map<String, DocCollection>> collectionsStatesRef = new AtomicReference<>();
 
   /**
    * Zero-arg constructor. The instance needs to be initialized using the <code>sim*</code> methods in order
@@ -110,13 +113,14 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     this.cloudManager = cloudManager;
     this.stateManager = cloudManager.getDistribStateManager();
     this.leaderThrottle = new ActionThrottle("leader", 5000, cloudManager.getTimeSource());
+    // names are CollectionAction names, delays are in ms (simulated time)
     defaultOpDelays.put(CollectionParams.CollectionAction.MOVEREPLICA.name(), 5000L);
     defaultOpDelays.put(CollectionParams.CollectionAction.DELETEREPLICA.name(), 5000L);
-    defaultOpDelays.put(CollectionParams.CollectionAction.ADDREPLICA.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.ADDREPLICA.name(), 500L);
     defaultOpDelays.put(CollectionParams.CollectionAction.SPLITSHARD.name(), 5000L);
     defaultOpDelays.put(CollectionParams.CollectionAction.CREATESHARD.name(), 5000L);
     defaultOpDelays.put(CollectionParams.CollectionAction.DELETESHARD.name(), 5000L);
-    defaultOpDelays.put(CollectionParams.CollectionAction.CREATE.name(), 5000L);
+    defaultOpDelays.put(CollectionParams.CollectionAction.CREATE.name(), 500L);
     defaultOpDelays.put(CollectionParams.CollectionAction.DELETE.name(), 5000L);
   }
 
@@ -168,6 +172,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     return nodeReplicaMap.putIfAbsent(nodeId, new ArrayList<>()) == null;
   }
 
+  // utility to run leader election in a separate thread and with throttling
+  // Note: leader election is a no-op if a shard leader already exists for each shard
   private class LeaderElection implements Callable<Boolean> {
     Collection<String> collections;
     boolean saveClusterState;
@@ -205,7 +211,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         });
       }
       boolean res = liveNodes.remove(nodeId);
-      cloudManager.submit(new LeaderElection(collections, true));
+      if (!collections.isEmpty()) {
+        cloudManager.submit(new LeaderElection(collections, true));
+      }
       return res;
     } finally {
       lock.unlock();
@@ -250,6 +258,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       replicaInfo.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.ACTIVE.toString());
       // add property expected in tests
       replicaInfo.getVariables().put(Suggestion.coreidxsize, 123450000);
+      // at this point nuke our cached DocCollection state
+      collectionsStatesRef.set(null);
+
       replicas.add(replicaInfo);
       Map<String, Object> values = cloudManager.getSimNodeStateProvider().simGetAllNodeValues()
           .computeIfAbsent(nodeId, id -> new ConcurrentHashMap<>(SimCloudManager.createNodeValues(id)));
@@ -297,6 +308,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   }
 
   private ClusterState saveClusterState() throws IOException {
+    collectionsStatesRef.set(null);
     ClusterState currentState = getClusterState();
     if (lastSavedState != null && lastSavedState.equals(currentState)) {
       return lastSavedState;
@@ -322,10 +334,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   }
 
   private synchronized void simRunLeaderElection(Collection<String> collections, boolean saveClusterState) throws Exception {
-    if (saveClusterState) {
-      saveClusterState();
-    }
     ClusterState state = getClusterState();
+    AtomicBoolean stateChanged = new AtomicBoolean(Boolean.FALSE);
+
     state.forEachCollection(dc -> {
       if (!collections.contains(dc.getName())) {
         return;
@@ -333,7 +344,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       dc.getSlices().forEach(s -> {
         Replica leader = s.getLeader();
         if (leader == null || !liveNodes.contains(leader.getNodeName())) {
-          LOG.info("Running leader election for " + dc.getName() + " / " + s.getName());
+          LOG.trace("Running leader election for " + dc.getName() + " / " + s.getName());
           if (s.getReplicas().isEmpty()) { // no replicas - punt
             return;
           }
@@ -351,7 +362,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
             if (ri == null) {
               throw new IllegalStateException("-- could not find ReplicaInfo for replica " + r);
             }
-            ri.getVariables().remove(ZkStateReader.LEADER_PROP);
+            if (ri.getVariables().remove(ZkStateReader.LEADER_PROP) != null) {
+              stateChanged.set(true);
+            }
             if (r.isActive(liveNodes)) {
               active.add(ri);
             } else { // if it's on a node that is not live mark it down
@@ -377,12 +390,16 @@ public class SimClusterStateProvider implements ClusterStateProvider {
             return;
           }
           ri.getVariables().put(ZkStateReader.LEADER_PROP, "true");
+          stateChanged.set(true);
           LOG.info("-- elected new leader for " + dc.getName() + " / " + s.getName() + ": " + ri);
         } else {
-
+          LOG.trace("-- already has leader for {} / {}", dc.getName(), s.getName());
         }
       });
     });
+    if (saveClusterState || stateChanged.get()) {
+      saveClusterState();
+    }
   }
 
   public void simCreateCollection(ZkNodeProps props, NamedList results) throws Exception {
@@ -422,6 +439,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         throw new RuntimeException(e);
       }
     });
+    collectionsStatesRef.set(null);
     // add collection props
     DocCollection coll = cmd.collection;
     collProperties.computeIfAbsent(collectionName, c -> new ConcurrentHashMap<>()).putAll(coll.getProperties());
@@ -833,6 +851,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   }
 
   private Map<String, DocCollection> getCollectionStates() {
+    Map<String, DocCollection> collectionStates = collectionsStatesRef.get();
+    if (collectionStates != null) {
+      return collectionStates;
+    }
     lock.lock();
     try {
       Map<String, Map<String, Map<String, Replica>>> collMap = new HashMap<>();
@@ -853,6 +875,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           collMap.computeIfAbsent(c, co -> new ConcurrentHashMap<>()).computeIfAbsent(slice, s -> new ConcurrentHashMap<>());
         });
       });
+      // add empty collections
+      collProperties.keySet().forEach(c -> {
+        collMap.computeIfAbsent(c, co -> new ConcurrentHashMap<>());
+      });
 
       Map<String, DocCollection> res = new HashMap<>();
       collMap.forEach((coll, shards) -> {
@@ -866,6 +892,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         DocCollection dc = new DocCollection(coll, slices, collProps, DocRouter.DEFAULT, 0, ZkStateReader.CLUSTER_STATE);
         res.put(coll, dc);
       });
+      collectionsStatesRef.set(res);
       return res;
     } finally {
       lock.unlock();

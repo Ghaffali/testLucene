@@ -127,7 +127,7 @@ public class NodeAddedTrigger extends TriggerBase {
       log.debug("Running NodeAddedTrigger {}", name);
 
       Set<String> newLiveNodes = new HashSet<>(cloudManager.getClusterStateProvider().getLiveNodes());
-      log.debug("Found livenodes: {}", newLiveNodes);
+      log.debug("Found livenodes: {}", newLiveNodes.size());
 
       // have any nodes that we were tracking been removed from the cluster?
       // if so, remove them from the tracking map

@@ -78,15 +78,14 @@ public class SimDistribStateManager implements DistribStateManager {
     private Map<String, Node> children = new ConcurrentHashMap<>();
     Set<Watcher> dataWatches = ConcurrentHashMap.newKeySet();
     Set<Watcher> childrenWatches = ConcurrentHashMap.newKeySet();
-    private ExecutorService watcherPool;
 
-    Node(Node parent, String name, String path, CreateMode mode, String clientId, ExecutorService watcherPool) {
+    Node(Node parent, String name, String path, CreateMode mode, String clientId) {
       this.parent = parent;
       this.name = name;
       this.path = path;
       this.mode = mode;
       this.clientId = clientId;
-      this.watcherPool = watcherPool;
+
     }
 
     public void clear() {
@@ -100,14 +99,6 @@ public class SimDistribStateManager implements DistribStateManager {
         data = null;
       } finally {
         dataLock.unlock();
-      }
-    }
-
-    private void runTask(Runnable r) {
-      if (watcherPool != null) {
-        watcherPool.submit(r);
-      } else {
-        r.run();
       }
     }
 
@@ -128,11 +119,9 @@ public class SimDistribStateManager implements DistribStateManager {
       } finally {
         dataLock.unlock();
       }
-      runTask(() -> {
-        for (Watcher w : currentWatchers) {
-          w.process(new WatchedEvent(Watcher.Event.EventType.NodeDataChanged, Watcher.Event.KeeperState.SyncConnected, path));
-        }
-      });
+      for (Watcher w : currentWatchers) {
+        w.process(new WatchedEvent(Watcher.Event.EventType.NodeDataChanged, Watcher.Event.KeeperState.SyncConnected, path));
+      }
     }
 
     public VersionedData getData(Watcher w) {
@@ -158,11 +147,9 @@ public class SimDistribStateManager implements DistribStateManager {
       } finally {
         dataLock.unlock();
       }
-      runTask(() -> {
-        for (Watcher w : currentWatchers) {
-          w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
-        }
-      });
+      for (Watcher w : currentWatchers) {
+        w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
+      }
     }
 
     public void removeChild(String name, int version) throws NoSuchElementException, BadVersionException, IOException {
@@ -174,20 +161,16 @@ public class SimDistribStateManager implements DistribStateManager {
         throw new BadVersionException(version, path);
       }
       children.remove(name);
-      Set<Watcher> currentChildrenWatchers = new HashSet<>(childrenWatches);
+      Set<Watcher> currentWatchers = new HashSet<>(childrenWatches);
       childrenWatches.clear();
-      runTask(() -> {
-        for (Watcher w : currentChildrenWatchers) {
-          w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
-        }
-      });
-      Set<Watcher> currentDataWatchers = new HashSet<>(n.dataWatches);
+      for (Watcher w : currentWatchers) {
+        w.process(new WatchedEvent(Watcher.Event.EventType.NodeChildrenChanged, Watcher.Event.KeeperState.SyncConnected, path));
+      }
+      currentWatchers = new HashSet<>(n.dataWatches);
       n.dataWatches.clear();
-      runTask(() -> {
-        for (Watcher w : currentDataWatchers) {
-          w.process(new WatchedEvent(Watcher.Event.EventType.NodeDeleted, Watcher.Event.KeeperState.SyncConnected, n.path));
-        }
-      });
+      for (Watcher w : currentWatchers) {
+        w.process(new WatchedEvent(Watcher.Event.EventType.NodeDeleted, Watcher.Event.KeeperState.SyncConnected, n.path));
+      }
       // TODO: not sure if it's correct to recurse and fire watches???
       Set<String> kids = new HashSet<>(n.children.keySet());
       for (String kid : kids) {
@@ -218,7 +201,7 @@ public class SimDistribStateManager implements DistribStateManager {
   private static final ReentrantLock multiLock = new ReentrantLock();
 
   public static Node createNewRootNode() {
-    return new Node(null, "", "/", CreateMode.PERSISTENT, "__root__", null);
+    return new Node(null, "", "/", CreateMode.PERSISTENT, "__root__");
   }
 
   private final ExecutorService watchersPool;
@@ -299,7 +282,7 @@ public class SimDistribStateManager implements DistribStateManager {
             parentNode.seq++;
           }
           currentPath.append(currentName);
-          n = new Node(parentNode, currentName, currentPath.toString(), mode, id, watchersPool);
+          n = new Node(parentNode, currentName, currentPath.toString(), mode, id);
           parentNode.setChild(currentName, n);
         } else {
           break;
@@ -323,9 +306,7 @@ public class SimDistribStateManager implements DistribStateManager {
     } finally {
       multiLock.unlock();
     }
-    if (watchersPool != null) {
-      watchersPool.shutdownNow();
-    }
+
   }
 
   @Override
@@ -355,17 +336,40 @@ public class SimDistribStateManager implements DistribStateManager {
   }
 
   @Override
-  public VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException {
+  public List<String> listData(String path, Watcher watcher) throws NoSuchElementException, IOException {
+    Node n;
+    List<String> res;
     multiLock.lock();
     try {
-      Node n = traverse(path, false, CreateMode.PERSISTENT);
+      n = traverse(path, false, CreateMode.PERSISTENT);
       if (n == null) {
         throw new NoSuchElementException(path);
       }
-      return n.getData(watcher);
+      res = new ArrayList<>(n.children.keySet());
+      Collections.sort(res);
     } finally {
       multiLock.unlock();
     }
+    if (watcher != null) {
+      n.dataWatches.add(watcher);
+      n.childrenWatches.add(watcher);
+    }
+    return res;
+  }
+
+  @Override
+  public VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException {
+    Node n = null;
+    multiLock.lock();
+    try {
+      n = traverse(path, false, CreateMode.PERSISTENT);
+      if (n == null) {
+        throw new NoSuchElementException(path);
+      }
+    } finally {
+      multiLock.unlock();
+    }
+    return n.getData(watcher);
   }
 
   @Override
@@ -380,19 +384,20 @@ public class SimDistribStateManager implements DistribStateManager {
 
   @Override
   public void makePath(String path, byte[] data, CreateMode createMode, boolean failOnExists) throws AlreadyExistsException, IOException, KeeperException, InterruptedException {
+    Node n = null;
     multiLock.lock();
     try {
       if (failOnExists && hasData(path)) {
         throw new AlreadyExistsException(path);
       }
-      Node n = traverse(path, true, createMode);
-      try {
-        n.setData(data, -1);
-      } catch (BadVersionException e) {
-        throw new IOException("should not happen!", e);
-      }
+      n = traverse(path, true, createMode);
     } finally {
       multiLock.unlock();
+    }
+    try {
+      n.setData(data, -1);
+    } catch (BadVersionException e) {
+      throw new IOException("should not happen!", e);
     }
   }
 
@@ -414,16 +419,19 @@ public class SimDistribStateManager implements DistribStateManager {
         throw new NoSuchElementException(sb.toString());
       }
     }
+    Node n = null;
     multiLock.lock();
     try {
-      Node n = traverse(path, true, mode);
+      n = traverse(path, true, mode);
+    } finally {
+      multiLock.unlock();
+    }
+    try {
       n.setData(data, -1);
       return n.path;
     } catch (BadVersionException e) {
       // not happening
       return null;
-    } finally {
-      multiLock.unlock();
     }
   }
 
@@ -449,16 +457,16 @@ public class SimDistribStateManager implements DistribStateManager {
   @Override
   public void setData(String path, byte[] data, int version) throws NoSuchElementException, BadVersionException, IOException {
     multiLock.lock();
+    Node n = null;
     try {
-      Node n = traverse(path, false, CreateMode.PERSISTENT);
+      n = traverse(path, false, CreateMode.PERSISTENT);
       if (n == null) {
         throw new NoSuchElementException(path);
       }
-      n.setData(data, version);
     } finally {
       multiLock.unlock();
     }
-
+    n.setData(data, version);
   }
 
   @Override

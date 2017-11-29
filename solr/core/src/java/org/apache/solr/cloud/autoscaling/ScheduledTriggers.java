@@ -236,6 +236,7 @@ public class ScheduledTriggers implements Closeable {
           }
           actionExecutor.submit(() -> {
             assert hasPendingActions.get();
+            long eventProcessingStart = cloudManager.getTimeSource().getTime();
             log.debug("-- processing actions for " + event);
             try {
               // let the action executor thread wait instead of the trigger thread so we use the throttle here
@@ -272,6 +273,8 @@ public class ScheduledTriggers implements Closeable {
               cooldownStart.set(cloudManager.getTimeSource().getTime());
               hasPendingActions.set(false);
             }
+            log.debug("-- processing took {} ms for event id={}",
+                TimeUnit.MILLISECONDS.convert(cloudManager.getTimeSource().getTime() - eventProcessingStart, TimeUnit.NANOSECONDS), event.id);
           });
         } else {
           if (enqueued) {

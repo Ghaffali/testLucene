@@ -46,7 +46,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * Simulated {@link DistributedQueueFactory} that keeps all data in memory.
  */
 public class SimDistributedQueueFactory implements DistributedQueueFactory {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -188,7 +188,7 @@ public class SimDistributedQueueFactory implements DistributedQueueFactory {
       try {
         queue.offer(new Pair(String.format(Locale.ROOT, "qn-%010d", seq), data));
         seq++;
-        LOG.debug("=== offer " + System.nanoTime());
+        LOG.trace("=== offer " + System.nanoTime());
         changed.signalAll();
       } finally {
         updateLock.unlock();

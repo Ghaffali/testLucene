@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
@@ -104,8 +105,7 @@ public class TestExecutePlanAction extends SimSolrCloudTestCase {
     create.setMaxShardsPerNode(1);
     create.process(solrClient);
 
-    waitForState("Timed out waiting for replicas of new collection to be active",
-        collectionName, clusterShape(1, 2));
+    log.info("Collection ready after " + waitForState(collectionName, 120, TimeUnit.SECONDS, clusterShape(1, 2)) + "ms");
 
     String sourceNodeName = cluster.getSimClusterStateProvider().simGetRandomNode(random());
     ClusterState clusterState = cluster.getClusterStateProvider().getClusterState();
@@ -166,8 +166,7 @@ public class TestExecutePlanAction extends SimSolrCloudTestCase {
       assertNotNull(response.get("success"));
     }
 
-    waitForState("Timed out waiting for replicas of new collection to be active",
-        collectionName, clusterShape(1, 2));
+    log.info("Collection ready after " + waitForState(collectionName, 120, TimeUnit.SECONDS, clusterShape(1, 2)) + "ms");
   }
 
   @Test

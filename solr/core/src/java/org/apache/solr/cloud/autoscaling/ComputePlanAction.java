@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.solr.client.solrj.SolrRequest;
 import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
@@ -61,9 +62,11 @@ public class ComputePlanAction extends TriggerActionBase {
       Suggester suggester = getSuggester(session, event, cloudManager);
       log.debug("{} Created suggester with node(s): {}, event {}", event.eventType, event.getProperty(TriggerEvent.NODE_NAMES), event.id);
       while (true) {
+        long start = cloudManager.getTimeSource().getTime();
         SolrRequest operation = suggester.getSuggestion();
         if (operation == null) break;
-        log.info("Computed Plan: {}", operation.getParams());
+        log.info("Computed Plan ({} ms): {}",
+            TimeUnit.MILLISECONDS.convert(cloudManager.getTimeSource().getTime() - start, TimeUnit.NANOSECONDS), operation.getParams());
         Map<String, Object> props = context.getProperties();
         props.compute("operations", (k, v) -> {
           List<SolrRequest> operations = (List<SolrRequest>) v;

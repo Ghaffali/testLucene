@@ -38,8 +38,8 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Simulated {@link NodeStateProvider}.
- * Note: in order to set-up node-level metrics use {@link #simSetNodeValues(String, Map)}. However, in order
- * to set-up core-level metrics use {@link SimClusterStateProvider#simSetCollectionValue(String, String, Object, boolean)}.
+ * Note: in order to setup node-level metrics use {@link #simSetNodeValues(String, Map)}. However, in order
+ * to setup core-level metrics use {@link SimClusterStateProvider#simSetCollectionValue(String, String, Object, boolean)}.
  */
 public class SimNodeStateProvider implements NodeStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -182,7 +182,7 @@ public class SimNodeStateProvider implements NodeStateProvider {
 
   @Override
   public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-    LOG.trace("-- requested values for " + node + ": " + tags);
+    LOG.debug("-- requested values for " + node + ": " + tags);
     if (!liveNodes.contains(node)) {
       nodeValues.remove(node);
       return Collections.emptyMap();

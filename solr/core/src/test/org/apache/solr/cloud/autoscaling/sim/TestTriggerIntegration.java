@@ -601,6 +601,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
 
   public static long eventQueueActionWait = 5000;
 
+  // simulation framework doesn't support overseer
   /*
   @Test
   public void testEventQueue() throws Exception {

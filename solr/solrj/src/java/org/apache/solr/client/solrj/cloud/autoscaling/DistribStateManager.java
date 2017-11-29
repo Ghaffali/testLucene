@@ -38,6 +38,8 @@ public interface DistribStateManager extends SolrCloseable {
 
   List<String> listData(String path) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
+  List<String> listData(String path, Watcher watcher) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
+
   VersionedData getData(String path, Watcher watcher) throws NoSuchElementException, IOException, KeeperException, InterruptedException;
 
   default VersionedData getData(String path) throws NoSuchElementException, IOException, KeeperException, InterruptedException {

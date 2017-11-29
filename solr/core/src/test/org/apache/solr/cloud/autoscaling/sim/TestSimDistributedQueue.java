@@ -40,7 +40,7 @@ public class TestSimDistributedQueue extends SolrTestCaseJ4 {
 
   @Test
   public void testDistributedQueue() throws Exception {
-    String dqZNode = "/distqueue/test";
+    String dqZNode = "/distqueue/test1";
     byte[] data = "hello world".getBytes(UTF8);
 
     DistributedQueue dq = makeDistributedQueue(dqZNode);
@@ -83,7 +83,7 @@ public class TestSimDistributedQueue extends SolrTestCaseJ4 {
 
   @Test
   public void testDistributedQueueBlocking() throws Exception {
-    String dqZNode = "/distqueue/test";
+    String dqZNode = "/distqueue/test2";
     String testData = "hello world";
 
     DistributedQueue dq = makeDistributedQueue(dqZNode);
@@ -120,7 +120,7 @@ public class TestSimDistributedQueue extends SolrTestCaseJ4 {
 
   @Test
   public void testLocallyOffer() throws Exception {
-    String dqZNode = "/distqueue/test";
+    String dqZNode = "/distqueue/test3";
     DistributedQueue dq = makeDistributedQueue(dqZNode);
     dq.peekElements(1, 1, s -> true);
     for (int i = 0; i < 100; i++) {
@@ -135,7 +135,7 @@ public class TestSimDistributedQueue extends SolrTestCaseJ4 {
 
   @Test
   public void testPeekElements() throws Exception {
-    String dqZNode = "/distqueue/test";
+    String dqZNode = "/distqueue/test4";
     byte[] data = "hello world".getBytes(UTF8);
 
     DistributedQueue dq = makeDistributedQueue(dqZNode);

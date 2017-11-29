@@ -51,7 +51,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * This test compares the cluster state of a real cluster and a simulated one.
  */
 public class TestClusterStateProvider extends SolrCloudTestCase {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());

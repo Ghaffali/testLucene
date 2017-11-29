@@ -100,18 +100,19 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
    * @param collection  the collection to watch
    * @param predicate   a predicate to match against the collection state
    */
-  protected void waitForState(String message, String collection, CollectionStatePredicate predicate) {
+  protected long waitForState(String message, String collection, CollectionStatePredicate predicate) {
     AtomicReference<DocCollection> state = new AtomicReference<>();
     AtomicReference<Set<String>> liveNodesLastSeen = new AtomicReference<>();
     try {
-      waitForState(collection, DEFAULT_TIMEOUT, TimeUnit.SECONDS, (n, c) -> {
+      return waitForState(collection, DEFAULT_TIMEOUT, TimeUnit.SECONDS, (n, c) -> {
         state.set(c);
         liveNodesLastSeen.set(n);
         return predicate.matches(n, c);
       });
     } catch (Exception e) {
-      fail(message + "\n" + e.getMessage() + "\nLive Nodes: " + liveNodesLastSeen.get() + "\nLast available state: " + state.get());
+      fail(message + "\n" + e.toString() + "\nLive Nodes: " + liveNodesLastSeen.get() + "\nLast available state: " + state.get());
     }
+    return 0;
   }
 
   /**
@@ -124,21 +125,24 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
    * @param wait       how long to wait
    * @param unit       the units of the wait parameter
    * @param predicate  the predicate to call on state changes
+   * @return number of milliseconds elapsed
    * @throws InterruptedException on interrupt
    * @throws TimeoutException on timeout
    * @throws IOException on watcher register / unregister error
    */
-  public void waitForState(final String collection, long wait, TimeUnit unit, CollectionStatePredicate predicate)
+  public long waitForState(final String collection, long wait, TimeUnit unit, CollectionStatePredicate predicate)
       throws InterruptedException, TimeoutException, IOException {
     TimeOut timeout = new TimeOut(wait, unit, cluster.getTimeSource());
     while (!timeout.hasTimedOut()) {
       ClusterState state = cluster.getClusterStateProvider().getClusterState();
       DocCollection coll = state.getCollectionOrNull(collection);
-      if (coll == null) { // already removed or does not exist
-        return;
+      // due to the way we manage collections in SimClusterStateProvider a null here
+      // can mean that a collection is still being created but has no replicas
+      if (coll == null) { // does not yet exist?
+        continue;
       }
       if (predicate.matches(state.getLiveNodes(), coll)) {
-        return;
+        return timeout.timeElapsed(TimeUnit.MILLISECONDS);
       }
       timeout.sleep(50);
     }

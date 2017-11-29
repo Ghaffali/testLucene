@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.solr.client.solrj.SolrClient;
@@ -60,7 +61,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
 
   public static final int SPEED = 50;
 
-  public static final int NUM_NODES = 500;
+  public static final int NUM_NODES = 100;
 
   static Map<String, List<CapturedEvent>> listenerEvents = new ConcurrentHashMap<>();
   static AtomicInteger triggerFiredCount = new AtomicInteger();
@@ -83,7 +84,6 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
     triggerFiredCount.set(0);
     listenerEvents.clear();
     // clear any events or markers
-    // todo: consider the impact of such cleanup on regular cluster restarts
     removeChildren(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH);
     removeChildren(ZkStateReader.SOLR_AUTOSCALING_TRIGGER_STATE_PATH);
     removeChildren(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH);
@@ -155,28 +155,30 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
 
     // pick a few random nodes
     List<String> nodes = new ArrayList<>();
-    int limit = 100;
+    int limit = 30;
     for (String node : cluster.getClusterStateProvider().getLiveNodes()) {
       nodes.add(node);
+      if (nodes.size() > limit) {
+        break;
+      }
     }
     Collections.shuffle(nodes, random());
     String collectionName = "testBasic";
     CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(collectionName,
-        "conf", 10, 5, 5, 5);
+        "conf", 2, 5, 5, 5);
     create.setMaxShardsPerNode(1);
     create.setCreateNodeSet(String.join(",", nodes));
     create.process(solrClient);
 
-    waitForState("Timed out waiting for replicas of new collection to be active",
-        collectionName, clusterShape(10, 15));
+    log.info("Ready after " + waitForState(collectionName, 30 * nodes.size(), TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
 
+    int KILL_NODES = 8;
     // kill off a number of nodes
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < KILL_NODES; i++) {
       cluster.simRemoveNode(nodes.get(i));
     }
 
-    waitForState("Timed out waiting for replicas of new collection to be active",
-        collectionName, clusterShape(10, 15));
+    log.info("Ready after " + waitForState(collectionName, 90 * KILL_NODES, TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
     log.info(cluster.simGetSystemCollection().toString());
   }
 

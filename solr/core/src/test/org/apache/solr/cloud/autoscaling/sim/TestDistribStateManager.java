@@ -43,7 +43,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * This test compares a ZK-based {@link DistribStateManager} to the simulated one.
  */
 public class TestDistribStateManager extends SolrTestCaseJ4 {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
