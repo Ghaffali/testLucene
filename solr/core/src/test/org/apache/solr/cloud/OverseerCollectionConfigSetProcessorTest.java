@@ -44,6 +44,7 @@ import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.params.CoreAdminParams.CoreAdminAction;
 import org.apache.solr.common.params.ModifiableSolrParams;
+import org.apache.solr.common.util.ObjectCache;
 import org.apache.solr.common.util.StrUtils;
 import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.common.util.Utils;
@@ -88,6 +89,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
   private static ClusterState clusterStateMock;
   private static SolrZkClient solrZkClientMock;
   private static DistribStateManager stateManagerMock;
+  private static ObjectCache objectCache;
   private static AutoScalingConfig autoScalingConfig = new AutoScalingConfig(Collections.emptyMap());
   private final Map zkMap = new HashMap();
   private final Map<String, ClusterState.CollectionRef> collectionsSet = new HashMap<>();
@@ -137,6 +139,7 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     overseerMock = mock(Overseer.class);
     zkControllerMock = mock(ZkController.class);
     cloudDataProviderMock = mock(SolrCloudManager.class);
+    objectCache = new ObjectCache();
     clusterStateProviderMock = mock(ClusterStateProvider.class);
     stateManagerMock = mock(DistribStateManager.class);
   }
@@ -174,6 +177,9 @@ public class OverseerCollectionConfigSetProcessorTest extends SolrTestCaseJ4 {
     reset(overseerMock);
     reset(zkControllerMock);
     reset(cloudDataProviderMock);
+    objectCache.clear();
+    when(cloudDataProviderMock.getObjectCache()).thenReturn(objectCache);
+    when(cloudDataProviderMock.getTimeSource()).thenReturn(TimeSource.NANO_TIME);
     reset(clusterStateProviderMock);
     reset(stateManagerMock);
 

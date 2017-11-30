@@ -55,6 +55,10 @@ public class ActionThrottle {
     this.timeSource = timeSource;
   }
 
+  public void reset() {
+    lastActionStartedAt = null;
+  }
+
   public void markAttemptingAction() {
     lastActionStartedAt = timeSource.getTime();
   }

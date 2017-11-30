@@ -26,6 +26,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.solr.client.solrj.cloud.DistributedQueue;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
@@ -86,7 +87,8 @@ public class SplitShardCmd implements Cmd {
     log.info("Split shard invoked");
     ZkStateReader zkStateReader = ocmh.zkStateReader;
     zkStateReader.forceUpdateCollection(collectionName);
-    String slice = message.getStr(ZkStateReader.SHARD_ID_PROP);
+    AtomicReference<String> slice = new AtomicReference<>();
+    slice.set(message.getStr(ZkStateReader.SHARD_ID_PROP));
 
     String splitKey = message.getStr("split.key");
     DocCollection collection = clusterState.getCollection(collectionName);
@@ -96,7 +98,7 @@ public class SplitShardCmd implements Cmd {
     // find the leader for the shard
     Replica parentShardLeader = null;
     try {
-      parentShardLeader = zkStateReader.getLeaderRetry(collectionName, slice, 10000);
+      parentShardLeader = zkStateReader.getLeaderRetry(collectionName, slice.get(), 10000);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
     }
@@ -381,7 +383,7 @@ public class SplitShardCmd implements Cmd {
         DistributedQueue inQueue = Overseer.getStateUpdateQueue(zkStateReader.getZkClient());
         Map<String, Object> propMap = new HashMap<>();
         propMap.put(Overseer.QUEUE_OPERATION, OverseerAction.UPDATESHARDSTATE.toLower());
-        propMap.put(slice, Slice.State.INACTIVE.toString());
+        propMap.put(slice.get(), Slice.State.INACTIVE.toString());
         for (String subSlice : subSlices) {
           propMap.put(subSlice, Slice.State.ACTIVE.toString());
         }
@@ -410,7 +412,7 @@ public class SplitShardCmd implements Cmd {
 
       log.info("Successfully created all replica shards for all sub-slices " + subSlices);
 
-      ocmh.commit(results, slice, parentShardLeader);
+      ocmh.commit(results, slice.get(), parentShardLeader);
 
       return true;
     } catch (SolrException e) {
@@ -423,13 +425,13 @@ public class SplitShardCmd implements Cmd {
     }
   }
 
-  public static Slice getParentSlice(ClusterState clusterState, String collectionName, String slice, String splitKey) {
+  public static Slice getParentSlice(ClusterState clusterState, String collectionName, AtomicReference<String> slice, String splitKey) {
     DocCollection collection = clusterState.getCollection(collectionName);
     DocRouter router = collection.getRouter() != null ? collection.getRouter() : DocRouter.DEFAULT;
 
     Slice parentSlice;
 
-    if (slice == null) {
+    if (slice.get() == null) {
       if (router instanceof CompositeIdRouter) {
         Collection<Slice> searchSlices = router.getSearchSlicesSingle(splitKey, new ModifiableSolrParams(), collection);
         if (searchSlices.isEmpty()) {
@@ -440,7 +442,7 @@ public class SplitShardCmd implements Cmd {
               "Splitting a split.key: " + splitKey + " which spans multiple shards is not supported");
         }
         parentSlice = searchSlices.iterator().next();
-        slice = parentSlice.getName();
+        slice.set(parentSlice.getName());
         log.info("Split by route.key: {}, parent shard is: {} ", splitKey, slice);
       } else {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
@@ -448,7 +450,7 @@ public class SplitShardCmd implements Cmd {
                 + router.getClass().getName());
       }
     } else {
-      parentSlice = collection.getSlice(slice);
+      parentSlice = collection.getSlice(slice.get());
     }
 
     if (parentSlice == null) {

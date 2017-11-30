@@ -132,7 +132,7 @@ public class TestComputePlanAction extends SimSolrCloudTestCase {
     rsp = cluster.request(req);
     response = rsp.getResponse();
     assertEquals(response.get("result").toString(), "success");
-    cluster.getTimeSource().sleep(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_MS);
+    cluster.getTimeSource().sleep(TimeUnit.SECONDS.toMillis(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_SECONDS));
   }
 
   @After

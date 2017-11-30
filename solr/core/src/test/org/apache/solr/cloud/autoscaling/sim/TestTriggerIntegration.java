@@ -57,7 +57,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest.createAutoScalingRequest;
-import static org.apache.solr.cloud.autoscaling.ScheduledTriggers.DEFAULT_SCHEDULED_TRIGGER_DELAY_MS;
+import static org.apache.solr.cloud.autoscaling.ScheduledTriggers.DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS;
 
 /**
  * An end-to-end integration test for triggers
@@ -239,7 +239,8 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
       try {
         if (lastActionExecutedAt.get() != 0)  {
           log.info("last action at " + lastActionExecutedAt.get() + " time = " + cluster.getTimeSource().getTime());
-          if (TimeUnit.MILLISECONDS.convert(cluster.getTimeSource().getTime() - lastActionExecutedAt.get(), TimeUnit.NANOSECONDS) < ScheduledTriggers.DEFAULT_MIN_BETWEEN_ACTIONS_MS - DELTA_MS) {
+          if (TimeUnit.NANOSECONDS.toMillis(cluster.getTimeSource().getTime() - lastActionExecutedAt.get()) <
+              TimeUnit.SECONDS.toMillis(ScheduledTriggers.DEFAULT_ACTION_THROTTLE_PERIOD_SECONDS) - DELTA_MS) {
             log.info("action executed again before minimum wait time from {}", event.getSource());
             fail("TriggerListener was fired before the throttling period");
           }
@@ -289,7 +290,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     cluster.simRemoveNode(nodeName);
 
     // ensure that the old trigger sees the stopped node, todo find a better way to do this
-    timeOut.sleep(500 + DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
+    timeOut.sleep(500 + TimeUnit.SECONDS.toMillis(DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS));
 
     waitForSeconds = 0;
     setTriggerCommand = "{" +
@@ -347,7 +348,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     String newNode = cluster.simAddNode();
 
     // ensure that the old trigger sees the new node, todo find a better way to do this
-    cluster.getTimeSource().sleep(500 + DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
+    cluster.getTimeSource().sleep(500 + TimeUnit.SECONDS.toMillis(DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS));
 
     waitForSeconds = 0;
     setTriggerCommand = "{" +
@@ -1148,7 +1149,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     assertEquals(ev.toString(), TriggerEventProcessorStage.SUCCEEDED, ev.stage);
     // the difference between timestamps of the first SUCCEEDED and the last SUCCEEDED
     // must be larger than cooldown period
-    assertTrue("timestamp delta is less than default cooldown period", ev.timestamp - prevTimestamp > TimeUnit.MILLISECONDS.toNanos(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_MS));
+    assertTrue("timestamp delta is less than default cooldown period", ev.timestamp - prevTimestamp > TimeUnit.SECONDS.toNanos(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_SECONDS));
   }
 
   public static class TestSearchRateAction extends TriggerActionBase {

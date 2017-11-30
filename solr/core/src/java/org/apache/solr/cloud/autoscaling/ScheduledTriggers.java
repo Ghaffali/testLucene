@@ -78,20 +78,19 @@ import static org.apache.solr.common.params.AutoScalingParams.TRIGGER_SCHEDULE_D
  */
 public class ScheduledTriggers implements Closeable {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
-
-  public static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_MS = 1000;
-  public static final int DEFAULT_MIN_BETWEEN_ACTIONS_MS = 5000;
-  public static final int DEFAULT_COOLDOWN_PERIOD_MS = 5000;
-  static final int DEFAULT_TRIGGER_CORE_POOL_SIZE = 4;
+  public static final int DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS = 1;
+  public static final int DEFAULT_ACTION_THROTTLE_PERIOD_SECONDS = 5;
+  public static final int DEFAULT_COOLDOWN_PERIOD_SECONDS = 5;
+  public static final int DEFAULT_TRIGGER_CORE_POOL_SIZE = 4;
 
   static final Map<String, Object> DEFAULT_PROPERTIES = new HashMap<>();
 
   // Note: values must be all in milliseconds!
   static {
-    DEFAULT_PROPERTIES.put(TRIGGER_SCHEDULE_DELAY_SECONDS, DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
-    DEFAULT_PROPERTIES.put(TRIGGER_COOLDOWN_PERIOD_SECONDS, DEFAULT_COOLDOWN_PERIOD_MS);
+    DEFAULT_PROPERTIES.put(TRIGGER_SCHEDULE_DELAY_SECONDS, DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS);
+    DEFAULT_PROPERTIES.put(TRIGGER_COOLDOWN_PERIOD_SECONDS, DEFAULT_COOLDOWN_PERIOD_SECONDS);
     DEFAULT_PROPERTIES.put(TRIGGER_CORE_POOL_SIZE, DEFAULT_TRIGGER_CORE_POOL_SIZE);
-    DEFAULT_PROPERTIES.put(ACTION_THROTTLE_PERIOD_SECONDS, DEFAULT_MIN_BETWEEN_ACTIONS_MS);
+    DEFAULT_PROPERTIES.put(ACTION_THROTTLE_PERIOD_SECONDS, DEFAULT_ACTION_THROTTLE_PERIOD_SECONDS);
   }
 
   private final Map<String, ScheduledTrigger> scheduledTriggers = new ConcurrentHashMap<>();
@@ -114,9 +113,9 @@ public class ScheduledTriggers implements Closeable {
 
   private final AtomicLong cooldownStart = new AtomicLong();
 
-  private final AtomicLong cooldownPeriod = new AtomicLong(TimeUnit.MILLISECONDS.toNanos(DEFAULT_COOLDOWN_PERIOD_MS));
+  private final AtomicLong cooldownPeriod = new AtomicLong(TimeUnit.SECONDS.toNanos(DEFAULT_COOLDOWN_PERIOD_SECONDS));
 
-  private final AtomicLong triggerDelay = new AtomicLong(DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
+  private final AtomicLong triggerDelay = new AtomicLong(DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS);
 
   private final AtomicReference<ActionThrottle> actionThrottle;
 
@@ -138,14 +137,13 @@ public class ScheduledTriggers implements Closeable {
     scheduledThreadPoolExecutor.setRemoveOnCancelPolicy(true);
     scheduledThreadPoolExecutor.setExecuteExistingDelayedTasksAfterShutdownPolicy(false);
     actionExecutor = ExecutorUtil.newMDCAwareSingleThreadExecutor(new DefaultSolrThreadFactory("AutoscalingActionExecutor"));
-    actionThrottle = new AtomicReference<>(new ActionThrottle("action", DEFAULT_MIN_BETWEEN_ACTIONS_MS, cloudManager.getTimeSource()));
+    actionThrottle = new AtomicReference<>(new ActionThrottle("action", TimeUnit.SECONDS.toMillis(DEFAULT_ACTION_THROTTLE_PERIOD_SECONDS), cloudManager.getTimeSource()));
     this.cloudManager = cloudManager;
     this.stateManager = cloudManager.getDistribStateManager();
     this.loader = loader;
     queueStats = new Stats();
     listeners = new TriggerListeners();
     // initialize cooldown timer
-    // todo: make the cooldownPeriod configurable
     cooldownStart.set(cloudManager.getTimeSource().getTime() - cooldownPeriod.get());
   }
 
@@ -166,13 +164,13 @@ public class ScheduledTriggers implements Closeable {
         log.debug("Changing value of autoscaling property: {} from: {} to: {}", key, entry.getValue(), newProps.get(key));
         switch (key) {
           case TRIGGER_SCHEDULE_DELAY_SECONDS:
-            triggerDelay.set(TimeUnit.MILLISECONDS.convert(((Number) newProps.get(key)).longValue(), TimeUnit.SECONDS));
+            triggerDelay.set(((Number) newProps.get(key)).intValue());
             synchronized (this) {
               scheduledTriggers.forEach((s, scheduledTrigger) -> {
                 if (scheduledTrigger.scheduledFuture.cancel(false)) {
                   scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(
                       scheduledTrigger, 0,
-                      cloudManager.getTimeSource().convertDelay(TimeUnit.MILLISECONDS, triggerDelay.get(), TimeUnit.MILLISECONDS),
+                      cloudManager.getTimeSource().convertDelay(TimeUnit.SECONDS, triggerDelay.get(), TimeUnit.MILLISECONDS),
                       TimeUnit.MILLISECONDS);
                 } else  {
                   log.debug("Failed to cancel scheduled task: {}", s);
@@ -337,7 +335,7 @@ public class ScheduledTriggers implements Closeable {
               hasPendingActions.set(false);
             }
             log.debug("-- processing took {} ms for event id={}",
-                TimeUnit.MILLISECONDS.convert(cloudManager.getTimeSource().getTime() - eventProcessingStart, TimeUnit.NANOSECONDS), event.id);
+                TimeUnit.NANOSECONDS.toMillis(cloudManager.getTimeSource().getTime() - eventProcessingStart), event.id);
           });
         } else {
           if (enqueued) {
@@ -359,7 +357,7 @@ public class ScheduledTriggers implements Closeable {
     });
     newTrigger.init(); // mark as ready for scheduling
     scheduledTrigger.scheduledFuture = scheduledThreadPoolExecutor.scheduleWithFixedDelay(scheduledTrigger, 0,
-        cloudManager.getTimeSource().convertDelay(TimeUnit.MILLISECONDS, triggerDelay.get(), TimeUnit.MILLISECONDS),
+        cloudManager.getTimeSource().convertDelay(TimeUnit.SECONDS, triggerDelay.get(), TimeUnit.MILLISECONDS),
         TimeUnit.MILLISECONDS);
   }
 
@@ -384,8 +382,7 @@ public class ScheduledTriggers implements Closeable {
                 try {
                   log.debug("Found pending task with requestid={}", requestid);
                   RequestStatusResponse statusResponse = waitForTaskToFinish(cloudManager, requestid,
-                      cloudManager.getTimeSource().convertDelay(TimeUnit.MILLISECONDS, ExecutePlanAction.DEFAULT_TASK_TIMEOUT_MS, TimeUnit.MILLISECONDS),
-                      TimeUnit.MILLISECONDS);
+                      ExecutePlanAction.DEFAULT_TASK_TIMEOUT, TimeUnit.SECONDS);
                   if (statusResponse != null) {
                     RequestStatusState state = statusResponse.getRequestStatus();
                     if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {

@@ -67,7 +67,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static org.apache.solr.cloud.autoscaling.AutoScalingHandlerTest.createAutoScalingRequest;
-import static org.apache.solr.cloud.autoscaling.ScheduledTriggers.DEFAULT_SCHEDULED_TRIGGER_DELAY_MS;
+import static org.apache.solr.cloud.autoscaling.ScheduledTriggers.DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS;
 import static org.apache.solr.common.cloud.ZkStateReader.SOLR_AUTOSCALING_CONF_PATH;
 
 /**
@@ -120,7 +120,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
   @Before
   public void setupTest() throws Exception {
-    throttlingDelayMs.set(ScheduledTriggers.DEFAULT_MIN_BETWEEN_ACTIONS_MS);
+    throttlingDelayMs.set(TimeUnit.SECONDS.toMillis(ScheduledTriggers.DEFAULT_ACTION_THROTTLE_PERIOD_SECONDS));
     waitForSeconds = 1 + random().nextInt(3);
     actionConstructorCalled = new CountDownLatch(1);
     actionInitCalled = new CountDownLatch(1);
@@ -257,7 +257,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
   }
 
   static AtomicLong lastActionExecutedAt = new AtomicLong(0);
-  static AtomicLong throttlingDelayMs = new AtomicLong(ScheduledTriggers.DEFAULT_MIN_BETWEEN_ACTIONS_MS);
+  static AtomicLong throttlingDelayMs = new AtomicLong(TimeUnit.SECONDS.toMillis(ScheduledTriggers.DEFAULT_ACTION_THROTTLE_PERIOD_SECONDS));
   static ReentrantLock lock = new ReentrantLock();
   public static class ThrottlingTesterAction extends TestTriggerAction {
     // nanos are very precise so we need a delta for comparison with ms
@@ -334,7 +334,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     cluster.stopJettySolrRunner(index);
 
     // ensure that the old trigger sees the stopped node, todo find a better way to do this
-    Thread.sleep(500 + DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
+    Thread.sleep(500 + TimeUnit.SECONDS.toMillis(DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS));
 
     waitForSeconds = 0;
     setTriggerCommand = "{" +
@@ -392,7 +392,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     JettySolrRunner newNode = cluster.startJettySolrRunner();
 
     // ensure that the old trigger sees the new node, todo find a better way to do this
-    Thread.sleep(500 + DEFAULT_SCHEDULED_TRIGGER_DELAY_MS);
+    Thread.sleep(500 + TimeUnit.SECONDS.toMillis(DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS));
 
     waitForSeconds = 0;
     setTriggerCommand = "{" +
@@ -1194,7 +1194,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
     assertEquals(ev.toString(), TriggerEventProcessorStage.SUCCEEDED, ev.stage);
     // the difference between timestamps of the first SUCCEEDED and the last SUCCEEDED
     // must be larger than cooldown period
-    assertTrue("timestamp delta is less than default cooldown period", ev.timestamp - prevTimestamp > TimeUnit.MILLISECONDS.toNanos(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_MS));
+    assertTrue("timestamp delta is less than default cooldown period", ev.timestamp - prevTimestamp > TimeUnit.SECONDS.toNanos(ScheduledTriggers.DEFAULT_COOLDOWN_PERIOD_SECONDS));
     prevTimestamp = ev.timestamp;
 
     long modifiedCooldownPeriodSeconds = 7;
@@ -1267,7 +1267,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         }
       });
       assertTrue(getTriggerFiredLatch().await(4, TimeUnit.SECONDS));
-      assertTrue(diff.get() - TimeUnit.MILLISECONDS.toNanos(ScheduledTriggers.DEFAULT_SCHEDULED_TRIGGER_DELAY_MS) >= 0);
+      assertTrue(diff.get() - TimeUnit.SECONDS.toNanos(ScheduledTriggers.DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS) >= 0);
 
       // change schedule delay
       config = config.withProperties(Collections.singletonMap(AutoScalingParams.TRIGGER_SCHEDULE_DELAY_SECONDS, 4));

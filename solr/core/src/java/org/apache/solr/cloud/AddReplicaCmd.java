@@ -272,7 +272,9 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
         }
       }
     }
-    message = message.plus(CoreAdminParams.CORE_NODE_NAME, coreNodeName);
+    if (coreNodeName != null) {
+      message = message.plus(CoreAdminParams.CORE_NODE_NAME, coreNodeName);
+    }
     message = message.plus(CoreAdminParams.NAME, coreName);
     message = message.plus(CoreAdminParams.NODE, node);
     return message;

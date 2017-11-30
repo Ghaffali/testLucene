@@ -166,7 +166,7 @@ public class TestExecutePlanAction extends SimSolrCloudTestCase {
       assertNotNull(response.get("success"));
     }
 
-    log.info("Collection ready after " + waitForState(collectionName, 120, TimeUnit.SECONDS, clusterShape(1, 2)) + "ms");
+    log.info("Collection ready after " + waitForState(collectionName, 300, TimeUnit.SECONDS, clusterShape(1, 2)) + "ms");
   }
 
   @Test

@@ -60,6 +60,14 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
     cluster = null;
   }
 
+  @Override
+  public void setUp() throws Exception {
+    super.setUp();
+    if (cluster != null) {
+      cluster.getSimClusterStateProvider().simResetLeaderThrottle();
+    }
+  }
+
   @Before
   public void checkClusterConfiguration() {
     if (cluster == null)
@@ -110,9 +118,8 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
         return predicate.matches(n, c);
       });
     } catch (Exception e) {
-      fail(message + "\n" + e.toString() + "\nLive Nodes: " + liveNodesLastSeen.get() + "\nLast available state: " + state.get());
+      throw new AssertionError(message + "\n" + "Live Nodes: " + liveNodesLastSeen.get() + "\nLast available state: " + state.get(), e);
     }
-    return 0;
   }
 
   /**
