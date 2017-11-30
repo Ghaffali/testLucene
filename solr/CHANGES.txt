@@ -102,6 +102,8 @@ New Features
 * SOLR-11250: A new DefaultWrapperModel class for loading of large and/or externally stored
   LTRScoringModel definitions. (Yuki Yano, shalin, Christine Poerschke)
 
+* SOLR-11285: Simulation framework for autoscaling. (ab)
+
 Bug Fixes
 ----------------------
 
