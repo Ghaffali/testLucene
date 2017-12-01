@@ -46,7 +46,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Simulated {@link DistributedQueueFactory} that keeps all data in memory.
+ * Simulated {@link DistributedQueueFactory} that keeps all data in memory. Unlike
+ * the {@link GenericDistributedQueueFactory} this queue implementation data is not
+ * exposed anywhere.
  */
 public class SimDistributedQueueFactory implements DistributedQueueFactory {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());

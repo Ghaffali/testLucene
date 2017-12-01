@@ -21,9 +21,12 @@ import java.lang.invoke.MethodHandles;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -65,6 +68,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
 
   static Map<String, List<CapturedEvent>> listenerEvents = new ConcurrentHashMap<>();
   static AtomicInteger triggerFiredCount = new AtomicInteger();
+  static CountDownLatch triggerFiredLatch;
   static int waitForSeconds;
 
   @BeforeClass
@@ -82,6 +86,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
 
     waitForSeconds = 1 + random().nextInt(3);
     triggerFiredCount.set(0);
+    triggerFiredLatch = new CountDownLatch(1);
     listenerEvents.clear();
     // clear any events or markers
     removeChildren(ZkStateReader.SOLR_AUTOSCALING_EVENTS_PATH);
@@ -113,12 +118,12 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
     @Override
     public void process(TriggerEvent event, ActionContext context) throws Exception {
       triggerFiredCount.incrementAndGet();
+      triggerFiredLatch.countDown();
     }
   }
 
   @Test
   public void testBasic() throws Exception {
-    assertEquals(NUM_NODES, cluster.getClusterStateProvider().getLiveNodes().size());
     SolrClient solrClient = cluster.simGetSolrClient();
     String setTriggerCommand = "{" +
         "'set-trigger' : {" +
@@ -179,11 +184,64 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
     }
 
     log.info("Ready after " + waitForState(collectionName, 90 * KILL_NODES, TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
-    log.info(cluster.simGetSystemCollection().toString());
+
   }
 
   @Test
   public void testSearchRate() throws Exception {
+    SolrClient solrClient = cluster.simGetSolrClient();
+    String setTriggerCommand = "{" +
+        "'set-trigger' : {" +
+        "'name' : 'search_rate_trigger'," +
+        "'event' : 'searchRate'," +
+        "'waitFor' : '" + waitForSeconds + "s'," +
+        "'rate' : 1.0," +
+        "'enabled' : true," +
+        "'actions' : [" +
+        "{'name':'compute','class':'" + ComputePlanAction.class.getName() + "'}," +
+        "{'name':'execute','class':'" + ExecutePlanAction.class.getName() + "'}," +
+        "{'name':'test','class':'" + TestTriggerAction.class.getName() + "'}" +
+        "]" +
+        "}}";
+    SolrRequest req = createAutoScalingRequest(SolrRequest.METHOD.POST, setTriggerCommand);
+    NamedList<Object> response = solrClient.request(req);
+    assertEquals(response.get("result").toString(), "success");
+    String setListenerCommand1 = "{" +
+        "'set-listener' : " +
+        "{" +
+        "'name' : 'srt'," +
+        "'trigger' : 'search_rate_trigger'," +
+        "'stage' : ['FAILED','SUCCEEDED']," +
+        "'class' : '" + TestTriggerListener.class.getName() + "'" +
+        "}" +
+        "}";
+    req = createAutoScalingRequest(SolrRequest.METHOD.POST, setListenerCommand1);
+    response = solrClient.request(req);
+    assertEquals(response.get("result").toString(), "success");
 
+    String collectionName = "testSearchRate";
+    CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(collectionName,
+        "conf", 2, 10);
+    create.process(solrClient);
+
+    log.info("Ready after " + waitForState(collectionName, 300, TimeUnit.SECONDS, clusterShape(2, 10)) + " ms");
+
+    // collect the node names
+    Set<String> nodes = new HashSet<>();
+    cluster.getSimClusterStateProvider().getClusterState().getCollection(collectionName)
+        .getReplicas()
+        .forEach(r -> nodes.add(r.getNodeName()));
+
+    String metricName = "QUERY./select.requestTimes:1minRate";
+    // simulate search traffic
+    cluster.getSimClusterStateProvider().simSetShardValue(collectionName, "shard1", metricName, 40, true);
+
+    Thread.sleep(1000000000);
+//    boolean await = triggerFiredLatch.await(20000 / SPEED, TimeUnit.MILLISECONDS);
+//    assertTrue("The trigger did not fire at all", await);
+    // wait for listener to capture the SUCCEEDED stage
+    cluster.getTimeSource().sleep(2000);
+    assertEquals(listenerEvents.toString(), 1, listenerEvents.get("srt").size());
+    CapturedEvent ev = listenerEvents.get("srt").get(0);
   }
 }

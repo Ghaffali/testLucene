@@ -165,6 +165,9 @@ public class SearchRateTrigger extends TriggerBase {
           });
         });
       });
+      if (metricTags.isEmpty()) {
+        continue;
+      }
       Map<String, Object> rates = cloudManager.getNodeStateProvider().getNodeValues(node, metricTags.keySet());
       rates.forEach((tag, rate) -> {
         ReplicaInfo info = metricTags.get(tag);
@@ -271,7 +274,7 @@ public class SearchRateTrigger extends TriggerBase {
   private boolean waitForElapsed(String name, long now, Map<String, Long> lastEventMap) {
     Long lastTime = lastEventMap.computeIfAbsent(name, s -> now);
     long elapsed = TimeUnit.SECONDS.convert(now - lastTime, TimeUnit.NANOSECONDS);
-    log.debug("name=" + name + ", lastTime=" + lastTime + ", elapsed=" + elapsed);
+    log.trace("name={}, lastTime={}, elapsed={}", name, lastTime, elapsed);
     if (TimeUnit.SECONDS.convert(now - lastTime, TimeUnit.NANOSECONDS) < getWaitForSecond()) {
       return false;
     }

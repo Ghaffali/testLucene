@@ -105,8 +105,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   private AtomicReference<Map<String, DocCollection>> collectionsStatesRef = new AtomicReference<>();
 
   /**
-   * Zero-arg constructor. The instance needs to be initialized using the <code>sim*</code> methods in order
-   * to ensure proper behavior, otherwise it will behave as a cluster with zero live nodes and zero replicas.
+   * The instance needs to be initialized using the <code>sim*</code> methods in order
+   * to ensure proper behavior, otherwise it will behave as a cluster with zero replicas.
    */
   public SimClusterStateProvider(Set<String> liveNodes, SimCloudManager cloudManager) {
     this.liveNodes = liveNodes;
@@ -126,6 +126,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   // ============== SIMULATOR SETUP METHODS ====================
 
+  /**
+   * Initialize from an existing cluster state
+   * @param initialState initial cluster state
+   */
   public void simSetClusterState(ClusterState initialState) throws Exception {
     lock.lock();
     try {
@@ -154,10 +158,18 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Reset the leader election throttle.
+   */
   public void simResetLeaderThrottle() {
     leaderThrottle.reset();
   }
 
+  /**
+   * Get random node id.
+   * @param random instance of random.
+   * @return one of the live nodes
+   */
   public String simGetRandomNode(Random random) {
     if (liveNodes.isEmpty()) {
       return null;
@@ -168,15 +180,20 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
-  public boolean simAddNode(String nodeId) throws Exception {
+
+  /**
+   * Add a new node to the cluster.
+   * @param nodeId unique node id
+   */
+  public void simAddNode(String nodeId) throws Exception {
     if (liveNodes.contains(nodeId)) {
       throw new Exception("Node " + nodeId + " already exists");
     }
     liveNodes.add(nodeId);
-    return nodeReplicaMap.putIfAbsent(nodeId, new ArrayList<>()) == null;
+    nodeReplicaMap.putIfAbsent(nodeId, new ArrayList<>());
   }
 
-  // utility to run leader election in a separate thread and with throttling
+  // utility class to run leader election in a separate thread and with throttling
   // Note: leader election is a no-op if a shard leader already exists for each shard
   private class LeaderElection implements Callable<Boolean> {
     Collection<String> collections;
@@ -202,6 +219,13 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
+
+  /**
+   * Remove node from a cluster. This is equivalent to a situation when a node is lost.
+   * All replicas that were assigned to this node are marked as DOWN.
+   * @param nodeId node id
+   * @return true if a node existed and was removed
+   */
   public boolean simRemoveNode(String nodeId) throws Exception {
     lock.lock();
     try {
@@ -224,6 +248,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Add a new replica. Note that if any details of a replica (node, coreNodeName, SolrCore name, etc)
+   * are missing they will be filled in using the policy framework.
+   * @param message replica details
+   * @param results result of the operation
+   */
   public void simAddReplica(ZkNodeProps message, NamedList results) throws Exception {
     AtomicLong policyVersionAfter = new AtomicLong(-1);
     ClusterState clusterState = getClusterState();
@@ -245,6 +275,14 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
+
+  /**
+   * Add a replica. Note that all details of the replica must be present here, including
+   * node, coreNodeName and SolrCore name.
+   * @param nodeId node id where the replica will be added
+   * @param replicaInfo replica info
+   * @param runLeaderElection if true then run a leader election after adding the replica.
+   */
   public void simAddReplica(String nodeId, ReplicaInfo replicaInfo, boolean runLeaderElection) throws Exception {
     // make sure coreNodeName is unique across cluster
     for (Map.Entry<String, List<ReplicaInfo>> e : nodeReplicaMap.entrySet()) {
@@ -306,6 +344,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   }
 
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
+
+  /**
+   * Remove replica.
+   * @param nodeId node id
+   * @param coreNodeName coreNodeName
+   */
   public void simRemoveReplica(String nodeId, String coreNodeName) throws Exception {
     List<ReplicaInfo> replicas = nodeReplicaMap.computeIfAbsent(nodeId, n -> new ArrayList<>());
     lock.lock();
@@ -334,6 +378,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Save clusterstate.json to {@link DistribStateManager}.
+   * @return saved state
+   */
   private ClusterState saveClusterState() throws IOException {
     collectionsStatesRef.set(null);
     ClusterState currentState = getClusterState();
@@ -352,6 +400,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     return currentState;
   }
 
+  /**
+   * Delay an operation by a configured amount.
+   * @param collection collection name
+   * @param op operation name.
+   */
   private void opDelay(String collection, String op) throws InterruptedException {
     Map<String, Long> delays = opDelays.get(collection);
     if (delays == null || delays.isEmpty() || !delays.containsKey(op)) {
@@ -360,6 +413,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     cloudManager.getTimeSource().sleep(delays.get(op));
   }
 
+  /**
+   * Simulate running a shard leader election. This operation is a no-op if a leader already exists.
+   * If a new leader is elected the cluster state is saved.
+   * @param collections list of affected collections
+   * @param saveClusterState if true then save cluster state regardless of changes.
+   */
   private synchronized void simRunLeaderElection(Collection<String> collections, boolean saveClusterState) throws Exception {
     ClusterState state = getClusterState();
     AtomicBoolean stateChanged = new AtomicBoolean(Boolean.FALSE);
@@ -433,6 +492,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Create a new collection. This operation uses policy framework for node and replica assignments.
+   * @param props collection details
+   * @param results results of the operation.
+   */
   public void simCreateCollection(ZkNodeProps props, NamedList results) throws Exception {
     if (props.getStr(CommonAdminParams.ASYNC) != null) {
       results.add(CoreAdminParams.REQUESTID, props.getStr(CommonAdminParams.ASYNC));
@@ -488,6 +552,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     results.add("success", "");
   }
 
+  /**
+   * Delete a collection
+   * @param collection collection name
+   * @param async async id
+   * @param results results of the operation
+   */
   public void simDeleteCollection(String collection, String async, NamedList results) throws IOException {
     if (async != null) {
       results.add(CoreAdminParams.REQUESTID, async);
@@ -525,6 +595,9 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Remove all collections.
+   */
   public void simDeleteAllCollections() throws Exception {
     lock.lock();
     try {
@@ -540,6 +613,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Move replica. This uses a similar algorithm as {@link org.apache.solr.cloud.MoveReplicaCmd#moveNormalReplica(ClusterState, NamedList, String, String, DocCollection, Replica, Slice, int, boolean)}.
+   * @param message operation details
+   * @param results operation results.
+   */
   public void simMoveReplica(ZkNodeProps message, NamedList results) throws Exception {
     if (message.getStr(CommonAdminParams.ASYNC) != null) {
       results.add(CoreAdminParams.REQUESTID, message.getStr(CommonAdminParams.ASYNC));
@@ -582,6 +660,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     results.add("success", "");
   }
 
+  /**
+   * Create a new shard. This uses a similar algorithm as {@link CreateShardCmd}.
+   * @param message operation details
+   * @param results operation results
+   */
   public void simCreateShard(ZkNodeProps message, NamedList results) throws Exception {
     if (message.getStr(CommonAdminParams.ASYNC) != null) {
       results.add(CoreAdminParams.REQUESTID, message.getStr(CommonAdminParams.ASYNC));
@@ -638,6 +721,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Split a shard. This uses a similar algorithm as {@link SplitShardCmd}, including simulating its
+   * quirks, and leaving the original parent slice in place.
+   * @param message operation details
+   * @param results operation results.
+   */
   public void simSplitShard(ZkNodeProps message, NamedList results) throws Exception {
     String collectionName = message.getStr(COLLECTION_PROP);
     AtomicReference<String> sliceName = new AtomicReference<>();
@@ -696,6 +785,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   }
 
+  /**
+   * Delete a shard. This uses a similar algorithm as {@link org.apache.solr.cloud.DeleteShardCmd}
+   * @param message operation details
+   * @param results operation results
+   */
   public void simDeleteShard(ZkNodeProps message, NamedList results) throws Exception {
     String collectionName = message.getStr(COLLECTION_PROP);
     String sliceName = message.getStr(SHARD_ID_PROP);
@@ -731,7 +825,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
-  public synchronized Map<String, Object> saveClusterProperties() throws Exception {
+  /**
+   * Saves cluster properties to clusterprops.json.
+   * @return current properties
+   */
+  private synchronized Map<String, Object> saveClusterProperties() throws Exception {
     if (lastSavedProperties != null && lastSavedProperties.equals(clusterProperties)) {
       return lastSavedProperties;
     }
@@ -743,6 +841,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     return lastSavedProperties;
   }
 
+  /**
+   * Set all cluster properties. This also updates the clusterprops.json data in
+   * {@link DistribStateManager}
+   * @param properties properties to set
+   */
   public void simSetClusterProperties(Map<String, Object> properties) throws Exception {
     lock.lock();
     try {
@@ -756,6 +859,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Set a cluster property. This also updates the clusterprops.json data in
+   * {@link DistribStateManager}
+   * @param key property name
+   * @param value property value
+   */
   public void simSetClusterProperty(String key, Object value) throws Exception {
     lock.lock();
     try {
@@ -770,6 +879,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Set collection properties.
+   * @param coll collection name
+   * @param properties properties
+   */
   public void simSetCollectionProperties(String coll, Map<String, Object> properties) throws Exception {
     if (properties == null) {
       collProperties.remove(coll);
@@ -787,6 +901,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Set collection property.
+   * @param coll collection name
+   * @param key property name
+   * @param value property value
+   */
   public void simSetCollectionProperty(String coll, String key, String value) throws Exception {
     Map<String, Object> props = collProperties.computeIfAbsent(coll, c -> new HashMap<>());
     if (value == null) {
@@ -797,6 +917,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     saveClusterState();
   }
 
+  /**
+   * Set slice properties.
+   * @param coll collection name
+   * @param slice slice name
+   * @param properties slice properties
+   */
   public void simSetSliceProperties(String coll, String slice, Map<String, Object> properties) throws Exception {
     Map<String, Object> sliceProps = sliceProperties.computeIfAbsent(coll, c -> new HashMap<>()).computeIfAbsent(slice, s -> new HashMap<>());
     lock.lock();
@@ -811,11 +937,56 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Set per-collection value (eg. a metric). This value will be applied to each replica.
+   * @param collection collection name
+   * @param key property name
+   * @param value property value
+   */
+  public void simSetCollectionValue(String collection, String key, Object value) throws Exception {
+    simSetCollectionValue(collection, key, value, false);
+  }
+
+  /**
+   * Set per-collection value (eg. a metric). This value will be applied to each replica.
+   * @param collection collection name
+   * @param key property name
+   * @param value property value
+   * @param divide if the value is a {@link Number} and this is true, then the value will be evenly
+   *               divided by the number of replicas.
+   */
   public void simSetCollectionValue(String collection, String key, Object value, boolean divide) throws Exception {
+    simSetShardValue(collection, null, key, value, divide);
+  }
+
+  /**
+   * Set per-collection value (eg. a metric). This value will be applied to each replica in a selected shard.
+   * @param collection collection name
+   * @param shard shard name. If null then all shards will be affected.
+   * @param key property name
+   * @param value property value
+   */
+  public void simSetShardValue(String collection, String shard, String key, Object value) throws Exception {
+    simSetShardValue(collection, shard, key, value, false);
+  }
+
+  /**
+   * Set per-collection value (eg. a metric). This value will be applied to each replica in a selected shard.
+   * @param collection collection name
+   * @param shard shard name. If null then all shards will be affected.
+   * @param key property name
+   * @param value property value
+   * @param divide if the value is a {@link Number} and this is true, then the value will be evenly
+   *               divided by the number of replicas.
+   */
+  public void simSetShardValue(String collection, String shard, String key, Object value, boolean divide) throws Exception {
     List<ReplicaInfo> infos = new ArrayList<>();
     nodeReplicaMap.forEach((n, replicas) -> {
       replicas.forEach(r -> {
         if (r.getCollection().equals(collection)) {
+          if (shard != null && !shard.equals(r.getShard())) {
+            return;
+          }
           infos.add(r);
         }
       });
@@ -827,23 +998,29 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       value = ((Number)value).doubleValue() / infos.size();
     }
     for (ReplicaInfo r : infos) {
-      if (value == null) {
-        r.getVariables().remove(key);
-      } else {
-        r.getVariables().put(key, value);
+      synchronized (r) {
+        if (value == null) {
+          r.getVariables().remove(key);
+        } else {
+          r.getVariables().put(key, value);
+        }
       }
     }
   }
 
-  public void simSetCollectionValue(String collection, String key, Object value) throws Exception {
-    simSetCollectionValue(collection, key, value, false);
-  }
-
-
+  /**
+   * Return all replica infos for a node.
+   * @param node node id
+   * @return list of replicas on that node
+   */
   public List<ReplicaInfo> simGetReplicaInfos(String node) {
     return nodeReplicaMap.get(node);
   }
 
+  /**
+   * List collections.
+   * @return list of existing collections.
+   */
   public List<String> simListCollections() {
     final Set<String> collections = new HashSet<>();
     lock.lock();

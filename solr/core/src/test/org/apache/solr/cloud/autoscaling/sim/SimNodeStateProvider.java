@@ -61,6 +61,13 @@ public class SimNodeStateProvider implements NodeStateProvider {
   }
 
   // -------- simulator setup methods ------------
+
+  /**
+   * Get a node value
+   * @param node node id
+   * @param key property name
+   * @return property value or null if property or node doesn't exist.
+   */
   public Object simGetNodeValue(String node, String key) {
     Map<String, Object> values = nodeValues.get(node);
     if (values == null) {
@@ -69,6 +76,12 @@ public class SimNodeStateProvider implements NodeStateProvider {
     return values.get(key);
   }
 
+  /**
+   * Set node values.
+   * NOTE: if values contain 'nodeRole' key then /roles.json is updated.
+   * @param node node id
+   * @param values values.
+   */
   public void simSetNodeValues(String node, Map<String, Object> values) {
     Map<String, Object> existing = nodeValues.computeIfAbsent(node, n -> new ConcurrentHashMap<>());
     existing.clear();
@@ -80,6 +93,13 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
   }
 
+  /**
+   * Set a node value, replacing any previous value.
+   * NOTE: if key is 'nodeRole' then /roles.json is updated.
+   * @param node node id
+   * @param key property name
+   * @param value property value
+   */
   public void simSetNodeValue(String node, String key, Object value) {
     Map<String, Object> existing = nodeValues.computeIfAbsent(node, n -> new ConcurrentHashMap<>());
     if (value == null) {
@@ -92,6 +112,13 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
   }
 
+  /**
+   * Add a node value, creating a list of values if necessary.
+   * NOTE: if key is 'nodeRole' then /roles.json is updated.
+   * @param node node id
+   * @param key property name
+   * @param value property value.
+   */
   public void simAddNodeValue(String node, String key, Object value) {
     Map<String, Object> values = nodeValues.computeIfAbsent(node, n -> new ConcurrentHashMap<>());
     Object existing = values.get(key);
@@ -110,6 +137,11 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
   }
 
+  /**
+   * Remove node values. If values contained a 'nodeRole' key then
+   * /roles.json is updated.
+   * @param node node id
+   */
   public void simRemoveNodeValues(String node) {
     Map<String, Object> values = nodeValues.remove(node);
     if (values != null && values.containsKey("nodeRole")) {
@@ -117,6 +149,9 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
   }
 
+  /**
+   * Get all node values.
+   */
   public Map<String, Map<String, Object>> simGetAllNodeValues() {
     return nodeValues;
   }
@@ -136,6 +171,14 @@ public class SimNodeStateProvider implements NodeStateProvider {
     }
   }
 
+  /**
+   * Simulate getting replica metrics values. This uses per-replica properties set in
+   * {@link SimClusterStateProvider#simSetCollectionValue(String, String, Object, boolean)} and
+   * similar methods.
+   * @param node node id
+   * @param tags metrics names
+   * @return map of metrics names / values
+   */
   public Map<String, Object> getReplicaMetricsValues(String node, Collection<String> tags) {
     List<ReplicaInfo> replicas = clusterStateProvider.simGetReplicaInfos(node);
     if (replicas == null || replicas.isEmpty()) {
@@ -182,7 +225,7 @@ public class SimNodeStateProvider implements NodeStateProvider {
 
   @Override
   public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
-    LOG.debug("-- requested values for " + node + ": " + tags);
+    LOG.trace("-- requested values for " + node + ": " + tags);
     if (!liveNodes.contains(node)) {
       nodeValues.remove(node);
       return Collections.emptyMap();

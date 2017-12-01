@@ -17,7 +17,7 @@
 package org.apache.solr.cloud.autoscaling.sim;
 
 /**
- *
+ * Interface that helps simulating action errors.
  */
 public interface ActionError {
   boolean shouldFail(String... args);

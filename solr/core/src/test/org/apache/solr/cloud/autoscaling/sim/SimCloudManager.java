@@ -159,6 +159,11 @@ public class SimCloudManager implements SolrCloudManager {
     return cloudManager;
   }
 
+  /**
+   * Create node values (metrics) for a node.
+   * @param nodeName node name (eg. '127.0.0.1:10000_solr')
+   * @return node values
+   */
   public static Map<String, Object> createNodeValues(String nodeName) {
     Map<String, Object> values = new HashMap<>();
     String host, nodeId;
@@ -206,6 +211,10 @@ public class SimCloudManager implements SolrCloudManager {
     return values;
   }
 
+  /**
+   * Add a new node and initialize its node values (metrics).
+   * @return new node id
+   */
   public String simAddNode() throws Exception {
     Map<String, Object> values = createNodeValues(null);
     String nodeId = (String)values.get(ImplicitSnitch.NODE);
@@ -215,12 +224,21 @@ public class SimCloudManager implements SolrCloudManager {
     return nodeId;
   }
 
+  /**
+   * Remove a node from the cluster. This simulates a node lost scenario.
+   * @param nodeId node id
+   */
   public void simRemoveNode(String nodeId) throws Exception {
     clusterStateProvider.simRemoveNode(nodeId);
     nodeStateProvider.simRemoveNodeValues(nodeId);
     LOG.trace("-- removed node " + nodeId);
   }
 
+  /**
+   * Remove a number of randomly selected nodes
+   * @param number number of nodes to remove
+   * @param random random
+   */
   public void simRemoveRandomNodes(int number, Random random) throws Exception {
     List<String> nodes = new ArrayList<>(liveNodes);
     Collections.shuffle(nodes, random);
@@ -230,14 +248,26 @@ public class SimCloudManager implements SolrCloudManager {
     }
   }
 
+  /**
+   * Clear the (simulated) .system collection.
+   */
   public void simClearSystemCollection() {
     systemColl.clear();
   }
 
+  /**
+   * Get the content of (simulated) .system collection.
+   * @return documents in the collection.
+   */
   public List<SolrInputDocument> simGetSystemCollection() {
     return systemColl;
   }
 
+  /**
+   * Get a {@link SolrClient} implementation where calls are forwarded to this
+   * instance.
+   * @return simulated SolrClient.
+   */
   public SolrClient simGetSolrClient() {
     if (solrClient != null) {
       return solrClient;
@@ -257,6 +287,11 @@ public class SimCloudManager implements SolrCloudManager {
     }
   }
 
+  /**
+   * Submit a task to execute in a thread pool.
+   * @param callable task to execute
+   * @return future to obtain results
+   */
   public <T> Future<T> submit(Callable<T> callable) {
     return simCloudManagerPool.submit(callable);
   }
@@ -325,6 +360,12 @@ public class SimCloudManager implements SolrCloudManager {
     }
   }
 
+  /**
+   * Handler for autoscaling requests. NOTE: only a specific subset of autoscaling requests is
+   * supported!
+   * @param req autoscaling request
+   * @return results
+   */
   public SolrResponse simHandleSolrRequest(SolrRequest req) throws IOException, InterruptedException {
     // pay the penalty for remote request, at least 5 ms
     timeSource.sleep(5);
@@ -466,8 +507,9 @@ public class SimCloudManager implements SolrCloudManager {
 
   }
 
-
-
+  /**
+   * HTTP requests are not supported by this implementation.
+   */
   @Override
   public byte[] httpRequest(String url, SolrRequest.METHOD method, Map<String, String> headers, String payload, int timeout, boolean followRedirects) throws IOException {
     throw new UnsupportedOperationException("general HTTP requests are not supported yet");

@@ -35,6 +35,7 @@ import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.client.solrj.cloud.autoscaling.SolrCloudManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.Suggester;
 import org.apache.solr.common.params.CollectionParams;
+import org.apache.solr.common.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -112,13 +113,10 @@ public class ComputePlanAction extends TriggerActionBase {
         } else {
           // collection || shard || replica -> ADDREPLICA
           suggester = session.getSuggester(CollectionParams.CollectionAction.ADDREPLICA);
-          Set<String> collections = new HashSet<>();
-          // XXX improve this when AddReplicaSuggester supports coll_shard hint
-          hotReplicas.forEach(r -> collections.add(r.getCollection()));
-          hotShards.forEach((coll, shards) -> collections.add(coll));
-          hotCollections.forEach((coll, rate) -> collections.add(coll));
-          for (String coll : collections) {
-            suggester = suggester.hint(Suggester.Hint.COLL, coll);
+          Set<Pair> collectionShards = new HashSet<>();
+          hotShards.forEach((coll, shards) -> shards.forEach((s, r) -> collectionShards.add(new Pair(coll, s))));
+          for (Pair<String, String> colShard : collectionShards) {
+            suggester = suggester.hint(Suggester.Hint.COLL_SHARD, colShard);
           }
         }
         break;

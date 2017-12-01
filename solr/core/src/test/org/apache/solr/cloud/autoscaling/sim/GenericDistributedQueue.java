@@ -53,7 +53,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * A distributed queue that uses {@link org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager}.
+ * A distributed queue that uses {@link DistribStateManager} as the underlying distributed store.
  * Implementation based on {@link org.apache.solr.cloud.ZkDistributedQueue}
  */
 public class GenericDistributedQueue implements DistributedQueue {

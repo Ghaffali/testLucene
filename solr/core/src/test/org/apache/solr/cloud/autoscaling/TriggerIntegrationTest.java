@@ -1394,6 +1394,10 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
 
   @Test
   public void testSearchRate() throws Exception {
+    // start a few more jetty-s
+    for (int i = 0; i < 3; i++) {
+      cluster.startJettySolrRunner();
+    }
     CloudSolrClient solrClient = cluster.getSolrClient();
     String COLL1 = "collection1";
     CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(COLL1,
@@ -1407,6 +1411,8 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "'enabled' : true," +
         "'rate' : 1.0," +
         "'actions' : [" +
+        "{'name':'compute','class':'" + ComputePlanAction.class.getName() + "'}," +
+        "{'name':'execute','class':'" + ExecutePlanAction.class.getName() + "'}," +
         "{'name':'test','class':'" + TestSearchRateAction.class.getName() + "'}" +
         "]" +
         "}}";
@@ -1420,6 +1426,7 @@ public class TriggerIntegrationTest extends SolrCloudTestCase {
         "'name' : 'srt'," +
         "'trigger' : 'search_rate_trigger'," +
         "'stage' : ['FAILED','SUCCEEDED']," +
+        "'afterAction': ['compute', 'execute', 'test']," +
         "'class' : '" + TestTriggerListener.class.getName() + "'" +
         "}" +
         "}";
