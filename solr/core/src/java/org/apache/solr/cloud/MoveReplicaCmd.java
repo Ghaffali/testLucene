@@ -47,6 +47,7 @@ import static org.apache.solr.common.cloud.ZkStateReader.REPLICA_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.SHARD_ID_PROP;
 import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
 import static org.apache.solr.common.params.CommonAdminParams.IN_PLACE_MOVE;
+import static org.apache.solr.common.params.CommonAdminParams.TIMEOUT;
 import static org.apache.solr.common.params.CommonAdminParams.WAIT_FOR_FINAL_STATE;
 
 public class MoveReplicaCmd implements Cmd{
@@ -70,7 +71,7 @@ public class MoveReplicaCmd implements Cmd{
     String targetNode = message.getStr(CollectionParams.TARGET_NODE);
     boolean waitForFinalState = message.getBool(WAIT_FOR_FINAL_STATE, false);
     boolean inPlaceMove = message.getBool(IN_PLACE_MOVE, true);
-    int timeout = message.getInt("timeout", 10 * 60); // 10 minutes
+    int timeout = message.getInt(TIMEOUT, 10 * 60); // 10 minutes
 
     String async = message.getStr(ASYNC);
 
@@ -92,12 +93,17 @@ public class MoveReplicaCmd implements Cmd{
     } else {
       String sourceNode = message.getStr(CollectionParams.SOURCE_NODE, message.getStr(CollectionParams.FROM_NODE));
       if (sourceNode == null) {
-        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "sourceNode is a required param" );
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "'" + CollectionParams.SOURCE_NODE +
+            " or '" + CollectionParams.FROM_NODE + "' is a required param");
       }
       String shardId = message.getStr(SHARD_ID_PROP);
+      if (shardId == null) {
+        throw new SolrException(SolrException.ErrorCode.BAD_REQUEST, "'" + SHARD_ID_PROP + "' is a required param");
+      }
       Slice slice = clusterState.getCollection(collection).getSlice(shardId);
       List<Replica> sliceReplicas = new ArrayList<>(slice.getReplicas());
       Collections.shuffle(sliceReplicas, RANDOM);
+      // this picks up a single random replica from the sourceNode
       for (Replica r : slice.getReplicas()) {
         if (r.getNodeName().equals(sourceNode)) {
           replica = r;
@@ -105,7 +111,7 @@ public class MoveReplicaCmd implements Cmd{
       }
       if (replica == null) {
         throw new SolrException(SolrException.ErrorCode.BAD_REQUEST,
-            "Collection: " + collection + " node: " + sourceNode + " do not have any replica belong to shard: " + shardId);
+            "Collection: " + collection + " node: " + sourceNode + " does not have any replica belonging to shard: " + shardId);
       }
     }
 
@@ -233,15 +239,15 @@ public class MoveReplicaCmd implements Cmd{
         SHARD_ID_PROP, slice.getName(),
         CoreAdminParams.NODE, targetNode,
         CoreAdminParams.NAME, newCoreName);
-    if(async!=null) addReplicasProps.getProperties().put(ASYNC, async);
+    if (async != null) addReplicasProps.getProperties().put(ASYNC, async);
     NamedList addResult = new NamedList();
     SolrCloseableLatch countDownLatch = new SolrCloseableLatch(1, ocmh);
     ActiveReplicaWatcher watcher = null;
     ZkNodeProps props = ocmh.addReplica(clusterState, addReplicasProps, addResult, null);
-    log.info("props " + props);
+    log.debug("props " + props);
     if (replica.equals(slice.getLeader()) || waitForFinalState) {
       watcher = new ActiveReplicaWatcher(coll.getName(), null, Collections.singletonList(newCoreName), countDownLatch);
-      log.info("-- registered watcher " + watcher);
+      log.debug("-- registered watcher " + watcher);
       ocmh.zkStateReader.registerCollectionStateWatcher(coll.getName(), watcher);
     }
     if (addResult.get("failure") != null) {
