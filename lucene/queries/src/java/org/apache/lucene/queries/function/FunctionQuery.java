@@ -75,8 +75,8 @@ public class FunctionQuery extends Query {
     }
 
     @Override
-    public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-      return null;
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
     }
 
     @Override
@@ -121,11 +121,6 @@ public class FunctionQuery extends Query {
       // map to -Float.MAX_VALUE. This conditional handles both -infinity
       // and NaN since comparisons with NaN are always false.
       return score>Float.NEGATIVE_INFINITY ? score : -Float.MAX_VALUE;
-    }
-
-    @Override
-    public int freq() throws IOException {
-      return 1;
     }
 
     public Explanation explain(int doc) throws IOException {

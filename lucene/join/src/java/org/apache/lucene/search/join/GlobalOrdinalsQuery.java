@@ -20,7 +20,6 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.apache.lucene.index.DocValues;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.OrdinalMap;
 import org.apache.lucene.index.SortedDocValues;
@@ -156,8 +155,11 @@ final class GlobalOrdinalsQuery extends Query {
     }
 
     @Override
-    public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-      return getDocValuesCacheHelper(joinField, context);
+    public boolean isCacheable(LeafReaderContext ctx) {
+      // disable caching because this query relies on a top reader context
+      // and holds a bitset of matching ordinals that cannot be accounted in
+      // the memory used by the cache
+      return false;
     }
 
   }

@@ -15,13 +15,23 @@
  * limitations under the License.
  */
 
-package org.apache.solr.util;
+package org.apache.lucene.queries.payloads;
 
 import org.apache.lucene.util.BytesRef;
 
 /**
- * Mirrors SimScorer#computePayloadFactor's signature
+ * Defines a way of converting payloads to float values, for use by {@link PayloadScoreQuery}
  */
 public interface PayloadDecoder {
-  float decode(int doc, int start, int end, BytesRef payload);
+
+  /**
+   * Compute a float value for the given payload
+   */
+  float computePayloadFactor(BytesRef payload);
+
+  /**
+   * A {@link PayloadDecoder} that interprets the bytes of a payload as a float
+   */
+  PayloadDecoder FLOAT_DECODER = bytes -> bytes == null ? 1 : bytes.bytes[bytes.offset];
+
 }

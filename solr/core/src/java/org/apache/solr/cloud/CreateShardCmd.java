@@ -105,7 +105,7 @@ public class CreateShardCmd implements Cmd {
             numPullReplicas);
       } else {
         List<Assign.ReplicaCount> sortedNodeList = getNodesForNewReplicas(clusterState, collectionName, sliceName, totalReplicas,
-            createNodeSetStr, ocmh.overseer.getSolrCloudManager(), ocmh.overseer.getCoreContainer());
+            createNodeSetStr, ocmh.overseer.getSolrCloudManager());
         int i = 0;
         positions = new ArrayList<>();
         for (Map.Entry<Replica.Type, Integer> e : ImmutableMap.of(Replica.Type.NRT, numNrtReplicas,
@@ -164,7 +164,7 @@ public class CreateShardCmd implements Cmd {
         });
       }
     } finally {
-      PolicyHelper.clearFlagAndDecref(ocmh.policySessionRef);
+      PolicyHelper.clearFlagAndDecref(PolicyHelper.getPolicySessionRef(ocmh.overseer.getSolrCloudManager()));
     }
 
     log.debug("Waiting for create shard action to complete");

@@ -31,7 +31,6 @@ import java.util.concurrent.FutureTask;
 import java.util.concurrent.RunnableFuture;
 import java.util.concurrent.Semaphore;
 
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.DisiPriorityQueue;
@@ -481,8 +480,8 @@ public class LTRScoringQuery extends Query {
     }
 
     @Override
-    public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-      return null;
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
     }
 
     public class ModelScorer extends Scorer {
@@ -520,11 +519,6 @@ public class LTRScoringQuery extends Query {
       @Override
       public float score() throws IOException {
         return featureTraversalScorer.score();
-      }
-
-      @Override
-      public int freq() throws IOException {
-        return featureTraversalScorer.freq();
       }
 
       @Override
@@ -579,16 +573,6 @@ public class LTRScoringQuery extends Query {
             }
           }
           return makeNormalizedFeaturesAndScore();
-        }
-
-        @Override
-        public int freq() throws IOException {
-          final DisiWrapper subMatches = subScorers.topList();
-          int freq = 1;
-          for (DisiWrapper w = subMatches.next; w != null; w = w.next) {
-            freq += 1;
-          }
-          return freq;
         }
 
         @Override
@@ -680,11 +664,6 @@ public class LTRScoringQuery extends Query {
             children.add(new ChildScorer(scorer, "SHOULD"));
           }
           return children;
-        }
-
-        @Override
-        public int freq() throws IOException {
-          return freq;
         }
 
         @Override

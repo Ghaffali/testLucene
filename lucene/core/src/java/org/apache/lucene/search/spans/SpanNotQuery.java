@@ -18,7 +18,6 @@ package org.apache.lucene.search.spans;
 
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -179,7 +178,7 @@ public final class SpanNotQuery extends SpanQuery {
           }
 
           // exclude end position far enough in current doc, check start position:
-          if (candidate.endPosition() + post <= excludeSpans.startPosition()) {
+          if (excludeSpans.startPosition() - post >= candidate.endPosition()) {
             return AcceptStatus.YES;
           } else {
             return AcceptStatus.NO;
@@ -194,9 +193,10 @@ public final class SpanNotQuery extends SpanQuery {
     }
 
     @Override
-    public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-      return getCacheHelper(context, Arrays.asList(includeWeight, excludeWeight));
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return includeWeight.isCacheable(ctx) && excludeWeight.isCacheable(ctx);
     }
+
   }
 
   @Override

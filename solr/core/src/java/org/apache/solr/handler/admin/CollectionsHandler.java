@@ -65,6 +65,7 @@ import org.apache.solr.common.cloud.ZkCmdExecutor;
 import org.apache.solr.common.cloud.ZkCoreNodeProps;
 import org.apache.solr.common.cloud.ZkNodeProps;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.params.CollectionAdminParams;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.params.CollectionParams.CollectionAction;
@@ -681,6 +682,9 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
           new ZkNodeProps(all)).getClusterStatus(rsp.getValues());
       return null;
     }),
+    UTILIZENODE_OP(UTILIZENODE, (req, rsp, h) -> {
+      return req.getParams().required().getAll(null, AutoScalingParams.NODE);
+    }),
     ADDREPLICAPROP_OP(ADDREPLICAPROP, (req, rsp, h) -> {
       Map<String, Object> map = req.getParams().required().getAll(null,
           COLLECTION_PROP,
@@ -1105,7 +1109,8 @@ public class CollectionsHandler extends RequestHandlerBase implements Permission
         }
       }
     }
-    ReplicaAssigner.verifySnitchConf(cc, (List) m.get(SNITCH));
+    if (cc != null && cc.isZooKeeperAware())
+      ReplicaAssigner.verifySnitchConf(cc.getZkController().getSolrCloudManager(), (List) m.get(SNITCH));
   }
 
   /**

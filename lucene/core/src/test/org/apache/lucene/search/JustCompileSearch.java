@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Set;
 
 import org.apache.lucene.index.FieldInvertState;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.Term;
 import org.apache.lucene.search.similarities.Similarity;
@@ -177,11 +176,6 @@ final class JustCompileSearch {
     }
 
     @Override
-    public int freq() {
-      throw new UnsupportedOperationException(UNSUPPORTED_MSG);
-    }
-
-    @Override
     public int docID() {
       throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
@@ -264,8 +258,8 @@ final class JustCompileSearch {
     }
 
     @Override
-    public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-      return null;
+    public boolean isCacheable(LeafReaderContext ctx) {
+      throw new UnsupportedOperationException(UNSUPPORTED_MSG);
     }
 
   }

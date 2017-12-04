@@ -333,8 +333,8 @@ class SpatialDistanceQuery extends ExtendedQueryBase implements PostFilter {
     }
 
     @Override
-    public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-      return null;
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
     }
 
     @Override
@@ -482,11 +482,6 @@ class SpatialDistanceQuery extends ExtendedQueryBase implements PostFilter {
     public float score() throws IOException {
       double dist = (doc == lastDistDoc) ? lastDist : dist(latVals.doubleVal(doc), lonVals.doubleVal(doc));
       return (float)(dist * qWeight);
-    }
-
-    @Override
-    public int freq() throws IOException {
-      return 1;
     }
 
     public Explanation explain(Explanation base, int doc) throws IOException {

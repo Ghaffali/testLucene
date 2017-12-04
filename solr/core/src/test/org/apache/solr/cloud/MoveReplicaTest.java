@@ -49,12 +49,14 @@ import org.apache.solr.common.params.ModifiableSolrParams;
 import org.apache.solr.common.params.SolrParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.util.IdUtils;
+import org.apache.solr.util.LogLevel;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@LogLevel("org.apache.solr.cloud=DEBUG;org.apache.solr.cloud.autoscaling=DEBUG;")
 public class MoveReplicaTest extends SolrCloudTestCase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
@@ -103,7 +105,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
 
   @Test
   public void test() throws Exception {
-    String coll = getTestClass().getSimpleName() + "_coll";
+    String coll = getTestClass().getSimpleName() + "_coll_" + inPlaceMove;
     log.info("total_jettys: " + cluster.getJettySolrRunners().size());
     int REPLICATION = 2;
 
@@ -247,9 +249,10 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     assertEquals(100, cluster.getSolrClient().query(coll, new SolrQuery("*:*")).getResults().getNumFound());
   }
 
+ // @AwaitsFix(bugUrl = "https://issues.apache.org/jira/browse/SOLR-11458")
   @Test
   public void testFailedMove() throws Exception {
-    String coll = getTestClass().getSimpleName() + "_failed_coll";
+    String coll = getTestClass().getSimpleName() + "_failed_coll_" + inPlaceMove;
     int REPLICATION = 2;
 
     CloudSolrClient cloudClient = cluster.getSolrClient();
@@ -302,6 +305,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     Set<CollectionStateWatcher> newWatchers = new HashSet<>(accessor.getStateWatchers(coll));
     assertEquals(watchers, newWatchers);
 
+    log.info("--- current collection state: " + cloudClient.getZkStateReader().getClusterState().getCollection(coll));
     assertEquals(100, cluster.getSolrClient().query(coll, new SolrQuery("*:*")).getResults().getNumFound());
   }
 
@@ -381,7 +385,7 @@ public class MoveReplicaTest extends SolrCloudTestCase {
     }
   }
 
-  private void addDocs(String collection, int numDocs) throws Exception {
+  protected void addDocs(String collection, int numDocs) throws Exception {
     SolrClient solrClient = cluster.getSolrClient();
     for (int docId = 1; docId <= numDocs; docId++) {
       SolrInputDocument doc = new SolrInputDocument();

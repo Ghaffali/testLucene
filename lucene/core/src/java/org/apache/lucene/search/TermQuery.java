@@ -21,7 +21,6 @@ import java.io.IOException;
 import java.util.Objects;
 import java.util.Set;
 
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.IndexReaderContext;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
@@ -101,8 +100,8 @@ public class TermQuery extends Query {
     }
 
     @Override
-    public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-      return context.reader().getCoreCacheHelper();
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return true;
     }
 
     /**
@@ -145,7 +144,7 @@ public class TermQuery extends Query {
 
     @Override
     public Explanation explain(LeafReaderContext context, int doc) throws IOException {
-      Scorer scorer = scorer(context);
+      TermScorer scorer = (TermScorer) scorer(context);
       if (scorer != null) {
         int newDoc = scorer.iterator().advance(doc);
         if (newDoc == doc) {

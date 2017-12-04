@@ -20,7 +20,6 @@ package org.apache.lucene.search.similarities;
 import org.apache.lucene.search.CollectionStatistics;
 import org.apache.lucene.search.Explanation;
 import org.apache.lucene.search.TermStatistics;
-import org.apache.lucene.util.BytesRef;
 
 /**
  * Expert: Historical scoring implementation. You might want to consider using
@@ -46,19 +45,7 @@ public class ClassicSimilarity extends TFIDFSimilarity {
   public float tf(float freq) {
     return (float)Math.sqrt(freq);
   }
-    
-  /** Implemented as <code>1 / (distance + 1)</code>. */
-  @Override
-  public float sloppyFreq(int distance) {
-    return 1.0f / (distance + 1);
-  }
   
-  /** The default implementation returns <code>1</code> */
-  @Override
-  public float scorePayload(int doc, int start, int end, BytesRef payload) {
-    return 1;
-  }
-
   @Override
   public Explanation idfExplain(CollectionStatistics collectionStats, TermStatistics termStats) {
     final long df = termStats.docFreq();

@@ -292,8 +292,10 @@ public class CloudSolrClientTest extends SolrCloudTestCase {
     assertEquals(0, docs.getNumFound());
     
     // Test Multi-Threaded routed updates for UpdateRequest
-    try (CloudSolrClient threadedClient = getCloudSolrClient(cluster.getZkServer().getZkAddress())) {
-      threadedClient.setParallelUpdates(true);
+    try (CloudSolrClient threadedClient = new CloudSolrClientBuilder()
+        .withZkHost(cluster.getZkServer().getZkAddress())
+        .withParallelUpdates(true)
+        .build()) {
       threadedClient.setDefaultCollection(COLLECTION);
       response = threadedClient.request(request);
       if (threadedClient.isDirectUpdatesToLeadersOnly()) {
@@ -810,7 +812,11 @@ public class CloudSolrClientTest extends SolrCloudTestCase {
     final String old_leader_core_node_name = slice.getLeader().getName();
 
     // NOTE: creating our own CloudSolrClient whose settings we can muck with...
-    try (CloudSolrClient stale_client = getCloudSolrClient(cluster.getZkServer().getZkAddress())) {
+    try (CloudSolrClient stale_client = new CloudSolrClientBuilder()
+        .withZkHost(cluster.getZkServer().getZkAddress())
+        .sendDirectUpdatesToAnyShardReplica()
+        .withParallelUpdates(true)
+        .build()) {
       // don't let collection cache entries get expired, even on a slow machine...
       stale_client.setCollectionCacheTTl(Integer.MAX_VALUE);
       stale_client.setDefaultCollection(COL);

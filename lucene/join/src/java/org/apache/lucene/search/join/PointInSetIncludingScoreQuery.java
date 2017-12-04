@@ -29,7 +29,6 @@ import org.apache.lucene.document.FloatPoint;
 import org.apache.lucene.document.IntPoint;
 import org.apache.lucene.document.LongPoint;
 import org.apache.lucene.index.FieldInfo;
-import org.apache.lucene.index.IndexReader;
 import org.apache.lucene.index.LeafReader;
 import org.apache.lucene.index.LeafReaderContext;
 import org.apache.lucene.index.PointValues;
@@ -171,11 +170,6 @@ abstract class PointInSetIncludingScoreQuery extends Query {
           }
 
           @Override
-          public int freq() throws IOException {
-            return 1;
-          }
-
-          @Override
           public int docID() {
             return disi.docID();
           }
@@ -189,9 +183,10 @@ abstract class PointInSetIncludingScoreQuery extends Query {
       }
 
       @Override
-      public IndexReader.CacheHelper getCacheHelper(LeafReaderContext context) {
-        return context.reader().getCoreCacheHelper();
+      public boolean isCacheable(LeafReaderContext ctx) {
+        return true;
       }
+
     };
   }
 

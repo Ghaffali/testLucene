@@ -757,8 +757,18 @@ public class TestRangeFacetCounts extends FacetTestCase {
     }
 
     @Override
+    public boolean isCacheable(LeafReaderContext ctx) {
+      return false;
+    }
+
+    @Override
     public Explanation explain(LeafReaderContext ctx, int docId, Explanation scoreExplanation) throws IOException {
       return Explanation.match(docId + 1, "");
+    }
+
+    @Override
+    public DoubleValuesSource rewrite(IndexSearcher searcher) throws IOException {
+      return this;
     }
 
     @Override
