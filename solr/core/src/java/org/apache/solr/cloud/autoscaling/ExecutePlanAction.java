@@ -51,7 +51,7 @@ public class ExecutePlanAction extends TriggerActionBase {
   private static final Logger log = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
   private static final String PREFIX = "op-";
 
-  static final int DEFAULT_TASK_TIMEOUT = 120;
+  static final int DEFAULT_TASK_TIMEOUT_SECONDS = 120;
 
   @Override
   public void process(TriggerEvent event, ActionContext context) throws Exception {
@@ -83,7 +83,7 @@ public class ExecutePlanAction extends TriggerActionBase {
             }
             asyncId = (String)asyncResponse.getResponse().get("requestid");
             CollectionAdminRequest.RequestStatusResponse statusResponse = waitForTaskToFinish(cloudManager, asyncId,
-                DEFAULT_TASK_TIMEOUT, TimeUnit.SECONDS);
+                DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if (statusResponse != null) {
               RequestStatusState state = statusResponse.getRequestStatus();
               if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {

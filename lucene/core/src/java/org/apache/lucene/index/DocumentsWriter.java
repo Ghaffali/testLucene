@@ -246,6 +246,21 @@ final class DocumentsWriter implements Closeable, Accountable {
     }
   }
 
+  final boolean flushOneDWPT() throws IOException, AbortingException {
+    if (infoStream.isEnabled("DW")) {
+      infoStream.message("DW", "startFlushOneDWPT");
+    }
+    // first check if there is one pending
+    DocumentsWriterPerThread documentsWriterPerThread = flushControl.nextPendingFlush();
+    if (documentsWriterPerThread == null) {
+      documentsWriterPerThread = flushControl.checkoutLargestNonPendingWriter();
+    }
+    if (documentsWriterPerThread != null) {
+      return doFlush(documentsWriterPerThread);
+    }
+    return false; // we didn't flush anything here
+  }
+
   /** Returns how many documents were aborted. */
   synchronized long lockAndAbortAll(IndexWriter indexWriter) throws IOException {
     assert indexWriter.holdsFullFlushLock();
@@ -534,7 +549,6 @@ final class DocumentsWriter implements Closeable, Accountable {
         try {
           // Each flush is assigned a ticket in the order they acquire the ticketQueue lock
           ticket = ticketQueue.addFlushTicket(flushingDWPT);
-  
           final int flushingDocsInRam = flushingDWPT.getNumDocsInRAM();
           boolean dwptSuccess = false;
           try {
@@ -666,7 +680,9 @@ final class DocumentsWriter implements Closeable, Accountable {
         ticketQueue.addDeletes(flushingDeleteQueue);
       }
       ticketQueue.forcePurge(writer);
-      assert !flushingDeleteQueue.anyChanges() && !ticketQueue.hasTickets();
+      // we can't assert that we don't have any tickets in teh queue since we might add a DocumentsWriterDeleteQueue
+      // concurrently if we have very small ram buffers this happens quite frequently
+      assert !flushingDeleteQueue.anyChanges();
     } finally {
       assert flushingDeleteQueue == currentFullFlushDelQueue;
     }

@@ -39,6 +39,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
+import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.cloud.autoscaling.Suggestion;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
@@ -255,10 +256,13 @@ public class SimClusterStateProvider implements ClusterStateProvider {
    * @param results result of the operation
    */
   public void simAddReplica(ZkNodeProps message, NamedList results) throws Exception {
-    AtomicLong policyVersionAfter = new AtomicLong(-1);
     ClusterState clusterState = getClusterState();
     DocCollection coll = clusterState.getCollection(message.getStr(ZkStateReader.COLLECTION_PROP));
-    message = AddReplicaCmd.assignReplicaDetails(cloudManager, clusterState, message, policyVersionAfter);
+    AtomicReference<PolicyHelper.SessionWrapper> sessionWrapper = new AtomicReference<>();
+    message = AddReplicaCmd.assignReplicaDetails(cloudManager, clusterState, message, sessionWrapper);
+    if (sessionWrapper.get() != null) {
+      sessionWrapper.get().release();
+    }
     if (message.getStr(CoreAdminParams.CORE_NODE_NAME) == null) {
       message = message.plus(CoreAdminParams.CORE_NODE_NAME, Assign.assignCoreNodeName(stateManager, coll));
     }
@@ -515,8 +519,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
     opDelay(collectionName, CollectionParams.CollectionAction.CREATE.name());
 
+    AtomicReference<PolicyHelper.SessionWrapper> sessionWrapper = new AtomicReference<>();
     List<ReplicaPosition> replicaPositions = CreateCollectionCmd.buildReplicaPositions(cloudManager, getClusterState(), props,
-        nodeList, shardNames);
+        nodeList, shardNames, sessionWrapper);
+    if (sessionWrapper.get() != null) {
+      sessionWrapper.get().release();
+    }
     AtomicInteger replicaNum = new AtomicInteger(1);
     replicaPositions.forEach(pos -> {
       Map<String, Object> replicaProps = new HashMap<>();
@@ -693,7 +701,12 @@ public class SimClusterStateProvider implements ClusterStateProvider {
           .filter(e -> !e.getKey().equals("replicas"))
           .forEach(e -> props.put(e.getKey(), e.getValue()));
       // 2. create new replicas
-      List<ReplicaPosition> positions = CreateShardCmd.buildReplicaPositions(cloudManager, clusterState, collectionName, message);
+      AtomicReference<PolicyHelper.SessionWrapper> sessionWrapper = new AtomicReference<>();
+      List<ReplicaPosition> positions = CreateShardCmd.buildReplicaPositions(cloudManager, clusterState, collectionName,
+          message, sessionWrapper);
+      if (sessionWrapper.get() != null) {
+        sessionWrapper.get().release();
+      }
       AtomicInteger replicaNum = new AtomicInteger(1);
       positions.forEach(pos -> {
         Map<String, Object> replicaProps = new HashMap<>();
@@ -765,6 +778,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         new ZkNodeProps(collection.getProperties()),
         // reproduce the bug
         subSlices, repFactor, 0, 0);
+    PolicyHelper.SessionWrapper sessionWrapper = PolicyHelper.getLastSessionWrapper(true);
+    if (sessionWrapper != null) sessionWrapper.release();
 
     for (ReplicaPosition replicaPosition : replicaPositions) {
       String subSliceName = replicaPosition.shard;

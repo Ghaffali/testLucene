@@ -25,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.google.common.collect.ImmutableMap;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
@@ -78,9 +79,10 @@ public class CreateShardCmd implements Cmd {
     DocCollection collection = clusterState.getCollection(collectionName);
 
     ZkStateReader zkStateReader = ocmh.zkStateReader;
+    AtomicReference<PolicyHelper.SessionWrapper> sessionWrapper = new AtomicReference<>();
     SolrCloseableLatch countDownLatch;
     try {
-      List<ReplicaPosition> positions = buildReplicaPositions(ocmh.cloudManager, clusterState, collectionName, message);
+      List<ReplicaPosition> positions = buildReplicaPositions(ocmh.cloudManager, clusterState, collectionName, message, sessionWrapper);
       Overseer.getStateUpdateQueue(zkStateReader.getZkClient()).offer(Utils.toJSON(message));
       // wait for a while until we see the shard
       ocmh.waitForNewShard(collectionName, sliceName);
@@ -127,7 +129,7 @@ public class CreateShardCmd implements Cmd {
         });
       }
     } finally {
-      PolicyHelper.clearFlagAndDecref(PolicyHelper.getPolicySessionRef(ocmh.overseer.getSolrCloudManager()));
+      if (sessionWrapper.get() != null) sessionWrapper.get().release();
     }
 
     log.debug("Waiting for create shard action to complete");
@@ -139,7 +141,7 @@ public class CreateShardCmd implements Cmd {
   }
 
   public static List<ReplicaPosition> buildReplicaPositions(SolrCloudManager cloudManager, ClusterState clusterState,
-         String collectionName, ZkNodeProps message) throws IOException, InterruptedException {
+         String collectionName, ZkNodeProps message, AtomicReference< PolicyHelper.SessionWrapper> sessionWrapper) throws IOException, InterruptedException {
     String sliceName = message.getStr(SHARD_ID_PROP);
     DocCollection collection = clusterState.getCollection(collectionName);
 
@@ -167,6 +169,7 @@ public class CreateShardCmd implements Cmd {
           numNrtReplicas,
           numTlogReplicas,
           numPullReplicas);
+      sessionWrapper.set(PolicyHelper.getLastSessionWrapper(true));
     } else {
       List<Assign.ReplicaCount> sortedNodeList = getNodesForNewReplicas(clusterState, collection.getName(), sliceName, totalReplicas,
           createNodeSetStr, cloudManager);

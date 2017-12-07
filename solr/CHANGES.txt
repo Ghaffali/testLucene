@@ -32,6 +32,23 @@ Jetty 9.3.20.v20170531
 
 (No Changes)
 
+==================  7.3.0 ==================
+
+Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
+
+Versions of Major Components
+---------------------
+Apache Tika 1.16
+Carrot2 3.15.0
+Velocity 1.7 and Velocity Tools 2.0
+Apache UIMA 2.3.1
+Apache ZooKeeper 3.4.10
+Jetty 9.3.20.v20170531
+
+
+(No Changes)
+
+
 ==================  7.2.0 ==================
 
 Consult the LUCENE_CHANGES.txt file for additional, low level, changes in this release.
@@ -91,16 +108,54 @@ New Features
 * SOLR-11487: Collection Aliases may now have metadata (currently an internal feature).
   (Gus Heck, David Smiley)
 
-* SOLR-11542: New TimePartitionedUpdateProcessor URP that routes documents to another collection
+* SOLR-11542: New TimeRoutedAliasUpdateProcessor URP that routes documents to another collection
   in the same Alias defined set based on a time field (currently an internal feature).
   (David Smiley)
 
-* SOLR-9743: A new  UTILIZENODE command (noble)
+* SOLR-9743: A new UTILIZENODE command (noble)
 
 * SOLR-11202: Implement a set-property command for AutoScaling API. (ab, shalin)
 
 * SOLR-11250: A new DefaultWrapperModel class for loading of large and/or externally stored
   LTRScoringModel definitions. (Yuki Yano, shalin, Christine Poerschke)
+
+* SOLR-11662: New synonymQueryStyle option to configure whether SynonymQuery, a DisjunctionMaxQuery, or BooleanQuery
+  occurs over query terms that overlap their position. (Doug Turnbull, David Smiley)
+
+* SOLR-11429: Add loess Stream Evaluator to support local regression (Joel Bernstein)
+
+* SOLR-11568: Add matrix Stream Evaluator to support efficient matrix operations (Joel Bernstein)
+
+* SOLR-11566: Add transpose Stream Evaluator to support transposing of matrices (Joel Bernstein)
+
+* SOLR-11565: Add unit Stream Evaluator to support unitizing of vectors (Joel Bernstein)
+
+* SOLR-11567: Add triangularDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11593: Add support for covariance matrices to the cov Stream Evaluator (Joel Bernstein)
+
+* SOLR-10680: Add minMaxScale Stream Evaluator (Joel Bernstein)
+
+* SOLR-11599: Change normalize function to standardize and make it work with matrices (Joel Bernstein)
+
+* SOLR-11602: Add Markov Chain Stream Evaluator (Joel Bernstein)
+
+* SOLR-11607: Add grandSum, sumRows, sumColumns, scalarDivide, scalarMultiply, scalarAdd,
+  scalarSubtract Stream Evaluators (Joel Bernstein)
+
+* SOLR-11571: Add diff Stream Evaluator to support time series differencing (Mathew Skaria, Joel Bernstein)
+
+* SOLR-11570: Add support for correlation matrices to the corr Stream Evaluator (Joel Bernstein)
+
+* SOLR-11569: Add support for distance matrices to the distance Stream Evaluator (Joel Bernstein)
+
+* SOLR-11674: Support ranges in the probability Stream Evaluator (Joel Bernstein)
+
+* SOLR-11680: Add normalizeSum Stream Evaluator (Joel Bernstein)
+
+* SOLR-11697: Add geometricDistribution Stream Evaluator (Joel Bernstein)
+
+* SOLR-11485: Add olsRegress, spline and derivative Stream Evaluators (Joel Bernstein)
 
 * SOLR-11285: Simulation framework for autoscaling. (ab)
 
@@ -154,6 +209,27 @@ Bug Fixes
 
 * SOLR-11608: Correctly parse the new core-name in the V2 core rename API.
   (Jason Gerlowski via Anshum Gupta)
+
+* SOLR-11256: The queue size for ConcurrentUpdateSolrClient should default to 10 instead of throwing an
+  IllegalArgumentException. (Jason Gerlowski, Anshum Gupta)
+
+* SOLR-11616: Snapshot the segments more robustly such that segments created during a backup does does not fail the
+  operation (Varun Thacker)
+
+* SOLR-11687: SolrCore.getNewIndexDir falsely returns {dataDir}/index on any IOException reading index.properties
+  (Nikolay Martynov, Erick Erickson)
+
+* SOLR-9137: bin/solr script ignored custom STOP_PORT on shutdown.
+  (Joachim Kohlhammer, Steve Rowe, Christine Poerschke)
+
+* SOLR-11458: Improve error handling in MoveReplicaCmd to avoid potential loss of data. (ab)
+
+* SOLR-11590: Synchronize ZK connect/disconnect handling so that they are processed in linear order
+  (noble, Varun Thacker)
+
+* SOLR-11664: JSON Facet API: range facets containing unique, hll, min, max aggregations over string fields
+  produced incorrect results since 7.0 (Volodymyr Rudniev, yonik)
+
 
 Optimizations
 ----------------------
@@ -218,6 +294,8 @@ Other Changes
 
 * SOLR-11291: Factor out abstract metrics/SolrCore[Container]Reporter classes.
   (Omar Abdelnabi, Christine Poerschke)
+
+* SOLR-11713: Fixed CdcrUpdateLogTest.testSubReader() failure which was a test bug (Varun Thacker, Amrit Sarkar)
 
 ==================  7.1.0 ==================
 
@@ -295,8 +373,6 @@ New Features
 * SOLR-11046: Add residuals Stream Evaluator (Joel Bernstein)
 
 * SOLR-10858: Make UUIDUpdateProcessorFactory as Runtime URP (Amit Sarkar, noble)
-
-* SOLR-11126: Node level health check handler (Anshum Gupta)
 
 * SOLR-11031: Implement SystemLogListener for autoscaling (ab)
 
@@ -586,6 +662,9 @@ Upgrading from Solr 6.x
 ----------------------
 
 * All Trie* numeric and date field types have been deprecated in favor of *Point field types.
+  Point field types are better at range queries (speed, memory, disk), however simple field:value queries underperform
+  relative to Trie. Either accept this, or continue to use Trie fields.
+  This shortcoming may be addressed in a future release.
 
 * The default response type is now JSON ("wt=json") instead of XML, and line indentation is now on by default
   ("indent=on"). If you expect the responses to your queries to be returned in the previous format (XML

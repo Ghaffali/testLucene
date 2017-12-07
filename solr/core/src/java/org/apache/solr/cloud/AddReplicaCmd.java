@@ -26,7 +26,7 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.solr.client.solrj.cloud.autoscaling.Policy;
@@ -49,6 +49,7 @@ import org.apache.solr.handler.component.ShardHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static org.apache.solr.cloud.Assign.getNodesForNewReplicas;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.COLL_CONF;
 import static org.apache.solr.cloud.OverseerCollectionMessageHandler.SKIP_CREATE_REPLICA_IN_CLUSTER_STATE;
 import static org.apache.solr.common.cloud.ZkStateReader.COLLECTION_PROP;
@@ -56,6 +57,7 @@ import static org.apache.solr.common.cloud.ZkStateReader.CORE_NAME_PROP;
 import static org.apache.solr.common.cloud.ZkStateReader.SHARD_ID_PROP;
 import static org.apache.solr.common.params.CollectionParams.CollectionAction.ADDREPLICA;
 import static org.apache.solr.common.params.CommonAdminParams.ASYNC;
+import static org.apache.solr.common.params.CommonAdminParams.TIMEOUT;
 import static org.apache.solr.common.params.CommonAdminParams.WAIT_FOR_FINAL_STATE;
 
 public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
@@ -79,8 +81,8 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
     boolean skipCreateReplicaInClusterState = message.getBool(SKIP_CREATE_REPLICA_IN_CLUSTER_STATE, false);
     final String asyncId = message.getStr(ASYNC);
 
-    AtomicLong policyVersionAfter = new AtomicLong(-1);
-    message = assignReplicaDetails(ocmh.cloudManager, clusterState, message, policyVersionAfter);
+    AtomicReference<PolicyHelper.SessionWrapper> sessionWrapper = new AtomicReference<>();
+    message = assignReplicaDetails(ocmh.cloudManager, clusterState, message, sessionWrapper);
 
     String collection = message.getStr(COLLECTION_PROP);
     DocCollection coll = clusterState.getCollection(collection);
@@ -89,7 +91,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
     String shard = message.getStr(SHARD_ID_PROP);
     String coreName = message.getStr(CoreAdminParams.NAME);
     String coreNodeName = message.getStr(CoreAdminParams.CORE_NODE_NAME);
-    int timeout = message.getInt("timeout", 10 * 60); // 10 minutes
+    int timeout = message.getInt(TIMEOUT, 10 * 60); // 10 minutes
     Replica.Type replicaType = Replica.Type.valueOf(message.getStr(ZkStateReader.REPLICA_TYPE, Replica.Type.NRT.name()).toUpperCase(Locale.ROOT));
     boolean parallel = message.getBool("parallel", false);
 
@@ -169,9 +171,8 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
     Runnable runnable = () -> {
       ocmh.processResponses(results, shardHandler, true, "ADDREPLICA failed to create replica", asyncId, requestMap);
       ocmh.waitForCoreNodeName(collection, fnode, fcoreName);
-      if (policyVersionAfter.get() > -1) {
-        PolicyHelper.REF_VERSION.remove();
-        PolicyHelper.getPolicySessionRef(ocmh.overseer.getSolrCloudManager()).decref(policyVersionAfter.get());
+      if (sessionWrapper.get() != null) {
+        sessionWrapper.get().release();
       }
       if (onComplete != null) onComplete.run();
     };
@@ -206,7 +207,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
   }
 
   public static ZkNodeProps assignReplicaDetails(SolrCloudManager cloudManager, ClusterState clusterState,
-                                                ZkNodeProps message, AtomicLong policyVersionAfter) throws IOException, InterruptedException {
+                                                 ZkNodeProps message, AtomicReference<PolicyHelper.SessionWrapper> sessionWrapper) throws IOException, InterruptedException {
     boolean skipCreateReplicaInClusterState = message.getBool(SKIP_CREATE_REPLICA_IN_CLUSTER_STATE, false);
 
     String collection = message.getStr(COLLECTION_PROP);
@@ -228,7 +229,6 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
           "Collection: " + collection + " shard: " + shard + " does not exist");
     }
 
-    final Long policyVersionBefore = PolicyHelper.REF_VERSION.get();
     // Kind of unnecessary, but it does put the logic of whether to override maxShardsPerNode in one place.
     if (!skipCreateReplicaInClusterState) {
       if (CloudUtil.usePolicyFramework(coll, cloudManager)) {
@@ -244,9 +244,7 @@ public class AddReplicaCmd implements OverseerCollectionMessageHandler.Cmd {
               replicaType == Replica.Type.TLOG ? 0 : 1,
               replicaType == Replica.Type.PULL ? 0 : 1
           ).get(0).node;
-          if (policyVersionBefore == null && PolicyHelper.REF_VERSION.get() != null) {
-            policyVersionAfter.set(PolicyHelper.REF_VERSION.get());
-          }
+          sessionWrapper.set(PolicyHelper.getLastSessionWrapper(true));
         }
       } else {
         node = Assign.getNodesForNewReplicas(clusterState, collection, shard, 1, node,

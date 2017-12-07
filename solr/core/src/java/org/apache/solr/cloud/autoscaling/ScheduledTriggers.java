@@ -201,6 +201,11 @@ public class ScheduledTriggers implements Closeable {
       }
     }
     this.autoScalingConfig = autoScalingConfig;
+
+    // reset cooldown and actionThrottle
+    cooldownStart.set(System.nanoTime() - cooldownPeriod.get());
+    actionThrottle.get().reset();
+
     listeners.setAutoScalingConfig(autoScalingConfig);
   }
 
@@ -381,7 +386,7 @@ public class ScheduledTriggers implements Closeable {
                 try {
                   log.debug("Found pending task with requestid={}", requestid);
                   RequestStatusResponse statusResponse = waitForTaskToFinish(cloudManager, requestid,
-                      ExecutePlanAction.DEFAULT_TASK_TIMEOUT, TimeUnit.SECONDS);
+                      ExecutePlanAction.DEFAULT_TASK_TIMEOUT_SECONDS, TimeUnit.SECONDS);
                   if (statusResponse != null) {
                     RequestStatusState state = statusResponse.getRequestStatus();
                     if (state == RequestStatusState.COMPLETED || state == RequestStatusState.FAILED || state == RequestStatusState.NOT_FOUND) {

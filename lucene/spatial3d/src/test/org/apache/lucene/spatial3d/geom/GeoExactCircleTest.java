@@ -53,6 +53,31 @@ public class GeoExactCircleTest extends RandomGeo3dShapeGenerator{
   }
 
   @Test
+  public void testSurfacePointOnBearingScale(){
+    double ab = 1.6;
+    double c = 0.7;
+    PlanetModel p1 = PlanetModel.WGS84;
+    PlanetModel p2 = new PlanetModel(0.5 * PlanetModel.WGS84.ab, 0.5 * PlanetModel.WGS84.c );
+    GeoPoint point1P1 = new GeoPoint(p1, 0, 0);
+    GeoPoint point2P1 =  new GeoPoint(p1, 1, 1);
+    GeoPoint point1P2 = new GeoPoint(p2, point1P1.getLatitude(), point1P1.getLongitude());
+    GeoPoint point2P2 = new GeoPoint(p2, point2P1.getLatitude(), point2P1.getLongitude());
+
+    double dist =  0.2* Math.PI;
+    double bearing = 0.2 * Math.PI;
+
+    GeoPoint new1 = p1.surfacePointOnBearing(point2P1, dist, bearing);
+    GeoPoint new2 = p2.surfacePointOnBearing(point2P2, dist, bearing);
+
+    assertEquals(new1.getLatitude(), new2.getLatitude(), 1e-12);
+    assertEquals(new1.getLongitude(), new2.getLongitude(), 1e-12);
+    //This is true if surfaceDistance return results always in radians
+    double d1 = p1.surfaceDistance(point1P1, point2P1);
+    double d2 = p2.surfaceDistance(point1P2, point2P2);
+    assertEquals(d1, d2, 1e-12);
+  }
+
+  @Test
   @Repeat(iterations = 100)
   public void RandomPointBearingWGS84Test(){
     PlanetModel planetModel = PlanetModel.WGS84;
@@ -120,6 +145,26 @@ public class GeoExactCircleTest extends RandomGeo3dShapeGenerator{
       success = true;
     }
     assertTrue(success);
+  }
+
+  @Test
+  public void testExactCircleDoesNotFit() {
+    boolean exception = false;
+    try {
+      GeoCircle circle = GeoCircleFactory.makeExactGeoCircle(PlanetModel.WGS84, 1.5633796542562415, -1.0387149580695152,3.1409865861032844, 1e-12);
+    } catch (IllegalArgumentException e) {
+      exception = true;
+    }
+    assertTrue(exception);
+  }
+
+  public void testBigCircleInSphere() {
+    //In Planet model Sphere if circle is close to Math.PI we can get the situation where
+    //circle slice planes are bigger than half of a hemisphere. We need to make
+    //sure we divide the circle in at least 4 slices.
+    GeoCircle circle1 = GeoCircleFactory.makeExactGeoCircle(PlanetModel.SPHERE, 1.1306735252307394, -0.7374283438171261, 3.1415760537549234, 4.816939220262406E-12);
+    GeoPoint point = new GeoPoint(PlanetModel.SPHERE, -1.5707963267948966, 0.0);
+    assertTrue(circle1.isWithin(point));
   }
 
   /**
