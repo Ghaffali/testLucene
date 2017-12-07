@@ -203,7 +203,7 @@ public class ScheduledTriggers implements Closeable {
     this.autoScalingConfig = autoScalingConfig;
 
     // reset cooldown and actionThrottle
-    cooldownStart.set(System.nanoTime() - cooldownPeriod.get());
+    cooldownStart.set(cloudManager.getTimeSource().getTime() - cooldownPeriod.get());
     actionThrottle.get().reset();
 
     listeners.setAutoScalingConfig(autoScalingConfig);

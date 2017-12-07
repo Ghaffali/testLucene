@@ -207,7 +207,7 @@ public class TestExecutePlanAction extends SimSolrCloudTestCase {
     assertFalse(otherNodes.isEmpty());
     String survivor = otherNodes.get(0);
 
-    cluster.simRemoveNode(sourceNodeName);
+    cluster.simRemoveNode(sourceNodeName, false);
 
     waitForState("Timed out waiting for replicas of collection to be 2 again",
         collectionName, clusterShape(1, 2));

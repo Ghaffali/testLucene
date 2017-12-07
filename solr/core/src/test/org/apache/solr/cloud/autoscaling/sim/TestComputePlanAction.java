@@ -186,7 +186,7 @@ public class TestComputePlanAction extends SimSolrCloudTestCase {
     assertTrue(node2 + "is not live yet", cluster.getClusterStateProvider().getClusterState().liveNodesContain(node2) );
 
     // stop the original node
-    cluster.simRemoveNode(node);
+    cluster.simRemoveNode(node, false);
     log.info("Stopped_node : {}", node);
 
     assertTrue("Trigger was not fired even after 10 seconds", triggerFiredLatch.await(10, TimeUnit.SECONDS));
@@ -203,7 +203,7 @@ public class TestComputePlanAction extends SimSolrCloudTestCase {
     assertEquals("Unexpected node in computed operation", replicas.get(0).getName(), replicaToBeMoved);
 
     // shutdown the extra node that we had started
-    cluster.simRemoveNode(node2);
+    cluster.simRemoveNode(node2, false);
   }
 
   public void testNodeWithMultipleReplicasLost() throws Exception {
@@ -247,7 +247,7 @@ public class TestComputePlanAction extends SimSolrCloudTestCase {
       if (replicas != null && replicas.size() == 2) {
         stoppedNodeName = node;
         replicasToBeMoved = replicas;
-        cluster.simRemoveNode(node);
+        cluster.simRemoveNode(node, false);
         break;
       }
     }

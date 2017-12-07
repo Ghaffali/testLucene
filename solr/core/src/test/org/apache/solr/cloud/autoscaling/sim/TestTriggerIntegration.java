@@ -213,7 +213,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     }
 
     // stop the node we had started earlier
-    cluster.simRemoveNode(newNode);
+    cluster.simRemoveNode(newNode, false);
 
     if (!triggerFiredLatch.await(20000 / SPEED, TimeUnit.MILLISECONDS)) {
       fail("Both triggers should have fired by now");
@@ -287,7 +287,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     }
     assertTrue("The action specified in node_lost_restore_trigger was not instantiated even after 2 seconds", actionInitCalled.getCount() > 0);
 
-    cluster.simRemoveNode(nodeName);
+    cluster.simRemoveNode(nodeName, false);
 
     // ensure that the old trigger sees the stopped node, todo find a better way to do this
     timeOut.sleep(500 + TimeUnit.SECONDS.toMillis(DEFAULT_SCHEDULED_TRIGGER_DELAY_SECONDS));
@@ -450,7 +450,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
     }
 
     String lostNodeName = cluster.getSimClusterStateProvider().simGetRandomNode(random());
-    cluster.simRemoveNode(lostNodeName);
+    cluster.simRemoveNode(lostNodeName, false);
     boolean await = triggerFiredLatch.await(20000 / SPEED, TimeUnit.MILLISECONDS);
     assertTrue("The trigger did not fire at all", await);
     assertTrue(triggerFired.get());

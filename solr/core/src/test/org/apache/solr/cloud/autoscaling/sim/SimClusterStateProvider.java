@@ -232,13 +232,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     try {
       Set<String> collections = new HashSet<>();
       // mark every replica on that node as down
-      List<ReplicaInfo> replicas = nodeReplicaMap.get(nodeId);
-      if (replicas != null) {
-        replicas.forEach(r -> {
-          r.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.DOWN.toString());
-          collections.add(r.getCollection());
-        });
-      }
+      setReplicaStates(nodeId, Replica.State.DOWN, collections);
       boolean res = liveNodes.remove(nodeId);
       if (!collections.isEmpty()) {
         cloudManager.submit(new LeaderElection(collections, true));
@@ -246,6 +240,41 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       return res;
     } finally {
       lock.unlock();
+    }
+  }
+
+  // this method needs to be called under a lock
+  private void setReplicaStates(String nodeId, Replica.State state, Set<String> changedCollections) {
+    List<ReplicaInfo> replicas = nodeReplicaMap.get(nodeId);
+    if (replicas != null) {
+      replicas.forEach(r -> {
+        r.getVariables().put(ZkStateReader.STATE_PROP, state.toString());
+        changedCollections.add(r.getCollection());
+      });
+    }
+  }
+
+  public boolean simRestoreNode(String nodeId) throws Exception {
+    liveNodes.add(nodeId);
+    Set<String> collections = new HashSet<>();
+    lock.lock();
+    try {
+      setReplicaStates(nodeId, Replica.State.RECOVERING, collections);
+    } finally {
+      lock.unlock();
+    }
+    cloudManager.getTimeSource().sleep(1000);
+    lock.lock();
+    try {
+      setReplicaStates(nodeId, Replica.State.ACTIVE, collections);
+    } finally {
+      lock.unlock();
+    }
+    if (!collections.isEmpty()) {
+      cloudManager.submit(new LeaderElection(collections, true));
+      return true;
+    } else {
+      return false;
     }
   }
 

@@ -31,6 +31,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.solr.client.solrj.SolrClient;
 import org.apache.solr.client.solrj.SolrRequest;
@@ -98,6 +99,7 @@ public class SimCloudManager implements SolrCloudManager {
 
   private final List<SolrInputDocument> systemColl = Collections.synchronizedList(new ArrayList<>());
   private final ExecutorService simCloudManagerPool;
+  private final Map<String, AtomicLong> opCounts = new ConcurrentHashMap<>();
 
 
   private Overseer.OverseerThread triggerThread;
@@ -227,24 +229,32 @@ public class SimCloudManager implements SolrCloudManager {
   /**
    * Remove a node from the cluster. This simulates a node lost scenario.
    * @param nodeId node id
+   * @param withValues when true, remove also simulated node values. If false
+   *                   then node values are retained to later simulate
+   *                   a node that comes back up
    */
-  public void simRemoveNode(String nodeId) throws Exception {
+  public void simRemoveNode(String nodeId, boolean withValues) throws Exception {
     clusterStateProvider.simRemoveNode(nodeId);
-    nodeStateProvider.simRemoveNodeValues(nodeId);
+    if (withValues) {
+      nodeStateProvider.simRemoveNodeValues(nodeId);
+    }
     LOG.trace("-- removed node " + nodeId);
   }
 
   /**
    * Remove a number of randomly selected nodes
    * @param number number of nodes to remove
+   * @param withValues when true, remove also simulated node values. If false
+   *                   then node values are retained to later simulate
+   *                   a node that comes back up
    * @param random random
    */
-  public void simRemoveRandomNodes(int number, Random random) throws Exception {
+  public void simRemoveRandomNodes(int number, boolean withValues, Random random) throws Exception {
     List<String> nodes = new ArrayList<>(liveNodes);
     Collections.shuffle(nodes, random);
     int count = Math.min(number, nodes.size());
     for (int i = 0; i < count; i++) {
-      simRemoveNode(nodes.get(i));
+      simRemoveNode(nodes.get(i), withValues);
     }
   }
 
@@ -309,6 +319,15 @@ public class SimCloudManager implements SolrCloudManager {
     return stateManager;
   }
 
+  public Map<String, AtomicLong> simGetOpCounts() {
+    return opCounts;
+  }
+
+  public long simGetOpCount(String op) {
+    AtomicLong count = opCounts.get(op);
+    return count != null ? count.get() : 0L;
+  }
+
   // --------- interface methods -----------
 
 
@@ -360,6 +379,11 @@ public class SimCloudManager implements SolrCloudManager {
     }
   }
 
+  private void incrementCount(String op) {
+    AtomicLong count = opCounts.computeIfAbsent(op, o -> new AtomicLong());
+    count.incrementAndGet();
+  }
+
   /**
    * Handler for autoscaling requests. NOTE: only a specific subset of autoscaling requests is
    * supported!
@@ -374,6 +398,7 @@ public class SimCloudManager implements SolrCloudManager {
         (req.getParams() != null ? " " + req.getParams().toQueryString() : ""));
     if (req.getPath() != null && req.getPath().startsWith("/admin/autoscaling") ||
         req.getPath().startsWith("/cluster/autoscaling")) {
+      incrementCount("autoscaling");
       ModifiableSolrParams params = new ModifiableSolrParams(req.getParams());
       params.set(CommonParams.PATH, req.getPath());
       LocalSolrQueryRequest queryRequest = new LocalSolrQueryRequest(null, params);
@@ -395,6 +420,7 @@ public class SimCloudManager implements SolrCloudManager {
       return rsp;
     }
     if (req instanceof UpdateRequest) {
+      incrementCount("update");
       // support only updates to the system collection
       UpdateRequest ureq = (UpdateRequest)req;
       if (ureq.getCollection() == null || !ureq.getCollection().equals(CollectionAdminParams.SYSTEM_COLL)) {
@@ -422,6 +448,7 @@ public class SimCloudManager implements SolrCloudManager {
       LOG.debug("Invoking Collection Action :{} with params {}", action.toLower(), req.getParams().toQueryString());
       NamedList results = new NamedList();
       rsp.setResponse(results);
+      incrementCount(action.name());
       switch (action) {
         case REQUESTSTATUS:
           // we complete all async ops immediately

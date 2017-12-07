@@ -44,6 +44,7 @@ import org.apache.solr.cloud.autoscaling.TriggerEvent;
 import org.apache.solr.cloud.autoscaling.TriggerListenerBase;
 import org.apache.solr.cloud.autoscaling.CapturedEvent;
 import org.apache.solr.common.cloud.ZkStateReader;
+import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.TimeSource;
 import org.apache.solr.util.LogLevel;
@@ -180,11 +181,31 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
     int KILL_NODES = 8;
     // kill off a number of nodes
     for (int i = 0; i < KILL_NODES; i++) {
-      cluster.simRemoveNode(nodes.get(i));
+      cluster.simRemoveNode(nodes.get(i), false);
     }
 
     log.info("Ready after " + waitForState(collectionName, 90 * KILL_NODES, TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
 
+    log.info("OP COUNTS: " + cluster.simGetOpCounts());
+    long moveReplicaOps = cluster.simGetOpCount(CollectionParams.CollectionAction.MOVEREPLICA.name());
+
+    // simulate a number of flaky nodes
+    int FLAKY_NODES = 10;
+    for (int cnt = 0; cnt < 10; cnt++) {
+      for (int i = KILL_NODES; i < KILL_NODES + FLAKY_NODES; i++) {
+        cluster.simRemoveNode(nodes.get(i), false);
+      }
+      cluster.getTimeSource().sleep(TimeUnit.SECONDS.toMillis(waitForSeconds) * 2);
+      for (int i = KILL_NODES; i < KILL_NODES + FLAKY_NODES; i++) {
+        final String nodeId = nodes.get(i);
+        cluster.submit(() -> cluster.getSimClusterStateProvider().simRestoreNode(nodeId));
+      }
+    }
+
+    log.info("Ready after " + waitForState(collectionName, 30 * nodes.size(), TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
+    log.info("OP COUNTS: " + cluster.simGetOpCounts());
+    long newMoveReplicaOps = cluster.simGetOpCount(CollectionParams.CollectionAction.MOVEREPLICA.name());
+    log.info("==== Additional MOVEREPLICA count: " + (newMoveReplicaOps - moveReplicaOps));
   }
 
   @Test
