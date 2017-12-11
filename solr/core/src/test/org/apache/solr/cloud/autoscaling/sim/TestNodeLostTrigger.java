@@ -28,15 +28,12 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.apache.solr.client.solrj.embedded.JettySolrRunner;
-import org.apache.solr.cloud.SolrCloudTestCase;
 import org.apache.solr.cloud.autoscaling.ActionContext;
 import org.apache.solr.cloud.autoscaling.AutoScaling;
 import org.apache.solr.cloud.autoscaling.NodeLostTrigger;
 import org.apache.solr.cloud.autoscaling.TriggerAction;
 import org.apache.solr.cloud.autoscaling.TriggerEvent;
 import org.apache.solr.common.util.TimeSource;
-import org.apache.solr.core.CoreContainer;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
