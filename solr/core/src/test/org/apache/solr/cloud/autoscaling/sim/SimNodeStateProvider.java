@@ -47,12 +47,12 @@ public class SimNodeStateProvider implements NodeStateProvider {
   private final Map<String, Map<String, Object>> nodeValues = new ConcurrentHashMap<>();
   private final SimClusterStateProvider clusterStateProvider;
   private final SimDistribStateManager stateManager;
-  private final Set<String> liveNodes;
+  private final LiveNodesSet liveNodesSet;
 
-  public SimNodeStateProvider(Set<String> liveNodes, SimDistribStateManager stateManager,
+  public SimNodeStateProvider(LiveNodesSet liveNodesSet, SimDistribStateManager stateManager,
                               SimClusterStateProvider clusterStateProvider,
                               Map<String, Map<String, Object>> nodeValues) {
-    this.liveNodes = liveNodes;
+    this.liveNodesSet = liveNodesSet;
     this.stateManager = stateManager;
     this.clusterStateProvider = clusterStateProvider;
     if (nodeValues != null) {
@@ -226,7 +226,7 @@ public class SimNodeStateProvider implements NodeStateProvider {
   @Override
   public Map<String, Object> getNodeValues(String node, Collection<String> tags) {
     LOG.trace("-- requested values for " + node + ": " + tags);
-    if (!liveNodes.contains(node)) {
+    if (!liveNodesSet.contains(node)) {
       nodeValues.remove(node);
       return Collections.emptyMap();
     }

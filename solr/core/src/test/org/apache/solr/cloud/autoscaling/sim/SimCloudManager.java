@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
@@ -91,11 +90,10 @@ public class SimCloudManager implements SolrCloudManager {
   private final SimClusterStateProvider clusterStateProvider;
   private final SimNodeStateProvider nodeStateProvider;
   private final AutoScalingHandler autoScalingHandler;
-  private final Set<String> liveNodes = ConcurrentHashMap.newKeySet();
+  private final LiveNodesSet liveNodesSet = new LiveNodesSet();
   private final DistributedQueueFactory queueFactory;
   private final ObjectCache objectCache = new ObjectCache();
   private TimeSource timeSource;
-  private SolrClient solrClient;
 
   private final List<SolrInputDocument> systemColl = Collections.synchronizedList(new ArrayList<>());
   private final ExecutorService simCloudManagerPool;
@@ -103,11 +101,14 @@ public class SimCloudManager implements SolrCloudManager {
 
 
   private Overseer.OverseerThread triggerThread;
+  private ThreadGroup triggerThreadGroup;
+  private SolrResourceLoader loader;
 
   private static int nodeIdPort = 10000;
 
   public SimCloudManager(TimeSource timeSource) throws Exception {
     this.stateManager = new SimDistribStateManager();
+    this.loader = new SolrResourceLoader();
     // init common paths
     stateManager.makePath(ZkStateReader.CLUSTER_STATE);
     stateManager.makePath(ZkStateReader.CLUSTER_PROPS);
@@ -120,20 +121,16 @@ public class SimCloudManager implements SolrCloudManager {
     stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH);
 
     this.timeSource = timeSource != null ? timeSource : TimeSource.NANO_TIME;
-    this.clusterStateProvider = new SimClusterStateProvider(liveNodes, this);
-    this.nodeStateProvider = new SimNodeStateProvider(liveNodes, this.stateManager, this.clusterStateProvider, null);
+    this.clusterStateProvider = new SimClusterStateProvider(liveNodesSet, this);
+    this.nodeStateProvider = new SimNodeStateProvider(liveNodesSet, this.stateManager, this.clusterStateProvider, null);
     this.queueFactory = new GenericDistributedQueueFactory(stateManager);
     this.simCloudManagerPool = ExecutorUtil.newMDCAwareFixedThreadPool(200, new DefaultSolrThreadFactory("simCloudManagerPool"));
-    this.autoScalingHandler = new AutoScalingHandler(this, new SolrResourceLoader());
-    ThreadGroup triggerThreadGroup = new ThreadGroup("Simulated Overseer autoscaling triggers");
-    OverseerTriggerThread trigger = new OverseerTriggerThread(new SolrResourceLoader(), this,
+    this.autoScalingHandler = new AutoScalingHandler(this, loader);
+    triggerThreadGroup = new ThreadGroup("Simulated Overseer autoscaling triggers");
+    OverseerTriggerThread trigger = new OverseerTriggerThread(loader, this,
         new CloudConfig.CloudConfigBuilder("nonexistent", 0, "sim").build());
     triggerThread = new Overseer.OverseerThread(triggerThreadGroup, trigger, "Simulated OverseerAutoScalingTriggerThread");
     triggerThread.start();
-  }
-
-  public void setSolrClient(SolrClient solrClient) {
-    this.solrClient = solrClient;
   }
 
   // ---------- simulator setup methods -----------
@@ -213,6 +210,10 @@ public class SimCloudManager implements SolrCloudManager {
     return values;
   }
 
+  public SolrResourceLoader getLoader() {
+    return loader;
+  }
+
   /**
    * Add a new node and initialize its node values (metrics).
    * @return new node id
@@ -250,7 +251,7 @@ public class SimCloudManager implements SolrCloudManager {
    * @param random random
    */
   public void simRemoveRandomNodes(int number, boolean withValues, Random random) throws Exception {
-    List<String> nodes = new ArrayList<>(liveNodes);
+    List<String> nodes = new ArrayList<>(liveNodesSet.get());
     Collections.shuffle(nodes, random);
     int count = Math.min(number, nodes.size());
     for (int i = 0; i < count; i++) {
@@ -279,22 +280,37 @@ public class SimCloudManager implements SolrCloudManager {
    * @return simulated SolrClient.
    */
   public SolrClient simGetSolrClient() {
-    if (solrClient != null) {
-      return solrClient;
-    } else {
-      return new SolrClient() {
-        @Override
-        public NamedList<Object> request(SolrRequest request, String collection) throws SolrServerException, IOException {
-          SolrResponse rsp = SimCloudManager.this.request(request);
-          return rsp.getResponse();
-        }
+    return new SolrClient() {
+      @Override
+      public NamedList<Object> request(SolrRequest request, String collection) throws SolrServerException, IOException {
+        SolrResponse rsp = SimCloudManager.this.request(request);
+        return rsp.getResponse();
+      }
 
-        @Override
-        public void close() throws IOException {
+      @Override
+      public void close() throws IOException {
 
-        }
-      };
+      }
+    };
+  }
+
+  /**
+   * Simulate the effect of restarting Overseer leader - in this case this means restarting the
+   * OverseerTriggerThread.
+   * @param killNodeId optional nodeId to kill. If null then don't kill any node, just restart the thread
+   */
+  public void simRestartOverseer(String killNodeId) throws Exception {
+    LOG.info("=== Restarting OverseerTriggerThread...");
+    IOUtils.closeQuietly(triggerThread);
+    triggerThread.interrupt();
+    if (killNodeId != null) {
+      simRemoveNode(killNodeId, true);
     }
+    OverseerTriggerThread trigger = new OverseerTriggerThread(loader, this,
+        new CloudConfig.CloudConfigBuilder("nonexistent", 0, "sim").build());
+    triggerThread = new Overseer.OverseerThread(triggerThreadGroup, trigger, "Simulated OverseerAutoScalingTriggerThread");
+    triggerThread.start();
+
   }
 
   /**
@@ -317,6 +333,10 @@ public class SimCloudManager implements SolrCloudManager {
 
   public SimDistribStateManager getSimDistribStateManager() {
     return stateManager;
+  }
+
+  public LiveNodesSet getLiveNodesSet() {
+    return liveNodesSet;
   }
 
   public Map<String, AtomicLong> simGetOpCounts() {
@@ -363,19 +383,11 @@ public class SimCloudManager implements SolrCloudManager {
 
   @Override
   public SolrResponse request(SolrRequest req) throws IOException {
-    if (solrClient != null) {
-      try {
-        return req.process(solrClient);
-      } catch (SolrServerException e) {
-        throw new IOException(e);
-      }
-    } else {
-      try {
-        Future<SolrResponse> res = submit(() -> simHandleSolrRequest(req));
-        return res.get();
-      } catch (Exception e) {
-        throw new IOException(e);
-      }
+    try {
+      Future<SolrResponse> res = submit(() -> simHandleSolrRequest(req));
+      return res.get();
+    } catch (Exception e) {
+      throw new IOException(e);
     }
   }
 
@@ -499,8 +511,8 @@ public class SimCloudManager implements SolrCloudManager {
           if (req.getParams().get(CommonAdminParams.ASYNC) != null) {
             results.add(REQUESTID, req.getParams().get(CommonAdminParams.ASYNC));
           }
-          if (!liveNodes.isEmpty()) {
-            results.add("leader", liveNodes.iterator().next());
+          if (!liveNodesSet.get().isEmpty()) {
+            results.add("leader", liveNodesSet.get().iterator().next());
           }
           results.add("overseer_queue_size", 0);
           results.add("overseer_work_queue_size", 0);

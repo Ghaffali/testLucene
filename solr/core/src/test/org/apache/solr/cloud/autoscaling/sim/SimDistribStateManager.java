@@ -239,6 +239,23 @@ public class SimDistribStateManager implements DistribStateManager {
     this.errorRef.set(actionError);
   }
 
+  private SimDistribStateManager(String id, ExecutorService watchersPool, Node root, ActionThrottle actionThrottle,
+                                 ActionError actionError) {
+    this.id = id;
+    this.watchersPool = watchersPool;
+    this.root = root;
+    this.throttleRef.set(actionThrottle);
+    this.errorRef.set(actionError);
+  }
+
+  public SimDistribStateManager withEphemeralId(String id) {
+    return new SimDistribStateManager(id, watchersPool, root, throttleRef.get(), errorRef.get());
+  }
+
+  public Node getRoot() {
+    return root;
+  }
+
   public void clear() {
     root.clear();
   }

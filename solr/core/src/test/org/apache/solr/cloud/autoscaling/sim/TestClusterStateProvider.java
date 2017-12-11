@@ -169,15 +169,30 @@ public class TestClusterStateProvider extends SolrCloudTestCase {
   @Test
   public void testAddRemoveNode() throws Exception {
     Set<String> lastNodes = new HashSet<>(cloudManager.getClusterStateProvider().getLiveNodes());
+    List<String> liveNodes = cloudManager.getDistribStateManager().listData(ZkStateReader.LIVE_NODES_ZKNODE);
+    assertEquals(lastNodes.size(), liveNodes.size());
+    liveNodes.removeAll(lastNodes);
+    assertTrue(liveNodes.isEmpty());
+
     String node = addNode();
-    Thread.sleep(2000);
+    cloudManager.getTimeSource().sleep(2000);
     assertFalse(lastNodes.contains(node));
-    assertTrue(cloudManager.getClusterStateProvider().getLiveNodes().contains(node));
-    node = deleteNode();
-    Thread.sleep(2000);
+    lastNodes = new HashSet<>(cloudManager.getClusterStateProvider().getLiveNodes());
     assertTrue(lastNodes.contains(node));
-    assertFalse(cloudManager.getClusterStateProvider().getLiveNodes().contains(node));
-  }
+    liveNodes = cloudManager.getDistribStateManager().listData(ZkStateReader.LIVE_NODES_ZKNODE);
+    assertEquals(lastNodes.size(), liveNodes.size());
+    liveNodes.removeAll(lastNodes);
+    assertTrue(liveNodes.isEmpty());
+
+    node = deleteNode();
+    cloudManager.getTimeSource().sleep(2000);
+    assertTrue(lastNodes.contains(node));
+    lastNodes = new HashSet<>(cloudManager.getClusterStateProvider().getLiveNodes());
+    assertFalse(lastNodes.contains(node));
+    liveNodes = cloudManager.getDistribStateManager().listData(ZkStateReader.LIVE_NODES_ZKNODE);
+    assertEquals(lastNodes.size(), liveNodes.size());
+    liveNodes.removeAll(lastNodes);
+    assertTrue(liveNodes.isEmpty());  }
 
   @Test
   public void testAutoScalingConfig() throws Exception {

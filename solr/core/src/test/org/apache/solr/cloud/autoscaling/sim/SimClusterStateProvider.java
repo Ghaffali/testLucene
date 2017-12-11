@@ -38,10 +38,13 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 
+import org.apache.solr.client.solrj.cloud.autoscaling.AlreadyExistsException;
+import org.apache.solr.client.solrj.cloud.autoscaling.AutoScalingConfig;
 import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
 import org.apache.solr.client.solrj.cloud.autoscaling.PolicyHelper;
 import org.apache.solr.client.solrj.cloud.autoscaling.ReplicaInfo;
 import org.apache.solr.client.solrj.cloud.autoscaling.Suggestion;
+import org.apache.solr.client.solrj.cloud.autoscaling.TriggerEventType;
 import org.apache.solr.client.solrj.cloud.autoscaling.VersionedData;
 import org.apache.solr.client.solrj.impl.ClusterStateProvider;
 import org.apache.solr.cloud.ActionThrottle;
@@ -67,6 +70,7 @@ import org.apache.solr.common.params.CommonAdminParams;
 import org.apache.solr.common.params.CoreAdminParams;
 import org.apache.solr.common.util.NamedList;
 import org.apache.solr.common.util.Utils;
+import org.apache.zookeeper.CreateMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -82,8 +86,8 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
 
   private final Map<String, List<ReplicaInfo>> nodeReplicaMap = new ConcurrentHashMap<>();
-  private final Set<String> liveNodes;
-  private final DistribStateManager stateManager;
+  private final LiveNodesSet liveNodes;
+  private final SimDistribStateManager stateManager;
   private final SimCloudManager cloudManager;
 
   private final Map<String, Object> clusterProperties = new ConcurrentHashMap<>();
@@ -109,10 +113,13 @@ public class SimClusterStateProvider implements ClusterStateProvider {
    * The instance needs to be initialized using the <code>sim*</code> methods in order
    * to ensure proper behavior, otherwise it will behave as a cluster with zero replicas.
    */
-  public SimClusterStateProvider(Set<String> liveNodes, SimCloudManager cloudManager) {
+  public SimClusterStateProvider(LiveNodesSet liveNodes, SimCloudManager cloudManager) throws Exception {
     this.liveNodes = liveNodes;
+    for (String nodeId : liveNodes.get()) {
+      createEphemeralLiveNode(nodeId);
+    }
     this.cloudManager = cloudManager;
-    this.stateManager = cloudManager.getDistribStateManager();
+    this.stateManager = cloudManager.getSimDistribStateManager();
     this.leaderThrottle = new ActionThrottle("leader", 5000, cloudManager.getTimeSource());
     // names are CollectionAction names, delays are in ms (simulated time)
     defaultOpDelays.put(CollectionParams.CollectionAction.MOVEREPLICA.name(), 5000L);
@@ -138,7 +145,18 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       sliceProperties.clear();
       nodeReplicaMap.clear();
       liveNodes.clear();
+      for (String nodeId : stateManager.listData(ZkStateReader.LIVE_NODES_ZKNODE)) {
+        if (stateManager.hasData(ZkStateReader.LIVE_NODES_ZKNODE + "/" + nodeId)) {
+          stateManager.removeData(ZkStateReader.LIVE_NODES_ZKNODE + "/" + nodeId, -1);
+        }
+        if (stateManager.hasData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + nodeId)) {
+          stateManager.removeData(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + nodeId, -1);
+        }
+      }
       liveNodes.addAll(initialState.getLiveNodes());
+      for (String nodeId : liveNodes.get()) {
+        createEphemeralLiveNode(nodeId);
+      }
       initialState.forEachCollection(dc -> {
         collProperties.computeIfAbsent(dc.getName(), name -> new ConcurrentHashMap<>()).putAll(dc.getProperties());
         opDelays.computeIfAbsent(dc.getName(), c -> new HashMap<>()).putAll(defaultOpDelays);
@@ -147,7 +165,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
               .computeIfAbsent(s.getName(), name -> new HashMap<>()).putAll(s.getProperties());
           s.getReplicas().forEach(r -> {
             ReplicaInfo ri = new ReplicaInfo(r.getName(), r.getCoreName(), dc.getName(), s.getName(), r.getType(), r.getNodeName(), r.getProperties());
-            if (liveNodes.contains(r.getNodeName())) {
+            if (liveNodes.get().contains(r.getNodeName())) {
               nodeReplicaMap.computeIfAbsent(r.getNodeName(), rn -> new ArrayList<>()).add(ri);
             }
           });
@@ -175,11 +193,10 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     if (liveNodes.isEmpty()) {
       return null;
     }
-    List<String> nodes = new ArrayList<>(liveNodes);
+    List<String> nodes = new ArrayList<>(liveNodes.get());
     return nodes.get(random.nextInt(nodes.size()));
   }
 
-  // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
 
   /**
@@ -191,6 +208,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       throw new Exception("Node " + nodeId + " already exists");
     }
     liveNodes.add(nodeId);
+    createEphemeralLiveNode(nodeId);
     nodeReplicaMap.putIfAbsent(nodeId, new ArrayList<>());
   }
 
@@ -218,7 +236,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
-  // todo: maybe hook up DistribStateManager /live_nodes ?
   // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
 
   /**
@@ -234,6 +251,13 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       // mark every replica on that node as down
       setReplicaStates(nodeId, Replica.State.DOWN, collections);
       boolean res = liveNodes.remove(nodeId);
+      // remove ephemeral nodes
+      stateManager.getRoot().removeEphemeralChildren(nodeId);
+      // create a nodeLost marker if needed
+      AutoScalingConfig cfg = stateManager.getAutoScalingConfig(null);
+      if (cfg.hasTriggerForEvents(TriggerEventType.NODELOST)) {
+        stateManager.makePath(ZkStateReader.SOLR_AUTOSCALING_NODE_LOST_PATH + "/" + nodeId);
+      }
       if (!collections.isEmpty()) {
         cloudManager.submit(new LeaderElection(collections, true));
       }
@@ -254,8 +278,19 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  // this method needs to be called under a lock
+  private void createEphemeralLiveNode(String nodeId) throws Exception {
+    DistribStateManager mgr = stateManager.withEphemeralId(nodeId);
+    mgr.makePath(ZkStateReader.LIVE_NODES_ZKNODE + "/" + nodeId, null, CreateMode.EPHEMERAL, true);
+    AutoScalingConfig cfg = stateManager.getAutoScalingConfig(null);
+    if (cfg.hasTriggerForEvents(TriggerEventType.NODEADDED)) {
+      mgr.makePath(ZkStateReader.SOLR_AUTOSCALING_NODE_ADDED_PATH + "/" + nodeId, null, CreateMode.EPHEMERAL, true);
+    }
+  }
+
   public boolean simRestoreNode(String nodeId) throws Exception {
     liveNodes.add(nodeId);
+    createEphemeralLiveNode(nodeId);
     Set<String> collections = new HashSet<>();
     lock.lock();
     try {
@@ -306,8 +341,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     );
     simAddReplica(message.getStr(CoreAdminParams.NODE), ri, true);
   }
-
-  // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
 
   /**
    * Add a replica. Note that all details of the replica must be present here, including
@@ -375,8 +408,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       lock.unlock();
     }
   }
-
-  // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
 
   /**
    * Remove replica.
@@ -485,7 +516,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
               if (ri.getVariables().remove(ZkStateReader.LEADER_PROP) != null) {
                 stateChanged.set(true);
               }
-              if (r.isActive(liveNodes)) {
+              if (r.isActive(liveNodes.get())) {
                 active.add(ri);
               } else { // if it's on a node that is not live mark it down
                 if (!liveNodes.contains(r.getNodeName())) {
@@ -1055,10 +1086,15 @@ public class SimClusterStateProvider implements ClusterStateProvider {
   /**
    * Return all replica infos for a node.
    * @param node node id
-   * @return list of replicas on that node
+   * @return list of replicas on that node, or empty list if none
    */
   public List<ReplicaInfo> simGetReplicaInfos(String node) {
-    return nodeReplicaMap.get(node);
+    List<ReplicaInfo> replicas = nodeReplicaMap.get(node);
+    if (replicas == null) {
+      return Collections.emptyList();
+    } else {
+      return replicas;
+    }
   }
 
   /**
@@ -1091,7 +1127,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public Set<String> getLiveNodes() {
-    return liveNodes;
+    return liveNodes.get();
   }
 
   @Override
@@ -1101,7 +1137,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
 
   @Override
   public ClusterState getClusterState() throws IOException {
-    return new ClusterState(0, liveNodes, getCollectionStates());
+    return new ClusterState(0, liveNodes.get(), getCollectionStates());
   }
 
   private Map<String, DocCollection> getCollectionStates() {
