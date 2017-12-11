@@ -43,6 +43,7 @@ import org.apache.solr.cloud.autoscaling.TriggerActionBase;
 import org.apache.solr.cloud.autoscaling.TriggerEvent;
 import org.apache.solr.cloud.autoscaling.TriggerListenerBase;
 import org.apache.solr.cloud.autoscaling.CapturedEvent;
+import org.apache.solr.common.cloud.Replica;
 import org.apache.solr.common.cloud.ZkStateReader;
 import org.apache.solr.common.params.CollectionParams;
 import org.apache.solr.common.util.NamedList;
@@ -161,7 +162,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
 
     // pick a few random nodes
     List<String> nodes = new ArrayList<>();
-    int limit = 30;
+    int limit = 75;
     for (String node : cluster.getClusterStateProvider().getLiveNodes()) {
       nodes.add(node);
       if (nodes.size() > limit) {
@@ -171,12 +172,12 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
     Collections.shuffle(nodes, random());
     String collectionName = "testBasic";
     CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(collectionName,
-        "conf", 2, 5, 5, 5);
+        "conf", 5, 5, 5, 5);
     create.setMaxShardsPerNode(1);
     create.setCreateNodeSet(String.join(",", nodes));
     create.process(solrClient);
 
-    log.info("Ready after " + waitForState(collectionName, 30 * nodes.size(), TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
+    log.info("Ready after " + waitForState(collectionName, 30 * nodes.size(), TimeUnit.SECONDS, clusterShape(5, 15)) + "ms");
 
     int KILL_NODES = 8;
     // kill off a number of nodes
@@ -184,15 +185,18 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
       cluster.simRemoveNode(nodes.get(i), false);
     }
 
-    log.info("Ready after " + waitForState(collectionName, 90 * KILL_NODES, TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
+    log.info("Ready after " + waitForState(collectionName, 90 * KILL_NODES, TimeUnit.SECONDS, clusterShape(5, 15)) + "ms");
 
     log.info("OP COUNTS: " + cluster.simGetOpCounts());
     long moveReplicaOps = cluster.simGetOpCount(CollectionParams.CollectionAction.MOVEREPLICA.name());
 
     // simulate a number of flaky nodes
     int FLAKY_NODES = 10;
+    int flakyReplicas = 0;
     for (int cnt = 0; cnt < 10; cnt++) {
       for (int i = KILL_NODES; i < KILL_NODES + FLAKY_NODES; i++) {
+        flakyReplicas += cluster.getSimClusterStateProvider().simGetReplicaInfos(nodes.get(i))
+            .stream().filter(r -> r.getState().equals(Replica.State.ACTIVE)).count();
         cluster.simRemoveNode(nodes.get(i), false);
       }
       cluster.getTimeSource().sleep(TimeUnit.SECONDS.toMillis(waitForSeconds) * 2);
@@ -202,10 +206,13 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
       }
     }
 
-    log.info("Ready after " + waitForState(collectionName, 30 * nodes.size(), TimeUnit.SECONDS, clusterShape(2, 15)) + "ms");
+    log.info("Ready after " + waitForState(collectionName, 30 * nodes.size(), TimeUnit.SECONDS, clusterShape(5, 15)) + "ms");
     log.info("OP COUNTS: " + cluster.simGetOpCounts());
     long newMoveReplicaOps = cluster.simGetOpCount(CollectionParams.CollectionAction.MOVEREPLICA.name());
-    log.info("==== Additional MOVEREPLICA count: " + (newMoveReplicaOps - moveReplicaOps));
+    log.info("==== Flaky replicas: {}. Additional MOVEREPLICA count: {}", flakyReplicas, (newMoveReplicaOps - moveReplicaOps));
+    assertTrue("there should be new MOVERPLICA ops", newMoveReplicaOps - moveReplicaOps > 0);
+    assertTrue("there should be less than flakyReplicas=" + flakyReplicas + " MOVEREPLICA ops",
+        newMoveReplicaOps - moveReplicaOps < flakyReplicas);
   }
 
   @Test
