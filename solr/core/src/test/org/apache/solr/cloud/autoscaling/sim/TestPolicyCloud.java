@@ -61,7 +61,7 @@ public class TestPolicyCloud extends SimSolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(5, TimeSource.get("simTime:50"));
+    configureCluster(5, TimeSource.get("simTime:50"));
   }
 
   @After

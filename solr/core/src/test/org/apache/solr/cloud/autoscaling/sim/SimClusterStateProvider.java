@@ -79,6 +79,19 @@ import static org.apache.solr.common.params.CommonParams.NAME;
 
 /**
  * Simulated {@link ClusterStateProvider}.
+ * <p>
+ *   The following behaviors are supported:
+ *   <ul>
+ *     <li>using autoscaling policy for replica placements</li>
+ *     <li>maintaining and up-to-date list of /live_nodes and nodeAdded / nodeLost markers</li>
+ *     <li>running a simulated leader election on collection changes (with throttling), when needed</li>
+ *     <li>maintaining an up-to-date /clusterstate.json (single file format), which also tracks replica states,
+ *     leader election changes, replica property changes, etc. Note: this file is only written,
+ *     but never read by the framework!</li>
+ *     <li>maintaining an up-to-date /clusterprops.json. Note: this file is only written, but never read by the
+ *     framework!</li>
+ *   </ul>
+ * </p>
  */
 public class SimClusterStateProvider implements ClusterStateProvider {
   private static final Logger LOG = LoggerFactory.getLogger(MethodHandles.lookup().lookupClass());
@@ -119,7 +132,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     this.cloudManager = cloudManager;
     this.stateManager = cloudManager.getSimDistribStateManager();
     this.leaderThrottle = new ActionThrottle("leader", 5000, cloudManager.getTimeSource());
-    // names are CollectionAction names, delays are in ms (simulated time)
+    // names are CollectionAction operation names, delays are in ms (simulated time)
     defaultOpDelays.put(CollectionParams.CollectionAction.MOVEREPLICA.name(), 5000L);
     defaultOpDelays.put(CollectionParams.CollectionAction.DELETEREPLICA.name(), 5000L);
     defaultOpDelays.put(CollectionParams.CollectionAction.ADDREPLICA.name(), 500L);
@@ -234,8 +247,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
-  // todo: maybe hook up DistribStateManager /clusterstate.json watchers?
-
   /**
    * Remove node from a cluster. This is equivalent to a situation when a node is lost.
    * All replicas that were assigned to this node are marked as DOWN.
@@ -286,6 +297,11 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     }
   }
 
+  /**
+   * Restore a previously removed node. This also simulates a short replica recovery state.
+   * @param nodeId node id to restore
+   * @return true when this operation restored any replicas, false otherwise (empty node).
+   */
   public boolean simRestoreNode(String nodeId) throws Exception {
     liveNodes.add(nodeId);
     createEphemeralLiveNode(nodeId);
@@ -338,6 +354,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
         message.getProperties()
     );
     simAddReplica(message.getStr(CoreAdminParams.NODE), ri, true);
+    results.add("success", "");
   }
 
   /**
@@ -363,9 +380,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
     if (replicaInfo.getCore() == null) {
       throw new Exception("Missing core: " + replicaInfo);
     }
-//    if (replicaInfo.getShard() == null) {
-//      throw new Exception("Missing shard: " + replicaInfo);
-//    }
+    // XXX replica info is not supposed to have this as a variable
     replicaInfo.getVariables().remove(ZkStateReader.SHARD_ID_PROP);
     if (replicaInfo.getName() == null) {
       throw new Exception("Missing name: " + replicaInfo);
@@ -385,7 +400,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
       List<ReplicaInfo> replicas = nodeReplicaMap.computeIfAbsent(nodeId, n -> new ArrayList<>());
       // mark replica as active
       replicaInfo.getVariables().put(ZkStateReader.STATE_PROP, Replica.State.ACTIVE.toString());
-      // add property expected in tests
+      // add a property expected in tests
       replicaInfo.getVariables().put(Suggestion.coreidxsize, 123450000);
       // at this point nuke our cached DocCollection state
       collectionsStatesRef.set(null);
@@ -1025,7 +1040,7 @@ public class SimClusterStateProvider implements ClusterStateProvider {
    * @param collection collection name
    * @param key property name
    * @param value property value
-   * @param divide if the value is a {@link Number} and this is true, then the value will be evenly
+   * @param divide if the value is a {@link Number} and this param is true, then the value will be evenly
    *               divided by the number of replicas.
    */
   public void simSetCollectionValue(String collection, String key, Object value, boolean divide) throws Exception {
@@ -1153,7 +1168,6 @@ public class SimClusterStateProvider implements ClusterStateProvider {
             props = new HashMap<>(ri.getVariables());
           }
           props.put(ZkStateReader.NODE_NAME_PROP, n);
-          //props.put(ZkStateReader.SHARD_ID_PROP, ri.getShard());
           props.put(ZkStateReader.CORE_NAME_PROP, ri.getCore());
           props.put(ZkStateReader.REPLICA_TYPE, ri.getType().toString());
           props.put(ZkStateReader.STATE_PROP, ri.getState().toString());

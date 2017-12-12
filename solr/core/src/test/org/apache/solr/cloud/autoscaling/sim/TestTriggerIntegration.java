@@ -87,7 +87,7 @@ public class TestTriggerIntegration extends SimSolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(2, TimeSource.get("simTime:" + SPEED));
+    configureCluster(2, TimeSource.get("simTime:" + SPEED));
   }
 
   private static CountDownLatch getTriggerFiredLatch() {

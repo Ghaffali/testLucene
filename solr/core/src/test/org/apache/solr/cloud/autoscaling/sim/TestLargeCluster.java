@@ -75,7 +75,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(NUM_NODES, TimeSource.get("simTime:" + SPEED));
+    configureCluster(NUM_NODES, TimeSource.get("simTime:" + SPEED));
   }
 
   @Before
@@ -170,6 +170,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
       }
     }
     Collections.shuffle(nodes, random());
+    // create collection on these nodes
     String collectionName = "testBasic";
     CollectionAdminRequest.Create create = CollectionAdminRequest.createCollection(collectionName,
         "conf", 5, 5, 5, 5);
@@ -184,7 +185,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
     for (int i = 0; i < KILL_NODES; i++) {
       cluster.simRemoveNode(nodes.get(i), false);
     }
-
+    // should fully recover
     log.info("Ready after " + waitForState(collectionName, 90 * KILL_NODES, TimeUnit.SECONDS, clusterShape(5, 15)) + "ms");
 
     log.info("OP COUNTS: " + cluster.simGetOpCounts());
@@ -210,6 +211,7 @@ public class TestLargeCluster extends SimSolrCloudTestCase {
     log.info("OP COUNTS: " + cluster.simGetOpCounts());
     long newMoveReplicaOps = cluster.simGetOpCount(CollectionParams.CollectionAction.MOVEREPLICA.name());
     log.info("==== Flaky replicas: {}. Additional MOVEREPLICA count: {}", flakyReplicas, (newMoveReplicaOps - moveReplicaOps));
+    // flaky nodes lead to a number of MOVEREPLICA that is non-zero but lower than the number of flaky replicas
     assertTrue("there should be new MOVERPLICA ops", newMoveReplicaOps - moveReplicaOps > 0);
     assertTrue("there should be less than flakyReplicas=" + flakyReplicas + " MOVEREPLICA ops",
         newMoveReplicaOps - moveReplicaOps < flakyReplicas);

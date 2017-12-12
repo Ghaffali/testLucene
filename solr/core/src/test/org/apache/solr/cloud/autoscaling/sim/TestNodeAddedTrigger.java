@@ -59,7 +59,7 @@ public class TestNodeAddedTrigger extends SimSolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(1, TimeSource.get("simTime:" + SPEED));
+    configureCluster(1, TimeSource.get("simTime:" + SPEED));
     timeSource = cluster.getTimeSource();
   }
 

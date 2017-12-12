@@ -106,6 +106,10 @@ public class SimCloudManager implements SolrCloudManager {
 
   private static int nodeIdPort = 10000;
 
+  /**
+   * Create a simulated cluster.
+   * @param timeSource time source to use.
+   */
   public SimCloudManager(TimeSource timeSource) throws Exception {
     this.stateManager = new SimDistribStateManager();
     this.loader = new SolrResourceLoader();
@@ -135,6 +139,12 @@ public class SimCloudManager implements SolrCloudManager {
 
   // ---------- simulator setup methods -----------
 
+  /**
+   * Create a cluster with the specified number of nodes. Node metrics are pre-populated.
+   * @param numNodes number of nodes to create
+   * @param timeSource time source
+   * @return instance of simulated cluster
+   */
   public static SimCloudManager createCluster(int numNodes, TimeSource timeSource) throws Exception {
     SimCloudManager cloudManager = new SimCloudManager(timeSource);
     for (int i = 1; i <= numNodes; i++) {
@@ -149,6 +159,12 @@ public class SimCloudManager implements SolrCloudManager {
     return cloudManager;
   }
 
+  /**
+   * Create a cluster initialized from the provided cluster state.
+   * @param initialState existing cluster state
+   * @param timeSource time source
+   * @return instance of simulated cluster with the same layout as the provided cluster state.
+   */
   public static SimCloudManager createCluster(ClusterState initialState, TimeSource timeSource) throws Exception {
     SimCloudManager cloudManager = new SimCloudManager(timeSource);
     cloudManager.getSimClusterStateProvider().simSetClusterState(initialState);
@@ -159,8 +175,9 @@ public class SimCloudManager implements SolrCloudManager {
   }
 
   /**
-   * Create node values (metrics) for a node.
-   * @param nodeName node name (eg. '127.0.0.1:10000_solr')
+   * Create simulated node values (metrics) for a node.
+   * @param nodeName node name (eg. '127.0.0.1:10000_solr'). If null then a new node name will be
+   *                 created using sequentially increasing port number.
    * @return node values
    */
   public static Map<String, Object> createNodeValues(String nodeName) {
@@ -210,12 +227,16 @@ public class SimCloudManager implements SolrCloudManager {
     return values;
   }
 
+  /**
+   * Get the instance of {@link SolrResourceLoader} that is used by the cluster components.
+   */
   public SolrResourceLoader getLoader() {
     return loader;
   }
 
   /**
-   * Add a new node and initialize its node values (metrics).
+   * Add a new node and initialize its node values (metrics). The
+   * /live_nodes list is updated with the new node id.
    * @return new node id
    */
   public String simAddNode() throws Exception {
@@ -229,6 +250,7 @@ public class SimCloudManager implements SolrCloudManager {
 
   /**
    * Remove a node from the cluster. This simulates a node lost scenario.
+   * Node id is removed from the /live_nodes list.
    * @param nodeId node id
    * @param withValues when true, remove also simulated node values. If false
    *                   then node values are retained to later simulate
@@ -268,7 +290,7 @@ public class SimCloudManager implements SolrCloudManager {
 
   /**
    * Get the content of (simulated) .system collection.
-   * @return documents in the collection.
+   * @return documents in the collection, in chronological order starting from the oldest.
    */
   public List<SolrInputDocument> simGetSystemCollection() {
     return systemColl;
@@ -276,7 +298,7 @@ public class SimCloudManager implements SolrCloudManager {
 
   /**
    * Get a {@link SolrClient} implementation where calls are forwarded to this
-   * instance.
+   * instance of the cluster.
    * @return simulated SolrClient.
    */
   public SolrClient simGetSolrClient() {
@@ -296,7 +318,7 @@ public class SimCloudManager implements SolrCloudManager {
 
   /**
    * Simulate the effect of restarting Overseer leader - in this case this means restarting the
-   * OverseerTriggerThread.
+   * OverseerTriggerThread and optionally killing a node.
    * @param killNodeId optional nodeId to kill. If null then don't kill any node, just restart the thread
    */
   public void simRestartOverseer(String killNodeId) throws Exception {
@@ -339,10 +361,18 @@ public class SimCloudManager implements SolrCloudManager {
     return liveNodesSet;
   }
 
+  /**
+   * Get the number and type of operations processed by this cluster.
+   */
   public Map<String, AtomicLong> simGetOpCounts() {
     return opCounts;
   }
 
+  /**
+   * Get the number of processed operations of a specified type.
+   * @param op operation name, eg. MOVEREPLICA
+   * @return number of operations
+   */
   public long simGetOpCount(String op) {
     AtomicLong count = opCounts.get(op);
     return count != null ? count.get() : 0L;
@@ -397,7 +427,7 @@ public class SimCloudManager implements SolrCloudManager {
   }
 
   /**
-   * Handler for autoscaling requests. NOTE: only a specific subset of autoscaling requests is
+   * Handler method for autoscaling requests. NOTE: only a specific subset of autoscaling requests is
    * supported!
    * @param req autoscaling request
    * @return results

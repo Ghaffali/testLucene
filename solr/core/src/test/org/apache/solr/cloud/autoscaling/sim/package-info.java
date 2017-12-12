@@ -14,32 +14,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/**
+ * Simulated environment for autoscaling tests.
+ */
 package org.apache.solr.cloud.autoscaling.sim;
 
-import java.io.IOException;
-
-import org.apache.solr.client.solrj.cloud.DistributedQueue;
-import org.apache.solr.client.solrj.cloud.DistributedQueueFactory;
-import org.apache.solr.client.solrj.cloud.autoscaling.DistribStateManager;
-
-/**
- * Factory for {@link GenericDistributedQueue}.
- */
-public class GenericDistributedQueueFactory implements DistributedQueueFactory {
-
-  private final DistribStateManager stateManager;
-
-  public GenericDistributedQueueFactory(DistribStateManager stateManager) {
-    this.stateManager = stateManager;
-  }
-
-  @Override
-  public DistributedQueue makeQueue(String path) throws IOException {
-    return new GenericDistributedQueue(stateManager, path);
-  }
-
-  @Override
-  public void removeQueue(String path) throws IOException {
-
-  }
-}

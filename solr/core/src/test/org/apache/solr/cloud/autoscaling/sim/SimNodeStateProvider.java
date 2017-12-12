@@ -234,7 +234,7 @@ public class SimNodeStateProvider implements NodeStateProvider {
       return Collections.emptyMap();
     }
     Map<String, Object> result = new HashMap<>();
-    Map<String, Object> metrics = getReplicaMetricsValues(node, tags.stream().filter(s -> s.startsWith("metrics:")).collect(Collectors.toList()));
+    Map<String, Object> metrics = getReplicaMetricsValues(node, tags.stream().filter(s -> s.startsWith("metrics:solr.core.")).collect(Collectors.toList()));
     result.putAll(metrics);
     Map<String, Object> values = nodeValues.get(node);
     if (values == null) {
@@ -251,6 +251,7 @@ public class SimNodeStateProvider implements NodeStateProvider {
       return Collections.emptyMap();
     }
     Map<String, Map<String, List<ReplicaInfo>>> res = new HashMap<>();
+    // TODO: probably needs special treatment for "metrics:solr.core..." tags
     for (ReplicaInfo r : replicas) {
       Map<String, List<ReplicaInfo>> perCollection = res.computeIfAbsent(r.getCollection(), s -> new HashMap<>());
       List<ReplicaInfo> perShard = perCollection.computeIfAbsent(r.getShard(), s -> new ArrayList<>());

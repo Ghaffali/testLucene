@@ -248,14 +248,31 @@ public class SimDistribStateManager implements DistribStateManager {
     this.errorRef.set(actionError);
   }
 
+  /**
+   * Create a copy of this instance using a specified ephemeral owner id. This is useful when performing
+   * node operations that require using a specific id. Note: this instance should never be closed, it can
+   * be just discarded after use.
+   * @param id ephemeral owner id
+   */
   public SimDistribStateManager withEphemeralId(String id) {
-    return new SimDistribStateManager(id, watchersPool, root, throttleRef.get(), errorRef.get());
+    return new SimDistribStateManager(id, watchersPool, root, throttleRef.get(), errorRef.get()) {
+      @Override
+      public void close() throws IOException {
+        throw new UnsupportedOperationException("this instance should never be closed - instead close the parent instance.");
+      }
+    };
   }
 
+  /**
+   * Get the root node of the tree used by this instance. It could be a static shared root node.
+   */
   public Node getRoot() {
     return root;
   }
 
+  /**
+   * Clear this instance. All nodes, watchers and data is deleted.
+   */
   public void clear() {
     root.clear();
   }

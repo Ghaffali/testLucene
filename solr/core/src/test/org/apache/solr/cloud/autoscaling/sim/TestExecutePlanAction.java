@@ -66,7 +66,7 @@ public class TestExecutePlanAction extends SimSolrCloudTestCase {
 
   @BeforeClass
   public static void setupCluster() throws Exception {
-    cluster = SimCloudManager.createCluster(NODE_COUNT, TimeSource.get("simTime:50"));
+    configureCluster(NODE_COUNT, TimeSource.get("simTime:50"));
   }
 
   @Before

@@ -39,7 +39,14 @@ import org.junit.AfterClass;
 import org.junit.Before;
 
 /**
- * Base class for simulated test cases.
+ * Base class for simulated test cases. Tests that use this class should configure the simulated cluster
+ * in <code>@BeforeClass</code> like this:
+ * <pre>
+ *   @BeforeClass
+ *   public static void setupCluster() throws Exception {
+ *     cluster = configureCluster(5, TimeSource.get("simTime:50"));
+ *   }
+ * </pre>
  */
 public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
 
@@ -48,8 +55,8 @@ public class SimSolrCloudTestCase extends SolrTestCaseJ4 {
   /** The cluster. */
   protected static SimCloudManager cluster;
 
-  protected static SimCloudManager configureCluster(int nodeCount, TimeSource timeSource) throws Exception {
-    return SimCloudManager.createCluster(nodeCount, timeSource);
+  protected static void configureCluster(int nodeCount, TimeSource timeSource) throws Exception {
+    cluster = SimCloudManager.createCluster(nodeCount, timeSource);
   }
 
   @AfterClass
