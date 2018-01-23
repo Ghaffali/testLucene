@@ -36,11 +36,8 @@ import org.apache.solr.common.SolrException;
 import org.apache.solr.common.cloud.ClusterState;
 import org.apache.solr.common.params.AutoScalingParams;
 import org.apache.solr.common.params.CollectionParams;
-import org.apache.solr.common.util.Pair;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static org.apache.solr.common.params.AutoScalingParams.PREFERRED_OP;
 
 /**
  * This class is responsible for using the configured policy and preferences
@@ -85,7 +82,9 @@ public class ComputePlanAction extends TriggerActionBase {
           SolrRequest operation = suggester.getSuggestion();
           opCount++;
           // prepare suggester for the next iteration
-          session = suggester.getSession();
+          if (suggester.getSession() != null) {
+            session = suggester.getSession();
+          }
           suggester = getSuggester(session, event, cloudManager);
 
           // break on first null op
@@ -165,7 +164,7 @@ public class ComputePlanAction extends TriggerActionBase {
         List<TriggerEvent.Op> ops = (List<TriggerEvent.Op>)event.getProperty(TriggerEvent.REQUESTED_OPS, Collections.emptyList());
         int start = (Integer)event.getProperty(START, 0);
         if (ops.isEmpty() || start >= ops.size()) {
-          return NoneSuggester.INSTANCE;
+          return NoneSuggester.get(session);
         }
         TriggerEvent.Op op = ops.get(start);
         suggester = session.getSuggester(op.getAction());

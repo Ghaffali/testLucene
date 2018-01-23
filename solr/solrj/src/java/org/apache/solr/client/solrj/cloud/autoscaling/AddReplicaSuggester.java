@@ -41,35 +41,33 @@ class AddReplicaSuggester extends Suggester {
     Set<Pair<String, String>> shards = (Set<Pair<String, String>>) hints.getOrDefault(Hint.COLL_SHARD, Collections.emptySet());
     if (shards.isEmpty()) {
       throw new RuntimeException("add-replica requires 'collection' and 'shard'");
-    } else if (shards.size() > 1) {
-      throw new RuntimeException("add-replica requires exactly one hint of type " + Hint.COLL_SHARD);
     }
-    Pair<String, String> shard = shards.iterator().next();
-    Replica.Type type = Replica.Type.get((String) hints.get(Hint.REPLICATYPE));
-    //iterate through elements and identify the least loaded
-    List<Violation> leastSeriousViolation = null;
-    Integer targetNodeIndex = null;
-    for (int i = getMatrix().size() - 1; i >= 0; i--) {
-      Row row = getMatrix().get(i);
-      if (!row.isLive) continue;
-      if (!isAllowed(row.node, Hint.TARGET_NODE)) continue;
-      Row tmpRow = row.addReplica(shard.first(), shard.second(), type);
+    for (Pair<String,String> shard : shards) {
+      Replica.Type type = Replica.Type.get((String) hints.get(Hint.REPLICATYPE));
+      //iterate through elements and identify the least loaded
+      List<Violation> leastSeriousViolation = null;
+      Integer targetNodeIndex = null;
+      for (int i = getMatrix().size() - 1; i >= 0; i--) {
+        Row row = getMatrix().get(i);
+        if (!isNodeSuitable(row)) continue;
+        Row tmpRow = row.addReplica(shard.first(), shard.second(), type);
 
-      List<Violation> errs = testChangedMatrix(strict, getModifiedMatrix(getMatrix(), tmpRow, i));
-      if (!containsNewErrors(errs)) {
-        if (isLessSerious(errs, leastSeriousViolation)) {
-          leastSeriousViolation = errs;
-          targetNodeIndex = i;
+        List<Violation> errs = testChangedMatrix(strict, getModifiedMatrix(getMatrix(), tmpRow, i));
+        if (!containsNewErrors(errs)) {
+          if (isLessSerious(errs, leastSeriousViolation)) {
+            leastSeriousViolation = errs;
+            targetNodeIndex = i;
+          }
         }
       }
-    }
 
-    if (targetNodeIndex != null) {// there are no rule violations
-      getMatrix().set(targetNodeIndex, getMatrix().get(targetNodeIndex).addReplica(shard.first(), shard.second(), type));
-      return CollectionAdminRequest
-          .addReplicaToShard(shard.first(), shard.second())
-          .setType(type)
-          .setNode(getMatrix().get(targetNodeIndex).node);
+      if (targetNodeIndex != null) {// there are no rule violations
+        getMatrix().set(targetNodeIndex, getMatrix().get(targetNodeIndex).addReplica(shard.first(), shard.second(), type));
+        return CollectionAdminRequest
+            .addReplicaToShard(shard.first(), shard.second())
+            .setType(type)
+            .setNode(getMatrix().get(targetNodeIndex).node);
+      }
     }
 
     return null;
